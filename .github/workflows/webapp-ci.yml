@@ -1,0 +1,74 @@
+# CI for the SvelteKit webapp (Feature-First frontend).
+# Triggers on every push to any branch and on every pull request.
+# If the branch has no webapp/ directory, the job is skipped.
+name: Webapp CI
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+
+concurrency:
+  group: webapp-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-build-test:
+    name: Typecheck · Build · Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect webapp directory
+        id: webapp
+        run: |
+          if [ -d webapp ] && [ -f webapp/package.json ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No webapp/ package found — skipping frontend CI."
+          fi
+
+      - name: Setup Node.js
+        if: steps.webapp.outputs.exists == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          cache: npm
+          cache-dependency-path: webapp/package-lock.json
+
+      - name: Install dependencies
+        if: steps.webapp.outputs.exists == 'true'
+        working-directory: webapp
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
+
+      - name: Sync SvelteKit
+        if: steps.webapp.outputs.exists == 'true'
+        working-directory: webapp
+        run: npx svelte-kit sync
+
+      - name: Typecheck (svelte-check + TypeScript)
+        if: steps.webapp.outputs.exists == 'true'
+        working-directory: webapp
+        run: npm run check
+
+      - name: Build (SvelteKit / Vite production)
+        if: steps.webapp.outputs.exists == 'true'
+        working-directory: webapp
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: http://localhost:5000
+
+      - name: Unit tests (Vitest)
+        if: steps.webapp.outputs.exists == 'true'
+        working-directory: webapp
+        run: npm test
