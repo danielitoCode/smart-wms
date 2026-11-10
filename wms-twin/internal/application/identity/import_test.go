@@ -1,7 +1,7 @@
 package identity
 
 import (
-		"testing"
+	"testing"
 	"time"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
