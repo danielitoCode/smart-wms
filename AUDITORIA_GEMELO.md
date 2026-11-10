@@ -137,3 +137,14 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Causa confirmada:** import sobrante después de cambiar el DTO de movimiento a `Location`.
 - **Corrección:** elimino el import, incorporo el `go.mod` canónico generado por Go 1.25 y publico los archivos formateados. Restauro CI no mutante.
 - **Riesgo residual:** vet y race tests aún deben terminar en verde en la nueva ejecución.
+
+
+### AUD-0016 — Validación completa del corte de inventario
+
+- **Commit validado:** `4b3880fe9a0dfec329cc88c8a2e08709454ecf14`.
+- **Ejecución:** `42893176180`.
+- **Resultado:** success en Documentation and protected-scope guard y Go tests and static checks.
+- **Pasos aprobados:** `go mod tidy -diff`, `go mod verify`, comprobación gofmt, `go vet ./...` y `go test -race -count=1 ./...`.
+- **Detonante:** cierre de las incidencias AUD-0013, AUD-0014 y AUD-0015.
+- **Corrección:** grafo Go canónico, fuentes formateadas, import no utilizado retirado y workflow no mutante restaurado.
+- **Alcance de la evidencia:** solo valida el código y escenarios automatizados actuales; no valida paridad Flask, replicación de bytes CID, autoridad distribuida ni operación multi-nodo.

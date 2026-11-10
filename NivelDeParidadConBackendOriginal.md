@@ -83,3 +83,8 @@ En `9695a825`, el guard documental/alcance pasó, `go mod tidy` y `go mod verify
 ## Evidencia de CI más reciente
 
 La ejecución `42892797788` validó resolución del módulo, checksum y formato temporal; falló en vet por un import no utilizado en el test nuevo. Race tests no se ejecutaron. El defecto está corregido en el commit siguiente, pendiente de su ejecución completa. La paridad funcional continúa sin demostrarse.
+
+
+## Última evidencia de CI
+
+La ejecución `42893176180` sobre `4b3880fe` pasó guard documental/alcance, tidy diff, verificación de módulos, gofmt, vet y race tests. Por tanto, el ledger técnico está validado por su suite automatizada actual. No cambia el estado global: el gemelo sigue sin paridad de autenticación, DTO/rutas de negocio y flujos WMS, y no es sustituible.

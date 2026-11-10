@@ -70,3 +70,8 @@ El guard de alcance pasó y el módulo Go pudo resolverse y verificarse. El job 
 ## Corrección de calidad
 
 El grafo Go canónico y el formato se recuperaron de un artefacto generado por Go 1.25 en CI. Se retiró el import no utilizado que detuvo vet. El workflow vuelve a ser estricto y no reescribe archivos. La implementación queda pendiente de la ejecución completa de vet y race tests.
+
+
+## Validación
+
+La ejecución `42893176180` terminó en success. Pasaron tidy diff, verificación de módulos, gofmt, vet y race tests. La implementación técnica queda validada en el alcance cubierto por esos tests; no equivale a paridad con el backend original.

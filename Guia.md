@@ -161,3 +161,8 @@ En el commit `9695a825`, `go mod tidy` y `go mod verify` terminaron correctament
 ## Corrección de CI — 2026-11-10
 
 La ejecución `42892797788` confirmó que `go mod tidy`, `gofmt` temporal y `go mod verify` pasaron. `go vet` detectó un import no utilizado en el test del ledger y por eso no ejecutó la suite race. Ya incorporo el `go.mod` generado por Go 1.25, publico los archivos formateados, retiro el import y vuelvo a un workflow estricto: `go mod tidy -diff`, `gofmt -l`, vet y race tests sin modificar el workspace. El resultado de la nueva ejecución queda pendiente.
+
+
+## Validación satisfactoria del ledger — 2026-11-10
+
+La ejecución GitHub Actions `42893176180`, sobre el commit `4b3880fe9a0dfec329cc88c8a2e08709454ecf14`, terminó en success. Pasaron guard documental/alcance, `go mod tidy -diff`, `go mod verify`, `gofmt -l`, `go vet ./...` y `go test -race -count=1 ./...`. Esta evidencia cubre el código y escenarios automatizados del corte actual; no demuestra paridad Flask ni consistencia multi-nodo.

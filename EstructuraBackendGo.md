@@ -100,3 +100,8 @@ La reconstrucción del grafo de módulos terminó correctamente y `go mod verify
 ## Grafo de módulos y calidad de código
 
 Incorporé las dependencias indirectas exactas generadas por `go mod tidy` con Go 1.25. El archivo `go.sum` ya estaba completo. También publiqué el formato producido por gofmt. El fallo de vet se debió a un import no utilizado en el test del ledger, ya retirado. El workflow final no debe formatear ni reescribir lockfiles: solo verifica y falla si el commit no está limpio.
+
+
+## Evidencia de validación
+
+La ejecución `42893176180` terminó satisfactoriamente: módulo reproducible, formato, vet y race tests en verde. Esto valida el runtime y los tests existentes, no el funcionamiento de replicación WMS ni la paridad de negocio. Mantengo explícitos esos límites.

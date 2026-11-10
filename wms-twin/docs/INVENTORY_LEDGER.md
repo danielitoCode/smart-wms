@@ -107,3 +107,8 @@ go test ./internal/httpapi -v
 ```
 
 Se añadieron pruebas para ajuste/reserva/liberación, idempotencia, movimiento, persistencia tras reconstruir el nodo Core, concurrencia dentro de un proceso y HTTP. El resultado CI de este commit será la evidencia definitiva.
+
+
+## Evidencia automatizada
+
+La ejecución `42893176180` del commit `4b3880fe` pasó `go mod tidy -diff`, `go mod verify`, gofmt, vet y race tests. Los escenarios del ledger están cubiertos por la suite actual. Esta evidencia no cubre coordinación entre nodos ni particiones de red.
