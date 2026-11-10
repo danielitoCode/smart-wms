@@ -151,3 +151,8 @@ Antes de cada entrega actualizo esta guía, `EstructuraBackendGo.md`, `NivelDePa
 ## Incidencia de validación de dependencias — 2026-11-10
 
 La primera ejecución del workflow después de incorporar el ledger falló en `go mod tidy -diff`, antes de formato, vet y tests. El guard de documentación y alcance sí pasó. La salida detallada del diff no está disponible en la respuesta del conector, así que no atribuyo todavía una causa específica. Para recuperar el grafo exacto voy a generar temporalmente un artefacto con `go.mod` y `go.sum` producidos por Go 1.25 en CI. Después incorporaré esos archivos al repositorio y volveré a una comprobación no mutante `go mod tidy -diff`. Hasta entonces el ledger no está validado.
+
+
+## Seguimiento de CI — normalización de fuentes
+
+En el commit `9695a825`, `go mod tidy` y `go mod verify` terminaron correctamente y generaron el artefacto temporal `wms-twin-module-metadata`. El job se detuvo después porque encontró archivos Go sin formato; vet y race tests no se ejecutaron. Estoy haciendo que CI normalice las fuentes en su workspace temporal y publique un artefacto para incorporar el formato real al commit. La validación final volverá a ser estricta y no modificará archivos.

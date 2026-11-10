@@ -60,3 +60,8 @@ Leer `Guia.md`, `EstructuraBackendGo.md`, `NivelDeParidadConBackendOriginal.md`,
 ## Estado de CI de la entrega de inventario
 
 En el primer run posterior al ledger, el guard de alcance/documentación pasó, pero `go mod tidy -diff` falló antes de compilar. El grafo se está reconstruyendo en CI para obtener los archivos de módulo canónicos. No se debe interpretar el commit como validado hasta que el workflow completo termine en success.
+
+
+## Última validación
+
+El guard de alcance pasó y el módulo Go pudo resolverse y verificarse. El job se detuvo en gofmt antes de vet y race tests. Estoy recuperando fuentes formateadas desde un artefacto temporal; no marco el ledger como probado hasta que el siguiente CI completo termine en success.

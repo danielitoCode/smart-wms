@@ -73,3 +73,8 @@ El backend original se conserva incluso después de un despliegue gradual y roll
 ## Evidencia de validación del ledger
 
 El guard de documentación/aislamiento pasó en el commit `497b2048`. El job Go falló en `go mod tidy -diff`, antes de gofmt, vet y tests. Por tanto, las pruebas añadidas aún no se han ejecutado en CI y el ledger sigue marcado como implementación pendiente de validación.
+
+
+## Evidencia de CI del ledger
+
+En `9695a825`, el guard documental/alcance pasó, `go mod tidy` y `go mod verify` pasaron, pero gofmt falló. Vet y race tests no se ejecutaron. La paridad sigue sin demostrarse y la implementación no debe usarse en producción.

@@ -116,3 +116,14 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Acción temporal:** generar `go.mod` y `go.sum` mediante Go 1.25 en CI y subirlos como artefacto de corta retención para inspección.
 - **Corrección final esperada:** incorporar el grafo exacto y restaurar `go mod tidy -diff` como verificación no mutante.
 - **Resultado:** abierto; no declaro el código Go probado.
+
+
+### AUD-0014 — Fuentes Go sin formato en CI
+
+- **Commit detonante:** `9695a825933d4cd59d7ea17140d63e304b8a468b`.
+- **Ejecución:** `42892614773`, workflow WMS twin validation.
+- **Detonante:** el paso de formato encontró archivos Go que gofmt modificaría.
+- **Resultado:** documentación/alcance, `go mod tidy` y `go mod verify` pasaron; vet y race tests quedaron omitidos.
+- **Corrección temporal:** CI normalizará fuentes en workspace efímero y subirá el código formateado como artefacto para incorporarlo al repositorio.
+- **Corrección definitiva:** publicar los archivos ya formateados y restaurar el check no mutante `gofmt -l`.
+- **Estado:** abierto hasta obtener artefacto y completar el siguiente CI.

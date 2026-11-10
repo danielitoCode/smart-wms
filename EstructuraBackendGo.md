@@ -90,3 +90,8 @@ CI debe ejecutar tidy diff, checksum, gofmt, vet y race tests. Los tests del led
 ## Reproducibilidad del módulo
 
 La primera comprobación estricta `go mod tidy -diff` falló en el commit del ledger, por lo que el grafo de dependencias aún no está cerrado. La siguiente ejecución de CI genera temporalmente `go.mod` y `go.sum` canónicos como artefacto para incorporarlos. El objetivo final es que CI solo verifique y nunca reescriba el módulo.
+
+
+## Estado de validación del commit de inventario
+
+La reconstrucción del grafo de módulos terminó correctamente y `go mod verify` pasó. La primera barrera siguiente detectó archivos Go sin formato; vet y tests quedaron omitidos. La normalización temporal y el artefacto de fuentes sirven para recuperar el formato exacto, pero no sustituyen la publicación de los archivos formateados en Git.
