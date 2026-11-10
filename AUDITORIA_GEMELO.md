@@ -21,12 +21,12 @@ Cada entrada debe identificar commit/PR cuando exista, archivos afectados, deton
 
 ### AUD-0002 — Documentación operativa y controles de integración
 
-- **Commit:** se completará al registrar esta actualización.
+- **Commit:** `aef763491ddbcd24e6a3e02a78ca6777c2760f21`
 - **Cambio:** creación de `Guia.md`, `EstructuraBackendGo.md`, `NivelDeParidadConBackendOriginal.md`, este registro y workflow de CI para validar cambios del gemelo.
 - **Detonante:** necesidad de que cualquier desarrollador o agente pueda retomar el trabajo sin depender de conversaciones privadas y de que los cambios se verifiquen antes de integrarse.
 - **Decisión:** documentar estado real, comandos, criterios de paridad, diagnóstico, límites y siguiente tarea. Ejecutar verificaciones automáticas en push y pull request hacia la rama gemela.
 - **Impacto sobre backend original:** los archivos de backend y frontend originales no deben modificarse. El workflow nuevo será adicional.
-- **Pruebas:** el workflow se ejecutará al recibir push/PR; su resultado se debe consultar en GitHub Actions. La creación del workflow no equivale a que ya haya pasado.
+- **Pruebas:** el workflow quedó registrado en el commit `aef763491ddbcd24e6a3e02a78ca6777c2760f21`. Aún no se ha observado una ejecución completada; resultado: **pendiente de CI**.
 - **Limitación:** GitHub Actions no puede impedir que un usuario ejecute `git pull` en su propia máquina. Sí puede bloquear la aceptación de un pull request si el repositorio exige los checks como reglas de protección. La exigencia de checks debe habilitarse en settings del repositorio con permisos administrativos.
 - **Siguiente acción:** auditar rutas, DTO, auth, permisos, pruebas y clientes; verificar APIs reales de PrismaTEC-Core; iniciar `wms-twin/` únicamente después.
 
