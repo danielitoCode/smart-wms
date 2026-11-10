@@ -7,28 +7,54 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/identity"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 	"github.com/yecharlot/PrismaTec-Core/core"
 )
 
 type Server struct {
-	node   *core.Node
-	store  *corestore.Store
+	node *core.Node
+	store *corestore.Store
 	ledger *inventoryledger.Ledger
-	token  string
+	token string
+	users *identity.Repository
+	jwtSecret []byte
+	maxLoginAttempts int
+	loginLockout time.Duration
+	requirePacking bool
 }
 
 func New(node *core.Node, store *corestore.Store, token string) *Server {
-	return &Server{node: node, store: store, ledger: inventoryledger.New(store), token: token}
+	return NewWithIdentity(node, store, token, identity.New(store), []byte(os.Getenv("JWT_SECRET")), 5, 15*time.Minute, true)
+}
+
+func NewWithIdentity(node *core.Node, store *corestore.Store, token string, users *identity.Repository, jwtSecret []byte, maxLoginAttempts int, loginLockout time.Duration, requirePacking bool) *Server {
+	if users == nil {
+		users = identity.New(store)
+	}
+	if maxLoginAttempts < 1 {
+		maxLoginAttempts = 5
+	}
+	if loginLockout <= 0 {
+		loginLockout = 15 * time.Minute
+	}
+	return &Server{
+		node: node, store: store, ledger: inventoryledger.New(store), token: token,
+		users: users, jwtSecret: append([]byte(nil), jwtSecret...),
+		maxLoginAttempts: maxLoginAttempts, loginLockout: loginLockout,
+		requirePacking: requirePacking,
+	}
 }
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/health", s.health)
+	mux.HandleFunc("/api/auth/", s.authRoute)
 	mux.HandleFunc("/api/twin/info", s.authorize(s.info))
 	mux.HandleFunc("/api/twin/records/", s.authorize(s.records))
 	mux.HandleFunc("/api/twin/inventory/", s.authorize(s.inventory))

@@ -275,3 +275,16 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Prueba manual reportada:** POST de `WH-001` devolvió 201; GET devolvió 200 con CID/RootCID; health WMS devolvió ok; AIP healthz devolvió 200 vacío; el nodo informó un organismo.
 - **Pendiente:** reiniciar el proceso local y comprobar de nuevo `WH-001`. La prueba unitaria de reapertura del Core store no sustituye esa comprobación del entorno del operador.
 - **Límite:** CI no demuestra login HTTP, importación de usuarios, permisos, paridad de rutas ni flujos WMS.
+
+
+### AUD-0023 — Autenticación HTTP y bootstrap de identidades
+
+- **Commit:** esta entrega, identificable por `feat(wms-twin): add JWT auth endpoints and Core bootstrap`.
+- **Archivos:** `internal/httpapi/auth.go`, `server.go`, `internal/runtime/runtime.go`, `internal/application/identity/import.go`, `login_attempts.go`, tests HTTP/identidad y actualización de documentación.
+- **Detonante:** conectar las primitivas JWT/CSRF y el repositorio Core-backed a un contrato HTTP que pueda consumir admin y mobile.
+- **Cambio:** añadí login/logout/me/refresh/change-password; cookies `sentry_auth` y `sentry_csrf`; JWT HS256; comprobación de estado vivo; forced password change; CSRF; lockout persistente; wrappers de permisos de página y almacén; importación inicial JSON de usuarios con hash bcrypt.
+- **Bootstrap:** `JWT_SECRET` debe tener al menos 32 bytes. `WMS_TWIN_BOOTSTRAP_USERS_FILE` solo se importa si el store está vacío y el archivo tiene permisos 0600 o más restrictivos. No se aceptan passwords en claro.
+- **Límites:** las rutas WMS de negocio no están portadas ni protegidas aún por estos wrappers; `require_packing` es configuración de entorno; no hay audit log de password ni revocación individual de jti.
+- **Pruebas añadidas:** login/me/cookies/CSRF/cambio de password, invalidación de token anterior, lockout persistente, forced-change y warehouse mismatch/denial, importación y reapertura.
+- **Validación:** pendiente del CI de esta rama; no declaro las pruebas ejecutadas localmente.
+- **Incidencia de smoke test:** la respuesta local `/api/health` reportada como `service=sentry-wms` no coincide con el handler publicado, que responde `service=smart-wms-twin` e incluye `time`. No la atribuyo al gemelo hasta identificar el proceso que escucha en el puerto 5001.

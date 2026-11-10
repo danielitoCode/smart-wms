@@ -6,8 +6,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/identity"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/httpapi"
 	wmsreplication "github.com/danielitoCode/smart-wms/wms-twin/internal/replication"
@@ -20,6 +23,10 @@ type Config struct {
 	DataDir, NodeName, NetworkAddr, TransportKind string
 	Peers                                         map[string]string
 	HTTPAddr, AIPAddr, APIToken                   string
+	JWTSecret, BootstrapUsersFile                  string
+	MaxLoginAttempts                               int
+	LoginLockout                                   time.Duration
+	RequirePacking                                 bool
 }
 
 func ConfigFromEnv() Config {
@@ -40,7 +47,28 @@ func ConfigFromEnv() Config {
 	if aipAddr == "" {
 		aipAddr = ":8081"
 	}
-	return Config{DataDir: dataDir, NodeName: name, NetworkAddr: strings.TrimSpace(os.Getenv("PRISMATEC_NETWORK_ADDR")), TransportKind: strings.TrimSpace(os.Getenv("PRISMATEC_TRANSPORT")), Peers: network.ParsePeersEnv(os.Getenv("PRISMATEC_PEERS")), HTTPAddr: httpAddr, AIPAddr: aipAddr, APIToken: os.Getenv("WMS_TWIN_API_TOKEN")}
+	lockoutMinutes := envPositiveInt("WMS_TWIN_LOGIN_LOCKOUT_MINUTES", 15)
+	requirePacking := strings.ToLower(strings.TrimSpace(os.Getenv("WMS_TWIN_REQUIRE_PACKING"))) != "false"
+	return Config{
+		DataDir: dataDir, NodeName: name,
+		NetworkAddr: strings.TrimSpace(os.Getenv("PRISMATEC_NETWORK_ADDR")),
+		TransportKind: strings.TrimSpace(os.Getenv("PRISMATEC_TRANSPORT")),
+		Peers: network.ParsePeersEnv(os.Getenv("PRISMATEC_PEERS")),
+		HTTPAddr: httpAddr, AIPAddr: aipAddr, APIToken: os.Getenv("WMS_TWIN_API_TOKEN"),
+		JWTSecret: os.Getenv("JWT_SECRET"),
+		BootstrapUsersFile: strings.TrimSpace(os.Getenv("WMS_TWIN_BOOTSTRAP_USERS_FILE")),
+		MaxLoginAttempts: envPositiveInt("WMS_TWIN_MAX_LOGIN_ATTEMPTS", 5),
+		LoginLockout: time.Duration(lockoutMinutes) * time.Minute,
+		RequirePacking: requirePacking,
+	}
+}
+
+func envPositiveInt(key string, fallback int) int {
+	value, err := strconv.Atoi(strings.TrimSpace(os.Getenv(key)))
+	if err != nil || value < 1 {
+		return fallback
+	}
+	return value
 }
 
 type Runtime struct {
@@ -81,7 +109,40 @@ func New(cfg Config) (*Runtime, error) {
 		}
 		store.SetReplicator(rep)
 	}
-	apiServer := httpapi.New(node, store, cfg.APIToken)
+	users := identity.New(store)
+	if cfg.BootstrapUsersFile != "" {
+		existing, err := users.List()
+		if err != nil {
+			cancel()
+			_ = node.Stop()
+			return nil, fmt.Errorf("inspect Core identity store: %w", err)
+		}
+		if len(existing) == 0 {
+			info, err := os.Stat(cfg.BootstrapUsersFile)
+			if err != nil {
+				cancel()
+				_ = node.Stop()
+				return nil, fmt.Errorf("stat identity export: %w", err)
+			}
+			if err := identity.ValidateExportFileMode(uint32(info.Mode().Perm())); err != nil {
+				cancel()
+				_ = node.Stop()
+				return nil, err
+			}
+			data, err := os.ReadFile(cfg.BootstrapUsersFile)
+			if err != nil {
+				cancel()
+				_ = node.Stop()
+				return nil, fmt.Errorf("read identity export: %w", err)
+			}
+			if err := users.ImportJSON(data); err != nil {
+				cancel()
+				_ = node.Stop()
+				return nil, fmt.Errorf("bootstrap Core identities: %w", err)
+			}
+		}
+	}
+	apiServer := httpapi.NewWithIdentity(node, store, cfg.APIToken, users, []byte(cfg.JWTSecret), cfg.MaxLoginAttempts, cfg.LoginLockout, cfg.RequirePacking)
 	aipServer := &aip.Server{Node: node, Addr: cfg.AIPAddr}
 	return &Runtime{node: node, cancel: cancel, handler: apiServer.Handler(), aipHandler: aipServer.Handler()}, nil
 }

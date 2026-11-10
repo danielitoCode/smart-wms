@@ -96,3 +96,8 @@ El paquete `internal/application/identity` persiste usuarios en organismos Core 
 ## Validación del repositorio de identidad
 
 El corte `d8c2c02e17c667620cccdf6dcb017a83f33e575c` pasó la ejecución CI `42897626723`: tidy diff, module verify, gofmt, vet y race tests; el guard documental/alcance también pasó. El workflow publicó el formato final en `e0d2e20dea760ad99f71c1376d97a4896f28c284`. La autenticación HTTP sigue pendiente.
+
+
+## Autenticación HTTP disponible en el gemelo
+
+Se implementaron `/api/auth/login`, `logout`, `me`, `refresh` y `change-password`, con JWT HS256, cookies HttpOnly/CSRF, estado vivo de usuario, lockout persistente y wrappers de page/warehouse permissions. El runtime acepta `JWT_SECRET` y un `WMS_TWIN_BOOTSTRAP_USERS_FILE` con hashes bcrypt (modo 0600). No hay aún rutas WMS de negocio portadas ni gestión HTTP de usuarios; el frontend sigue sin estar habilitado para este gemelo.

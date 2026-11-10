@@ -119,3 +119,20 @@ La prueba añadida cubre autenticación, duplicado, cambio de contraseña, ausen
 La ejecución `42897626723` terminó en success sobre el commit `d8c2c02e17c667620cccdf6dcb017a83f33e575c`. Pasaron tidy diff, module verify, gofmt, vet, race tests y guard documental/de alcance. El commit de formato resultante es `e0d2e20dea760ad99f71c1376d97a4896f28c284`.
 
 Esta validación cubre las primitivas y el repositorio interno. No acredita login HTTP, importación de usuarios, lockout, middleware, cookies, CSRF integrado ni autorización de endpoints.
+
+
+## Autenticación HTTP conectada — primer corte
+
+Añadí handlers `/api/auth/login`, `logout`, `me`, `refresh` y `change-password`. El runtime inyecta el repositorio de identidades Core y el secreto JWT. El login emite token de ocho horas y cookies `sentry_auth` (HttpOnly) y `sentry_csrf` (double-submit). Los requests con cookie y método mutante requieren `X-CSRF-Token`; los Bearer móviles no. El middleware carga el usuario actual en Core en cada request y aplica activo, invalidación por cambio de contraseña, forced-change y warehouse scope. `RequirePagePermission` está disponible para las rutas admin que portaré después.
+
+El lockout persiste en organismos Core por clave de usuario y por IP+usuario, manteniendo el bucket de usuario solo para observabilidad y bloqueando el tuple IP+usuario tras el umbral. Configuración: `WMS_TWIN_MAX_LOGIN_ATTEMPTS=5`, `WMS_TWIN_LOGIN_LOCKOUT_MINUTES=15`.
+
+## Importación inicial de identidades
+
+Para no conectar el gemelo a PostgreSQL, añadí importación de JSON con usuarios existentes y hashes bcrypt. Configuro `WMS_TWIN_BOOTSTRAP_USERS_FILE=/ruta/usuarios.json`. El JSON debe ser un array de registros con `user_id`, `username`, `password_hash` bcrypt, `full_name`, `role`, `warehouse_id`, `warehouse_ids`, `allowed_functions`, `allowed_pages`, `allowed_overrides`, `is_active`, `created_at`, `password_changed_at` y `must_change_password`. Nunca exporto passwords en claro. El archivo debe tener modo 0600 o más restrictivo. El runtime solo importa si el store no contiene usuarios; no mezcla ni sobreescribe una identidad inicializada.
+
+También configuro `JWT_SECRET` (mínimo 32 bytes) y `WMS_TWIN_REQUIRE_PACKING` (por defecto true).
+
+## Límites de este corte
+
+Los endpoints de autenticación están conectados, pero todavía no existe gestión HTTP de usuarios ni auditoría equivalente al cambio de contraseña. Los wrappers de autorización son reutilizables, pero aún no protegen rutas de negocio porque esas rutas no han sido portadas. El ajuste `require_packing` no consulta todavía `app_settings`. El Bearer técnico continúa siendo el guard de `/api/twin/*`. No conectar el frontend hasta completar la paridad de rutas y DTO.

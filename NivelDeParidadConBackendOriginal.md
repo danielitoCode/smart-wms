@@ -126,3 +126,23 @@ El repositorio es un bloque interno, no una autenticación utilizable por los fr
 El corte de identidad del commit `d8c2c02e17c667620cccdf6dcb017a83f33e575c` pasó la ejecución `42897626723`: tidy diff, verificación de módulos, gofmt, vet y race tests. El guard de documentación/aislamiento también pasó. El formato final quedó publicado en `e0d2e20dea760ad99f71c1376d97a4896f28c284`.
 
 La prueba manual confirmó POST 201, GET 200, CID/RootCID y contador de organismos igual a uno. Aún no confirma persistencia después de reiniciar el servidor local. La matriz sigue indicando que el gemelo no sustituye el backend original.
+
+
+## Autenticación HTTP — paridad parcial
+
+| Contrato | Estado | Límite |
+|---|---|---|
+| `POST /api/auth/login` | Implementado | No reproduce todavía todos los detalles de errores Pydantic/auditoría |
+| `POST /api/auth/logout` | Implementado | Limpia cookies; no existe revocación individual por jti |
+| `GET /api/auth/me` | Implementado | `require_packing` viene de variable de entorno, no de app_settings |
+| `POST /api/auth/refresh` | Implementado | Reemite token/cookies tras consultar usuario vivo |
+| `POST /api/auth/change-password` | Implementado | Falta escritura de audit log equivalente |
+| JWT HS256/8h | Implementado | Estado vivo por request; falta comparación diferencial con fixtures originales |
+| Cookies + CSRF | Implementado | Solo para cookie; Bearer queda exento |
+| Lockout | Core-backed, persistente | Un organismo por key; sin coordinación distribuida durante partición |
+| Forced password change | Middleware reutilizable | Aún no protege endpoints de negocio no portados |
+| Page permissions | Wrapper reutilizable | Aún no aplicado a rutas admin equivalentes |
+| Warehouse scope/mismatch | Wrapper reutilizable | Aún no aplicado a todos los flujos operativos |
+| Importación de usuarios | JSON con hashes bcrypt | No existe aún exportador automatizado desde PostgreSQL |
+
+El Bearer técnico sigue protegiendo `/api/twin/*`. La autenticación de usuarios no convierte todavía esas rutas genéricas en endpoints de negocio compatibles. Ver `wms-twin/docs/FASE_02_SEGURIDAD.md`.

@@ -188,3 +188,12 @@ El repositorio de usuarios está en `wms-twin/internal/application/identity`. Pe
 El commit `d8c2c02e17c667620cccdf6dcb017a83f33e575c` terminó en success en WMS twin validation, ejecución `42897626723`. Pasaron guard documental/alcance, `go mod tidy -diff`, `go mod verify`, gofmt, vet y `go test -race -count=1 ./...`. El workflow publicó después el commit de formato `e0d2e20dea760ad99f71c1376d97a4896f28c284`.
 
 También recibí y registro la prueba manual del operador: crear `WH-001` respondió 201; leerlo respondió 200 con el mismo ContentCID y RootCID; `/api/health` devolvió `{"service":"sentry-wms","status":"ok"}`; AIP `/healthz` respondió 200 con cuerpo vacío; el nodo informó `organisms: 1`. Todavía falta que el operador reinicie el proceso y confirme que `WH-001` sigue disponible. La prueba de reinicio ya existe en tests del store, pero no sustituyo con ella la comprobación del entorno local.
+
+
+## Autenticación HTTP — primer contrato conectado
+
+Incorporé `/api/auth/login`, `logout`, `me`, `refresh` y `change-password`. La API emite JWT HS256 con los claims del original, instala `sentry_auth` HttpOnly y `sentry_csrf` legible, verifica CSRF en mutaciones con cookie y consulta en cada request el estado persistido del usuario. También aplica expiración, invalidación por `password_changed_at`, forced password change, permisos de página y warehouse scope con detección de discrepancias entre path/query/body.
+
+El lockout de 5 intentos/15 minutos (configurable) persiste como organismos Core. Para importar usuarios existentes, configuro `WMS_TWIN_BOOTSTRAP_USERS_FILE` con un JSON de usuarios que contenga hashes bcrypt, nunca passwords en claro; el archivo debe tener permisos 0600 o más restrictivos. Variables: `JWT_SECRET` (mínimo 32 bytes), `WMS_TWIN_MAX_LOGIN_ATTEMPTS`, `WMS_TWIN_LOGIN_LOCKOUT_MINUTES` y `WMS_TWIN_REQUIRE_PACKING`.
+
+**Límite importante:** estas protecciones ya están disponibles como handlers/wrappers, pero aún no he portado los endpoints de negocio Flask ni conectado todos esos wrappers a rutas WMS equivalentes. `/api/twin/*` continúa usando el Bearer técnico. Falta auditoría equivalente de cambio de password, gestión HTTP de usuarios, refresh/revocación completa y fixtures diferenciales.
