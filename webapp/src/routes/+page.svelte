@@ -8,7 +8,9 @@
 	<p>Arquitectura Feature-First / Clean Architecture.</p>
 	<ul>
 		<li><a href="/login">Login (auth)</a></li>
-		<li><a href="/inventory">Inventario (feature piloto)</a></li>
+		<li><a href="/inventory">Inventario</a></li>
+		<li><a href="/warehouses">Almacenes</a></li>
+		<li><a href="/items">Ítems</a></li>
 	</ul>
 </main>
 
