@@ -10,6 +10,7 @@ on:
       - 'EstructuraBackendGo.md'
       - 'NivelDeParidadConBackendOriginal.md'
       - 'AUDITORIA_GEMELO.md'
+      - 'docs/architecture/PRISMA_CORE_BOUNDARY.md'
       - '.github/workflows/wms-twin-ci.yml'
   pull_request:
     branches: [feat/wms-prismatec-genesis]
@@ -20,6 +21,7 @@ on:
       - 'EstructuraBackendGo.md'
       - 'NivelDeParidadConBackendOriginal.md'
       - 'AUDITORIA_GEMELO.md'
+      - 'docs/architecture/PRISMA_CORE_BOUNDARY.md'
       - '.github/workflows/wms-twin-ci.yml'
 
 permissions:
@@ -33,6 +35,7 @@ jobs:
   documentation:
     name: Documentation and protected-scope guard
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
@@ -40,11 +43,11 @@ jobs:
       - name: Require handover documents
         run: |
           set -eu
-          for file in Guia.md EstructuraBackendGo.md NivelDeParidadConBackendOriginal.md AUDITORIA_GEMELO.md wms-twin/docs/CONTRATO_FRONTEND.md wms-twin/docs/MAPA_RUTAS_BACKEND_ORIGINAL.md; do
+          for file in Guia.md EstructuraBackendGo.md NivelDeParidadConBackendOriginal.md AUDITORIA_GEMELO.md wms-twin/docs/CONTRATO_FRONTEND.md wms-twin/docs/MAPA_RUTAS_ORIGINAL.md wms-twin/docs/INVENTORY_LEDGER.md; do
             test -s "$file" || { echo "Missing or empty required document: $file"; exit 1; }
           done
           test -x scripts/safe-update-wms-twin.sh
-      - name: Reject modifications to original application paths
+      - name: Reject changes outside the twin boundary
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -61,14 +64,25 @@ jobs:
           forbidden=""
           while IFS= read -r path; do
             case "$path" in
-              api/*|admin/*|mobile/*|db/*) forbidden="${forbidden}${path}\n" ;;
+              wms-twin/*|Guia.md|EstructuraBackendGo.md|NivelDeParidadConBackendOriginal.md|AUDITORIA_GEMELO.md|docs/architecture/PRISMA_CORE_BOUNDARY.md|scripts/safe-update-wms-twin.sh|.github/workflows/wms-twin-ci.yml) ;;
+              *) forbidden="${forbidden}${path}\n" ;;
             esac
           done < /tmp/changed-files.txt
           if [ -n "$forbidden" ]; then
             echo "Protected original paths were modified:"
             printf '%b' "$forbidden"
-            echo "The WMS twin must remain isolated under wms-twin/."
             exit 1
+          fi
+      - name: Require synchronized documentation when Go code changes
+        run: |
+          set -eu
+          if grep -Eq '^wms-twin/.*\.go$' /tmp/changed-files.txt; then
+            for file in Guia.md EstructuraBackendGo.md NivelDeParidadConBackendOriginal.md AUDITORIA_GEMELO.md; do
+              grep -Fxq "$file" /tmp/changed-files.txt || {
+                echo "Go code changed without updating $file"
+                exit 1
+              }
+            done
           fi
       - name: Check audit trail
         run: grep -q 'AUD-' AUDITORIA_GEMELO.md
@@ -76,6 +90,7 @@ jobs:
   go:
     name: Go tests and static checks
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: wms-twin
@@ -86,19 +101,18 @@ jobs:
           go-version-file: wms-twin/go.mod
           cache: true
           cache-dependency-path: wms-twin/go.sum
-      - name: Resolve module graph and produce checksum lock
+      - name: Verify module graph without rewriting lockfiles
         run: |
-          go mod tidy
+          go mod tidy -diff
           go mod verify
-      - name: Normalize Go formatting in CI workspace
+      - name: Require committed Go formatting
         run: |
           unformatted="$(gofmt -l .)"
           if [ -n "$unformatted" ]; then
-            echo "::warning::Go files need formatting in the branch:"
+            echo "Go files must be formatted before commit:"
             printf '%s\n' "$unformatted"
-            gofmt -w .
+            exit 1
           fi
-          test -z "$(gofmt -l .)"
       - name: Vet
         run: go vet ./...
       - name: Race-enabled tests

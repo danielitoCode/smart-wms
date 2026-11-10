@@ -1,24 +1,44 @@
 # Guía de trabajo del backend gemelo WMS
 
-Escribo esta guía para que cualquier desarrollador o agente pueda continuar el trabajo sin depender de conversaciones externas. El backend original permanece intacto; el gemelo se desarrolla exclusivamente en `wms-twin/` sobre PrismaTec-Core.
+Escribo esta guía para que cualquier desarrollador o agente de IA pueda arrancar, probar, diagnosticar y continuar el proyecto sin depender de conversaciones externas. Mantengo el backend Flask original intacto y desarrollo el gemelo exclusivamente en `wms-twin/`, consumiendo PrismaTec-Core como dependencia externa fijada a una versión concreta.
 
 ## Estado real
 
-La rama de trabajo es `feat/wms-prismatec-genesis`. La entrega actual contiene el primer servicio Go ejecutable, el arranque del nodo Core, persistencia por organismos/episodios/CID y una API técnica protegida. No existe todavía paridad funcional completa con Flask.
+- Rama: `feat/wms-prismatec-genesis`; no trabajo sobre `main`.
+- El runtime Go arranca un nodo PrismaTec-Core, expone AIP en un listener separado y mantiene una API WMS técnica.
+- Cada registro genérico WMS tiene su propio organismo `wms.{kind}.{id}`; las versiones son episodios y los datos son bloques CID locales.
+- El primer agregado de inventario persistente permite ajustar, reservar, liberar y mover stock con un solo append del estado del ledger por operación, idempotencia y serialización dentro de un proceso.
+- El endpoint de inventario es técnico (`/api/twin/inventory/*)); todavía no equivale a las rutas Flask originales.
+- El gemelo **NO ES SUSTITUIBLE**. No implementa todavía login JWT/cookies/CSRF, permisos ni los flujos WMS completos.
+- No agrego PostgreSQL, SQLite ni Redis al gemelo. El backend original conserva su infraestructura.
+- No copio ni vendo el código de PrismaTec-Core dentro de este repositorio.
 
-La prueba de CI del gemelo en el commit `a20ddc56cc75f88efafeddb125c7526c5ff9fdfb` terminó correctamente: `go mod tidy -diff`, `go mod verify`, `go vet ./...` y `go test -race -count=1 ./...`. CI tuvo que formatear siete archivos dentro de su workspace temporal; la rama todavía necesita publicar esa normalización.
+## Requisitos
 
-## Documentación de continuidad
+Git y Go 1.25.0 o superior. Necesito acceso inicial al proxy de módulos Go y a GitHub para descargar dependencias. OpenSSL sirve para generar el token de la API técnica.
 
-- `EstructuraBackendGo.md`: arquitectura y responsabilidades.
-- `NivelDeParidadConBackendOriginal.md`: estado de compatibilidad, sin inflar el progreso.
-- `AUDITORIA_GEMELO.md`: cambios, detonantes, fallos y evidencia.
-- `wms-twin/docs/MAPA_RUTAS_ORIGINAL.md`: inventario de rutas, contratos, clientes, seguridad y límites Core.
-- `wms-twin/docs/CONTRATO_FRONTEND.md`: cómo alternar upstreams sin modificar el código de los clientes.
+El módulo Core está fijado en `wms-twin/go.mod` y `wms-twin/go.sum`. No uso `go get @latest` en un despliegue reproducible.
 
-## Requisitos y puesta en marcha
+## Rama y actualización segura
 
-Necesito Go 1.25.0 o superior. El módulo PrismaTec-Core declara `go 1.25.0` y se consume como dependencia externa fijada a un commit; su código no se copia ni se vende dentro de este repositorio.
+La rama local ya existe si Git informa que no puede crearla. En ese caso:
+
+```bash
+git switch feat/wms-prismatec-genesis
+git status --short --branch
+```
+
+Para actualizar sin integrar cambios antes de validarlos:
+
+```bash
+bash scripts/safe-update-wms-twin.sh
+```
+
+El script exige árbol limpio, descarga `main` y la rama gemela, verifica el alcance permitido, crea un worktree temporal, valida el módulo Go, formato, vet y tests con race detector y solo entonces aplica `git merge --ff-only`. Si una validación falla, no actualiza tu rama local. No uses `git switch --track` cuando la rama local ya exista. Si hay cambios locales, no los borres: haz commit o guárdalos y revisa qué contienen.
+
+GitHub Actions valida pushes y PRs. Para bloquear la aceptación de PRs, los checks deben configurarse como obligatorios en Branch protection/Rulesets. Actions no intercepta un `git pull` local; para eso utilizo el script anterior.
+
+## Arranque del gemelo
 
 Desde la raíz:
 
@@ -30,56 +50,99 @@ export WMS_TWIN_AIP_ADDR=":8081"
 export WMS_TWIN_API_TOKEN="$(openssl rand -hex 32)"
 cd wms-twin
 go mod download
+go mod verify
 go test ./...
 go run ./cmd/wms-twin
 ```
 
-- API técnica WMS: `http://127.0.0.1:5001`
-- Health WMS: `http://127.0.0.1:5001/api/health`
-- Health Core: `http://127.0.0.1:8081/healthz`
-- AIP: `http://127.0.0.1:8081/aip/v1`
-- Datos persistentes: `WMS_TWIN_DATA_DIR`
+- API técnica WMS: `http://127.0.0.1:5001`.
+- Health WMS: `GET /api/health`.
+- Health Core: `GET http://127.0.0.1:8081/healthz`.
+- AIP Core: `http://127.0.0.1:8081/aip/v1`.
+- Datos persistentes: `WMS_TWIN_DATA_DIR`.
 
-No necesito PostgreSQL ni Redis para este proceso. El backend original conserva sus propias dependencias y su forma de arranque.
+Cada nodo necesita su propio DataDir. No compartas un directorio entre procesos concurrentes. Conserva ese directorio para reinicios y diagnóstico; no lo borres para resolver errores de lectura.
 
-## Ejecutar el backend original simultáneamente
+## API técnica del gemelo
 
-El original continúa en su stack actual (Flask, PostgreSQL, Redis y procesos auxiliares). No comparto directorio de datos, secretos ni puertos con el gemelo. La configuración original sigue siendo la documentada en README y `docker-compose.yml`.
+Todas las rutas `/api/twin/*` requieren `Authorization: Bearer $WMS_TWIN_API_TOKEN`.
 
-## Cambiar el frontend entre backends
+| Método | Ruta | Función |
+|---|---|---|
+| GET | `/api/twin/info` | Identidad y estado del nodo Core |
+| GET/POST | `/api/twin/records/{kind}` | Consulta/creación de registros técnicos |
+| GET/PUT/PATCH/DELETE | `/api/twin/records/{kind}/{id}` | Consulta y mutación de registros técnicos |
+| GET | `/api/twin/inventory/balances` | Proyección de balances |
+| POST | `/api/twin/inventory/adjust` | Ajuste de existencia |
+| POST | `/api/twin/inventory/allocate` | Reserva de existencia |
+| POST | `/api/twin/inventory/release` | Liberación de reserva |
+| POST | `/api/twin/inventory/move` | Movimiento entre ubicaciones |
 
-El admin actual usa `/api` relativo y cookies; en un entorno con reverse proxy el upstream de `/api` puede apuntar al original (puerto 5000) o al gemelo (puerto 5001). La app móvil usa `EXPO_PUBLIC_API_URL` como valor de build y además permite cambiar la URL en runtime mediante su configuración, guardándola como `sentry_api_url`.
+Las mutaciones requieren un `operation_id` estable. Repetir el mismo ID y comando devuelve el resultado original; reutilizarlo con otro contenido devuelve conflicto. En un movimiento, el servidor carga las existencias desde el ledger: el cliente solo envía identificadores de origen/destino y cantidad, no balances autoritativos.
 
-**Advertencia actual:** todavía no se debe dirigir el frontend original al gemelo. El gemelo aún no implementa el contrato original de login/cookies/CSRF/JWT ni sus rutas. La ruta `/api/twin/*` es una API técnica protegida con Bearer token. La matriz de paridad y el mapa de rutas indican qué falta.
+**Límite:** el mutex garantiza serialización dentro de una instancia. No es un protocolo de consenso entre nodos. Core replica snapshots de organismos, pero el snapshot no transporta los bytes de los bloques CID. La revisión fijada de Core deja Kademlia DHT y GossipSub como trabajo futuro y usa por defecto `cid1:` SHA-256 en un block store local. No se debe declarar inventario distribuido ni activar varios escritores hasta resolver transferencia autenticada de bloques, autoridad por partición, fencing efectivo y reconciliación probada. El historial de idempotencia aún no tiene compactación.
 
-## Pruebas y diagnóstico
+## Backend original simultáneo
+
+El original conserva Flask, PostgreSQL, Redis y los procesos auxiliares. Mantengo separados puertos (original normalmente :5000; gemelo :5001; AIP :8081), secretos y directorios de datos. El gemelo no necesita PostgreSQL ni Redis para el corte actual.
+
+## Alternar frontend
+
+Admin usa `API_BASE = '/api'`, cookies `sentry_auth` y `sentry_csrf`, y `X-CSRF-Token`. Mobile usa `EXPO_PUBLIC_API_URL` y Bearer JWT.
+
+Para alternar admin sin reescribir componentes, mantengo el mismo origen y cambio el upstream `/api` del reverse proxy: Flask :5000 o Go :5001. Mobile cambia su URL base en configuración de deployment/runtime. **No conecto todavía los frontends de producción al gemelo:** el Bearer técnico no sustituye el JWT de usuario, cookies/CSRF ni los contratos de negocio.
+
+## Pruebas
+
+Desde `wms-twin/`:
 
 ```bash
-cd wms-twin
-gofmt -w .
-go mod tidy -diff
 go mod verify
+test -z "$(gofmt -l .)"
+go vet ./...
 go test ./...
 go test -race -count=1 ./...
-go vet ./...
-go test ./internal/corestore -run TestRecordsPersistThroughCoreCIDStore -v
+go test ./internal/application/inventoryledger -v
+go test ./internal/httpapi -v
 ```
 
-Si falla la descarga de dependencias, revisar Go 1.25, `GOPROXY`, conectividad a GitHub y el proxy de módulos. Si falla el arranque, comprobar que `WMS_TWIN_DATA_DIR` sea escribible y que los puertos 5001/8081 estén libres. Si una lectura CID falla, conservar el directorio de datos para análisis: no borrarlo como primera medida.
+Smoke:
 
-## Alertas de CI que no debo confundir
+```bash
+curl -fsS http://127.0.0.1:5001/api/health
+curl -fsS http://127.0.0.1:8081/healthz
+curl -fsS http://127.0.0.1:8081/aip/v1/info
+curl -fsS -H "Authorization: Bearer $WMS_TWIN_API_TOKEN" http://127.0.0.1:5001/api/twin/info
+curl -fsS -H "Authorization: Bearer $WMS_TWIN_API_TOKEN" http://127.0.0.1:5001/api/twin/inventory/balances
+```
 
-La validación propia del gemelo pasó. El workflow independiente `Dependency Audit` del repositorio original falló en el mismo commit por advisories de dependencias preexistentes de admin/mobile y por PyJWT 2.13.0 (`GHSA-pxh4-856f-4h89`). No voy a tocar los lockfiles ni código original para silenciar ese resultado. Requiere una tarea de seguridad separada, preservando la regla de no modificar el backend/frontend original.
+La suite Flask original usa su configuración de pruebas y `TEST_DATABASE_URL`; nunca la ejecuto contra datos reales. GitHub Actions ejecuta guard de documentación/alcance, `go mod tidy -diff`, `go mod verify`, `gofmt`, `go vet` y `go test -race`.
+
+## Diagnóstico
+
+| Síntoma | Comprobación |
+|---|---|
+| Rama local ya existe | `git switch feat/wms-prismatec-genesis`, no `--track` |
+| Rama no avanza | `git fetch origin`, revisar `git branch -vv` y usar script seguro |
+| Go incompatible | `go version`; usar Go 1.25+ |
+| Descarga Core falla | `go env GOPROXY`, conectividad y `go mod download` |
+| Puerto ocupado | `ss -ltnp | grep -E '5001|8081'` |
+| 503 API técnica | falta `WMS_TWIN_API_TOKEN` |
+| 401 API técnica | comprobar prefijo Bearer y token |
+| 409 inventario | stock disponible insuficiente o conflicto idempotente |
+| 422 inventario | identidad, cantidad u operación inválida |
+| Error CID | conservar DataDir, logs y reproducir test; no borrar bloques |
+| Test concurrente falla | repetir con `-race`; investigar pérdida de actualización |
 
 ## Dónde continuar
 
-1. Resolver la brecha de replicación CID: el snapshot actual de Core replica el organismo y sus episodios, pero no los bytes de los bloques referenciados. Sin una sincronización de bloques no puedo declarar los registros WMS replicados.
-2. Implementar una política de peer allowlist, configuración de peers y pruebas TCP/libp2p; Core deja Kademlia y GossipSub como trabajo futuro en la revisión fijada.
-3. Portar autenticación JWT/cookies/CSRF y permisos sin reducir los controles originales.
-4. Portar almacenes, zonas, bins e items con DTO y errores exactos.
-5. Implementar inventario como agregado con transacciones, idempotencia, autoridad y fencing.
-6. Portar recepción, put-away, picking, packing, shipping, transferencias y conteos.
-7. Completar usuarios, permisos, auditoría hash-chain, integraciones, webhooks, snapshots e importaciones.
-8. Ejecutar pruebas diferenciales original vs gemelo y pruebas de concurrencia/particiones.
+1. Resolver la brecha de replicación CID: snapshots de Core no transfieren los bytes de los bloques.
+2. Implementar configuración de peers y pruebas TCP/libp2p; no declarar DHT/GossipSub disponibles hasta que existan.
+3. Portar autenticación JWT/cookies/CSRF, lockout, revocación y permisos sin reducir controles.
+4. Portar warehouses, zones, bins, items, vendors y preferred bins con DTO/errores exactos.
+5. Completar autoridad/fencing del inventario antes de activar varios escritores.
+6. Portar receiving, put-away, picking, packing, shipping, transfers, cycle counts, ajustes, órdenes, RMA y POS.
+7. Completar WMS tokens/scopes, eventos/outbox, consumer groups, snapshots, inbound, Dockd, connectors y webhooks.
+8. Ejecutar pruebas diferenciales original vs gemelo y E2E de reinicio, concurrencia, recuperación y particiones.
 
-Antes de cada commit actualizo esta guía, `EstructuraBackendGo.md`, `NivelDeParidadConBackendOriginal.md` y `AUDITORIA_GEMELO.md`. El siguiente agente debe leer primero esos cuatro documentos y el mapa de rutas.
+Antes de cada entrega actualizo esta guía, `EstructuraBackendGo.md`, `NivelDeParidadConBackendOriginal.md`, `AUDITORIA_GEMELO.md` y los documentos específicos afectados. El siguiente desarrollador o agente debe leer esos documentos y `wms-twin/docs/MAPA_RUTAS_ORIGINAL.md`.

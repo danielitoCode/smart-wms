@@ -1,125 +1,87 @@
 # Estructura del backend Go gemelo
 
-## Decisión de arquitectura
+## Decisión
 
-Mantengo el backend Flask original sin modificaciones. El nuevo backend vive exclusivamente en `wms-twin/`, como módulo Go independiente. PrismaTec-Core se consume mediante su módulo Go público, fijado a un commit concreto; no copio su código fuente dentro de Smart WMS.
+Mantengo el backend Flask original sin modificaciones. El gemelo vive exclusivamente en `wms-twin/` como módulo Go independiente. PrismaTec-Core se consume como dependencia externa fijada a un commit concreto; no copio ni vendo su código fuente dentro de Smart WMS.
 
 ## Dependencia Core verificada
 
-Repositorio: `github.com/yecharlot/PrismaTec-Core`. El módulo declara `go 1.25.0`. La API pública inspeccionada incluye:
+Repositorio: `github.com/yecharlot/PrismaTec-Core`. El módulo declara Go 1.25.0. El commit fijado en `go.mod` es `84e9f40cbcc0fd0176c1d9057b20f099db2e7f5b`.
 
-- `core.NewNode(core.Config)` y ciclo de vida `Node.Start/Stop`.
-- Identidad persistente NodeID y PeerID de transporte diferenciados.
-- `Node.Organisms()` con `Create`, `Start`, `Get`, `List`, `AppendEpisode` y `GetBlock`.
-- `organism.Manager.AppendEpisode` almacena el contenido en el block store CID local y asocia el CID al episodio.
-- `api/aip.Server.Handler()` expone AIP v1, health, organismos, memoria/comandos, pulses y auditoría.
-- `network.Transport` permite mensajes directos TCP/libp2p y la configuración del nodo acepta peers explícitos.
-- `runtime/mind` y `runtime/zyrion` proporcionan el ciclo cognitivo y la lógica ternaria; Mind propone, Core policy autoriza.
+La API pública inspeccionada incluye `core.NewNode`, ciclo de vida Node.Start/Stop, identidad NodeID/PeerID, Manager de organismos, memoria episódica, lectura de bloques CID, AIP v1 y transporte TCP/libp2p. Core también expone runtime Mind/Zyrion, pero su resultado no sustituye autorización ni policy.
 
-El commit Core fijado en `go.mod` es `84e9f40cbcc0fd0176c1d9057b20f099db2e7f5b`.
+## Límites verificados
 
-## Límites verificados de la revisión Core
-
-No confundo una interfaz declarada con una función desplegada:
-
-1. **DHT/GossipSub:** el documento Core `docs/NETWORK_LIBP2P.md` deja Kademlia DHT y GossipSub como trabajo futuro. La revisión fijada no los expone como servicios activos.
-2. **Replicación de contenido:** `replication.Snapshot` contiene el organismo, su memoria y episodios; no contiene los bytes del block store. `AppendEpisode` guarda el contenido CID localmente. Por tanto, un nodo remoto puede recibir el episodio y no tener el bloque. La replicación WMS de registros aún no está completa.
-3. **CID:** el almacenamiento local usa por defecto `cid1:` + SHA-256. Existe un método para CIDv1 IPFS, pero no equivale a una red IPFS, pinning ni distribución de bloques.
-4. **RootCID:** se deriva del manifiesto del organismo; no es un hash mutable del estado operativo.
-5. **Failover:** Core registra epoch y fencing, pero su documento de autoridad reconoce que la promoción por ausencia de peer es liveness-oriented, no quorum seguro ante partición de dos nodos.
-6. **Auditoría:** Core mantiene JSONL local y buffer; eso no sustituye por sí solo el hash-chain SHA-256 y la semántica de auditoría del WMS original.
-
-Estas brechas son trabajo técnico obligatorio antes de habilitar operación multi-nodo como si fuera consistente.
+1. Kademlia DHT y GossipSub quedan como trabajo futuro en la documentación Core revisada; no los declaro activos.
+2. Los snapshots de replicación contienen el organismo/episodios, pero no transfieren los bytes de los bloques CID.
+3. El block store por defecto usa `cid1:` SHA-256 local. El método IPFS CIDv1 no equivale a una red IPFS ni a pinning distribuido.
+4. RootCID deriva del manifiesto; no cambia con cada versión operativa.
+5. El failover Core no es quorum seguro ante particiones de dos nodos.
+6. El audit JSONL Core no sustituye automáticamente la cadena hash y la semántica de auditoría WMS.
 
 ## Árbol implementado
 
-```
+```text
 wms-twin/
 ├── go.mod
 ├── go.sum
 ├── README.md
 ├── cmd/wms-twin/main.go
-├── internal/
-│   ├── runtime/runtime.go
-│   ├── corestore/store.go
-│   ├── corestore/store_test.go
-│   ├── domain/inventory/
-│   │   ├── inventory.go
-│   │   └── inventory_test.go
-│   └── httpapi/
-│       ├── server.go
-│       └── server_test.go
-└── docs/
-    ├── CONTRATO_FRONTEND.md
-    └── MAPA_RUTAS_ORIGINAL.md
+├── docs/
+│   ├── CONTRATO_FRONTEND.md
+│   ├── MAPA_RUTAS_ORIGINAL.md
+│   └── INVENTORY_LEDGER.md
+└── internal/
+    ├── application/
+    │   └── inventoryledger/       # casos de uso, idempotencia y proyección
+    ├── corestore/                 # organismo por registro, episodios y CID
+    ├── domain/inventory/          # invariantes puras de stock
+    ├── httpapi/                   # health, API técnica y ledger
+    └── runtime/                   # bootstrap Core y listeners separados
 ```
 
-### Responsabilidades
+## Persistencia por organismo
 
-- `cmd/wms-twin`: proceso ejecutable, dos listeners HTTP y apagado ordenado.
-- `internal/runtime`: bootstrap del nodo Core, AIP y API WMS técnica.
-- `internal/corestore`: persistencia de registros como episodios y bloques CID.
-- `internal/domain/inventory`: invariantes puras iniciales para disponibilidad, reserva, liberación, ajuste y movimiento.
-- `internal/httpapi`: health, información del nodo y API técnica de registros.
+Cada registro tiene un organismo `wms.{kind}.{id}`. Una escritura agrega un episodio `wms.record.upsert`; el contenido JSON se guarda en un bloque CID. Una eliminación agrega un episodio `wms.record.deleted`. RootCID identifica el manifiesto del organismo y ContentCID identifica el contenido de una versión.
 
-## Modelo de persistencia actual
+El ledger actual de inventario usa un registro dedicado `wms.inventory-ledger.global` y guarda la proyección completa de balances e idempotency records en un único append por operación. Esto evita escrituras parciales entre dos bins dentro de una instancia, pero no es una transacción distribuida.
 
-Cada registro tiene su propio organismo `wms.{kind}.{id}`. Una escritura agrega un episodio `wms.record.upsert`; el contenido JSON se guarda como bloque CID. Una eliminación agrega un episodio `wms.record.deleted`. La lectura toma el último episodio del organismo y obtiene el contenido por CID.
+## Flujo del ledger
 
-Esta estrategia conserva versiones y utiliza persistencia Core local, pero aún no resuelve transacciones entre varios registros ni sincronización de bloques a otros nodos. Cada registro tiene su propia identidad RootCID derivada del manifiesto; RootCID no cambia con cada versión de datos. No debo conectar operaciones de inventario críticas a este CRUD genérico.
-
-## Seguridad actual y pendiente
-
-La API técnica exige `WMS_TWIN_API_TOKEN` Bearer. No implementa todavía la autenticación de usuario original. No debe publicarse a Internet ni conectarse al frontend original hasta completar JWT/cookies/CSRF, autorización por almacén/rol y auditoría de negocio.
-
-## Próxima estructura objetivo
-
-Cuando empiece a portar operaciones, separaré las capas por organismo/feature:
-
-```
-internal/
-├── organisms/
-│   ├── warehouse/
-│   ├── zone/
-│   ├── bin/
-│   ├── item/
-│   ├── inventory/
-│   ├── purchase_order/
-│   ├── receipt/
-│   ├── sales_order/
-│   ├── picking/
-│   ├── packing/
-│   ├── shipment/
-│   ├── transfer/
-│   ├── cycle_count/
-│   ├── user/
-│   └── integration/
-├── application/
-│   ├── auth/
-│   ├── masterdata/
-│   ├── receiving/
-│   ├── fulfillment/
-│   ├── inventory/
-│   └── replication/
-├── compatibility/
-│   ├── flask_api/
-│   └── dto/
-├── adapters/
-│   ├── prismatec/
-│   ├── http/
-│   └── observability/
-└── testkit/
-    ├── differential/
-    └── fixtures/
+```text
+HTTP Bearer
+    -> httpapi.inventory
+    -> application/inventoryledger
+       -> valida operación e idempotency key
+       -> carga proyección
+       -> aplica invariantes del dominio
+       -> serializa dentro del proceso
+    -> corestore.Store.Put
+    -> PrismaTec organism / episodic memory / local CID block
 ```
 
-No crearé carpetas vacías solo para aparentar progreso: cada feature debe traer comportamiento, validaciones y pruebas.
+## Agregados objetivo
 
-## Restricciones de diseño
+Catálogo: Warehouse, Zone, Bin, Item, Vendor, PreferredBin.
+Existencias: InventoryBalance, Reservation, Adjustment, CycleCount, Transfer.
+Entrada: PurchaseOrder, Receipt, PutawayTask.
+Salida: SalesOrder, Allocation, PickBatch, Pack, Shipment.
+Postventa: Return/RMA, Refund, Backorder.
+Seguridad: User, Role, PagePermission, WarehouseGrant, WMS API Token.
+Integraciones: Connector, Mapping, EventSubscription, ConsumerGroup, Delivery, SnapshotCursor, Webhook.
 
-- No añadir PostgreSQL/SQLite como persistencia paralela del gemelo.
-- No copiar PrismaTec-Core ni sus internals.
-- No escribir código nuevo en `api/`, `admin/`, `mobile/` o `db/` del backend original.
-- Mantener identidad del nodo, identidad del usuario y PeerID como conceptos distintos.
-- La conclusión de Mind no es autorización: las operaciones deben pasar por policy/capacidad y validaciones de dominio.
-- No declarar Kademlia, GossipSub, replicación de bloques, quorum o IPFS de red como capacidades disponibles hasta implementarlas y probarlas.
+No creo carpetas vacías para aparentar avance. Cada feature debe incluir comportamiento, validaciones, pruebas y documentación.
+
+## Identidades y autoridad
+
+NodeID identifica el nodo Core; PeerID identifica transporte; RootCID identifica manifiesto/contenido; Epoch identifica generación de autoridad. No son intercambiables.
+
+La serialización actual del ledger es por proceso. Para varios escritores necesito autoridad por partición, fencing comprobado en cada escritura, transferencia de liderazgo, sincronización autenticada de bloques y reconciliación. La detección de peers o difusión de eventos no resuelve conflictos de inventario.
+
+## Seguridad y compatibilidad
+
+La API técnica usa un Bearer independiente. No implementa JWT HS256, cookies `sentry_auth`/ `sentry_csrf`, CSRF doble submit, lockout, revocación, roles, permisos por página ni warehouse scopes. No la publico a redes no confiables ni conecto el frontend original hasta cerrar estos contratos.
+
+## Pruebas y handoff
+
+CI debe ejecutar tidy diff, checksum, gofmt, vet y race tests. Los tests del ledger cubren invariantes, idempotencia, movimiento de dos ubicaciones, reinicio y concurrencia local. No demuestran failover ni paridad Flask. El siguiente agente debe leer Guia, Paridad, Auditoría, el mapa de rutas y el contrato frontend antes de tocar código.

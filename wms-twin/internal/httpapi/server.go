@@ -10,18 +10,20 @@ import (
 	"strings"
 	"time"
 
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 	"github.com/yecharlot/PrismaTec-Core/core"
 )
 
 type Server struct {
-	node  *core.Node
-	store *corestore.Store
-	token string
+	node   *core.Node
+	store  *corestore.Store
+	ledger *inventoryledger.Ledger
+	token  string
 }
 
 func New(node *core.Node, store *corestore.Store, token string) *Server {
-	return &Server{node: node, store: store, token: token}
+	return &Server{node: node, store: store, ledger: inventoryledger.New(store), token: token}
 }
 
 func (s *Server) Handler() http.Handler {
@@ -29,6 +31,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/health", s.health)
 	mux.HandleFunc("/api/twin/info", s.authorize(s.info))
 	mux.HandleFunc("/api/twin/records/", s.authorize(s.records))
+	mux.HandleFunc("/api/twin/inventory/", s.authorize(s.inventory))
 	return mux
 }
 
@@ -52,9 +55,15 @@ func (s *Server) authorize(next http.HandlerFunc) http.HandlerFunc {
 			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "WMS_TWIN_API_TOKEN is not configured"})
 			return
 		}
-		header := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
-		if header == "" || len(header) != len(s.token) ||
-			subtle.ConstantTimeCompare([]byte(header), []byte(s.token)) != 1 {
+		const prefix = "Bearer "
+		raw := r.Header.Get("Authorization")
+		if !strings.HasPrefix(raw, prefix) {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+			return
+		}
+		token := strings.TrimSpace(strings.TrimPrefix(raw, prefix))
+		if token == "" || len(token) != len(s.token) ||
+			subtle.ConstantTimeCompare([]byte(token), []byte(s.token)) != 1 {
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 			return
 		}
@@ -97,9 +106,20 @@ func (s *Server) records(w http.ResponseWriter, r *http.Request) {
 				writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 				return
 			}
-			id := fmt.Sprint(body["id"])
-			if id == "" || id == "<nil>" {
+			id := ""
+			if rawID, exists := body["id"]; exists {
+				var ok bool
+				id, ok = rawID.(string)
+				if !ok {
+					writeJSON(w, http.StatusBadRequest, map[string]string{"error": "id must be a string"})
+					return
+				}
+			} else {
 				id = strconv.FormatInt(time.Now().UTC().UnixNano(), 10)
+			}
+			if !validPathPart(id) {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid record id"})
+				return
 			}
 			delete(body, "id")
 			data, _ := json.Marshal(body)
@@ -147,6 +167,10 @@ func (s *Server) records(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, record)
 	case http.MethodDelete:
 		if err := s.store.Delete(kind, id); err != nil {
+			if strings.Contains(err.Error(), "record not found") {
+				writeJSON(w, http.StatusNotFound, map[string]string{"error": "record not found"})
+				return
+			}
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return
 		}
@@ -176,7 +200,7 @@ func readJSON(r *http.Request) (map[string]any, error) {
 }
 
 func validPathPart(value string) bool {
-	if value == "" || len(value) > 128 {
+	if value == "" || len(value) > 96 {
 		return false
 	}
 	for _, r := range value {

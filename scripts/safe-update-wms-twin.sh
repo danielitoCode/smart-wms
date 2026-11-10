@@ -33,7 +33,7 @@ CHANGED="$(git diff --name-only "$BASE_REF...$REMOTE_REF")"
 while IFS= read -r path; do
   [[ -z "$path" ]] && continue
   case "$path" in
-    wms-twin/*|Guia.md|EstructuraBackendGo.md|NivelDeParidadConBackendOriginal.md|AUDITORIA_GEMELO.md|.github/workflows/wms-twin-ci.yml|scripts/safe-update-wms-twin.sh) ;;
+    wms-twin/*|Guia.md|EstructuraBackendGo.md|NivelDeParidadConBackendOriginal.md|AUDITORIA_GEMELO.md|docs/architecture/PRISMA_CORE_BOUNDARY.md|.github/workflows/wms-twin-ci.yml|scripts/safe-update-wms-twin.sh) ;;
     *) echo "ERROR: cambio fuera del alcance permitido: $path" >&2; exit 3 ;;
   esac
 done <<< "$CHANGED"
@@ -52,7 +52,7 @@ git worktree add --detach "$WORKTREE" "$REMOTE_REF" >/dev/null
 echo "[4/6] Ejecutando validaciones antes de actualizar..."
 (
   cd "$WORKTREE/wms-twin"
-  go mod tidy
+  go mod tidy -diff
   go mod verify
   unformatted="$(gofmt -l .)"
   if [[ -n "$unformatted" ]]; then
