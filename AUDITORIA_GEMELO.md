@@ -148,3 +148,20 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Detonante:** cierre de las incidencias AUD-0013, AUD-0014 y AUD-0015.
 - **Corrección:** grafo Go canónico, fuentes formateadas, import no utilizado retirado y workflow no mutante restaurado.
 - **Alcance de la evidencia:** solo valida el código y escenarios automatizados actuales; no valida paridad Flask, replicación de bytes CID, autoridad distribuida ni operación multi-nodo.
+
+
+### AUD-0012 — Replicación WMS de bloques CID y snapshots firmados
+
+- **Commit de protocolo:** `74d75233afd70fdf299752ae6cec9bab14e8d897`.
+- **Detonante:** Core replica snapshots de organismos, pero no los bytes de los bloques CID que esos episodios referencian.
+- **Cambio:** añadí un protocolo WMS sobre network.Transport: firma Ed25519 derivada del NodeID, allowlist de peers, transferencia de bloques, validación del CID en el receptor, ACK firmado, snapshot posterior y verificación de bloques antes de Adopt.
+- **Autoridad:** el Store solo permite Put/Delete cuando Core IsLeader confirma que el nodo local es Primary y el organismo está Running. La réplica fría rechaza escritura.
+- **Fallo parcial:** el commit local precede a la réplica. Si falla el peer, la API devuelve 503 con local_commit=true y el registro. El cliente debe reintentar con el mismo ID.
+- **Límites:** no hay quorum, Kademlia ni GossipSub; el protocolo vuelve a enviar todo el historial de bloques por sync.
+
+### AUD-0013 — Prueba de replicación con dos nodos
+
+- **Commit de test:** `6b08dec2b9ec048661495ac444a5430f79ad2b23`.
+- **Prueba:** `TestAuthenticatedReplicationTransfersCIDAndFencesReplicaWrites`.
+- **Cobertura:** CID llega antes del snapshot, contenido y RootCID se conservan, la réplica no puede escribir y el tombstone se propaga.
+- **Estado:** pendiente de ejecución de CI para esta nueva implementación.
