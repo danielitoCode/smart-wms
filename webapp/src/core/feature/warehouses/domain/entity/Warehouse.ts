@@ -18,7 +18,8 @@ export type ZoneType =
 	| 'STORAGE'
 	| 'PICKING'
 	| 'STAGING'
-	| 'SHIPPING';
+	| 'SHIPPING'
+	| (string & {});
 
 export type Zone = {
 	id: number;
@@ -26,10 +27,10 @@ export type Zone = {
 	code: string;
 	name: string;
 	zoneType: ZoneType;
-	active: boolean;
+	active?: boolean;
 };
 
-export type BinType = 'Staging' | 'PickableStaging' | 'Pickable';
+export type BinType = 'Staging' | 'PickableStaging' | 'Pickable' | (string & {});
 
 export type Bin = {
 	id: number;
@@ -39,11 +40,11 @@ export type Bin = {
 	code: string;
 	barcode: string | null;
 	binType: BinType;
-	aisle: string | null;
-	rowNumber: number | null;
-	levelNumber: number | null;
-	positionNumber: number | null;
-	pickSequence: number;
-	putawaySequence: number;
-	active: boolean;
+	aisle?: string | null;
+	rowNumber?: number | null;
+	levelNumber?: number | null;
+	positionNumber?: number | null;
+	pickSequence?: number;
+	putawaySequence?: number;
+	active?: boolean;
 };
