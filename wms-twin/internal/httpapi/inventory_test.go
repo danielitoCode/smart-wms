@@ -15,7 +15,7 @@ func TestInventoryLedgerHTTPRequiresBearerAndPersistsMovement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := New(node, corestore.New(node.Organisms()), "secret-token").Handler()
+	handler := New(node, corestore.New(node.Organisms(), string(node.ID())), "secret-token").Handler()
 
 	bareToken := httptest.NewRecorder()
 	bareRequest := httptest.NewRequest(http.MethodGet, "/api/twin/inventory/balances", nil)
