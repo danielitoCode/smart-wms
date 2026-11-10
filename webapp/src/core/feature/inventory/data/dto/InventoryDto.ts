@@ -43,11 +43,21 @@ export type CycleCountLineDto = {
 	counted_quantity?: number | null;
 };
 
+/**
+ * GET /api/inventory/cycle-count/{id} returns nested cycle_count + lines
+ * (test_inventory.py).
+ */
 export type CycleCountDetailDto = {
-	count_id: number;
-	bin_id: number;
-	bin_code: string;
-	status: string;
+	cycle_count?: {
+		count_id: number;
+		bin_id: number;
+		bin_code: string;
+		status: string;
+	};
+	count_id?: number;
+	bin_id?: number;
+	bin_code?: string;
+	status?: string;
 	lines: CycleCountLineDto[];
 };
 

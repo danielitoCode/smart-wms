@@ -7,19 +7,47 @@
 	onMount(() => {
 		void state.load();
 	});
+
+	function onFilter(e: Event) {
+		e.preventDefault();
+		void state.load(state.warehouseId);
+	}
 </script>
 
 <section class="inventory">
 	<header>
 		<h1>Inventario</h1>
-		<p class="subtitle">Vista general de stock (feature piloto)</p>
+		<p class="subtitle">Vista general de stock (GET /api/admin/inventory)</p>
 	</header>
 
-	{#if state.loading}
-		<p class="status">Cargando inventario…</p>
-	{:else if state.error}
+	<form class="filters" onsubmit={onFilter}>
+		<label>
+			Warehouse ID
+			<input
+				type="number"
+				min="1"
+				placeholder="todos"
+				value={state.warehouseId ?? ''}
+				oninput={(e) => {
+					const v = e.currentTarget.value;
+					state.setWarehouseId(v === '' ? undefined : Number(v));
+				}}
+				disabled={state.loading}
+			/>
+		</label>
+		<button type="submit" disabled={state.loading}>
+			{state.loading ? 'Cargando…' : 'Filtrar'}
+		</button>
+		<button type="button" class="secondary" onclick={() => state.load()} disabled={state.loading}>
+			Actualizar
+		</button>
+	</form>
+
+	{#if state.error}
 		<p class="status error" role="alert">{state.error}</p>
 		<button type="button" onclick={() => state.load()}>Reintentar</button>
+	{:else if state.loading && !state.loadedOnce}
+		<p class="status">Cargando inventario…</p>
 	{:else if state.items.length === 0}
 		<p class="status">No hay registros de inventario.</p>
 	{:else}
@@ -47,6 +75,9 @@
 				</tbody>
 			</table>
 		</div>
+		{#if state.loading}
+			<p class="status">Actualizando…</p>
+		{/if}
 	{/if}
 </section>
 
@@ -58,7 +89,7 @@
 		padding: 0 1.25rem;
 	}
 	header {
-		margin-bottom: 1.5rem;
+		margin-bottom: 1rem;
 	}
 	h1 {
 		margin: 0 0 0.25rem;
@@ -67,6 +98,41 @@
 	.subtitle {
 		margin: 0;
 		color: #64748b;
+	}
+	.filters {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		align-items: end;
+		margin-bottom: 1rem;
+	}
+	.filters label {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		font-size: 0.85rem;
+	}
+	input {
+		padding: 0.45rem 0.6rem;
+		border: 1px solid #cbd5e1;
+		border-radius: 6px;
+		width: 8rem;
+	}
+	button {
+		padding: 0.45rem 0.9rem;
+		border-radius: 6px;
+		border: 1px solid #0f172a;
+		background: #0f172a;
+		color: #fff;
+		cursor: pointer;
+	}
+	button.secondary {
+		background: #fff;
+		color: #0f172a;
+	}
+	button:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
 	.status {
 		color: #475569;
@@ -78,6 +144,7 @@
 		overflow-x: auto;
 		border: 1px solid #e2e8f0;
 		border-radius: 8px;
+		background: #fff;
 	}
 	table {
 		width: 100%;
@@ -86,25 +153,15 @@
 	}
 	th,
 	td {
-		text-align: left;
-		padding: 0.65rem 0.85rem;
+		padding: 0.55rem 0.75rem;
 		border-bottom: 1px solid #e2e8f0;
+		text-align: left;
 	}
 	th {
-		background: #f8fafc;
+		background: #f1f5f9;
 		font-weight: 600;
-		color: #334155;
 	}
 	.qty {
 		font-variant-numeric: tabular-nums;
-		font-weight: 600;
-	}
-	button {
-		margin-top: 0.75rem;
-		padding: 0.4rem 0.9rem;
-		border-radius: 6px;
-		border: 1px solid #cbd5e1;
-		background: #fff;
-		cursor: pointer;
 	}
 </style>

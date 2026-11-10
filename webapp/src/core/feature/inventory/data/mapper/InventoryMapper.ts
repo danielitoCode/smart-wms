@@ -50,11 +50,12 @@ export const InventoryMapper = {
 	},
 
 	toCycleCountDetail(dto: CycleCountDetailDto): CycleCountDetail {
+		const header = dto.cycle_count;
 		return {
-			countId: dto.count_id,
-			binId: dto.bin_id,
-			binCode: dto.bin_code,
-			status: dto.status,
+			countId: header?.count_id ?? dto.count_id ?? 0,
+			binId: header?.bin_id ?? dto.bin_id ?? 0,
+			binCode: header?.bin_code ?? dto.bin_code ?? '',
+			status: header?.status ?? dto.status ?? 'PENDING',
 			lines: (dto.lines ?? []).map(InventoryMapper.toCycleCountLine)
 		};
 	},
@@ -63,9 +64,9 @@ export const InventoryMapper = {
 		const summary = dto.summary;
 		return {
 			status: dto.status,
-			totalLines: summary.total_lines,
-			linesWithVariance: summary.lines_with_variance,
-			adjustments: (summary.adjustments ?? []).map((a) => ({
+			totalLines: summary?.total_lines ?? 0,
+			linesWithVariance: summary?.lines_with_variance ?? 0,
+			adjustments: (summary?.adjustments ?? []).map((a) => ({
 				sku: a.sku,
 				expected: a.expected,
 				counted: a.counted,
