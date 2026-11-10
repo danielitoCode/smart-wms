@@ -75,3 +75,27 @@ Los workflows `Dependency Audit` del repo original fallaron en npm-audit (admin/
 - **Resultado:** documentación y protección de alcance correctas; `go mod tidy`, verificación de módulos, `go vet ./...` y `go test -race -count=1 ./...` terminaron satisfactoriamente.
 - **Tests:** corestore, inventory y httpapi pasaron con race detector.
 - **Limitación:** CI formateó el workspace temporalmente; los archivos de la rama aún requieren un commit de formato. Esto no prueba paridad WMS ni replicación multi-nodo.
+
+
+### AUD-0009 — Límite de replicación CID de PrismaTec-Core
+
+- **Detonante:** inspección directa de `core/replication/replication.go`, `core/node.go`, `network/libp2p.go` y `storage/cid/cid.go`.
+- **Hallazgo:** `replication.Snapshot` transporta el organismo/episodios, pero no los bytes del block store. `AppendEpisode` escribe bloques localmente. La documentación Core deja DHT/GossipSub como futuro; el CID por defecto es `cid1:` SHA-256 local, no una red IPFS.
+- **Impacto:** no puedo afirmar que un registro WMS con ContentCID sea legible tras replicar su organismo a otro nodo. Tampoco puedo afirmar discovery Kademlia/GossipSub.
+- **Decisión:** mantener el nodo en modo local por defecto y bloquear la declaración de paridad distribuida hasta implementar sincronización autenticada de bloques y pruebas de recuperación. No inventar una capacidad Core que no existe.
+
+### AUD-0010 — Fallos del Dependency Audit original
+
+- **Ejecución:** `42890875478`, asociada al commit `a20ddc56cc75f88efafeddb125c7526c5ff9fdfb`.
+- **Detonante:** auditoría de dependencias ya presentes en el repositorio.
+- **Hallazgos:** 14 advisories high/critical en admin, 36 en mobile-dev, 32 en mobile; `pip-audit` encontró PyJWT 2.13.0 afectado por `GHSA-pxh4-856f-4h89`. Los paquetes señalados incluyen undici, node-forge, xmldom, shell-quote, browserslist y brace-expansion.
+- **Impacto:** el workflow global Dependency Audit permanece rojo aunque la validación WMS twin esté verde.
+- **Restricción:** no actualizo package-lock, requirements ni código original porque el usuario prohibió modificar backend/frontend originales. Requiere plan de seguridad separado y autorización.
+
+### AUD-0011 — Un organismo por agregado WMS
+
+- **Commits:** `0d919ea0fc690ff575a9e20834c01b1368020922`, `eb414640bd7772b3f8fd5b170c13b069078b9947`.
+- **Detonante:** la primera versión agrupaba todos los registros de un tipo en un organismo de colección, lo que no reflejaba la orientación a organismos del Core.
+- **Cambio:** cada registro ahora tiene organismo propio `wms.{kind}.{id}`; las versiones son episodios y los contenidos son bloques CID.
+- **Prueba añadida:** reabrir el nodo desde el mismo directorio y comprobar contenido/RootCID, además de tombstone.
+- **Estado:** pendiente de CI de los commits nuevos.
