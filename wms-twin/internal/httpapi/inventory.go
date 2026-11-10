@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/domain/inventory"
 )
 
@@ -107,6 +108,11 @@ func decodeStrictJSON(r *http.Request, target any) error {
 }
 
 func writeInventoryError(w http.ResponseWriter, err error) {
+	var replicationErr *corestore.ReplicationError
+	if errors.As(err, &replicationErr) {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "replication_pending", "message": err.Error(), "local_commit": true})
+		return
+	}
 	switch {
 	case errors.Is(err, inventoryledger.ErrIdempotencyConflict):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
