@@ -64,9 +64,9 @@ wms-twin/
 
 ## Modelo de persistencia actual
 
-Cada tipo de registro usa un organismo `wms-records-{kind}`. Una escritura agrega un episodio `wms.record.upsert`; el contenido JSON se guarda como bloque CID. Una eliminación agrega un episodio `wms.record.deleted`. La lectura reduce la secuencia de episodios y toma el último estado por ID.
+Cada registro tiene su propio organismo `wms.{kind}.{id}`. Una escritura agrega un episodio `wms.record.upsert`; el contenido JSON se guarda como bloque CID. Una eliminación agrega un episodio `wms.record.deleted`. La lectura toma el último episodio del organismo y obtiene el contenido por CID.
 
-Esta estrategia conserva versiones y utiliza persistencia Core local, pero aún no resuelve transacciones entre varios registros ni sincronización de bloques a otros nodos. No debo conectar operaciones de inventario críticas a este CRUD genérico.
+Esta estrategia conserva versiones y utiliza persistencia Core local, pero aún no resuelve transacciones entre varios registros ni sincronización de bloques a otros nodos. Cada registro tiene su propia identidad RootCID derivada del manifiesto; RootCID no cambia con cada versión de datos. No debo conectar operaciones de inventario críticas a este CRUD genérico.
 
 ## Seguridad actual y pendiente
 
