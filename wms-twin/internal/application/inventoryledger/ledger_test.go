@@ -125,3 +125,45 @@ func TestConcurrentAdjustmentsAreSerializedInOneRuntime(t *testing.T) {
 		t.Fatalf("lost concurrent update: version=%d balances=%+v", version, balances)
 	}
 }
+
+type retryableReplicator struct {
+	fail  bool
+	calls int
+}
+
+func (r *retryableReplicator) SyncOrganism(string) error {
+	r.calls++
+	if r.fail {
+		return fmt.Errorf("peer unavailable")
+	}
+	return nil
+}
+
+func TestIdempotentReplayRetriesPendingReplication(t *testing.T) {
+	node, err := core.NewNode(core.Config{DataDir: t.TempDir(), Name: "wms-replication-retry"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := corestore.New(node.Organisms(), string(node.ID()))
+	replicator := &retryableReplicator{fail: true}
+	store.SetReplicator(replicator)
+	ledger := New(store)
+	command := AdjustCommand{OperationID: "retry-1", WarehouseID: 1, BinID: 2, ItemID: 3, Delta: 4}
+
+	if _, err := ledger.Adjust(command); err == nil {
+		t.Fatal("expected the first attempt to report pending replication")
+	} else {
+		var replicationErr *corestore.ReplicationError
+		if !errors.As(err, &replicationErr) {
+			t.Fatalf("expected a replication error, got %v", err)
+		}
+	}
+	replicator.fail = false
+	result, err := ledger.Adjust(command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Replayed || replicator.calls != 2 {
+		t.Fatalf("expected replay to retry replication, result=%+v calls=%d", result, replicator.calls)
+	}
+}
