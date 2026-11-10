@@ -66,3 +66,12 @@ Cada entrada identifica commit/fecha, archivos, detonante, síntoma, causa confi
 ## Incidencias externas
 
 Los workflows `Dependency Audit` del repo original fallaron en npm-audit (admin/móvil) y pip-audit. Son hallazgos separados del gemelo; no modifiqué dependencias originales para ocultarlos.
+
+
+### AUD-0008 — Primera validación Go satisfactoria
+
+- **Commit validado:** `ee7891004b938f1c4b089c508c6e3cd2f75fc6f3`.
+- **Workflow:** `WMS twin validation`, ejecución `42890179941`.
+- **Resultado:** documentación y protección de alcance correctas; `go mod tidy`, verificación de módulos, `go vet ./...` y `go test -race -count=1 ./...` terminaron satisfactoriamente.
+- **Tests:** corestore, inventory y httpapi pasaron con race detector.
+- **Limitación:** CI formateó el workspace temporalmente; los archivos de la rama aún requieren un commit de formato. Esto no prueba paridad WMS ni replicación multi-nodo.
