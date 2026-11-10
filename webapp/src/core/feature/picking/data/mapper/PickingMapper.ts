@@ -1,5 +1,6 @@
 import type {
 	ActiveBatch,
+	CreateBatchResult,
 	PickTask,
 	SimpleMessageResult,
 	WaveCreateResult,
@@ -7,6 +8,7 @@ import type {
 } from '../../domain/entity/Picking';
 import type {
 	ActiveBatchDto,
+	CreateBatchDto,
 	MessageDto,
 	PickTaskDto,
 	WaveCreateDto,
@@ -51,9 +53,14 @@ export const PickingMapper = {
 
 	toWaveValidate(dto: WaveValidateDto): WaveValidateResult {
 		return {
-			message: dto.message ?? 'ok',
+			valid: dto.valid === true,
 			soId: dto.so_id,
-			soNumber: dto.so_number
+			soNumber: dto.so_number,
+			lineCount: dto.line_count,
+			totalUnits: dto.total_units,
+			error: dto.error,
+			batchId: dto.batch_id,
+			message: dto.message
 		};
 	},
 
@@ -63,6 +70,25 @@ export const PickingMapper = {
 			batchStatus: dto.batch_status,
 			totalOrders: dto.total_orders,
 			totalPicks: dto.total_picks
+		};
+	},
+
+	toCreateBatch(dto: CreateBatchDto): CreateBatchResult {
+		return {
+			batchId: dto.batch_id,
+			batchNumber: dto.batch_number ?? `BATCH-${dto.batch_id}`,
+			totalOrders: dto.total_orders ?? dto.orders?.length ?? 0,
+			totalItems: dto.total_items ?? dto.tasks?.length ?? 0,
+			tasks: (dto.tasks ?? []).map((t) => ({
+				pickTaskId: t.pick_task_id,
+				sku: t.sku,
+				pickSequence: t.pick_sequence
+			})),
+			orders: (dto.orders ?? []).map((o) => ({
+				soId: o.so_id,
+				soNumber: o.so_number,
+				toteNumber: o.tote_number
+			}))
 		};
 	}
 };
