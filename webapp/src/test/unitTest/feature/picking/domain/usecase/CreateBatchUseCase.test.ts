@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { CreateBatchUseCase } from '#core/feature/picking/domain/usecase/CreateBatchUseCase';
-import type { PickingRepository } from '#core/feature/picking/domain/repository/PickingRepository';
+import { CreateBatchUseCase } from '../../../../../../core/feature/picking/domain/usecase/CreateBatchUseCase';
+import type { PickingRepository } from '../../../../../../core/feature/picking/domain/repository/PickingRepository';
 
 describe('CreateBatchUseCase', () => {
 	it('requires at least one identifier and positive warehouse', async () => {

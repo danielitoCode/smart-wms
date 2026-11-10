@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { GetCycleCountUseCase } from '#core/feature/inventory/domain/usecase/GetCycleCountUseCase';
-import type { InventoryRepository } from '#core/feature/inventory/domain/repository/InventoryRepository';
+import { GetCycleCountUseCase } from '../../../../../../core/feature/inventory/domain/usecase/GetCycleCountUseCase';
+import type { InventoryRepository } from '../../../../../../core/feature/inventory/domain/repository/InventoryRepository';
 
 describe('GetCycleCountUseCase', () => {
 	it('rejects non-positive countId', () => {

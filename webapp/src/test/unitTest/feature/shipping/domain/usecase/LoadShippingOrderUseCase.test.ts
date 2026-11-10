@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { LoadShippingOrderUseCase } from '#core/feature/shipping/domain/usecase/LoadShippingOrderUseCase';
-import type { ShippingRepository } from '#core/feature/shipping/domain/repository/ShippingRepository';
+import { LoadShippingOrderUseCase } from '../../../../../../core/feature/shipping/domain/usecase/LoadShippingOrderUseCase';
+import type { ShippingRepository } from '../../../../../../core/feature/shipping/domain/repository/ShippingRepository';
 
 describe('LoadShippingOrderUseCase', () => {
 	it('rejects empty barcode', () => {

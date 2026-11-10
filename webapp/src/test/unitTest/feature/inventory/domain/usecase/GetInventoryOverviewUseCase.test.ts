@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { GetInventoryOverviewUseCase } from '#core/feature/inventory/domain/usecase/GetInventoryOverviewUseCase';
-import type { InventoryRepository } from '#core/feature/inventory/domain/repository/InventoryRepository';
+import { GetInventoryOverviewUseCase } from '../../../../../../core/feature/inventory/domain/usecase/GetInventoryOverviewUseCase';
+import type { InventoryRepository } from '../../../../../../core/feature/inventory/domain/repository/InventoryRepository';
 
 describe('GetInventoryOverviewUseCase', () => {
 	it('forwards filters to repository', async () => {

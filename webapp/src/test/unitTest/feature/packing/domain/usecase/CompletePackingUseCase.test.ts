@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { CompletePackingUseCase } from '#core/feature/packing/domain/usecase/CompletePackingUseCase';
-import type { PackingRepository } from '#core/feature/packing/domain/repository/PackingRepository';
+import { CompletePackingUseCase } from '../../../../../../core/feature/packing/domain/usecase/CompletePackingUseCase';
+import type { PackingRepository } from '../../../../../../core/feature/packing/domain/repository/PackingRepository';
 
 describe('CompletePackingUseCase', () => {
 	it('rejects non-positive soId', () => {

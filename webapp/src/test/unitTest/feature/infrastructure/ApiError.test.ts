@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ApiError, toUserMessage } from '#core/infrastructure/errors/ApiError';
+import { ApiError, toUserMessage } from '../../../../core/infrastructure/errors/ApiError';
 
 describe('ApiError.fromResponse', () => {
 	it('maps validation_error details', () => {

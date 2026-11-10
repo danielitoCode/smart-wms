@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { VerifyPackItemUseCase } from '#core/feature/packing/domain/usecase/VerifyPackItemUseCase';
-import type { PackingRepository } from '#core/feature/packing/domain/repository/PackingRepository';
+import { VerifyPackItemUseCase } from '../../../../../../core/feature/packing/domain/usecase/VerifyPackItemUseCase';
+import type { PackingRepository } from '../../../../../../core/feature/packing/domain/repository/PackingRepository';
 
 describe('VerifyPackItemUseCase', () => {
 	it('rejects invalid soId, empty barcode, non-positive quantity', () => {

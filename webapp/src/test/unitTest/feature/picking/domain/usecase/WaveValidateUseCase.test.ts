@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { WaveValidateUseCase } from '#core/feature/picking/domain/usecase/WaveValidateUseCase';
-import type { PickingRepository } from '#core/feature/picking/domain/repository/PickingRepository';
+import { WaveValidateUseCase } from '../../../../../../core/feature/picking/domain/usecase/WaveValidateUseCase';
+import type { PickingRepository } from '../../../../../../core/feature/picking/domain/repository/PickingRepository';
 
 describe('WaveValidateUseCase', () => {
 	it('rejects empty barcode or invalid warehouse', () => {
