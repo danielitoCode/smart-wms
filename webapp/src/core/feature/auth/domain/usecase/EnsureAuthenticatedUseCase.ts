@@ -47,6 +47,8 @@ export class EnsureAuthenticatedUseCase {
 			const user = await this.repository.getCurrentUser();
 			return { ok: true, user };
 		} catch (err) {
+			// Only clear session on explicit auth failure.
+			// Network/timeout during refresh must leave the token so the user can retry.
 			if (this.isUnauthorized(err)) {
 				this.repository.logout();
 				return {

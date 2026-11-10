@@ -19,7 +19,7 @@ export function createLoginState() {
 			return false;
 		}
 		if (!password) {
-			error = 'Contrase\u00f1a requerida';
+			error = 'Contraseña requerida';
 			return false;
 		}
 
@@ -31,7 +31,7 @@ export function createLoginState() {
 			password = '';
 			return true;
 		} catch (err) {
-			error = toUserMessage(err, 'No se pudo iniciar sesi\u00f3n');
+			error = toUserMessage(err, 'No se pudo iniciar sesión');
 			return false;
 		} finally {
 			loading = false;
