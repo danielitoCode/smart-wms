@@ -14,7 +14,7 @@ Cada entrada identifica fecha, commit, archivos, detonante, decisión, riesgo, p
 - **Cambio:** se añadieron contratos/adaptadores iniciales bajo `api/prismatec/`.
 - **Detonante:** explorar la integración entre WMS y PrismaTec-Core.
 - **Problema detectado después:** ubicar código bajo `api/` lo mezcla físicamente con el backend Flask original y contradice el aislamiento solicitado.
-- **Corrección:** los archivos agregados por esa entrega se retiraron de la rama gemela en `AUD-0004`. Ningún archivo preexistente del backend original fue eliminado o modificado.
+- **Corrección:** los archivos agregados por esa entrega se retiraron de la rama gemela en el commit `0cccae88c0dd32787d38220d2e3c7532f81373ff`. Ningún archivo preexistente del backend original fue eliminado o modificado.
 - **Decisión vigente:** toda implementación nueva del gemelo vive en `wms-twin/`.
 
 ### AUD-0002 — Documentación y workflow
@@ -32,20 +32,19 @@ Cada entrada identifica fecha, commit, archivos, detonante, decisión, riesgo, p
 - **Detonante:** pasar de diseño documental a runtime funcional sin alterar Flask.
 - **Cambio:** bootstrap Core, AIP v1, almacenamiento de registros mediante organismos/episodios/CID, API técnica Bearer y primeras invariantes de inventario.
 - **Pruebas:** definidas en código. No fueron ejecutadas localmente desde esta sesión. La ejecución GitHub Actions asociada al commit `f4f4b97` fue observada en estado `in_progress`; todavía no existe resultado final confirmado.
-- **Problema preventivo corregido en `AUD-0005`:** lectura HTTP inicial usaba `http.MaxBytesReader` con writer nulo. Se sustituyó por lectura limitada explícita a 1 MiB antes de decodificar JSON.
 - **Riesgos abiertos:** compatibilidad HTTP/auth pendiente; operaciones multi-registro no atómicas; no se ha probado replicación WMS.
 
 ### AUD-0004 — Aislamiento físico del backend original
 
-- **Commit:** pendiente de creación.
+- **Commit:** `0cccae88c0dd32787d38220d2e3c7532f81373ff`.
 - **Detonante:** al revisar el árbol completo confirmé que `api/prismatec/` estaba dentro del directorio del backend Flask, aunque sus archivos fueran nuevos.
-- **Cambio:** retirar exclusivamente los archivos creados por AUD-0001 y mantener el código nuevo bajo `wms-twin/`.
-- **Protección:** no borrar ni modificar archivos preexistentes de `api/`.
-- **Verificación:** comparar el diff final de la rama contra `main` y comprobar que no quedan cambios bajo `api/`, `admin/`, `mobile/` o `db/`.
+- **Cambio:** retiré exclusivamente los archivos creados por AUD-0001 y mantuve el código nuevo bajo `wms-twin/`.
+- **Protección:** no eliminé ni modifiqué archivos preexistentes de `api/`.
+- **Verificación pendiente:** comparar el diff final de la rama contra `main` y comprobar que no quedan cambios bajo `api/`, `admin/`, `mobile/` o `db/`.
 
-### AUD-0005 — Límite de tamaño del cuerpo HTTP
+### AUD-0005 — Límites HTTP, AIP e invariantes de inventario
 
-- **Commit:** pendiente de creación.
-- **Detonante:** evitar pasar un ResponseWriter nulo a `http.MaxBytesReader` en el límite de entrada.
-- **Cambio:** leer como máximo 1 MiB + 1 byte y rechazar cuerpos superiores antes de decodificar JSON.
-- **Prueba:** CI debe ejecutar tests, race detector y vet; no se declara validado hasta resultado verde.
+- **Commit:** `026bad44df23e64faa22d91c844ba4942e4d131b`.
+- **Detonantes:** el AIP se había montado dentro del servidor WMS aunque la guía anunciaba otro puerto; además, el lector HTTP usaba un writer nulo en `http.MaxBytesReader`, y las reglas de movimiento necesitaban fallar sin devolver balances parcialmente modificados.
+- **Cambio:** separé el listener AIP del listener WMS; limité el cuerpo JSON a 1 MiB con lectura acotada; reforcé validación de balances, desbordamiento y movimientos de igual producto/lote.
+- **Pruebas:** añadí casos para ajuste que no puede retirar stock reservado, movimiento incompatible y overflow. No se declara validado hasta que CI termine.

@@ -16,7 +16,7 @@ No declaro paridad por tener rutas con nombres parecidos. Cada caso debe igualar
 | Persistencia | PostgreSQL/SQLAlchemy | Organismos + bloques CID Core | Implementada en corte técnico; no equivalente transaccional |
 | Identidad de nodo | No aplica | NodeID Core | Implementada |
 | Identidad transporte | No aplica | TCP/libp2p según Core | Configurable; no validada en WMS E2E |
-| AIP Core | No aplica | AIP v1 integrado | Implementado |
+| AIP Core | No aplica | AIP v1 integrado | Implementado en listener independiente |
 | CRUD genérico | Rutas específicas SQL | `/api/twin/records/*` | No compatible |
 | JWT HS256 | Sí | No | Pendiente |
 | Cookie `sentry_auth` | Sí | No | Pendiente |

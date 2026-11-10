@@ -25,7 +25,8 @@ go run ./cmd/wms-twin
 ```
 
 - API técnica WMS: `http://127.0.0.1:5001`
-- Health Core: `http://127.0.0.1:5001/healthz`
+- Health WMS: `http://127.0.0.1:5001/api/health`
+- Health Core: `http://127.0.0.1:8081/healthz`
 - AIP: `http://127.0.0.1:8081/aip/v1`
 - Datos persistentes: `WMS_TWIN_DATA_DIR`
 

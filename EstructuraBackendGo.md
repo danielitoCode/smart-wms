@@ -39,10 +39,10 @@ wms-twin/
 
 ### Responsabilidades
 
-- `cmd/wms-twin`: proceso ejecutable y apagado ordenado.
+- `cmd/wms-twin`: proceso ejecutable, dos listeners HTTP y apagado ordenado.
 - `internal/runtime`: bootstrap del nodo Core, AIP y API WMS técnica.
 - `internal/corestore`: persistencia de registros como episodios y bloques CID.
-- `internal/domain/inventory`: invariantes puras iniciales para disponibilidad, reserva, liberación y movimiento.
+- `internal/domain/inventory`: invariantes puras iniciales para disponibilidad, reserva, liberación, ajuste y movimiento.
 - `internal/httpapi`: health, información del nodo y API técnica de registros.
 
 ## Modelo de persistencia
