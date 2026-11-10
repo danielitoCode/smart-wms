@@ -3,6 +3,8 @@ import { WarehouseRemoteDataSource } from '../data/datasource/WarehouseRemoteDat
 import { WarehouseRepositoryImpl } from '../data/repository/WarehouseRepositoryImpl';
 import { ListWarehousesUseCase } from '../domain/usecase/ListWarehousesUseCase';
 import { ListBinsUseCase } from '../domain/usecase/ListBinsUseCase';
+import { ListZonesUseCase } from '../domain/usecase/ListZonesUseCase';
+import { GetWarehouseUseCase } from '../domain/usecase/GetWarehouseUseCase';
 
 export function createWarehousesDependencies() {
 	const datasource = new WarehouseRemoteDataSource(apiClient);
@@ -10,7 +12,9 @@ export function createWarehousesDependencies() {
 
 	return {
 		listWarehouses: new ListWarehousesUseCase(repository),
-		listBins: new ListBinsUseCase(repository)
+		listBins: new ListBinsUseCase(repository),
+		listZones: new ListZonesUseCase(repository),
+		getWarehouse: new GetWarehouseUseCase(repository)
 	};
 }
 
