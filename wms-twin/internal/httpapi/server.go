@@ -19,15 +19,15 @@ import (
 )
 
 type Server struct {
-	node *core.Node
-	store *corestore.Store
-	ledger *inventoryledger.Ledger
-	token string
-	users *identity.Repository
-	jwtSecret []byte
+	node             *core.Node
+	store            *corestore.Store
+	ledger           *inventoryledger.Ledger
+	token            string
+	users            *identity.Repository
+	jwtSecret        []byte
 	maxLoginAttempts int
-	loginLockout time.Duration
-	requirePacking bool
+	loginLockout     time.Duration
+	requirePacking   bool
 }
 
 func New(node *core.Node, store *corestore.Store, token string) *Server {

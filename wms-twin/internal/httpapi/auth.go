@@ -42,7 +42,7 @@ type loginRequest struct {
 }
 type changePasswordRequest struct {
 	CurrentPassword string `json:"current_password"`
-	NewPassword string `json:"new_password"`
+	NewPassword     string `json:"new_password"`
 }
 type authContextKey struct{}
 
@@ -279,7 +279,7 @@ func (s *Server) authenticatedUser(w http.ResponseWriter, r *http.Request) (iden
 	}
 	if user.MustChangePassword && !forcedChangeAllowed(r.URL.Path) {
 		writeJSON(w, http.StatusForbidden, map[string]string{
-			"error": "password_change_required",
+			"error":   "password_change_required",
 			"message": "Admin must change password before accessing other resources",
 		})
 		return identity.User{}, false
@@ -293,7 +293,9 @@ func (s *Server) authenticatedUser(w http.ResponseWriter, r *http.Request) (iden
 func (s *Server) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, ok := s.authenticatedUser(w, r)
-		if !ok { return }
+		if !ok {
+			return
+		}
 		ctx := context.WithValue(r.Context(), authContextKey{}, user)
 		next(w, r.WithContext(ctx))
 	}
@@ -317,7 +319,9 @@ func (s *Server) RequirePagePermission(pageKey string, next http.HandlerFunc) ht
 func (s *Server) issueToken(user identity.User) (string, error) {
 	now := time.Now().UTC()
 	jtiBytes := make([]byte, 16)
-	if _, err := rand.Read(jtiBytes); err != nil { return "", fmt.Errorf("generate token ID: %w", err) }
+	if _, err := rand.Read(jtiBytes); err != nil {
+		return "", fmt.Errorf("generate token ID: %w", err)
+	}
 	jtiBytes[6] = (jtiBytes[6] & 0x0f) | 0x40
 	jtiBytes[8] = (jtiBytes[8] & 0x3f) | 0x80
 	raw := hex.EncodeToString(jtiBytes)
@@ -335,7 +339,9 @@ func requestSessionToken(r *http.Request) (string, string) {
 	if strings.HasPrefix(header, "Bearer ") {
 		return strings.TrimSpace(strings.TrimPrefix(header, "Bearer ")), "header"
 	}
-	if cookie, err := r.Cookie(authCookieName); err == nil { return cookie.Value, "cookie" }
+	if cookie, err := r.Cookie(authCookieName); err == nil {
+		return cookie.Value, "cookie"
+	}
 	return "", ""
 }
 
@@ -356,15 +362,23 @@ func decodeAuthJSON(w http.ResponseWriter, r *http.Request, target any) error {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	defer r.Body.Close()
 	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(target); err != nil { return fmt.Errorf("invalid JSON body: %w", err) }
-	if decoder.Decode(new(any)) != io.EOF { return fmt.Errorf("request body must contain one JSON value") }
+	if err := decoder.Decode(target); err != nil {
+		return fmt.Errorf("invalid JSON body: %w", err)
+	}
+	if decoder.Decode(new(any)) != io.EOF {
+		return fmt.Errorf("request body must contain one JSON value")
+	}
 	return nil
 }
 
 func requestClientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err == nil && host != "" { return host }
-	if r.RemoteAddr == "" { return "unknown" }
+	if err == nil && host != "" {
+		return host
+	}
+	if r.RemoteAddr == "" {
+		return "unknown"
+	}
 	return r.RemoteAddr
 }
 
@@ -377,10 +391,17 @@ func forcedChangeAllowed(path string) bool {
 }
 
 func checkWarehouseScope(w http.ResponseWriter, r *http.Request, allowed []int64) bool {
-	type candidate struct { source string; value string }
+	type candidate struct {
+		source string
+		value  string
+	}
 	var candidates []candidate
-	if value, ok := warehouseIDFromPath(r.URL.Path); ok { candidates = append(candidates, candidate{"path", value}) }
-	if value := r.URL.Query().Get("warehouse_id"); value != "" { candidates = append(candidates, candidate{"query", value}) }
+	if value, ok := warehouseIDFromPath(r.URL.Path); ok {
+		candidates = append(candidates, candidate{"path", value})
+	}
+	if value := r.URL.Query().Get("warehouse_id"); value != "" {
+		candidates = append(candidates, candidate{"query", value})
+	}
 	if r.Body != nil && strings.Contains(strings.ToLower(r.Header.Get("Content-Type")), "application/json") {
 		body, err := io.ReadAll(io.LimitReader(r.Body, (1<<20)+1))
 		r.Body = io.NopCloser(bytes.NewReader(body))
@@ -391,7 +412,9 @@ func checkWarehouseScope(w http.ResponseWriter, r *http.Request, allowed []int64
 			}
 		}
 	}
-	if len(candidates) == 0 { return true }
+	if len(candidates) == 0 {
+		return true
+	}
 	values := make(map[string]int64, len(candidates))
 	for _, item := range candidates {
 		id, err := strconv.ParseInt(item.value, 10, 64)
@@ -404,13 +427,21 @@ func checkWarehouseScope(w http.ResponseWriter, r *http.Request, allowed []int64
 	var selected int64
 	first := true
 	for _, id := range values {
-		if first { selected = id; first = false; continue }
+		if first {
+			selected = id
+			first = false
+			continue
+		}
 		if id != selected {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "warehouse_id mismatch across request", "sources": values})
 			return false
 		}
 	}
-	for _, id := range allowed { if id == selected { return true } }
+	for _, id := range allowed {
+		if id == selected {
+			return true
+		}
+	}
 	writeJSON(w, http.StatusForbidden, map[string]string{"error": "Access denied for this warehouse"})
 	return false
 }
@@ -419,29 +450,43 @@ func warehouseIDFromPath(path string) (string, bool) {
 	parts := strings.Split(strings.Trim(path, "/"), "/")
 	for i := 0; i+1 < len(parts); i++ {
 		if parts[i] == "warehouses" {
-			if _, err := strconv.ParseInt(parts[i+1], 10, 64); err == nil { return parts[i+1], true }
+			if _, err := strconv.ParseInt(parts[i+1], 10, 64); err == nil {
+				return parts[i+1], true
+			}
 		}
 	}
 	return "", false
 }
 
 func containsString(values []string, target string) bool {
-	for _, value := range values { if value == target { return true } }
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
 	return false
 }
 
 func removeString(values []string, target string) []string {
 	out := make([]string, 0, len(values))
-	for _, value := range values { if value != target { out = append(out, value) } }
+	for _, value := range values {
+		if value != target {
+			out = append(out, value)
+		}
+	}
 	return out
 }
 
 func nonNilStringList(values []string) []string {
-	if values == nil { return []string{} }
+	if values == nil {
+		return []string{}
+	}
 	return values
 }
 
 func nonNilInt64List(values []int64) []int64 {
-	if values == nil { return []int64{} }
+	if values == nil {
+		return []int64{}
+	}
 	return values
 }

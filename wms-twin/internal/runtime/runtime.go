@@ -23,10 +23,10 @@ type Config struct {
 	DataDir, NodeName, NetworkAddr, TransportKind string
 	Peers                                         map[string]string
 	HTTPAddr, AIPAddr, APIToken                   string
-	JWTSecret, BootstrapUsersFile                  string
-	MaxLoginAttempts                               int
-	LoginLockout                                   time.Duration
-	RequirePacking                                 bool
+	JWTSecret, BootstrapUsersFile                 string
+	MaxLoginAttempts                              int
+	LoginLockout                                  time.Duration
+	RequirePacking                                bool
 }
 
 func ConfigFromEnv() Config {
@@ -51,15 +51,15 @@ func ConfigFromEnv() Config {
 	requirePacking := strings.ToLower(strings.TrimSpace(os.Getenv("WMS_TWIN_REQUIRE_PACKING"))) != "false"
 	return Config{
 		DataDir: dataDir, NodeName: name,
-		NetworkAddr: strings.TrimSpace(os.Getenv("PRISMATEC_NETWORK_ADDR")),
+		NetworkAddr:   strings.TrimSpace(os.Getenv("PRISMATEC_NETWORK_ADDR")),
 		TransportKind: strings.TrimSpace(os.Getenv("PRISMATEC_TRANSPORT")),
-		Peers: network.ParsePeersEnv(os.Getenv("PRISMATEC_PEERS")),
-		HTTPAddr: httpAddr, AIPAddr: aipAddr, APIToken: os.Getenv("WMS_TWIN_API_TOKEN"),
-		JWTSecret: os.Getenv("JWT_SECRET"),
+		Peers:         network.ParsePeersEnv(os.Getenv("PRISMATEC_PEERS")),
+		HTTPAddr:      httpAddr, AIPAddr: aipAddr, APIToken: os.Getenv("WMS_TWIN_API_TOKEN"),
+		JWTSecret:          os.Getenv("JWT_SECRET"),
 		BootstrapUsersFile: strings.TrimSpace(os.Getenv("WMS_TWIN_BOOTSTRAP_USERS_FILE")),
-		MaxLoginAttempts: envPositiveInt("WMS_TWIN_MAX_LOGIN_ATTEMPTS", 5),
-		LoginLockout: time.Duration(lockoutMinutes) * time.Minute,
-		RequirePacking: requirePacking,
+		MaxLoginAttempts:   envPositiveInt("WMS_TWIN_MAX_LOGIN_ATTEMPTS", 5),
+		LoginLockout:       time.Duration(lockoutMinutes) * time.Minute,
+		RequirePacking:     requirePacking,
 	}
 }
 
