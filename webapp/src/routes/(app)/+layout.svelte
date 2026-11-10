@@ -52,6 +52,8 @@
 				<a href="/receiving" class:active={page.url.pathname.startsWith('/receiving')}>Recepción</a>
 				<a href="/putaway" class:active={page.url.pathname.startsWith('/putaway')}>Putaway</a>
 				<a href="/picking" class:active={page.url.pathname.startsWith('/picking')}>Picking</a>
+				<a href="/packing" class:active={page.url.pathname.startsWith('/packing')}>Packing</a>
+				<a href="/shipping" class:active={page.url.pathname.startsWith('/shipping')}>Shipping</a>
 				<a href="/warehouses" class:active={page.url.pathname.startsWith('/warehouses')}>Almacenes</a>
 				<a href="/items" class:active={page.url.pathname.startsWith('/items')}>Ítems</a>
 			</nav>
@@ -74,8 +76,8 @@
 	.app-shell { min-height: 100vh; font-family: system-ui, -apple-system, sans-serif; background: #f8fafc; color: #0f172a; }
 	.topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; padding: 0.75rem 1.25rem; background: #0f172a; color: #f8fafc; }
 	.brand { font-weight: 700; color: inherit; text-decoration: none; margin-right: 0.5rem; }
-	nav { display: flex; flex-wrap: wrap; gap: 0.75rem; flex: 1; }
-	nav a { color: #cbd5e1; text-decoration: none; font-size: 0.95rem; }
+	nav { display: flex; flex-wrap: wrap; gap: 0.65rem; flex: 1; }
+	nav a { color: #cbd5e1; text-decoration: none; font-size: 0.9rem; }
 	nav a:hover, nav a.active { color: #fff; }
 	.session { display: flex; align-items: center; gap: 0.75rem; }
 	.user { font-size: 0.85rem; color: #94a3b8; }
