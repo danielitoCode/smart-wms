@@ -20,9 +20,9 @@ const (
 )
 
 var (
-	ErrInvalidOperationID = errors.New("operation_id must contain 1-128 ASCII letters, digits, '-' or '_'")
+	ErrInvalidOperationID  = errors.New("operation_id must contain 1-128 ASCII letters, digits, '-' or '_'")
 	ErrIdempotencyConflict = errors.New("operation_id was already used with a different command")
-	ErrCorruptLedger = errors.New("persisted inventory ledger is invalid")
+	ErrCorruptLedger       = errors.New("persisted inventory ledger is invalid")
 )
 
 type Location struct {

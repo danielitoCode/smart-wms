@@ -95,3 +95,8 @@ La primera comprobación estricta `go mod tidy -diff` falló en el commit del le
 ## Estado de validación del commit de inventario
 
 La reconstrucción del grafo de módulos terminó correctamente y `go mod verify` pasó. La primera barrera siguiente detectó archivos Go sin formato; vet y tests quedaron omitidos. La normalización temporal y el artefacto de fuentes sirven para recuperar el formato exacto, pero no sustituyen la publicación de los archivos formateados en Git.
+
+
+## Grafo de módulos y calidad de código
+
+Incorporé las dependencias indirectas exactas generadas por `go mod tidy` con Go 1.25. El archivo `go.sum` ya estaba completo. También publiqué el formato producido por gofmt. El fallo de vet se debió a un import no utilizado en el test del ledger, ya retirado. El workflow final no debe formatear ni reescribir lockfiles: solo verifica y falla si el commit no está limpio.

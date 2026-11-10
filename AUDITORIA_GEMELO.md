@@ -127,3 +127,13 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Corrección temporal:** CI normalizará fuentes en workspace efímero y subirá el código formateado como artefacto para incorporarlo al repositorio.
 - **Corrección definitiva:** publicar los archivos ya formateados y restaurar el check no mutante `gofmt -l`.
 - **Estado:** abierto hasta obtener artefacto y completar el siguiente CI.
+
+
+### AUD-0015 — Cierre del grafo Go y corrección de vet
+
+- **Commit detonante:** `f52b807d4686a458227e7be064079f0e667ce27b`.
+- **Ejecución:** `42892797788`.
+- **Hallazgo:** `go mod tidy`, `gofmt -w` en workspace temporal y `go mod verify` pasaron. `go vet` falló porque `ledger_test.go` importaba `internal/domain/inventory` sin usarlo.
+- **Causa confirmada:** import sobrante después de cambiar el DTO de movimiento a `Location`.
+- **Corrección:** elimino el import, incorporo el `go.mod` canónico generado por Go 1.25 y publico los archivos formateados. Restauro CI no mutante.
+- **Riesgo residual:** vet y race tests aún deben terminar en verde en la nueva ejecución.

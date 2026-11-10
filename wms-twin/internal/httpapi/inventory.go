@@ -32,57 +32,58 @@ func (s *Server) inventory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var err error
 	switch action {
 	case "adjust":
 		var command inventoryledger.AdjustCommand
-		if err = decodeStrictJSON(r, &command); err == nil {
-			var result inventoryledger.Result
-			result, err = s.ledger.Adjust(command)
-			if err == nil {
-				writeJSON(w, http.StatusOK, result)
-				return
-			}
+		if err := decodeStrictJSON(r, &command); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
 		}
+		result, err := s.ledger.Adjust(command)
+		if err != nil {
+			writeInventoryError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, result)
 	case "allocate":
 		var command inventoryledger.QuantityCommand
-		if err = decodeStrictJSON(r, &command); err == nil {
-			var result inventoryledger.Result
-			result, err = s.ledger.Allocate(command)
-			if err == nil {
-				writeJSON(w, http.StatusOK, result)
-				return
-			}
+		if err := decodeStrictJSON(r, &command); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
 		}
+		result, err := s.ledger.Allocate(command)
+		if err != nil {
+			writeInventoryError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, result)
 	case "release":
 		var command inventoryledger.QuantityCommand
-		if err = decodeStrictJSON(r, &command); err == nil {
-			var result inventoryledger.Result
-			result, err = s.ledger.Release(command)
-			if err == nil {
-				writeJSON(w, http.StatusOK, result)
-				return
-			}
+		if err := decodeStrictJSON(r, &command); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
 		}
+		result, err := s.ledger.Release(command)
+		if err != nil {
+			writeInventoryError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, result)
 	case "move":
 		var command inventoryledger.MoveCommand
-		if err = decodeStrictJSON(r, &command); err == nil {
-			var result inventoryledger.Result
-			result, err = s.ledger.Move(command)
-			if err == nil {
-				writeJSON(w, http.StatusOK, result)
-				return
-			}
+		if err := decodeStrictJSON(r, &command); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
 		}
+		result, err := s.ledger.Move(command)
+		if err != nil {
+			writeInventoryError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, result)
 	default:
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "inventory action not found"})
-		return
 	}
-	if isRequestDecodeError(err) {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
-		return
-	}
-	writeInventoryError(w, err)
 }
 
 func decodeStrictJSON(r *http.Request, target any) error {
@@ -103,17 +104,6 @@ func decodeStrictJSON(r *http.Request, target any) error {
 		return errors.New("request must contain exactly one JSON value")
 	}
 	return nil
-}
-
-func isRequestDecodeError(err error) bool {
-	if err == nil {
-		return false
-	}
-	return errors.Is(err, io.EOF) || strings.Contains(err.Error(), "request body") ||
-		strings.Contains(err.Error(), "unknown field") ||
-		strings.Contains(err.Error(), "invalid character") ||
-		strings.Contains(err.Error(), "cannot unmarshal") ||
-		strings.Contains(err.Error(), "request must contain")
 }
 
 func writeInventoryError(w http.ResponseWriter, err error) {

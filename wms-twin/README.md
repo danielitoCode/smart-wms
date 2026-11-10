@@ -65,3 +65,8 @@ En el primer run posterior al ledger, el guard de alcance/documentación pasó, 
 ## Última validación
 
 El guard de alcance pasó y el módulo Go pudo resolverse y verificarse. El job se detuvo en gofmt antes de vet y race tests. Estoy recuperando fuentes formateadas desde un artefacto temporal; no marco el ledger como probado hasta que el siguiente CI completo termine en success.
+
+
+## Corrección de calidad
+
+El grafo Go canónico y el formato se recuperaron de un artefacto generado por Go 1.25 en CI. Se retiró el import no utilizado que detuvo vet. El workflow vuelve a ser estricto y no reescribe archivos. La implementación queda pendiente de la ejecución completa de vet y race tests.

@@ -116,9 +116,9 @@ func (s *Store) Put(kind, id string, data json.RawMessage) (Record, error) {
 	episode := org.Memory.Episodic[len(org.Memory.Episodic)-1]
 	return Record{
 		ID: id, Kind: kind,
-		Data: append(json.RawMessage(nil), data...),
+		Data:       append(json.RawMessage(nil), data...),
 		ContentCID: episode.ContentCID,
-		RootCID: org.RootCID,
+		RootCID:    org.RootCID,
 	}, nil
 }
 
@@ -215,8 +215,8 @@ func (s *Store) recordFromOrganism(kind, id string, org *organism.Organism) (Rec
 	}
 	return Record{
 		ID: id, Kind: kind,
-		Data: json.RawMessage(content),
+		Data:       json.RawMessage(content),
 		ContentCID: episode.ContentCID,
-		RootCID: org.RootCID,
+		RootCID:    org.RootCID,
 	}, true, nil
 }

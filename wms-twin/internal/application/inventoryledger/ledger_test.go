@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/domain/inventory"
 	"github.com/yecharlot/PrismaTec-Core/core"
 )
 

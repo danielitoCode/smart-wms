@@ -78,3 +78,8 @@ El guard de documentación/aislamiento pasó en el commit `497b2048`. El job Go 
 ## Evidencia de CI del ledger
 
 En `9695a825`, el guard documental/alcance pasó, `go mod tidy` y `go mod verify` pasaron, pero gofmt falló. Vet y race tests no se ejecutaron. La paridad sigue sin demostrarse y la implementación no debe usarse en producción.
+
+
+## Evidencia de CI más reciente
+
+La ejecución `42892797788` validó resolución del módulo, checksum y formato temporal; falló en vet por un import no utilizado en el test nuevo. Race tests no se ejecutaron. El defecto está corregido en el commit siguiente, pendiente de su ejecución completa. La paridad funcional continúa sin demostrarse.

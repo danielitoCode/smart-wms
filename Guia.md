@@ -156,3 +156,8 @@ La primera ejecución del workflow después de incorporar el ledger falló en `g
 ## Seguimiento de CI — normalización de fuentes
 
 En el commit `9695a825`, `go mod tidy` y `go mod verify` terminaron correctamente y generaron el artefacto temporal `wms-twin-module-metadata`. El job se detuvo después porque encontró archivos Go sin formato; vet y race tests no se ejecutaron. Estoy haciendo que CI normalice las fuentes en su workspace temporal y publique un artefacto para incorporar el formato real al commit. La validación final volverá a ser estricta y no modificará archivos.
+
+
+## Corrección de CI — 2026-11-10
+
+La ejecución `42892797788` confirmó que `go mod tidy`, `gofmt` temporal y `go mod verify` pasaron. `go vet` detectó un import no utilizado en el test del ledger y por eso no ejecutó la suite race. Ya incorporo el `go.mod` generado por Go 1.25, publico los archivos formateados, retiro el import y vuelvo a un workflow estricto: `go mod tidy -diff`, `gofmt -l`, vet y race tests sin modificar el workspace. El resultado de la nueva ejecución queda pendiente.
