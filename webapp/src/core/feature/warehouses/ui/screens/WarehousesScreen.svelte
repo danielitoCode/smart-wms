@@ -30,6 +30,7 @@
 						<th>Código</th>
 						<th>Nombre</th>
 						<th>Estado</th>
+						<th></th>
 					</tr>
 				</thead>
 				<tbody>
@@ -38,6 +39,9 @@
 							<td>{wh.code}</td>
 							<td>{wh.name}</td>
 							<td>{wh.active ? 'Activo' : 'Inactivo'}</td>
+							<td>
+								<a href={`/warehouses/${wh.id}`}>Zonas y bins</a>
+							</td>
 						</tr>
 					{/each}
 				</tbody>
@@ -74,6 +78,7 @@
 		overflow-x: auto;
 		border: 1px solid #e2e8f0;
 		border-radius: 8px;
+		background: #fff;
 	}
 	table {
 		width: 100%;
@@ -89,6 +94,10 @@
 	th {
 		background: #f8fafc;
 		font-weight: 600;
+	}
+	a {
+		color: #0369a1;
+		text-decoration: none;
 	}
 	button {
 		margin-top: 0.75rem;

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { createLoginState } from '../state/loginState.svelte';
 
 	const state = createLoginState();
@@ -8,7 +9,12 @@
 		event.preventDefault();
 		const ok = await state.submit();
 		if (ok) {
-			await goto('/inventory');
+			const redirect = page.url.searchParams.get('redirect');
+			const target =
+				redirect && redirect.startsWith('/') && !redirect.startsWith('//')
+					? redirect
+					: '/inventory';
+			await goto(target);
 		}
 	}
 </script>
