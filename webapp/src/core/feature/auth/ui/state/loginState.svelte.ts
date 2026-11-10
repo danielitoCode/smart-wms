@@ -1,5 +1,6 @@
 import { createAuthDependencies } from '../../di/auth.dependencies';
 import type { User } from '../../domain/entity/User';
+import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 
 const deps = createAuthDependencies();
 
@@ -11,15 +12,26 @@ export function createLoginState() {
 	let user = $state<User | null>(null);
 
 	async function submit(): Promise<boolean> {
+		if (loading) return false;
+		const userName = username.trim();
+		if (!userName) {
+			error = 'Usuario requerido';
+			return false;
+		}
+		if (!password) {
+			error = 'Contrase\u00f1a requerida';
+			return false;
+		}
+
 		loading = true;
 		error = null;
 		try {
-			const result = await deps.login.execute({ username, password });
+			const result = await deps.login.execute({ username: userName, password });
 			user = result.user;
 			password = '';
 			return true;
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'No se pudo iniciar sesión';
+			error = toUserMessage(err, 'No se pudo iniciar sesi\u00f3n');
 			return false;
 		} finally {
 			loading = false;
