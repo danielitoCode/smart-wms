@@ -10,7 +10,7 @@ func validClaims(now time.Time) Claims {
 	return Claims{
 		UserID: 7, Username: "operator", Role: "USER",
 		WarehouseIDs: []int64{2, 4}, IssuedAt: now.Unix(),
-		JTI: "f8a6b2e5-4a7c-4df0-9f62-6a4e4a3e22c1",
+		JTI:       "f8a6b2e5-4a7c-4df0-9f62-6a4e4a3e22c1",
 		ExpiresAt: now.Add(TokenLifetime).Unix(),
 	}
 }

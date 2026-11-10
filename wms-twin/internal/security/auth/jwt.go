@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	Algorithm        = "HS256"
-	TokenLifetime    = 8 * time.Hour
-	MaxTokenSize     = 16 * 1024
-	clockSkew        = time.Minute
+	Algorithm     = "HS256"
+	TokenLifetime = 8 * time.Hour
+	MaxTokenSize  = 16 * 1024
+	clockSkew     = time.Minute
 )
 
 var (
@@ -25,14 +25,14 @@ var (
 )
 
 type Claims struct {
-	UserID      int64   `json:"user_id"`
-	Username    string  `json:"username"`
-	Role        string  `json:"role"`
-	WarehouseID *int64  `json:"warehouse_id"`
+	UserID       int64   `json:"user_id"`
+	Username     string  `json:"username"`
+	Role         string  `json:"role"`
+	WarehouseID  *int64  `json:"warehouse_id"`
 	WarehouseIDs []int64 `json:"warehouse_ids"`
-	IssuedAt    int64   `json:"iat"`
-	JTI         string  `json:"jti"`
-	ExpiresAt   int64   `json:"exp"`
+	IssuedAt     int64   `json:"iat"`
+	JTI          string  `json:"jti"`
+	ExpiresAt    int64   `json:"exp"`
 }
 
 type header struct {
