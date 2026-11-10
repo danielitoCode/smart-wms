@@ -104,3 +104,15 @@ Los fallos de npm/pip del workflow global Dependency Audit pertenecen a dependen
 ## Protección de rama
 
 La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection ni required checks. El workflow valida contenido; la protección administrativa debe activarse aparte para bloquear la aceptación de PRs sin checks verdes.
+
+
+### AUD-0013 — Grafo de módulos no reproducible tras incorporar el ledger
+
+- **Commit detonante:** `497b20480358449ae025fd24eff32b2e8926b589`.
+- **Ejecución:** `42892262782`, workflow WMS twin validation.
+- **Detonante:** el job Go terminó en error durante `go mod tidy -diff`.
+- **Síntoma confirmado:** no se ejecutaron gofmt, vet ni race tests; el guard documental/alcance sí pasó.
+- **Causa:** pendiente de confirmar; el detalle del diff no fue expuesto por el conector de GitHub. La hipótesis es que `go.mod` requiere entradas indirectas adicionales, pero no la doy por confirmada.
+- **Acción temporal:** generar `go.mod` y `go.sum` mediante Go 1.25 en CI y subirlos como artefacto de corta retención para inspección.
+- **Corrección final esperada:** incorporar el grafo exacto y restaurar `go mod tidy -diff` como verificación no mutante.
+- **Resultado:** abierto; no declaro el código Go probado.

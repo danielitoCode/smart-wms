@@ -55,3 +55,8 @@ La serialización es por proceso, no consenso distribuido. Los snapshots Core no
 ## Documentación
 
 Leer `Guia.md`, `EstructuraBackendGo.md`, `NivelDeParidadConBackendOriginal.md`, `AUDITORIA_GEMELO.md`, `docs/CONTRATO_FRONTEND.md`, `docs/MAPA_RUTAS_ORIGINAL.md` y `docs/INVENTORY_LEDGER.md`.
+
+
+## Estado de CI de la entrega de inventario
+
+En el primer run posterior al ledger, el guard de alcance/documentación pasó, pero `go mod tidy -diff` falló antes de compilar. El grafo se está reconstruyendo en CI para obtener los archivos de módulo canónicos. No se debe interpretar el commit como validado hasta que el workflow completo termine en success.

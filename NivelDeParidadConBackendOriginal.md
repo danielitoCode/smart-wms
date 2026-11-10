@@ -68,3 +68,8 @@ Admin usa `/api` relativo, cookies y CSRF. Mobile usa `EXPO_PUBLIC_API_URL` y Be
 7. Registrar evidencia en matriz y auditoría.
 
 El backend original se conserva incluso después de un despliegue gradual y rollback probado.
+
+
+## Evidencia de validación del ledger
+
+El guard de documentación/aislamiento pasó en el commit `497b2048`. El job Go falló en `go mod tidy -diff`, antes de gofmt, vet y tests. Por tanto, las pruebas añadidas aún no se han ejecutado en CI y el ledger sigue marcado como implementación pendiente de validación.

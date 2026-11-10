@@ -85,3 +85,8 @@ La API técnica usa un Bearer independiente. No implementa JWT HS256, cookies `s
 ## Pruebas y handoff
 
 CI debe ejecutar tidy diff, checksum, gofmt, vet y race tests. Los tests del ledger cubren invariantes, idempotencia, movimiento de dos ubicaciones, reinicio y concurrencia local. No demuestran failover ni paridad Flask. El siguiente agente debe leer Guia, Paridad, Auditoría, el mapa de rutas y el contrato frontend antes de tocar código.
+
+
+## Reproducibilidad del módulo
+
+La primera comprobación estricta `go mod tidy -diff` falló en el commit del ledger, por lo que el grafo de dependencias aún no está cerrado. La siguiente ejecución de CI genera temporalmente `go.mod` y `go.sum` canónicos como artefacto para incorporarlos. El objetivo final es que CI solo verifique y nunca reescriba el módulo.

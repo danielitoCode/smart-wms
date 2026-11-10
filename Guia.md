@@ -146,3 +146,8 @@ La suite Flask original usa su configuración de pruebas y `TEST_DATABASE_URL`; 
 8. Ejecutar pruebas diferenciales original vs gemelo y E2E de reinicio, concurrencia, recuperación y particiones.
 
 Antes de cada entrega actualizo esta guía, `EstructuraBackendGo.md`, `NivelDeParidadConBackendOriginal.md`, `AUDITORIA_GEMELO.md` y los documentos específicos afectados. El siguiente desarrollador o agente debe leer esos documentos y `wms-twin/docs/MAPA_RUTAS_ORIGINAL.md`.
+
+
+## Incidencia de validación de dependencias — 2026-11-10
+
+La primera ejecución del workflow después de incorporar el ledger falló en `go mod tidy -diff`, antes de formato, vet y tests. El guard de documentación y alcance sí pasó. La salida detallada del diff no está disponible en la respuesta del conector, así que no atribuyo todavía una causa específica. Para recuperar el grafo exacto voy a generar temporalmente un artefacto con `go.mod` y `go.sum` producidos por Go 1.25 en CI. Después incorporaré esos archivos al repositorio y volveré a una comprobación no mutante `go mod tidy -diff`. Hasta entonces el ledger no está validado.
