@@ -1,5 +1,6 @@
 import { createItemsDependencies } from '../../di/items.dependencies';
 import type { Item } from '../../domain/entity/Item';
+import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 
 const deps = createItemsDependencies();
 
@@ -8,8 +9,10 @@ export function createItemsState() {
 	let query = $state('');
 	let loading = $state(false);
 	let error = $state<string | null>(null);
+	let loadedOnce = $state(false);
 
 	async function load(q?: string) {
+		if (loading) return false;
 		loading = true;
 		error = null;
 		try {
@@ -17,9 +20,12 @@ export function createItemsState() {
 			items = search
 				? await deps.searchItems.execute(search)
 				: await deps.listItems.execute({ active: true });
+			loadedOnce = true;
+			return true;
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'No se pudieron cargar los ítems';
+			error = toUserMessage(err, 'No se pudieron cargar los ítems');
 			items = [];
+			return false;
 		} finally {
 			loading = false;
 		}
@@ -41,6 +47,9 @@ export function createItemsState() {
 		},
 		get error() {
 			return error;
+		},
+		get loadedOnce() {
+			return loadedOnce;
 		},
 		setQuery,
 		load
