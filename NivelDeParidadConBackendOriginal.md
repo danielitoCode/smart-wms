@@ -151,3 +151,19 @@ El Bearer técnico sigue protegiendo `/api/twin/*`. La autenticación de usuario
 ## Importación de identidades — endurecimiento
 
 La importación ahora es idempotente y reanudable. Omite IDs existentes sin sobrescribirlos, rechaza usernames que colisionan con otros IDs y persiste solo los usuarios faltantes. El runtime reintenta el import en cada arranque cuando el archivo está configurado. El hash de nuevas contraseñas usa bcrypt cost 12, equivalente al default de Python `bcrypt.gensalt()`.
+
+
+## Validación CI del corte de autenticación
+
+| Control | Resultado |
+|---|---|
+| WMS twin validation `42899616129` | Success |
+| Guard documental y de alcance | Success |
+| `go mod tidy -diff` / `go mod verify` | Success |
+| gofmt / vet / race tests | Success |
+| Gitleaks | Success |
+| Lockfile version check | Success |
+| Dependency Audit global | Failure en npm admin/mobile y pip Python; separado del gemelo Go |
+| Suite general `Tests` | En curso al documentar |
+
+El commit probado es `5d8d334bb24dc21bf2609f8c8089092297563de8`; el formato final quedó en `2720ed7d70fb69e46422c3338dc354f15d30cc3a`.

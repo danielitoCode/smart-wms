@@ -202,3 +202,10 @@ El lockout de 5 intentos/15 minutos (configurable) persiste como organismos Core
 ## Corrección de bootstrap y coste bcrypt — 2026-11-10
 
 Endurecí el importador para que sea idempotente y reanudable: al arrancar con `WMS_TWIN_BOOTSTRAP_USERS_FILE`, los usuarios cuyos IDs ya existen se omiten sin sobrescribirlos y se incorporan los que faltan. Si una importación queda parcial por un fallo de almacenamiento/replicación, el siguiente arranque puede continuar. El fichero se vuelve a validar en cada arranque y exige modo 0600 o más restrictivo. Los hashes nuevos usan coste bcrypt 12, igual al valor por defecto de `bcrypt.gensalt()` del backend Python.
+
+
+## Validación CI de autenticación y bootstrap — 2026-11-10
+
+El commit `5d8d334bb24dc21bf2609f8c8089092297563de8` pasó WMS twin validation en la ejecución `42899616129`: guard documental/de alcance, tidy diff, module verify, gofmt, vet y race tests. El workflow publicó el formato final en `2720ed7d70fb69e46422c3338dc354f15d30cc3a`.
+
+La ejecución general `Dependency Audit` `42899616007` sigue fallando en npm-audit de admin/mobile y pip-audit del backend Python; no es el workflow de validación del gemelo ni una prueba de regresión de Go. La suite general `Tests` aún estaba ejecutándose al registrar esta nota.

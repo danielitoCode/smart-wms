@@ -106,3 +106,8 @@ Se implementaron `/api/auth/login`, `logout`, `me`, `refresh` y `change-password
 ## Importación de usuarios
 
 El bootstrap de identidades es reanudable: no sobrescribe IDs existentes y añade los faltantes, por lo que puede recuperarse de una importación parcial. El archivo JSON debe contener hashes bcrypt, con permisos 0600 o más restrictivos. El coste bcrypt para hashes nuevos es 12.
+
+
+## Validación de auth y bootstrap
+
+El corte `5d8d334bb24dc21bf2609f8c8089092297563de8` pasó WMS twin validation `42899616129`, incluidos tidy diff, module verify, gofmt, vet, race tests y guard documental. El formato final quedó en `2720ed7d70fb69e46422c3338dc354f15d30cc3a`. La auditoría global npm/pip del repositorio continúa fallando en componentes admin/mobile/Python, separada de esta validación Go.

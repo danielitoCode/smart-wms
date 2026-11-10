@@ -134,3 +134,10 @@ Los endpoints de negocio aún no están migrados ni envueltos con estas protecci
 ## Bootstrap reanudable y coste bcrypt
 
 La importación de identidades ahora es idempotente: omite IDs ya persistidos, no sobrescribe usuarios existentes, rechaza colisiones de username y añade los faltantes. Esto permite reanudar después de una importación parcial. El runtime procesa el archivo configurado en cada arranque, pero solo añade identidades que aún no existen. Hashes nuevos usan bcrypt cost 12 para igualar el default del backend original.
+
+
+## Evidencia CI — autenticación HTTP y bootstrap
+
+La ejecución `42899616129` de WMS twin validation terminó en success sobre `5d8d334bb24dc21bf2609f8c8089092297563de8`. Pasaron guard de alcance/documentación, tidy diff, module verify, gofmt, vet y race tests. El commit de formato quedó en `2720ed7d70fb69e46422c3338dc354f15d30cc3a`.
+
+La auditoría global de dependencias `42899616007` falla por auditorías npm (admin/mobile) y pip (backend Python), separadas del gemelo Go. La suite general del repo estaba aún en curso al documentar.

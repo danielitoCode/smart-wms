@@ -143,3 +143,10 @@ Los endpoints de autenticación están conectados, pero todavía no existe gesti
 La importación JSON ahora es idempotente. Si una identidad ya existe con el mismo `user_id`, no la sobrescribo; si un username ya pertenece a otro ID, rechazo la colisión. Solo persisto usuarios faltantes. El runtime vuelve a procesar el archivo configurado en cada arranque, permitiendo reanudar una importación parcial. El archivo se valida siempre y debe ser 0600 o más restrictivo.
 
 El coste bcrypt para contraseñas creadas/cambiadas por el gemelo es 12, igual al default de `bcrypt.gensalt()` del backend Python.
+
+
+## Validación CI del corte HTTP/bootstrap
+
+La ejecución `42899616129` de WMS twin validation terminó en success para el commit `5d8d334bb24dc21bf2609f8c8089092297563de8`. Pasaron guard documental/de alcance, tidy diff, module verify, gofmt, vet y race tests. El commit de formato final es `2720ed7d70fb69e46422c3338dc354f15d30cc3a`.
+
+La auditoría global `42899616007` falló en npm-audit de admin/mobile y pip-audit del backend Python; es un workflow separado del gemelo Go. La suite general del repositorio seguía en curso al documentar.

@@ -297,3 +297,15 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Seguridad:** el archivo sigue exigiendo permisos 0600 o más restrictivos y solo contiene hashes bcrypt.
 - **Paridad:** los hashes generados por el gemelo pasan a coste 12, equivalente al default de `bcrypt.gensalt()` en el backend original.
 - **Validación:** pendiente del CI de este nuevo commit.
+
+
+### AUD-0025 — Validación de autenticación y bootstrap
+
+- **Commit probado:** `5d8d334bb24dc21bf2609f8c8089092297563de8`.
+- **Ejecución:** `42899616129`, WMS twin validation, success.
+- **Pasos aprobados:** guard documental/de alcance, tidy diff, module verify, gofmt, vet y race tests.
+- **Formato final:** `2720ed7d70fb69e46422c3338dc354f15d30cc3a`.
+- **Gitleaks / lockfile:** success.
+- **Auditoría global:** `42899616007` falló en npm-audit admin/mobile y pip-audit Python; no corresponde al workflow WMS twin Go.
+- **Suite general:** `Tests` seguía en curso en el momento de registrar.
+- **Conclusión:** las nuevas rutas de auth y el bootstrap pasan validación Go; la paridad funcional global sigue pendiente.
