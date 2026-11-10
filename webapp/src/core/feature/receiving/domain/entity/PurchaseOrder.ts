@@ -1,10 +1,13 @@
 /**
- * Receiving domain — purchase order lookup and receipt operations.
- * Contracts: GET /api/receiving/po/{barcode}, POST /api/receiving/receive, POST /api/receiving/cancel
+ * Receiving workflow projection of a purchase order.
+ *
+ * The canonical purchasing aggregate lives in the purchase-orders feature.
+ * These types preserve the barcode-receiving use case and its operational
+ * line-progress information.
  */
 
-export type PurchaseOrderStatus = 'OPEN' | 'PARTIAL' | 'CLOSED' | string;
-export type PoLineStatus = 'PENDING' | 'PARTIAL' | 'COMPLETE' | string;
+export type PurchaseOrderStatus = 'OPEN' | 'PARTIAL' | 'RECEIVED' | 'CLOSED' | 'ARCHIVED' | string;
+export type PoLineStatus = 'PENDING' | 'PARTIAL' | 'RECEIVED' | 'COMPLETE' | string;
 
 export type PurchaseOrder = {
 	poId: number;
@@ -12,6 +15,13 @@ export type PurchaseOrder = {
 	vendorName: string;
 	status: PurchaseOrderStatus;
 	warehouseId: number;
+	poBarcode?: string | null;
+	vendorId?: string | null;
+	expectedDate?: string | null;
+	notes?: string | null;
+	createdAt?: string | null;
+	receivedAt?: string | null;
+	createdBy?: string | null;
 };
 
 export type PurchaseOrderLine = {
@@ -24,6 +34,9 @@ export type PurchaseOrderLine = {
 	quantityReceived: number;
 	quantityRemaining: number;
 	status: PoLineStatus;
+	lineNumber?: number;
+	unitCost?: number | null;
+	mpn?: string | null;
 };
 
 export type PurchaseOrderDetail = {
@@ -36,6 +49,8 @@ export type ReceiveLineInput = {
 	quantity: number;
 	binId: number;
 	lotNumber?: string | null;
+	serialNumber?: string | null;
+	notes?: string | null;
 };
 
 export type ReceiveResult = {
