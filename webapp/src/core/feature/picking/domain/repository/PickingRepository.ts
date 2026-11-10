@@ -1,6 +1,7 @@
 import type {
 	ActiveBatch,
 	ConfirmPickInput,
+	CreateBatchResult,
 	PickTask,
 	ShortPickInput,
 	SimpleMessageResult,
@@ -19,4 +20,6 @@ export interface PickingRepository {
 	waveValidate(soBarcode: string, warehouseId: number): Promise<WaveValidateResult>;
 	/** POST /api/picking/wave-create */
 	waveCreate(soIds: number[], warehouseId: number): Promise<WaveCreateResult>;
-}
+	/** POST /api/picking/create-batch */
+	createBatch(soIdentifiers: string[], warehouseId: number): Promise<CreateBatchResult>;
+};

@@ -1,6 +1,10 @@
 import type { WaveValidateResult } from '../entity/Picking';
 import type { PickingRepository } from '../repository/PickingRepository';
 
+/**
+ * POST /api/picking/wave-validate
+ * Validates a single SO barcode before wave-create.
+ */
 export class WaveValidateUseCase {
 	constructor(private readonly repository: PickingRepository) {}
 
