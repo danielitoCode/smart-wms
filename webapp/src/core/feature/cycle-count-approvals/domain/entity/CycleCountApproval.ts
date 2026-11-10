@@ -1,18 +1,23 @@
 /**
  * Cycle-count approval domain entity.
  *
- * Approval is performed over the inventory adjustments produced by a submitted
- * cycle count. A count can contain several adjustment lines, each decided
- * independently; the approval work item groups those lines by count/bin.
+ * A submitted count can create several pending inventory adjustments.
+ * The approval work item groups those adjustments by cycle count/bin while
+ * each adjustment retains its own reviewer decision.
  */
 
-import type { InventoryAdjustment, InventoryAdjustmentDecision } from '../../../inventory-adjustments/domain/entity/InventoryAdjustment';
+import type { InventoryAdjustment } from '../../../inventory-adjustments/domain/entity/InventoryAdjustment';
 
-export type CycleCountApprovalStatus = 'PENDING' | 'REVIEWED';
-
-export type CycleCountApprovalLine = InventoryAdjustment & {
-	/** Decision selected by the reviewer; null until a decision is selected. */
-	decision: InventoryAdjustmentDecision['action'] | null;
+export type CycleCountApprovalLine = Omit<
+	InventoryAdjustment,
+	'sku' | 'itemName' | 'binCode' | 'expectedQuantity' | 'countedQuantity'
+> & {
+	sku: string | null;
+	itemName: string | null;
+	binCode: string;
+	expectedQuantity: number | null;
+	countedQuantity: number | null;
+	decision: 'approve' | 'reject' | null;
 };
 
 export type CycleCountApproval = {
@@ -20,11 +25,13 @@ export type CycleCountApproval = {
 	binId: number;
 	binCode: string;
 	warehouseId: number;
-	status: CycleCountApprovalStatus;
-	lines: CycleCountApprovalLine[];
+	adjustments: CycleCountApprovalLine[];
 };
 
 export type ReviewCycleCountApproval = {
 	cycleCountId: number;
-	decisions: InventoryAdjustmentDecision[];
+	decisions: Array<{
+		adjustmentId: number;
+		action: 'approve' | 'reject';
+	}>;
 };
