@@ -4,6 +4,7 @@ import { AuthRepositoryImpl } from '../data/repository/AuthRepositoryImpl';
 import { LoginUseCase } from '../domain/usecase/LoginUseCase';
 import { LogoutUseCase } from '../domain/usecase/LogoutUseCase';
 import { GetCurrentUserUseCase } from '../domain/usecase/GetCurrentUserUseCase';
+import { EnsureAuthenticatedUseCase } from '../domain/usecase/EnsureAuthenticatedUseCase';
 
 export function createAuthDependencies() {
 	const datasource = new AuthRemoteDataSource(apiClient);
@@ -12,7 +13,8 @@ export function createAuthDependencies() {
 	return {
 		login: new LoginUseCase(repository),
 		logout: new LogoutUseCase(repository),
-		getCurrentUser: new GetCurrentUserUseCase(repository)
+		getCurrentUser: new GetCurrentUserUseCase(repository),
+		ensureAuthenticated: new EnsureAuthenticatedUseCase(repository)
 	};
 }
 

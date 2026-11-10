@@ -2,34 +2,48 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { authSession } from '../../core/infrastructure/auth/AuthSession';
-	import { createAuthDependencies } from '../../core/feature/auth/di/auth.dependencies';
+	import { createAuthGuardState } from '../../core/feature/auth/ui/state/authGuardState.svelte';
 
 	let { children } = $props();
 
-	let ready = $state(false);
-	let userLabel = $state('');
-
-	const authDeps = createAuthDependencies();
+	const guard = createAuthGuardState();
 
 	onMount(() => {
-		if (!authSession.isAuthenticated()) {
-			const redirect = encodeURIComponent(page.url.pathname);
-			void goto(`/login?redirect=${redirect}`);
-			return;
-		}
-		const user = authSession.getUser();
-		userLabel = user?.fullName || user?.username || '';
-		ready = true;
+		void bootstrap();
 	});
 
+	async function bootstrap() {
+		await guard.verify();
+		if (guard.status === 'anonymous') {
+			const redirect = encodeURIComponent(page.url.pathname + page.url.search);
+			await goto(`/login?redirect=${redirect}`);
+		}
+	}
+
 	async function logout() {
-		authDeps.logout.execute();
+		guard.logout();
 		await goto('/login');
+	}
+
+	async function retry() {
+		await bootstrap();
 	}
 </script>
 
-{#if ready}
+{#if guard.status === 'checking'}
+	<p class="boot">Validando sesión…</p>
+{:else if guard.status === 'error'}
+	<section class="boot error-panel" role="alert">
+		<p>No se pudo validar la sesión con el servidor.</p>
+		{#if guard.message}
+			<p class="detail">{guard.message}</p>
+		{/if}
+		<div class="actions">
+			<button type="button" onclick={retry}>Reintentar</button>
+			<button type="button" class="secondary" onclick={logout}>Cerrar sesión</button>
+		</div>
+	</section>
+{:else if guard.status === 'authenticated'}
 	<div class="app-shell">
 		<header class="topbar">
 			<a class="brand" href="/">Smart WMS</a>
@@ -39,8 +53,8 @@
 				<a href="/items" class:active={page.url.pathname.startsWith('/items')}>Ítems</a>
 			</nav>
 			<div class="session">
-				{#if userLabel}
-					<span class="user">{userLabel}</span>
+				{#if guard.user}
+					<span class="user">{guard.user.fullName || guard.user.username}</span>
 				{/if}
 				<button type="button" onclick={logout}>Salir</button>
 			</div>
@@ -50,7 +64,7 @@
 		</main>
 	</div>
 {:else}
-	<p class="boot">Comprobando sesión…</p>
+	<p class="boot">Redirigiendo al login…</p>
 {/if}
 
 <style>
@@ -114,5 +128,35 @@
 		font-family: system-ui, sans-serif;
 		padding: 2rem;
 		color: #64748b;
+	}
+	.error-panel {
+		max-width: 28rem;
+		margin: 3rem auto;
+		padding: 1.5rem;
+		border: 1px solid #fecaca;
+		border-radius: 8px;
+		background: #fff;
+		color: #0f172a;
+	}
+	.error-panel .detail {
+		color: #b91c1c;
+		font-size: 0.9rem;
+	}
+	.actions {
+		display: flex;
+		gap: 0.5rem;
+		margin-top: 1rem;
+	}
+	.actions button {
+		padding: 0.45rem 0.9rem;
+		border-radius: 6px;
+		border: 1px solid #cbd5e1;
+		background: #0f172a;
+		color: #fff;
+		cursor: pointer;
+	}
+	.actions button.secondary {
+		background: #fff;
+		color: #0f172a;
 	}
 </style>
