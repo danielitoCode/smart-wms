@@ -5,6 +5,8 @@ import { GetActiveBatchUseCase } from '../domain/usecase/GetActiveBatchUseCase';
 import { GetNextPickTaskUseCase } from '../domain/usecase/GetNextPickTaskUseCase';
 import { ConfirmPickUseCase } from '../domain/usecase/ConfirmPickUseCase';
 import { ShortPickUseCase } from '../domain/usecase/ShortPickUseCase';
+import { WaveValidateUseCase } from '../domain/usecase/WaveValidateUseCase';
+import { WaveCreateUseCase } from '../domain/usecase/WaveCreateUseCase';
 
 export function createPickingDependencies() {
 	const datasource = new PickingRemoteDataSource(apiClient);
@@ -15,6 +17,8 @@ export function createPickingDependencies() {
 		getNextTask: new GetNextPickTaskUseCase(repository),
 		confirmPick: new ConfirmPickUseCase(repository),
 		shortPick: new ShortPickUseCase(repository),
+		waveValidate: new WaveValidateUseCase(repository),
+		waveCreate: new WaveCreateUseCase(repository),
 		completeBatch: (batchId: number) => repository.completeBatch(batchId),
 		cancelBatch: (batchId: number) => repository.cancelBatch(batchId)
 	};

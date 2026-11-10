@@ -28,3 +28,16 @@ export type PickTaskDto = {
 export type MessageDto = {
 	message: string;
 };
+
+export type WaveValidateDto = {
+	message?: string;
+	so_id?: number;
+	so_number?: string;
+};
+
+export type WaveCreateDto = {
+	batch_id: number;
+	batch_status: string;
+	total_orders: number;
+	total_picks: number;
+};

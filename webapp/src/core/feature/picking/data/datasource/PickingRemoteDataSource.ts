@@ -1,6 +1,12 @@
 import type { ApiClient } from '../../../../infrastructure/api/ApiClient';
 import type { ConfirmPickInput, ShortPickInput } from '../../domain/entity/Picking';
-import type { ActiveBatchDto, MessageDto, PickTaskDto } from '../dto/PickingDto';
+import type {
+	ActiveBatchDto,
+	MessageDto,
+	PickTaskDto,
+	WaveCreateDto,
+	WaveValidateDto
+} from '../dto/PickingDto';
 
 export class PickingRemoteDataSource {
 	constructor(private readonly api: ApiClient) {}
@@ -37,6 +43,20 @@ export class PickingRemoteDataSource {
 	cancelBatch(batchId: number): Promise<MessageDto> {
 		return this.api.post<MessageDto>('/api/picking/cancel-batch', {
 			batch_id: batchId
+		});
+	}
+
+	waveValidate(soBarcode: string, warehouseId: number): Promise<WaveValidateDto> {
+		return this.api.post<WaveValidateDto>('/api/picking/wave-validate', {
+			so_barcode: soBarcode,
+			warehouse_id: warehouseId
+		});
+	}
+
+	waveCreate(soIds: number[], warehouseId: number): Promise<WaveCreateDto> {
+		return this.api.post<WaveCreateDto>('/api/picking/wave-create', {
+			so_ids: soIds,
+			warehouse_id: warehouseId
 		});
 	}
 }

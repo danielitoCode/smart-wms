@@ -1,5 +1,17 @@
-import type { ActiveBatch, PickTask, SimpleMessageResult } from '../../domain/entity/Picking';
-import type { ActiveBatchDto, MessageDto, PickTaskDto } from '../dto/PickingDto';
+import type {
+	ActiveBatch,
+	PickTask,
+	SimpleMessageResult,
+	WaveCreateResult,
+	WaveValidateResult
+} from '../../domain/entity/Picking';
+import type {
+	ActiveBatchDto,
+	MessageDto,
+	PickTaskDto,
+	WaveCreateDto,
+	WaveValidateDto
+} from '../dto/PickingDto';
 
 export const PickingMapper = {
 	toActiveBatch(dto: ActiveBatchDto): ActiveBatch {
@@ -35,5 +47,22 @@ export const PickingMapper = {
 
 	toMessage(dto: MessageDto): SimpleMessageResult {
 		return { message: dto.message };
+	},
+
+	toWaveValidate(dto: WaveValidateDto): WaveValidateResult {
+		return {
+			message: dto.message ?? 'ok',
+			soId: dto.so_id,
+			soNumber: dto.so_number
+		};
+	},
+
+	toWaveCreate(dto: WaveCreateDto): WaveCreateResult {
+		return {
+			batchId: dto.batch_id,
+			batchStatus: dto.batch_status,
+			totalOrders: dto.total_orders,
+			totalPicks: dto.total_picks
+		};
 	}
 };

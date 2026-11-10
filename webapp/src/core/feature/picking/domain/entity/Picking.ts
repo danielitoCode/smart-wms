@@ -1,6 +1,6 @@
 /**
- * Picking domain — active batch, next task, confirm / short / complete.
- * Contracts under /api/picking/*
+ * Picking domain — active batch, next task, confirm / short / complete, wave.
+ * Contracts under /api/picking/* (api-reference.md + test_wave_picking.py)
  */
 
 export type ActiveBatch = {
@@ -38,4 +38,17 @@ export type ShortPickInput = {
 
 export type SimpleMessageResult = {
 	message: string;
+};
+
+export type WaveValidateResult = {
+	message: string;
+	soId?: number;
+	soNumber?: string;
+};
+
+export type WaveCreateResult = {
+	batchId: number;
+	batchStatus: string;
+	totalOrders: number;
+	totalPicks: number;
 };

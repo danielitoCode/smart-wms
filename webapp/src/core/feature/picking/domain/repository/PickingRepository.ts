@@ -3,7 +3,9 @@ import type {
 	ConfirmPickInput,
 	PickTask,
 	ShortPickInput,
-	SimpleMessageResult
+	SimpleMessageResult,
+	WaveCreateResult,
+	WaveValidateResult
 } from '../entity/Picking';
 
 export interface PickingRepository {
@@ -13,4 +15,8 @@ export interface PickingRepository {
 	short(input: ShortPickInput): Promise<SimpleMessageResult>;
 	completeBatch(batchId: number): Promise<SimpleMessageResult>;
 	cancelBatch(batchId: number): Promise<SimpleMessageResult>;
+	/** POST /api/picking/wave-validate */
+	waveValidate(soBarcode: string, warehouseId: number): Promise<WaveValidateResult>;
+	/** POST /api/picking/wave-create */
+	waveCreate(soIds: number[], warehouseId: number): Promise<WaveCreateResult>;
 }
