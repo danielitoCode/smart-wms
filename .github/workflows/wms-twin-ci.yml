@@ -2,8 +2,7 @@ name: WMS twin validation
 
 on:
   push:
-    branches:
-      - feat/wms-prismatec-genesis
+    branches: [feat/wms-prismatec-genesis]
     paths:
       - 'wms-twin/**'
       - 'api/prismatec/**'
@@ -14,8 +13,7 @@ on:
       - 'NivelDeParidadConBackendOriginal.md'
       - 'AUDITORIA_GEMELO.md'
   pull_request:
-    branches:
-      - feat/wms-prismatec-genesis
+    branches: [feat/wms-prismatec-genesis]
     paths:
       - 'wms-twin/**'
       - 'api/prismatec/**'
@@ -35,36 +33,42 @@ concurrency:
 
 jobs:
   documentation:
-    name: Documentation and scope guard
+    name: Documentation and protected-scope guard
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Require the project handover documents
+        with:
+          fetch-depth: 0
+      - name: Require handover documents
         run: |
           set -eu
           for file in Guia.md EstructuraBackendGo.md NivelDeParidadConBackendOriginal.md AUDITORIA_GEMELO.md; do
             test -s "$file" || { echo "Missing or empty required document: $file"; exit 1; }
           done
-      - name: Reject changes to the original backend and frontend
+      - name: Reject modifications to the original application
         if: github.event_name == 'pull_request'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -eu
-          changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
-          printf '%s\n' "$changed"
-          forbidden="$(printf '%s\n' "$changed" | grep -E '^(api/(?!prismatec/)|admin/|mobile/|db/)' || true)"
+          git diff --name-only "$BASE_SHA" "$HEAD_SHA" > /tmp/changed-files.txt
+          cat /tmp/changed-files.txt
+          forbidden=""
+          while IFS= read -r path; do
+            case "$path" in
+              api/prismatec/*) ;;
+              api/*|admin/*|mobile/*|db/*) forbidden="${forbidden}${path}\n" ;;
+            esac
+          done < /tmp/changed-files.txt
           if [ -n "$forbidden" ]; then
-            echo "Changes detected in protected original application paths:"
-            echo "$forbidden"
-            echo "The twin work must not modify the original backend, frontend or database files."
+            echo "Protected original paths were modified:"
+            printf '%b' "$forbidden"
+            echo "Only the isolated twin and documentation may change in this workstream."
             exit 1
           fi
-      - name: Check audit trail references
-        run: |
-          set -eu
-          grep -q 'AUD-' AUDITORIA_GEMELO.md
+      - name: Check audit trail
+        run: grep -q 'AUD-' AUDITORIA_GEMELO.md
 
   go:
     name: Go tests and static checks
@@ -81,44 +85,49 @@ jobs:
           go-version-file: wms-twin/go.mod
           cache: true
           cache-dependency-path: wms-twin/go.sum
-      - name: Verify module dependencies
+      - name: Verify dependencies
         if: steps.module.outputs.present == 'true'
         working-directory: wms-twin
         run: go mod verify
-      - name: Format check
+      - name: Check formatting
         if: steps.module.outputs.present == 'true'
         working-directory: wms-twin
         run: |
           unformatted="$(gofmt -l .)"
-          if [ -n "$unformatted" ]; then
-            echo "Go files need gofmt:"
-            echo "$unformatted"
-            exit 1
-          fi
+          if [ -n "$unformatted" ]; then printf '%s\n' "$unformatted"; exit 1; fi
       - name: Vet
         if: steps.module.outputs.present == 'true'
         working-directory: wms-twin
         run: go vet ./...
-      - name: Tests with race detector
+      - name: Race-enabled tests
         if: steps.module.outputs.present == 'true'
         working-directory: wms-twin
         run: go test -race -count=1 ./...
-      - name: Report pending Go module
+      - name: Report pending implementation
         if: steps.module.outputs.present != 'true'
-        run: echo "wms-twin/go.mod is not present yet; Go checks are pending implementation."
+        run: echo "wms-twin/go.mod is not present yet; Go checks remain pending."
 
   python-boundary:
-    name: Existing Python boundary tests
+    name: Python boundary tests
     runs-on: ubuntu-latest
-    if: hashFiles('api/prismatec/tests/*.py') != ''
     steps:
       - uses: actions/checkout@v4
+      - name: Detect boundary tests
+        id: boundary
+        run: |
+          if compgen -G 'api/prismatec/tests/*.py' > /dev/null; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/setup-python@v5
+        if: steps.boundary.outputs.present == 'true'
         with:
           python-version: '3.11'
-      - name: Install only boundary test dependencies
+      - name: Install pytest
+        if: steps.boundary.outputs.present == 'true'
         run: python -m pip install pytest
       - name: Run boundary tests
+        if: steps.boundary.outputs.present == 'true'
         env:
           PYTHONPATH: api
         run: pytest -q api/prismatec/tests
+      - name: Report pending boundary tests
+        if: steps.boundary.outputs.present != 'true'
+        run: echo "No Python boundary tests found."

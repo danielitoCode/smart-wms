@@ -21,7 +21,7 @@ Cada entrada debe identificar commit/PR cuando exista, archivos afectados, deton
 
 ### AUD-0002 — Documentación operativa y controles de integración
 
-- **Commit:** `aef763491ddbcd24e6a3e02a78ca6777c2760f21`
+- **Commit:** `aef763491ddbcd24e6a3e02a78ca6777c2760f21` (entrega documental); corrección posterior del workflow: `b12ec8179e175ce9eaa5f56caa3cf45d0f7e38e6`.
 - **Cambio:** creación de `Guia.md`, `EstructuraBackendGo.md`, `NivelDeParidadConBackendOriginal.md`, este registro y workflow de CI para validar cambios del gemelo.
 - **Detonante:** necesidad de que cualquier desarrollador o agente pueda retomar el trabajo sin depender de conversaciones privadas y de que los cambios se verifiquen antes de integrarse.
 - **Decisión:** documentar estado real, comandos, criterios de paridad, diagnóstico, límites y siguiente tarea. Ejecutar verificaciones automáticas en push y pull request hacia la rama gemela.
