@@ -2,7 +2,10 @@ module github.com/danielitoCode/smart-wms/wms-twin
 
 go 1.25.0
 
-require github.com/yecharlot/PrismaTec-Core v0.0.0-20260929063220-84e9f40cbcc0
+require (
+	github.com/yecharlot/PrismaTec-Core v0.0.0-20260929063220-84e9f40cbcc0
+	golang.org/x/crypto v0.53.0
+)
 
 require (
 	github.com/benbjohnson/clock v1.3.5 // indirect
@@ -95,7 +98,6 @@ require (
 	go.uber.org/mock v0.5.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	golang.org/x/crypto v0.53.0 // indirect
 	golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa // indirect
 	golang.org/x/mod v0.36.0 // indirect
 	golang.org/x/net v0.55.0 // indirect

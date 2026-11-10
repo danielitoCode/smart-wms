@@ -127,7 +127,7 @@ func validateClaims(claims Claims) error {
 	if claims.UserID <= 0 || strings.TrimSpace(claims.Username) == "" ||
 		strings.TrimSpace(claims.Role) == "" || strings.TrimSpace(claims.JTI) == "" ||
 		claims.IssuedAt <= 0 || claims.ExpiresAt <= claims.IssuedAt ||
-		time.Duration(claims.ExpiresAt-claims.IssuedAt)*time.Second > TokenLifetime {
+		claims.ExpiresAt-claims.IssuedAt > int64(TokenLifetime/time.Second) {
 		return ErrInvalidToken
 	}
 	for _, warehouseID := range claims.WarehouseIDs {

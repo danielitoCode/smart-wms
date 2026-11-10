@@ -176,3 +176,8 @@ La ejecución 42895311390 pasó el guard de documentación/alcance, verificació
 ## Avance de fase 02 — 2026-11-10
 
 Añadí `internal/security/auth` con primitives de JWT HS256, CSRF double-submit y validación de password. Esta entrega es fundacional: todavía no hay login ni middleware de sesión integrado, no existe repositorio de usuarios y el Bearer técnico sigue siendo el único guard activo. La especificación y los criterios están en `wms-twin/docs/FASE_02_SEGURIDAD.md`. El CI debe ejecutar vet y race tests; no declaro estos tests ejecutados localmente.
+
+
+## Identidad Core-backed — primer repositorio
+
+El repositorio de usuarios está en `wms-twin/internal/application/identity`. Persiste un organismo por usuario, mantiene hash bcrypt, permisos y grants, normaliza username, rechaza duplicados en el primario local y soporta autenticación/cambio de contraseña. El DTO público no expone el hash. Todavía no hay importador desde PostgreSQL, endpoints HTTP, lockout, middleware de sesión ni cookies. La asignación de IDs y la unicidad solo están serializadas dentro del proceso primario. Ver `wms-twin/docs/FASE_02_SEGURIDAD.md`.

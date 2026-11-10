@@ -86,3 +86,8 @@ La ejecución 42895311390 pasó guard de alcance, grafo de módulos, gofmt y vet
 ## Seguridad de identidad — fase 02 en curso
 
 Se añadieron primitives aisladas para JWT HS256, CSRF double-submit y validación de password. No hay todavía endpoints de login/logout/refresh ni persistencia de usuarios; el Bearer técnico sigue siendo el único mecanismo HTTP activo. La especificación contractual y el orden de implementación están en [FASE_02_SEGURIDAD.md](docs/FASE_02_SEGURIDAD.md). No conectar el frontend hasta cerrar la fase completa.
+
+
+## Identidad persistente — primer bloque interno
+
+El paquete `internal/application/identity` persiste usuarios en organismos Core y usa bcrypt. Incluye normalización/duplicidad de username, autenticación interna, cambio de contraseña y DTO público sin hash. Aún no hay importador del backend original ni endpoints HTTP; el Bearer técnico sigue siendo el único guard activo. La fase continúa incompleta.

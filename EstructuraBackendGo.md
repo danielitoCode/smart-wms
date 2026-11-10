@@ -112,3 +112,8 @@ La ejecución `42893176180` validó el corte anterior del ledger. En la ejecuci�
 ## Seguridad: primitivas y frontera de fase 02
 
 Añadí `internal/security/auth` para implementar HS256, CSRF double-submit y política de password. Este paquete no lee ni autoriza usuarios: el siguiente paso es conectarlo a un repositorio de identidades Core-backed y al middleware HTTP. El contrato completo, decisiones y criterios de aceptación están en `wms-twin/docs/FASE_02_SEGURIDAD.md`. No confundo las primitivas criptográficas con autenticación terminada.
+
+
+## Repositorio de identidad Core-backed
+
+Añadí `internal/application/identity`. Cada usuario se guarda como organismo `wms.users.{user_id}`, con hash bcrypt y estado versionado en episodios/CID. El repositorio conserva username, nombre, rol, warehouse_id/warehouse_ids, allowed_functions, page grants, overrides, actividad, timestamps y forced password change. El DTO público excluye el hash. La unicidad y asignación secuencial se serializan dentro del primario local; no las presento como coordinación multi-nodo. Login HTTP y middleware aún no están conectados.

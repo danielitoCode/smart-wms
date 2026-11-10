@@ -3,6 +3,7 @@ package auth
 import (
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 // ValidatePassword mirrors the original WMS password policy and returns the
@@ -11,7 +12,7 @@ func ValidatePassword(password string) string {
 	if strings.ToLower(strings.TrimSpace(password)) == "admin" {
 		return "Password cannot be 'admin'"
 	}
-	if len(password) < 8 {
+	if utf8.RuneCountInString(password) < 8 {
 		return "Password must be at least 8 characters"
 	}
 	hasLetter, hasDigit := false, false

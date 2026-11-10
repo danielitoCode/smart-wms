@@ -10,7 +10,7 @@ func validClaims(now time.Time) Claims {
 	return Claims{
 		UserID: 7, Username: "operator", Role: "USER",
 		WarehouseIDs: []int64{2, 4}, IssuedAt: now.Unix(),
-		JTI:       "f8a6b2e5-4a7c-4df0-9f62-6a4e4a3e22c1",
+		JTI: "f8a6b2e5-4a7c-4df0-9f62-6a4e4a3e22c1",
 		ExpiresAt: now.Add(TokenLifetime).Unix(),
 	}
 }
@@ -46,7 +46,11 @@ func TestJWTRejectsExpiredTamperedAndWeakSecret(t *testing.T) {
 		t.Fatalf("expected expired token, got %v", err)
 	}
 	parts := strings.Split(token, ".")
-	parts[1] = parts[1][:len(parts[1])-1] + "A"
+	if parts[2][0] == 'A' {
+		parts[2] = "B" + parts[2][1:]
+	} else {
+		parts[2] = "A" + parts[2][1:]
+	}
 	if _, err := Verify(strings.Join(parts, "."), secret, now); err == nil {
 		t.Fatal("tampered token was accepted")
 	}
@@ -64,8 +68,6 @@ func TestJWTRejectsNonHS256Algorithm(t *testing.T) {
 	}
 	parts := strings.Split(token, ".")
 	parts[0] = "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0"
-	unsigned := strings.Join(parts[:2], ".")
-	_ = unsigned
 	if _, err := Verify(strings.Join(parts, "."), secret, now); err == nil {
 		t.Fatal("non-HS256 token was accepted")
 	}
@@ -91,6 +93,7 @@ func TestPasswordPolicy(t *testing.T) {
 		{"12345678", "Password must contain at least one letter"},
 		{"abcdefgh", "Password must contain at least one digit"},
 		{"Abcdefg1", ""},
+		{"ááááááá1", ""},
 	}
 	for _, tc := range cases {
 		if got := ValidatePassword(tc.input); got != tc.want {

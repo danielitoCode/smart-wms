@@ -96,3 +96,19 @@ No voy a conectar el gemelo directamente a PostgreSQL ni a copiar SQLAlchemy. La
 ## Criterio de aceptación
 
 No marco esta fase como terminada hasta que el gemelo pueda atender admin y mobile con sus respectivos mecanismos de sesión, los tests reproduzcan status/headers/cuerpos del original y se demuestre que una modificación de usuario o almacenes entra en vigor en la siguiente petición.
+
+
+## Avance de repositorio de identidad — 2026-11-10
+
+Implementé el primer repositorio Core-backed en `internal/application/identity`:
+
+- cada usuario se guarda en su propio organismo `wms.users.{user_id}`;
+- el repositorio normaliza username, valida rol/campos y evita duplicados dentro del primario local;
+- bcrypt genera y verifica hashes; las respuestas públicas usan un DTO que no contiene `password_hash`;
+- conserva warehouse grants, allowed functions, permisos de página, overrides, estado, fechas de login/cambio de contraseña y forced-change;
+- autentica con mensaje genérico para usuario inexistente, inactivo o password incorrecto;
+- persiste `last_login` y permite cambio de contraseña verificando la actual.
+
+La prueba añadida cubre autenticación, duplicado, cambio de contraseña, ausencia de hash en el DTO y reapertura desde el mismo DataDir.
+
+**Límites abiertos:** todavía no hay importador de usuarios del PostgreSQL original, endpoints HTTP, lockout persistente, middleware JWT, cookies/CSRF ni autorización por request. El mutex de unicidad/ID es local al proceso y depende del fencing del primario; no equivale a una transacción distribuida.

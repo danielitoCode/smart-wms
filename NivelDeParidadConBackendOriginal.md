@@ -103,3 +103,19 @@ La ejecución `42893176180` validó el corte anterior del ledger. En `4289531139
 | Roles, page permissions y warehouse scopes | No implementados | Pendiente |
 
 El Bearer técnico continúa siendo el único mecanismo activo. La fase completa requiere identidad Core-backed, estado vivo por request, cookies/CSRF y pruebas diferenciales. Ver `wms-twin/docs/FASE_02_SEGURIDAD.md`.
+
+
+## Identidad persistente — avance parcial
+
+| Componente | Estado | Paridad |
+|---|---|---|
+| Repositorio de usuarios | Organismo Core por usuario, hash bcrypt y metadatos | Parcial; falta importación del original |
+| Username único | Normalización y comprobación bajo mutex del primario | Parcial; sin transacción distribuida |
+| Autenticación local | bcrypt, usuario activo y mensaje de error genérico | No expuesta por HTTP |
+| Cambio de password | Verifica password actual, hash nuevo y timestamp | No expuesto por HTTP ni auditoría equivalente |
+| Login/logout/refresh | No implementados | Pendiente |
+| Lockout y revocación | No implementados | Pendiente |
+| Middleware, cookies y CSRF | Primitivas solamente | Pendiente |
+| Permisos y warehouse scopes | Datos almacenables; no aplicados a requests | Pendiente |
+
+El repositorio es un bloque interno, no una autenticación utilizable por los frontends. Ver `wms-twin/docs/FASE_02_SEGURIDAD.md`.

@@ -252,3 +252,15 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Límite:** no implementé endpoints login/logout/refresh, bcrypt, persistencia de usuarios, estado vivo, revocación, lockout, cookies HTTP ni permisos. El Bearer técnico sigue activo.
 - **Pruebas añadidas:** round-trip de claims, expiración, manipulación de firma, algoritmo no permitido, secreto débil, CSRF y política de password.
 - **Validación:** no ejecuté Go localmente en este entorno. La validación queda pendiente del workflow CI de esta rama; no marco la fase como terminada.
+
+
+### AUD-0021 — Repositorio de identidad persistido en PrismaTec-Core
+
+- **Commit:** esta entrega, identificable por `feat(wms-twin): add Core-backed identity repository`.
+- **Archivos:** `internal/application/identity/repository.go`, `repository_test.go`, `go.mod`; endurecimiento de validación JWT/password; actualización de guía, estructura, paridad y especificación de fase 02.
+- **Detonante:** las primitivas criptográficas no podían autenticar a nadie sin una fuente de identidad persistente.
+- **Cambio:** añadí un organismo Core por usuario, bcrypt, normalización de username, unicidad local, grants de almacén/página, funciones, overrides, estado y timestamps; agregué autenticación y cambio de contraseña internos.
+- **Seguridad:** el hash bcrypt se guarda en el organismo y no forma parte del DTO público. Las credenciales inválidas usan una respuesta genérica. La contraseña nunca se persiste en claro.
+- **Pruebas añadidas:** creación, login, rechazo de credenciales, username duplicado, cambio de contraseña, DTO sin hash y recuperación tras reiniciar el nodo con el mismo DataDir.
+- **Límites:** no hay importador de usuarios, endpoints HTTP, lockout persistente, middleware JWT, cookies/CSRF ni autorización de rutas. El mutex solo coordina el proceso primario.
+- **Validación:** pendiente del CI de esta rama; no he ejecutado Go localmente en este entorno.
