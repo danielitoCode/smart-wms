@@ -52,9 +52,10 @@ func ConfigFromEnv() Config {
 }
 
 type Runtime struct {
-	node    *core.Node
-	cancel  context.CancelFunc
-	handler http.Handler
+	node       *core.Node
+	cancel     context.CancelFunc
+	handler    http.Handler
+	aipHandler http.Handler
 }
 
 func New(cfg Config) (*Runtime, error) {
@@ -83,16 +84,17 @@ func New(cfg Config) (*Runtime, error) {
 
 	store := corestore.New(node.Organisms())
 	apiServer := httpapi.New(node, store, cfg.APIToken)
-	mux := http.NewServeMux()
-	mux.Handle("/aip/", (&aip.Server{Node: node, Addr: cfg.AIPAddr}).Handler())
-	mux.Handle("/healthz", (&aip.Server{Node: node, Addr: cfg.AIPAddr}).Handler())
-	mux.Handle("/", apiServer.Handler())
+	aipServer := &aip.Server{Node: node, Addr: cfg.AIPAddr}
 
-	return &Runtime{node: node, cancel: cancel, handler: mux}, nil
+	return &Runtime{
+		node: node, cancel: cancel,
+		handler: apiServer.Handler(), aipHandler: aipServer.Handler(),
+	}, nil
 }
 
-func (r *Runtime) Handler() http.Handler { return r.handler }
-func (r *Runtime) Node() *core.Node       { return r.node }
+func (r *Runtime) Handler() http.Handler    { return r.handler }
+func (r *Runtime) AIPHandler() http.Handler { return r.aipHandler }
+func (r *Runtime) Node() *core.Node         { return r.node }
 
 func (r *Runtime) Close() {
 	if r.cancel != nil {

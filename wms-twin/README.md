@@ -1,12 +1,12 @@
 # WMS Twin — backend gemelo sobre PrismaTec-Core
 
-Este módulo es un servicio Go independiente. No reemplaza ni importa código del backend Flask original. Su runtime de organismos, identidad, eventos, memoria, persistencia CID, auditoría y transporte se obtiene del módulo público PrismaTec-Core.
+Este módulo es un servicio Go independiente. No reemplaza ni importa código del backend Flask original. Su runtime de organismos, identidad, estado, memoria, persistencia CID, auditoría y transporte se obtiene del módulo público PrismaTec-Core.
 
 ## Estado de esta entrega
 
 - [x] Arranque de un nodo PrismaTec dentro del proceso Go.
-- [x] AIP v1 expuesto bajo `/aip/v1` y health de Core bajo `/healthz`.
-- [x] Almacenes de registros WMS representados como organismos PrismaTec.
+- [x] AIP v1 expuesto en un servidor HTTP independiente.
+- [x] Colecciones WMS representadas como organismos PrismaTec.
 - [x] Cada versión de un registro se guarda como bloque CID y episodio; el historial no se sobrescribe.
 - [x] API técnica protegida por token para crear, consultar, actualizar y borrar registros genéricos.
 - [x] Reglas puras iniciales de balance de inventario y tests.
@@ -44,13 +44,13 @@ go test ./...
 go run ./cmd/wms-twin
 ```
 
-El servicio WMS escucha en 5001 y AIP en 8081. Si se habilita `PRISMATEC_NETWORK_ADDR`, el nodo usa el transporte indicado por PrismaTec-Core. No habilito red distribuida por defecto: cada instancia necesita identidad y directorio de datos propios.
+La API técnica WMS escucha en 5001 y AIP en 8081. Si se habilita `PRISMATEC_NETWORK_ADDR`, el nodo usa el transporte indicado por PrismaTec-Core. No habilito red distribuida por defecto: cada instancia necesita identidad y directorio de datos propios.
 
 ## Comprobaciones
 
 ```bash
 curl -fsS http://127.0.0.1:5001/api/health
-curl -fsS http://127.0.0.1:5001/healthz
+curl -fsS http://127.0.0.1:8081/healthz
 curl -fsS http://127.0.0.1:8081/aip/v1/info
 curl -fsS -H "Authorization: Bearer $WMS_TWIN_API_TOKEN" \
   http://127.0.0.1:5001/api/twin/info
