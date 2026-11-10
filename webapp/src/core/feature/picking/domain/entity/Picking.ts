@@ -1,8 +1,10 @@
 /**
- * Picking domain — active batch, next task, confirm / short / complete,
- * wave-validate, wave-create, create-batch.
- * Contracts under /api/picking/* (api-reference + tests).
+ * Picking domain — batches, sales-order / transfer-order tasks, scans and
+ * operational results. These are domain contracts, not UI view models.
  */
+
+export type PickBatchStatus = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | (string & {});
+export type PickTaskStatus = 'PENDING' | 'PICKED' | 'SHORT' | 'RELEASED' | (string & {});
 
 export type ActiveBatch = {
 	active: boolean;
@@ -11,6 +13,9 @@ export type ActiveBatch = {
 	completedPicks: number;
 	totalOrders: number;
 	createdAt: string | null;
+	kind?: 'SO' | 'TO' | null;
+	transferOrderId?: number | null;
+	transferOrderNumber?: string | null;
 };
 
 export type PickTask = {
@@ -23,7 +28,13 @@ export type PickTask = {
 	quantityToPick: number;
 	binId: number | null;
 	binCode: string | null;
-	status: string;
+	status: PickTaskStatus;
+	pickSequence?: number;
+	quantityPicked?: number;
+	salesOrderId?: number | null;
+	salesOrderLineId?: number | null;
+	transferOrderId?: number | null;
+	transferOrderLineId?: number | null;
 };
 
 export type ConfirmPickInput = {
@@ -37,11 +48,19 @@ export type ShortPickInput = {
 	quantityAvailable: number;
 };
 
+export type CompleteBatchInput = {
+	batchId: number;
+};
+
+export type CancelBatchInput = {
+	batchId: number;
+	reason?: string | null;
+};
+
 export type SimpleMessageResult = {
 	message: string;
 };
 
-/** POST /api/picking/wave-validate response (200 / 4xx body). */
 export type WaveValidateResult = {
 	valid: boolean;
 	soNumber?: string;
@@ -60,7 +79,6 @@ export type WaveCreateResult = {
 	totalPicks: number;
 };
 
-/** POST /api/picking/create-batch response (test_picking.py). */
 export type CreateBatchResult = {
 	batchId: number;
 	batchNumber: string;
