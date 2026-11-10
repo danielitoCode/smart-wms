@@ -1,9 +1,12 @@
 import { createPickingDependencies } from '../../di/picking.dependencies';
-import type { ActiveBatch, PickTask } from '../../domain/entity/Picking';
+import type { ActiveBatch, PickTask, WaveCreateResult } from '../../domain/entity/Picking';
+import { authSession } from '../../../../infrastructure/auth/AuthSession';
 
 const deps = createPickingDependencies();
 
 export function createPickingState() {
+	const defaultWh = authSession.getUser()?.warehouseIds?.[0] ?? 1;
+
 	let batch = $state<ActiveBatch | null>(null);
 	let task = $state<PickTask | null>(null);
 	let scannedBarcode = $state('');
@@ -12,6 +15,10 @@ export function createPickingState() {
 	let busy = $state(false);
 	let error = $state<string | null>(null);
 	let info = $state<string | null>(null);
+
+	let warehouseId = $state(defaultWh);
+	let soIdsInput = $state('');
+	let waveResult = $state<WaveCreateResult | null>(null);
 
 	async function refresh() {
 		loading = true;
@@ -40,12 +47,29 @@ export function createPickingState() {
 		}
 	}
 
-	function setScannedBarcode(value: string) {
-		scannedBarcode = value;
-	}
+	async function createWave() {
+		const soIds = soIdsInput
+			.split(/[\s,;]+/)
+			.map((s) => s.trim())
+			.filter(Boolean)
+			.map((s) => Number(s))
+			.filter((n) => Number.isInteger(n) && n > 0);
 
-	function setQuantityPicked(value: number) {
-		quantityPicked = value;
+		busy = true;
+		error = null;
+		waveResult = null;
+		info = null;
+		try {
+			waveResult = await deps.waveCreate.execute(soIds, warehouseId);
+			info = `Wave batch #${waveResult.batchId} (${waveResult.batchStatus})`;
+			await refresh();
+			return true;
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'No se pudo crear el wave';
+			return false;
+		} finally {
+			busy = false;
+		}
 	}
 
 	async function confirm() {
@@ -117,9 +141,15 @@ export function createPickingState() {
 		get busy() { return busy; },
 		get error() { return error; },
 		get info() { return info; },
-		setScannedBarcode,
-		setQuantityPicked,
+		get warehouseId() { return warehouseId; },
+		get soIdsInput() { return soIdsInput; },
+		get waveResult() { return waveResult; },
+		setScannedBarcode: (v: string) => { scannedBarcode = v; },
+		setQuantityPicked: (v: number) => { quantityPicked = v; },
+		setWarehouseId: (v: number) => { warehouseId = v; },
+		setSoIdsInput: (v: string) => { soIdsInput = v; },
 		refresh,
+		createWave,
 		confirm,
 		shortPick,
 		completeBatch
