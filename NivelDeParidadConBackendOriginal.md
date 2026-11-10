@@ -1,47 +1,66 @@
 # Nivel de paridad con el backend original
 
-## Estado global
-
-**NO SUSTITUIBLE.** El backend original Flask permanece intacto y activo. El gemelo tiene runtime Core, AIP separado, persistencia CID experimental, API técnica y reglas puras iniciales de inventario. No tiene paridad de negocio ni autenticación de usuario.
-
 ## Criterio
 
-Para cada ruta comparo método/URL, DTO, validación, auth/autorización, status y JSON, efectos laterales, transacciones, locks, idempotencia, auditoría, eventos y comportamiento ante concurrencia/reinicio. Una ruta homónima no demuestra paridad.
+No declaro paridad por tener rutas con nombres parecidos. Cada caso debe igualar método, ruta, DTO, validación, autenticación, autorización, status HTTP, cuerpo de respuesta, efectos laterales, transacción, idempotencia y errores observables por admin y móvil.
 
-## Matriz
+## Estado global
 
-| Superficie | Original | Gemelo | Estado |
+**NO SUSTITUIBLE.** El gemelo es un primer corte ejecutable de infraestructura Core. Todavía no puede atender el frontend original. El backend Flask no se elimina ni se modifica.
+
+El inventario de rutas y clientes se encuentra en `wms-twin/docs/MAPA_RUTAS_ORIGINAL.md`. Ese mapa se obtuvo de los blueprints y esquemas originales; cada endpoint debe verificarse además contra sus servicios y tests antes de marcarse equivalente.
+
+## Matriz de capacidades
+
+| Área | Original | Gemelo | Paridad |
 |---|---|---|---|
-| Health | GET `/api/health` | Mismo cuerpo público | Contrato básico implementado; falta comparación E2E |
-| AIP | No aplica | Listener :8081, AIP v1 | Integrado |
-| API técnica | No aplica | `/api/twin/*` Bearer | Implementada, no compatible WMS |
-| Auth | JWT HS256 8h, cookies HttpOnly, CSRF, lockout y revocación | No | Pendiente |
-| Usuarios/roles/permisos | CRUD, page permissions, warehouse scopes | No | Pendiente |
-| Warehouses/zones/bins/items | CRUD, búsqueda, paginación, import | Solo registros genéricos | Pendiente |
-| Inventory | SQL locks, reservas, backorders, auditoría | Invariantes puras | Parcial dominio; no paridad |
-| Receiving/putaway | Flujos PO, recepción, movimiento | No | Pendiente |
-| Picking/waves | Batch, wave, short pick, cancel | No | Pendiente |
-| Packing/shipping | Verificación, fulfill, void | No | Pendiente |
-| Counts/adjustments | Conteo, aprobación y ajustes | Reglas base | Pendiente |
-| Transfers | Movimiento y transferencias | Validación pura | Parcial dominio; no paridad |
-| Orders/RMA/POS | Workflows completos | No | Pendiente |
-| Events/snapshots | Outbox, consumer groups, ack, cursor | Pulse Core no equivale al contrato WMS | Pendiente |
-| Connectors/webhooks/inbound/dockd | Scopes, firmas, retry, DLQ | No | Pendiente |
-| Auditoría | Cadena hash y atribución WMS | Audit Core sin mapeo WMS | Pendiente |
-| Diferenciales/E2E | Suite original | Tests unitarios técnicos | Pendiente |
+| Arranque API | Flask | Go + PrismaTec Node | Parcial, contratos distintos |
+| Persistencia | PostgreSQL/SQLAlchemy | Organismos + bloques CID Core | Implementada en corte técnico; no equivalente transaccional |
+| Identidad de nodo | No aplica | NodeID Core | Implementada |
+| Identidad transporte | No aplica | TCP/libp2p según Core | Configurable; no validada en WMS E2E |
+| AIP Core | No aplica | AIP v1 en listener independiente | Implementado |
+| CRUD genérico | Rutas específicas SQL | `/api/twin/records/*` | No compatible |
+| Autenticación | JWT HS256 + estado vivo de usuario | Bearer técnico independiente | No compatible |
+| Cookie `sentry_auth` | HttpOnly/SameSite Strict | No | Pendiente |
+| CSRF doble envío | Cookie `sentry_csrf` + header | No | Pendiente |
+| Roles/permisos/páginas | DB y permisos por página | No | Pendiente |
+| Alcance por almacén | Path/query/body consistente | No | Pendiente |
+| Warehouses/zones/bins/items | CRUD, validación y relaciones | Sin endpoints compatibles | Pendiente |
+| Inventario y reservas | Transacciones y locks | Invariantes puras solamente | No paridad |
+| Receiving/put-away | Recepción y ubicación | No | Pendiente |
+| Picking/waves/short picks | Flujo completo | No | Pendiente |
+| Packing/shipping/fulfillment | Verificación y despacho | No | Pendiente |
+| Cycle counts/adjustments | Conteos y aprobación | No | Pendiente |
+| Transferencias | Transfer orders e inter-warehouse | No | Pendiente |
+| Auditoría | Hash-chain, servicios y eventos | Audit Core JSONL parcial | No paridad |
+| Outbox/events/webhooks | Publicación, consumidores, DLQ y replay | No | Pendiente |
+| Conectores/importaciones | Credenciales, sincronización y CSV | No | Pendiente |
+| Pruebas diferenciales | Suite extensa Flask | Tests unitarios iniciales | Pendiente |
 
-## Mapa de rutas
+## Autenticación que debo reproducir
 
-Inventario inicial: `wms-twin/docs/MAPA_RUTAS_BACKEND_ORIGINAL.md`. Incluye auth, lookup, receiving, putaway, picking, packing, shipping, inventory, transfers, warehouses, administración y superficies versionadas Events, Snapshot, Inbound, Dashboard, Dockd y POS. Se deriva de decoradores Flask; falta contrastar OpenAPI y fixtures.
+- JWT HS256 con expiración de 8 horas y claims de usuario/almacenes.
+- Cookie `sentry_auth` HttpOnly, SameSite Strict, Secure bajo HTTPS.
+- Cookie `sentry_csrf` y header `X-CSRF-Token` para mutaciones desde admin.
+- Mobile usa Bearer JWT.
+- Revalidación de usuario activo, rol, almacenes, cambio de contraseña y permisos de página en cada request.
+- Login rate limit y forced password change.
+- Revocación de WMS tokens con cache/Redis/PostgreSQL NOTIFY.
 
-## Frontends
+Validar solo firma JWT no es suficiente y sería una regresión de seguridad.
 
-Admin usa `/api` relativo, cookies `sentry_auth/sentry_csrf` y `X-CSRF-Token`. Mobile usa `EXPO_PUBLIC_API_URL` y Bearer JWT. Un proxy o URL de deployment puede alternar backend sin reescribir pantallas, pero solo después de paridad. El gemelo actual solo admite health y API técnica.
+## Bloqueo distribuido detectado
 
-## Evidencia CI
+El snapshot de replicación Core no transporta los bytes de bloques CID. El organismo remoto recibe referencias a CID que podrían no existir en su almacenamiento local. Hasta resolver transferencia/rehidratación verificable de bloques y probarla, el almacenamiento WMS no se considera replicado. Además, Core aún documenta DHT/GossipSub como futuro y no ofrece quorum seguro de dos nodos ante partición.
 
-El workflow específico del gemelo en commit `ee78910` terminó **success**: módulo/dependencias, normalización de formato en workspace efímero, `go vet` y `go test -race`. La normalización automática es temporal; debo publicar código ya formateado. Los workflows separados de auditoría npm/pip fallaron por dependencias del repo original; no atribuyo esos fallos al gemelo ni modifico el backend original para silenciarlos.
+## Condición para declarar una ruta equivalente
 
-## Sustitución
+1. Capturar fixtures de request/response del original.
+2. Implementar DTO y validación idénticos.
+3. Comparar status y JSON canónico.
+4. Verificar permisos y aislamiento entre almacenes.
+5. Verificar transacciones, concurrencia e idempotencia.
+6. Ejecutar pruebas con el frontend original.
+7. Registrar evidencia y commit en esta matriz y en `AUDITORIA_GEMELO.md`.
 
-No cambiar upstream de producción hasta cerrar auth, rutas consumidas por ambos frontends, transacciones de stock, idempotencia/autoridad, pruebas diferenciales, E2E, backup/restore, reinicio, failover y rollback/reconciliación. El backend original se conserva incluso después de un despliegue gradual.
+Hasta entonces, el endpoint se marca como pendiente, aunque su lógica interna exista.
