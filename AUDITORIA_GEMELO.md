@@ -240,3 +240,15 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Corrección:** parseo explícito del esquema HTTP, comparación case-insensitive del nombre Bearer, rechazo de esquema ausente/vacío y comparación constante del token.
 - **Prueba:** se mantiene la prueba del ledger HTTP y añado cobertura explícita del token desnudo en server_test.go.
 - **Estado:** corrección publicada en el commit actual; CI pendiente.
+
+
+### AUD-0020 — Primitivas de seguridad para fase 02
+
+- **Commit:** esta entrega, identificable por `feat(wms-twin): add auth security primitives`.
+- **Archivos:** `wms-twin/internal/security/auth/jwt.go`, `csrf.go`, `password.go` y `auth_test.go`; actualización de guía, estructura, paridad y README; especificación `wms-twin/docs/FASE_02_SEGURIDAD.md`.
+- **Detonante:** comenzar a reproducir el contrato de identidad del backend original sin presentar la API técnica como autenticación de usuarios.
+- **Cambio:** implementé HS256 con claims del original, validación de algoritmo/firma/expiración/vida máxima, CSRF criptográfico double-submit y política de password.
+- **Decisión:** el secreto JWT debe tener al menos 32 bytes. El paquete no toma decisiones de autorización ni confía en claims de rol/almacén para autorizar operaciones.
+- **Límite:** no implementé endpoints login/logout/refresh, bcrypt, persistencia de usuarios, estado vivo, revocación, lockout, cookies HTTP ni permisos. El Bearer técnico sigue activo.
+- **Pruebas añadidas:** round-trip de claims, expiración, manipulación de firma, algoritmo no permitido, secreto débil, CSRF y política de password.
+- **Validación:** no ejecuté Go localmente en este entorno. La validación queda pendiente del workflow CI de esta rama; no marco la fase como terminada.

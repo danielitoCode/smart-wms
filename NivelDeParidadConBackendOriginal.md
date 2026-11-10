@@ -88,3 +88,18 @@ La ejecución `42892797788` validó resolución del módulo, checksum y formato 
 ## Última evidencia de CI
 
 La ejecución `42893176180` validó el corte anterior del ledger. En `42895311390`, módulos, gofmt, vet y los paquetes inventoryledger/corestore/domain/replication/runtime pasaron; httpapi falló por aceptar un token sin el esquema Bearer. La corrección está en este commit y queda pendiente de CI. No cambia el estado global: no hay paridad de autenticación original, DTO/rutas de negocio y flujos WMS.
+
+
+## Avance de autenticación — primitivas, no paridad
+
+| Componente | Estado del gemelo | Paridad |
+|---|---|---|
+| Firma JWT HS256 | Primitiva añadida; claims del original | Parcial, aún sin endpoints ni estado vivo |
+| Verificación JWT | Firma, algoritmo, expiración, vida máxima y claims | Parcial, no consulta usuario persistido |
+| CSRF | Generación aleatoria y comparación double-submit | Parcial, aún no conectado a cookies HTTP |
+| Política de password | Validación equivalente de longitud/letra/dígito y bloqueo de admin | Parcial, sin cambio de password ni bcrypt |
+| Login/logout/refresh | No implementados | Pendiente |
+| Sesión, revocación y lockout | No implementados | Pendiente |
+| Roles, page permissions y warehouse scopes | No implementados | Pendiente |
+
+El Bearer técnico continúa siendo el único mecanismo activo. La fase completa requiere identidad Core-backed, estado vivo por request, cookies/CSRF y pruebas diferenciales. Ver `wms-twin/docs/FASE_02_SEGURIDAD.md`.

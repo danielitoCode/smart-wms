@@ -107,3 +107,8 @@ Incorporé las dependencias indirectas exactas generadas por `go mod tidy` con G
 ## Evidencia de validación
 
 La ejecución `42893176180` validó el corte anterior del ledger. En la ejecución `42895311390`, formato y vet pasaron; inventoryledger, corestore, domain/inventory, replication y runtime pasaron sus tests. httpapi falló por aceptación de token sin esquema Bearer; ya estoy corrigiendo el middleware. La paridad Flask sigue sin demostrarse.
+
+
+## Seguridad: primitivas y frontera de fase 02
+
+Añadí `internal/security/auth` para implementar HS256, CSRF double-submit y política de password. Este paquete no lee ni autoriza usuarios: el siguiente paso es conectarlo a un repositorio de identidades Core-backed y al middleware HTTP. El contrato completo, decisiones y criterios de aceptación están en `wms-twin/docs/FASE_02_SEGURIDAD.md`. No confundo las primitivas criptográficas con autenticación terminada.

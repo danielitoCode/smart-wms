@@ -171,3 +171,8 @@ La ejecución GitHub Actions `42893176180`, sobre el commit `4b3880fe9a0dfec329c
 ## Resultado de CI de replicación y corrección de autenticación — 2026-11-10
 
 La ejecución 42895311390 pasó el guard de documentación/alcance, verificación del grafo de módulos, formato Go y vet. La suite race ejecutó los paquetes: inventoryledger, corestore, domain/inventory, replication y runtime pasaron. El paquete httpapi falló porque el middleware aceptaba un token desnudo sin el esquema Bearer. Ya identifiqué el detonante y estoy endureciendo el parser para exigir Authorization: Bearer <token>, con prueba específica. El commit de formato automático no se publicó porque la suite no terminó en success.
+
+
+## Avance de fase 02 — 2026-11-10
+
+Añadí `internal/security/auth` con primitives de JWT HS256, CSRF double-submit y validación de password. Esta entrega es fundacional: todavía no hay login ni middleware de sesión integrado, no existe repositorio de usuarios y el Bearer técnico sigue siendo el único guard activo. La especificación y los criterios están en `wms-twin/docs/FASE_02_SEGURIDAD.md`. El CI debe ejecutar vet y race tests; no declaro estos tests ejecutados localmente.
