@@ -49,6 +49,7 @@
 			<a class="brand" href="/">Smart WMS</a>
 			<nav>
 				<a href="/inventory" class:active={page.url.pathname.startsWith('/inventory')}>Inventario</a>
+				<a href="/receiving" class:active={page.url.pathname.startsWith('/receiving')}>Recepción</a>
 				<a href="/warehouses" class:active={page.url.pathname.startsWith('/warehouses')}>Almacenes</a>
 				<a href="/items" class:active={page.url.pathname.startsWith('/items')}>Ítems</a>
 			</nav>
