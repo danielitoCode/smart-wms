@@ -146,3 +146,8 @@ La prueba manual confirmó POST 201, GET 200, CID/RootCID y contador de organism
 | Importación de usuarios | JSON con hashes bcrypt | No existe aún exportador automatizado desde PostgreSQL |
 
 El Bearer técnico sigue protegiendo `/api/twin/*`. La autenticación de usuarios no convierte todavía esas rutas genéricas en endpoints de negocio compatibles. Ver `wms-twin/docs/FASE_02_SEGURIDAD.md`.
+
+
+## Importación de identidades — endurecimiento
+
+La importación ahora es idempotente y reanudable. Omite IDs existentes sin sobrescribirlos, rechaza usernames que colisionan con otros IDs y persiste solo los usuarios faltantes. El runtime reintenta el import en cada arranque cuando el archivo está configurado. El hash de nuevas contraseñas usa bcrypt cost 12, equivalente al default de Python `bcrypt.gensalt()`.

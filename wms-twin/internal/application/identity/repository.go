@@ -17,6 +17,7 @@ import (
 )
 
 const userKind = "users"
+const passwordHashCost = 12
 
 var (
 	ErrNotFound           = errors.New("user not found")
@@ -64,7 +65,7 @@ type Repository struct {
 var dummyPasswordHash []byte
 
 func init() {
-	dummyPasswordHash, _ = bcrypt.GenerateFromPassword([]byte("not-a-real-user-password"), bcrypt.DefaultCost)
+	dummyPasswordHash, _ = bcrypt.GenerateFromPassword([]byte("not-a-real-user-password"), passwordHashCost)
 }
 
 func New(store *corestore.Store) *Repository { return &Repository{store: store} }

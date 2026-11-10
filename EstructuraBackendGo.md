@@ -129,3 +129,8 @@ La ejecución `42897626723` sobre el commit `d8c2c02e17c667620cccdf6dcb017a83f33
 El HTTP server incorpora `internal/httpapi/auth.go` para login/logout/me/refresh/change-password, JWT, cookies, CSRF, forced-change, lockout persistente y wrappers de autorización. `RequireAuth` refresca rol, estado y warehouse grants desde el repositorio Core en cada petición; `RequirePagePermission` aplica los grants de página. El runtime lee `JWT_SECRET` y puede importar identidades desde `WMS_TWIN_BOOTSTRAP_USERS_FILE`, solo si el repositorio está vacío y el archivo tiene permisos 0600 o más restrictivos.
 
 Los endpoints de negocio aún no están migrados ni envueltos con estas protecciones. La autenticación está conectada al contrato HTTP, no equivale a paridad global.
+
+
+## Bootstrap reanudable y coste bcrypt
+
+La importación de identidades ahora es idempotente: omite IDs ya persistidos, no sobrescribe usuarios existentes, rechaza colisiones de username y añade los faltantes. Esto permite reanudar después de una importación parcial. El runtime procesa el archivo configurado en cada arranque, pero solo añade identidades que aún no existen. Hashes nuevos usan bcrypt cost 12 para igualar el default del backend original.

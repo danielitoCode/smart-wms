@@ -2,16 +2,12 @@ package identity
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"strings"
 	"time"
 )
 
-var ErrAlreadyInitialized = errors.New("identity repository already contains users")
-
 // ImportJSON accepts an export containing bcrypt hashes, never plaintext
-// passwords. It refuses to merge into an initialized identity store.
+// passwords. Import is idempotent so a partially completed import can resume.
 func (r *Repository) ImportJSON(data []byte) error {
 	var users []User
 	if err := json.Unmarshal(data, &users); err != nil {
@@ -20,6 +16,8 @@ func (r *Repository) ImportJSON(data []byte) error {
 	return r.Import(users)
 }
 
+// Import never overwrites an existing user. Matching IDs are skipped, new
+// IDs are added, and username collisions or duplicate input rows are rejected.
 func (r *Repository) Import(users []User) error {
 	if len(users) == 0 {
 		return fmt.Errorf("%w: export is empty", ErrInvalidUser)
@@ -30,12 +28,15 @@ func (r *Repository) Import(users []User) error {
 	if err != nil {
 		return err
 	}
-	if len(existing) != 0 {
-		return ErrAlreadyInitialized
+	byID := make(map[int64]User, len(existing))
+	byName := make(map[string]int64, len(existing))
+	for _, user := range existing {
+		byID[user.UserID] = user
+		byName[user.Username] = user.UserID
 	}
 	seenIDs := make(map[int64]struct{}, len(users))
 	seenNames := make(map[string]struct{}, len(users))
-	normalized := make([]User, 0, len(users))
+	pending := make([]User, 0, len(users))
 	for _, user := range users {
 		user = normalizeUser(user)
 		if user.CreatedAt.IsZero() {
@@ -52,9 +53,17 @@ func (r *Repository) Import(users []User) error {
 		}
 		seenIDs[user.UserID] = struct{}{}
 		seenNames[user.Username] = struct{}{}
-		normalized = append(normalized, user)
+		if _, exists := byID[user.UserID]; exists {
+			continue
+		}
+		if existingID, exists := byName[user.Username]; exists {
+			return fmt.Errorf("%w: username belongs to user_id %d", ErrDuplicateUsername, existingID)
+		}
+		byID[user.UserID] = user
+		byName[user.Username] = user.UserID
+		pending = append(pending, user)
 	}
-	for _, user := range normalized {
+	for _, user := range pending {
 		if err := r.persistLocked(user); err != nil {
 			return fmt.Errorf("import user %d (%s): %w", user.UserID, user.Username, err)
 		}
@@ -69,8 +78,4 @@ func ValidateExportFileMode(mode uint32) error {
 		return fmt.Errorf("identity export permissions must be 0600 or stricter")
 	}
 	return nil
-}
-
-func ValidateImportedUsername(username string) bool {
-	return strings.TrimSpace(username) != "" && normalizeUsername(username) == username
 }

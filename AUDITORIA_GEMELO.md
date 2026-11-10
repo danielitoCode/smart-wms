@@ -288,3 +288,12 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Pruebas añadidas:** login/me/cookies/CSRF/cambio de password, invalidación de token anterior, lockout persistente, forced-change y warehouse mismatch/denial, importación y reapertura.
 - **Validación:** pendiente del CI de esta rama; no declaro las pruebas ejecutadas localmente.
 - **Incidencia de smoke test:** la respuesta local `/api/health` reportada como `service=sentry-wms` no coincide con el handler publicado, que responde `service=smart-wms-twin` e incluye `time`. No la atribuyo al gemelo hasta identificar el proceso que escucha en el puerto 5001.
+
+
+### AUD-0024 — Importación reanudable y coste bcrypt compatible
+
+- **Cambio:** convertí el importador de identidades en idempotente; los IDs ya existentes no se sobrescriben, las colisiones de username se rechazan y las identidades faltantes se incorporan.
+- **Recuperación:** el runtime vuelve a procesar el archivo bootstrap en cada arranque, de modo que una importación parcial puede reanudarse.
+- **Seguridad:** el archivo sigue exigiendo permisos 0600 o más restrictivos y solo contiene hashes bcrypt.
+- **Paridad:** los hashes generados por el gemelo pasan a coste 12, equivalente al default de `bcrypt.gensalt()` en el backend original.
+- **Validación:** pendiente del CI de este nuevo commit.

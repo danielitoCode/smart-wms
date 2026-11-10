@@ -111,35 +111,27 @@ func New(cfg Config) (*Runtime, error) {
 	}
 	users := identity.New(store)
 	if cfg.BootstrapUsersFile != "" {
-		existing, err := users.List()
+		info, err := os.Stat(cfg.BootstrapUsersFile)
 		if err != nil {
 			cancel()
 			_ = node.Stop()
-			return nil, fmt.Errorf("inspect Core identity store: %w", err)
+			return nil, fmt.Errorf("stat identity export: %w", err)
 		}
-		if len(existing) == 0 {
-			info, err := os.Stat(cfg.BootstrapUsersFile)
-			if err != nil {
-				cancel()
-				_ = node.Stop()
-				return nil, fmt.Errorf("stat identity export: %w", err)
-			}
-			if err := identity.ValidateExportFileMode(uint32(info.Mode().Perm())); err != nil {
-				cancel()
-				_ = node.Stop()
-				return nil, err
-			}
-			data, err := os.ReadFile(cfg.BootstrapUsersFile)
-			if err != nil {
-				cancel()
-				_ = node.Stop()
-				return nil, fmt.Errorf("read identity export: %w", err)
-			}
-			if err := users.ImportJSON(data); err != nil {
-				cancel()
-				_ = node.Stop()
-				return nil, fmt.Errorf("bootstrap Core identities: %w", err)
-			}
+		if err := identity.ValidateExportFileMode(uint32(info.Mode().Perm())); err != nil {
+			cancel()
+			_ = node.Stop()
+			return nil, err
+		}
+		data, err := os.ReadFile(cfg.BootstrapUsersFile)
+		if err != nil {
+			cancel()
+			_ = node.Stop()
+			return nil, fmt.Errorf("read identity export: %w", err)
+		}
+		if err := users.ImportJSON(data); err != nil {
+			cancel()
+			_ = node.Stop()
+			return nil, fmt.Errorf("bootstrap Core identities: %w", err)
 		}
 	}
 	apiServer := httpapi.NewWithIdentity(node, store, cfg.APIToken, users, []byte(cfg.JWTSecret), cfg.MaxLoginAttempts, cfg.LoginLockout, cfg.RequirePacking)

@@ -1,15 +1,14 @@
 package identity
 
 import (
-	"errors"
-	"testing"
+		"testing"
 	"time"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 	"github.com/yecharlot/PrismaTec-Core/core"
 )
 
-func TestImportRequiresBcryptAndOnlyRunsOnEmptyIdentityStore(t *testing.T) {
+func TestImportRequiresBcryptAndResumesWithoutOverwritingExistingUsers(t *testing.T) {
 	node, err := core.NewNode(core.Config{DataDir: t.TempDir(), Name: "wms-identity-import"})
 	if err != nil {
 		t.Fatal(err)
@@ -27,8 +26,8 @@ func TestImportRequiresBcryptAndOnlyRunsOnEmptyIdentityStore(t *testing.T) {
 	if err := repository.Import([]User{user}); err != nil {
 		t.Fatal(err)
 	}
-	if err := repository.Import([]User{user}); !errors.Is(err, ErrAlreadyInitialized) {
-		t.Fatalf("expected initialized-store rejection, got %v", err)
+	if err := repository.Import([]User{user}); err != nil {
+		t.Fatalf("idempotent re-import failed: %v", err)
 	}
 	if err := ValidateExportFileMode(0644); err == nil {
 		t.Fatal("world-readable export file was accepted")

@@ -136,3 +136,10 @@ También configuro `JWT_SECRET` (mínimo 32 bytes) y `WMS_TWIN_REQUIRE_PACKING` 
 ## Límites de este corte
 
 Los endpoints de autenticación están conectados, pero todavía no existe gestión HTTP de usuarios ni auditoría equivalente al cambio de contraseña. Los wrappers de autorización son reutilizables, pero aún no protegen rutas de negocio porque esas rutas no han sido portadas. El ajuste `require_packing` no consulta todavía `app_settings`. El Bearer técnico continúa siendo el guard de `/api/twin/*`. No conectar el frontend hasta completar la paridad de rutas y DTO.
+
+
+## Importación reanudable
+
+La importación JSON ahora es idempotente. Si una identidad ya existe con el mismo `user_id`, no la sobrescribo; si un username ya pertenece a otro ID, rechazo la colisión. Solo persisto usuarios faltantes. El runtime vuelve a procesar el archivo configurado en cada arranque, permitiendo reanudar una importación parcial. El archivo se valida siempre y debe ser 0600 o más restrictivo.
+
+El coste bcrypt para contraseñas creadas/cambiadas por el gemelo es 12, igual al default de `bcrypt.gensalt()` del backend Python.

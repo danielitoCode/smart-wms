@@ -197,3 +197,8 @@ Incorporé `/api/auth/login`, `logout`, `me`, `refresh` y `change-password`. La 
 El lockout de 5 intentos/15 minutos (configurable) persiste como organismos Core. Para importar usuarios existentes, configuro `WMS_TWIN_BOOTSTRAP_USERS_FILE` con un JSON de usuarios que contenga hashes bcrypt, nunca passwords en claro; el archivo debe tener permisos 0600 o más restrictivos. Variables: `JWT_SECRET` (mínimo 32 bytes), `WMS_TWIN_MAX_LOGIN_ATTEMPTS`, `WMS_TWIN_LOGIN_LOCKOUT_MINUTES` y `WMS_TWIN_REQUIRE_PACKING`.
 
 **Límite importante:** estas protecciones ya están disponibles como handlers/wrappers, pero aún no he portado los endpoints de negocio Flask ni conectado todos esos wrappers a rutas WMS equivalentes. `/api/twin/*` continúa usando el Bearer técnico. Falta auditoría equivalente de cambio de password, gestión HTTP de usuarios, refresh/revocación completa y fixtures diferenciales.
+
+
+## Corrección de bootstrap y coste bcrypt — 2026-11-10
+
+Endurecí el importador para que sea idempotente y reanudable: al arrancar con `WMS_TWIN_BOOTSTRAP_USERS_FILE`, los usuarios cuyos IDs ya existen se omiten sin sobrescribirlos y se incorporan los que faltan. Si una importación queda parcial por un fallo de almacenamiento/replicación, el siguiente arranque puede continuar. El fichero se vuelve a validar en cada arranque y exige modo 0600 o más restrictivo. Los hashes nuevos usan coste bcrypt 12, igual al valor por defecto de `bcrypt.gensalt()` del backend Python.

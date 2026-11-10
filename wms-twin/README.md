@@ -101,3 +101,8 @@ El corte `d8c2c02e17c667620cccdf6dcb017a83f33e575c` pasó la ejecución CI `4289
 ## Autenticación HTTP disponible en el gemelo
 
 Se implementaron `/api/auth/login`, `logout`, `me`, `refresh` y `change-password`, con JWT HS256, cookies HttpOnly/CSRF, estado vivo de usuario, lockout persistente y wrappers de page/warehouse permissions. El runtime acepta `JWT_SECRET` y un `WMS_TWIN_BOOTSTRAP_USERS_FILE` con hashes bcrypt (modo 0600). No hay aún rutas WMS de negocio portadas ni gestión HTTP de usuarios; el frontend sigue sin estar habilitado para este gemelo.
+
+
+## Importación de usuarios
+
+El bootstrap de identidades es reanudable: no sobrescribe IDs existentes y añade los faltantes, por lo que puede recuperarse de una importación parcial. El archivo JSON debe contener hashes bcrypt, con permisos 0600 o más restrictivos. El coste bcrypt para hashes nuevos es 12.
