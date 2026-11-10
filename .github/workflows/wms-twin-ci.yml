@@ -78,9 +78,12 @@ jobs:
           go-version-file: wms-twin/go.mod
           cache: true
           cache-dependency-path: wms-twin/go.sum
-      - name: Download and verify dependencies
+      - name: Resolve module graph and produce checksum lock
         run: |
-          go mod download
+          go mod tidy
+          echo "BEGIN_WMS_TWIN_GOSUM"
+          cat go.sum
+          echo "END_WMS_TWIN_GOSUM"
           go mod verify
       - name: Normalize Go formatting in CI workspace
         run: |

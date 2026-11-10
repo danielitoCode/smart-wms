@@ -54,5 +54,12 @@ Cada entrada identifica fecha, commit, archivos, detonante, decisión, riesgo, p
 - **Commit afectado:** `026bad44df23e64faa22d91c844ba4942e4d131b`.
 - **Evidencia:** workflow `WMS twin validation`, ejecución `42889670356`, job `Go tests and static checks`.
 - **Detonante:** el paso `gofmt -l .` detectó archivos no formateados y detuvo el job antes de `go vet` y `go test`.
-- **Decisión de diagnóstico:** para esta fase, el workflow normaliza el formato dentro del workspace efímero de CI, deja una advertencia visible y continúa con vet/tests. No altera el commit del desarrollador. La normalización automática es temporal; debo publicar los archivos formateados en la rama cuando cierre la siguiente pasada de validación.
-- **Estado:** la ejecución corregida está pendiente.
+- **Decisión:** el workflow normaliza el formato dentro del workspace efímero de CI, deja una advertencia visible y continúa con vet/tests. No altera el commit. Esta normalización es temporal; debo publicar los archivos formateados en la rama cuando cierre la siguiente pasada.
+
+### AUD-0007 — Falta de go.sum en primera integración
+
+- **Commit afectado:** `e7e18ba38b1f591659dc2e6ac224fa72cd4d49dc`.
+- **Evidencia:** job `130088180410`, error `missing go.sum entry` para los imports de PrismaTec-Core.
+- **Detonante:** `go mod download` no produjo las entradas completas que necesitaban `go vet` y los paquetes importados.
+- **Corrección:** cambio el workflow a `go mod tidy` para resolver el grafo real, generar `go.sum` y mostrar su contenido delimitado para incorporarlo al repositorio.
+- **Estado:** pendiente de ejecutar CI y guardar el checksum lock generado.
