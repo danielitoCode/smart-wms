@@ -9,8 +9,10 @@ export type EnsureAuthenticatedResult =
 
 /**
  * Hardens the client guard: presence of a JWT is not enough.
- * Validates the session against GET /api/auth/me and, on 401,
+ * Validates the session against GET /api/auth/me and, on 401/403,
  * attempts POST /api/auth/refresh once before clearing the session.
+ *
+ * Network / timeout / 5xx never clear the stored token (unavailable).
  */
 export class EnsureAuthenticatedUseCase {
 	constructor(private readonly repository: AuthRepository) {}
@@ -34,7 +36,7 @@ export class EnsureAuthenticatedUseCase {
 			return {
 				ok: false,
 				reason: 'unavailable',
-				message: err instanceof Error ? err.message : 'No se pudo validar la sesión'
+				message: this.describeUnavailable(err)
 			};
 		}
 	}
@@ -44,17 +46,34 @@ export class EnsureAuthenticatedUseCase {
 			await this.repository.refreshToken();
 			const user = await this.repository.getCurrentUser();
 			return { ok: true, user };
-		} catch {
-			this.repository.logout();
+		} catch (err) {
+			if (this.isUnauthorized(err)) {
+				this.repository.logout();
+				return {
+					ok: false,
+					reason: 'unauthorized',
+					message: 'Sesión expirada o no válida'
+				};
+			}
+
 			return {
 				ok: false,
-				reason: 'unauthorized',
-				message: 'Sesión expirada o no válida'
+				reason: 'unavailable',
+				message: this.describeUnavailable(err)
 			};
 		}
 	}
 
 	private isUnauthorized(err: unknown): boolean {
-		return err instanceof ApiError && (err.status === 401 || err.status === 403);
+		return err instanceof ApiError && err.isUnauthorized;
+	}
+
+	private describeUnavailable(err: unknown): string {
+		if (err instanceof ApiError) {
+			if (err.code === 'timeout') return 'Tiempo de espera agotado al validar la sesión';
+			if (err.isNetwork) return 'No se pudo contactar al servidor de autenticación';
+			return err.message || 'No se pudo validar la sesión';
+		}
+		return err instanceof Error ? err.message : 'No se pudo validar la sesión';
 	}
 }

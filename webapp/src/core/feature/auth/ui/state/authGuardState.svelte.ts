@@ -9,33 +9,51 @@ export type AuthGuardStatus = 'checking' | 'authenticated' | 'anonymous' | 'erro
 /**
  * UI state for the protected (app) layout.
  * Never treats a stored JWT as proof of auth without EnsureAuthenticatedUseCase.
+ * Concurrent verify() calls share a single in-flight promise.
  */
 export function createAuthGuardState() {
 	let status = $state<AuthGuardStatus>('checking');
 	let user = $state<User | null>(null);
 	let message = $state<string | null>(null);
+	let inFlight: Promise<void> | null = null;
 
 	async function verify() {
-		status = 'checking';
-		message = null;
+		if (inFlight) return inFlight;
 
-		const result: EnsureAuthenticatedResult = await deps.ensureAuthenticated.execute();
+		inFlight = (async () => {
+			status = 'checking';
+			message = null;
 
-		if (result.ok) {
-			user = result.user;
-			status = 'authenticated';
-			return;
+			try {
+				const result: EnsureAuthenticatedResult = await deps.ensureAuthenticated.execute();
+
+				if (result.ok) {
+					user = result.user;
+					status = 'authenticated';
+					return;
+				}
+
+				user = null;
+				message = result.message;
+
+				if (result.reason === 'unavailable') {
+					status = 'error';
+					return;
+				}
+
+				status = 'anonymous';
+			} catch (err) {
+				user = null;
+				message = err instanceof Error ? err.message : 'Error inesperado al validar sesión';
+				status = 'error';
+			}
+		})();
+
+		try {
+			await inFlight;
+		} finally {
+			inFlight = null;
 		}
-
-		user = null;
-		message = result.message;
-
-		if (result.reason === 'unavailable') {
-			status = 'error';
-			return;
-		}
-
-		status = 'anonymous';
 	}
 
 	function logout() {
