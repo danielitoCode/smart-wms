@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/yecharlot/PrismaTec-Core/api/aip"
-	"github.com/yecharlot/PrismaTec-Core/core"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/httpapi"
+	"github.com/yecharlot/PrismaTec-Core/api/aip"
+	"github.com/yecharlot/PrismaTec-Core/core"
 )
 
 type Config struct {
@@ -43,11 +43,13 @@ func ConfigFromEnv() Config {
 		aipAddr = ":8081"
 	}
 	return Config{
-		DataDir: dataDir, NodeName: nodeName,
-		NetworkAddr: strings.TrimSpace(os.Getenv("PRISMATEC_NETWORK_ADDR")),
+		DataDir:       dataDir,
+		NodeName:      nodeName,
+		NetworkAddr:   strings.TrimSpace(os.Getenv("PRISMATEC_NETWORK_ADDR")),
 		TransportKind: strings.TrimSpace(os.Getenv("PRISMATEC_TRANSPORT")),
-		HTTPAddr: httpAddr, AIPAddr: aipAddr,
-		APIToken: os.Getenv("WMS_TWIN_API_TOKEN"),
+		HTTPAddr:      httpAddr,
+		AIPAddr:       aipAddr,
+		APIToken:      os.Getenv("WMS_TWIN_API_TOKEN"),
 	}
 }
 
@@ -68,10 +70,11 @@ func New(cfg Config) (*Runtime, error) {
 	if err := os.MkdirAll(cfg.DataDir, 0700); err != nil {
 		return nil, fmt.Errorf("create data directory: %w", err)
 	}
-
 	node, err := core.NewNode(core.Config{
-		DataDir: cfg.DataDir, Name: cfg.NodeName,
-		NetworkAddr: cfg.NetworkAddr, TransportKind: cfg.TransportKind,
+		DataDir:       cfg.DataDir,
+		Name:          cfg.NodeName,
+		NetworkAddr:   cfg.NetworkAddr,
+		TransportKind: cfg.TransportKind,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create PrismaTec node: %w", err)
@@ -81,14 +84,14 @@ func New(cfg Config) (*Runtime, error) {
 		cancel()
 		return nil, fmt.Errorf("start PrismaTec node: %w", err)
 	}
-
 	store := corestore.New(node.Organisms())
 	apiServer := httpapi.New(node, store, cfg.APIToken)
 	aipServer := &aip.Server{Node: node, Addr: cfg.AIPAddr}
-
 	return &Runtime{
-		node: node, cancel: cancel,
-		handler: apiServer.Handler(), aipHandler: aipServer.Handler(),
+		node:       node,
+		cancel:     cancel,
+		handler:    apiServer.Handler(),
+		aipHandler: aipServer.Handler(),
 	}, nil
 }
 

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yecharlot/PrismaTec-Core/core"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
+	"github.com/yecharlot/PrismaTec-Core/core"
 )
 
 type Server struct {
@@ -43,7 +43,7 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "service": "smart-wms-twin", "time": time.Now().UTC()})
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "service": "sentry-wms"})
 }
 
 func (s *Server) authorize(next http.HandlerFunc) http.HandlerFunc {
@@ -53,7 +53,8 @@ func (s *Server) authorize(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		header := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
-		if header == "" || len(header) != len(s.token) || subtle.ConstantTimeCompare([]byte(header), []byte(s.token)) != 1 {
+		if header == "" || len(header) != len(s.token) ||
+			subtle.ConstantTimeCompare([]byte(header), []byte(s.token)) != 1 {
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 			return
 		}
@@ -67,10 +68,10 @@ func (s *Server) info(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"service": "smart-wms-twin",
-		"core": s.node.Info(),
+		"service":  "smart-wms-twin",
+		"core":     s.node.Info(),
 		"aip_base": "/aip/v1",
-		"storage": "PrismaTec organism memory + local CID block store",
+		"storage":  "PrismaTec organism memory + local CID block store",
 	})
 }
 
@@ -179,7 +180,8 @@ func validPathPart(value string) bool {
 		return false
 	}
 	for _, r := range value {
-		if !(r >= 'a' && r <= 'z') && !(r >= 'A' && r <= 'Z') && !(r >= '0' && r <= '9') && r != '-' && r != '_' {
+		if !(r >= 'a' && r <= 'z') && !(r >= 'A' && r <= 'Z') &&
+			!(r >= '0' && r <= '9') && r != '-' && r != '_' {
 			return false
 		}
 	}

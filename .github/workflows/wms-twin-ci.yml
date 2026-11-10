@@ -5,6 +5,7 @@ on:
     branches: [feat/wms-prismatec-genesis]
     paths:
       - 'wms-twin/**'
+      - 'scripts/safe-update-wms-twin.sh'
       - 'Guia.md'
       - 'EstructuraBackendGo.md'
       - 'NivelDeParidadConBackendOriginal.md'
@@ -14,6 +15,7 @@ on:
     branches: [feat/wms-prismatec-genesis]
     paths:
       - 'wms-twin/**'
+      - 'scripts/safe-update-wms-twin.sh'
       - 'Guia.md'
       - 'EstructuraBackendGo.md'
       - 'NivelDeParidadConBackendOriginal.md'
@@ -38,17 +40,23 @@ jobs:
       - name: Require handover documents
         run: |
           set -eu
-          for file in Guia.md EstructuraBackendGo.md NivelDeParidadConBackendOriginal.md AUDITORIA_GEMELO.md; do
+          for file in Guia.md EstructuraBackendGo.md NivelDeParidadConBackendOriginal.md AUDITORIA_GEMELO.md wms-twin/docs/CONTRATO_FRONTEND.md wms-twin/docs/MAPA_RUTAS_BACKEND_ORIGINAL.md; do
             test -s "$file" || { echo "Missing or empty required document: $file"; exit 1; }
           done
+          test -x scripts/safe-update-wms-twin.sh
       - name: Reject modifications to original application paths
-        if: github.event_name == 'pull_request'
         env:
+          EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -eu
-          git diff --name-only "$BASE_SHA" "$HEAD_SHA" > /tmp/changed-files.txt
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            base="$BASE_SHA"
+          else
+            git fetch origin main
+            base="$(git merge-base origin/main HEAD)"
+          fi
+          git diff --name-only "$base" HEAD > /tmp/changed-files.txt
           cat /tmp/changed-files.txt
           forbidden=""
           while IFS= read -r path; do
@@ -81,9 +89,6 @@ jobs:
       - name: Resolve module graph and produce checksum lock
         run: |
           go mod tidy
-          echo "BEGIN_WMS_TWIN_GOSUM"
-          cat go.sum
-          echo "END_WMS_TWIN_GOSUM"
           go mod verify
       - name: Normalize Go formatting in CI workspace
         run: |

@@ -1,64 +1,64 @@
 # Estructura del backend Go gemelo
 
-## Decisión de arquitectura
+## Decisión
 
-Mantengo el backend Flask original sin modificaciones. El nuevo backend vive exclusivamente en `wms-twin/`, como módulo Go independiente. PrismaTec-Core se consume mediante su módulo Go público, fijado a un commit concreto; no copio su código fuente dentro de Smart WMS.
+Mantengo Flask y sus archivos originales intactos. El gemelo es un módulo Go independiente en `wms-twin/`. PrismaTec-Core se consume como dependencia Go externa fijada a un commit; su código no se copia ni se vendea.
 
-## Dependencia Core verificada
+## Core verificado
 
-Repositorio: `github.com/yecharlot/PrismaTec-Core`. El módulo declara `go 1.25.0`. La API pública inspeccionada incluye:
+Módulo `github.com/yecharlot/PrismaTec-Core`, Go 1.25.0. Superficie pública inspeccionada: `core.NewNode`, `Node.Start/Stop`, Manager de organismos (`Create/Start/Stop/Get/List/AppendEpisode/GetBlock/SetReplicas/Adopt`), AIP HTTP/SSE y block store CID. TCP/libp2p se configura en el nodo. No infiero Kademlia/GossipSub ni garantías de consenso que no estén probadas en el código y tests revisados.
 
-- `core.NewNode(core.Config)` y ciclo de vida `Node.Start/Stop`.
-- Identidad persistente NodeID y PeerID de transporte diferenciados.
-- `Node.Organisms()` con `Create`, `Start`, `Get`, `List`, `AppendEpisode` y `GetBlock`.
-- `organism.Manager.AppendEpisode` almacena el contenido en el block store CID y asocia el CID al episodio.
-- `api/aip.Server.Handler()` expone AIP v1, health, organismos, memoria/comandos, pulses y auditoría.
-- Transporte TCP/libp2p se activa desde la configuración del nodo.
-
-El commit Core fijado en `go.mod` es `84e9f40cbcc0fd0176c1d9057b20f099db2e7f5b`. No considero que esto demuestre disponibilidad de Kademlia/GossipSub: no aparecen en la superficie de transporte que se integró en este corte. No habilito esas capacidades por inferencia.
-
-## Árbol implementado
+## Árbol actual
 
 ```
 wms-twin/
 ├── go.mod
 ├── README.md
 ├── cmd/wms-twin/main.go
-├── internal/
-│   ├── runtime/runtime.go
-│   ├── corestore/store.go
-│   ├── corestore/store_test.go
-│   ├── domain/inventory/
-│   │   ├── inventory.go
-│   │   └── inventory_test.go
-│   └── httpapi/
-│       ├── server.go
-│       └── server_test.go
-└── docs/CONTRATO_FRONTEND.md
+├── docs/
+│   ├── CONTRATO_FRONTEND.md
+│   └── MAPA_RUTAS_BACKEND_ORIGINAL.md
+└── internal/
+    ├── corestore/             # episodios + bloques CID
+    ├── domain/inventory/      # invariantes puras de balance
+    ├── httpapi/               # health + API técnica Bearer
+    └── runtime/               # bootstrap Core + handlers separados
 ```
 
-### Responsabilidades
+## Topología
 
-- `cmd/wms-twin`: proceso ejecutable, dos listeners HTTP y apagado ordenado.
-- `internal/runtime`: bootstrap del nodo Core, AIP y API WMS técnica.
-- `internal/corestore`: persistencia de registros como episodios y bloques CID.
-- `internal/domain/inventory`: invariantes puras iniciales para disponibilidad, reserva, liberación, ajuste y movimiento.
-- `internal/httpapi`: health, información del nodo y API técnica de registros.
+```
+Admin/Mobile -> reverse proxy -> Flask :5000 (actual)
+                              -> WMS Twin :5001 (solo tras paridad)
+WMS Twin :5001 -> /api/health, /api/twin/*
+PrismaTec AIP :8081 -> /healthz, /aip/v1/*
+```
 
-## Modelo de persistencia
+Los listeners WMS y AIP están separados en el mismo proceso. Cada nodo debe tener su propio DataDir e identidad.
 
-Cada tipo de registro usa un organismo `wms-records-{kind}`. Una escritura agrega un episodio `wms.record.upsert`; el contenido JSON se guarda como bloque CID. Una eliminación agrega un episodio `wms.record.deleted`. La lectura reduce la secuencia de episodios y toma el último estado por ID.
+## Persistencia actual y límites
 
-Esta estrategia conserva versiones y utiliza persistencia Core, pero aún no resuelve transacciones entre varios organismos ni autoridad distribuida de inventario. Para inventario real debo crear un agregado que serialice mutaciones, exija idempotency key y verifique autoridad/epoch antes de confirmar.
+Cada colección genérica usa organismo `wms-records-{kind}`; cada upsert agrega un episodio y guarda el JSON como bloque CID. Delete agrega tombstone. List reduce el historial y recupera el bloque CID. Esto preserva versiones pero el historial crece, las lecturas cuestan O(n) en episodios y no hay transacción multi-organismo. No es todavía la persistencia final del inventario crítico.
 
-## Seguridad actual y pendiente
+## Modelo objetivo
 
-La API técnica exige `WMS_TWIN_API_TOKEN` Bearer. No implementa todavía la autenticación de usuario original. No debe publicarse a Internet ni conectarse al frontend original hasta completar JWT/cookies/CSRF, autorización por almacén/rol y auditoría de negocio.
+Organismos/agregados por dominio:
+- Warehouse, Zone, Bin, Item, Vendor.
+- InventoryBalance, Reservation, Adjustment, CycleCount.
+- PurchaseOrder, Receipt, PutawayTask, SalesOrder, PickBatch, Pack, Shipment, TransferOrder, RMA.
+- User, Role, PagePermission, WarehouseGrant, WMS API Token.
+- Connector, Mapping, EventSubscription, ConsumerGroup, Delivery, SnapshotCursor.
 
-## Restricciones de diseño
+No concentrar todo en un organismo global. Definir límites de consistencia, idempotency keys y autoridad por partición. Las operaciones entre agregados requieren saga/outbox persistido; no prometer atomicidad distribuida si Core no la proporciona.
 
-- No añadir PostgreSQL/SQLite como persistencia paralela del gemelo.
-- No copiar PrismaTec-Core ni sus internals.
-- No escribir código nuevo en `api/`, `admin/`, `mobile/` o `db/` del backend original.
-- Mantener identidad del nodo, identidad del usuario y PeerID como conceptos distintos.
-- La conclusión de Mind no es autorización: las operaciones deben pasar por política/capacidad y validaciones de dominio.
+## Identidades y distribución
+
+NodeID = nodo; PeerID = transporte; RootCID = manifiesto/contenido; Epoch = generación de autoridad. No son intercambiables. Para inventario, cada escritura debe validar autoridad y fencing. Con dos nodos aislados no se promete disponibilidad y seguridad simultáneas; failover particionado exige quorum/witness o fail-closed.
+
+## Seguridad
+
+API técnica con Bearer independiente. Pendientes: JWT HS256 compatible, cookies `sentry_auth`, CSRF `sentry_csrf`, roles, page permissions, warehouse scopes y WMS token scopes. No exponer el listener a redes no confiables. Mind/Zyrion puede razonar, pero no sustituye policy/capability ni autorización.
+
+## Pruebas y handoff
+
+CI ejecuta dependencias, formato, vet y tests con race detector. El script local `scripts/safe-update-wms-twin.sh` valida la punta remota en worktree temporal antes del fast-forward. En cada commit actualizo Guía, Estructura, Paridad y Auditoría.
