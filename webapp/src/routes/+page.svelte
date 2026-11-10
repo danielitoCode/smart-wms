@@ -7,6 +7,7 @@
 	<p>Frontend en <strong>SvelteKit</strong> + TypeScript.</p>
 	<p>Arquitectura Feature-First / Clean Architecture.</p>
 	<ul>
+		<li><a href="/login">Login (auth)</a></li>
 		<li><a href="/inventory">Inventario (feature piloto)</a></li>
 	</ul>
 </main>
