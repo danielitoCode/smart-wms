@@ -5,8 +5,8 @@ export class ListZonesUseCase {
 	constructor(private readonly repository: WarehouseRepository) {}
 
 	execute(warehouseId: number): Promise<Zone[]> {
-		if (!Number.isFinite(warehouseId) || warehouseId <= 0) {
-			throw new Error('warehouseId is required');
+		if (!Number.isInteger(warehouseId) || warehouseId <= 0) {
+			throw new Error('warehouseId must be a positive integer');
 		}
 		return this.repository.listZones(warehouseId);
 	}
