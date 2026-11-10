@@ -14,9 +14,15 @@ export class ConfirmPutawayUseCase {
 		if (!Number.isInteger(input.toBinId) || input.toBinId <= 0) {
 			throw new Error('toBinId must be a positive integer');
 		}
+		if (input.fromBinId === input.toBinId) {
+			throw new Error('toBinId must differ from fromBinId');
+		}
 		if (!Number.isInteger(input.quantity) || input.quantity <= 0) {
 			throw new Error('quantity must be an integer greater than 0');
 		}
-		return this.repository.confirm(input);
+		return this.repository.confirm({
+			...input,
+			lotNumber: input.lotNumber?.trim() || null
+		});
 	}
 }

@@ -1,61 +1,67 @@
 import { createWarehousesDependencies } from '../../di/warehouses.dependencies';
 import type { Bin, Warehouse, Zone } from '../../domain/entity/Warehouse';
+import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 
 const deps = createWarehousesDependencies();
 
+/**
+ * Detail state for a single warehouse (zones + bins).
+ * Compatible with WarehouseDetailScreen: createWarehouseDetailState(warehouseId).
+ */
 export function createWarehouseDetailState(warehouseId: number) {
 	let warehouse = $state<Warehouse | null>(null);
 	let zones = $state<Zone[]>([]);
 	let bins = $state<Bin[]>([]);
 	let selectedZoneId = $state<number | null>(null);
 	let loading = $state(false);
+	let binsLoading = $state(false);
 	let error = $state<string | null>(null);
 
 	async function load() {
+		if (loading) return false;
+		if (!Number.isInteger(warehouseId) || warehouseId <= 0) {
+			error = 'warehouseId inválido';
+			return false;
+		}
 		loading = true;
 		error = null;
+		warehouse = null;
+		zones = [];
+		bins = [];
+		selectedZoneId = null;
 		try {
-			const [wh, zoneRows, binRows] = await Promise.all([
-				deps.getWarehouse.execute(warehouseId).catch(async () => {
-					const list = await deps.listWarehouses.execute();
-					const found = list.find((w) => w.id === warehouseId);
-					if (!found) throw new Error('Almacén no encontrado');
-					return found;
-				}),
-				deps.listZones.execute(warehouseId),
-				deps.listBins.execute({ warehouseId })
+			const [wh, zoneList] = await Promise.all([
+				deps.getWarehouse.execute(warehouseId),
+				deps.listZones.execute(warehouseId)
 			]);
 			warehouse = wh;
-			zones = zoneRows;
-			bins = binRows;
+			zones = zoneList;
+			await loadBinsForZone(null);
+			return true;
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'No se pudo cargar el almacén';
-			warehouse = null;
-			zones = [];
-			bins = [];
+			error = toUserMessage(err, 'No se pudo cargar el almacén');
+			return false;
 		} finally {
 			loading = false;
 		}
 	}
 
-	function selectZone(zoneId: number | null) {
-		selectedZoneId = zoneId;
-	}
-
 	async function loadBinsForZone(zoneId: number | null) {
+		if (binsLoading) return false;
 		selectedZoneId = zoneId;
-		loading = true;
-		error = null;
+		binsLoading = true;
 		try {
 			bins = await deps.listBins.execute({
 				warehouseId,
-				zoneId: zoneId ?? undefined
+				...(zoneId != null ? { zoneId } : {})
 			});
+			return true;
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'No se pudieron cargar los bins';
+			error = toUserMessage(err, 'No se pudieron cargar los bins');
 			bins = [];
+			return false;
 		} finally {
-			loading = false;
+			binsLoading = false;
 		}
 	}
 
@@ -75,11 +81,13 @@ export function createWarehouseDetailState(warehouseId: number) {
 		get loading() {
 			return loading;
 		},
+		get binsLoading() {
+			return binsLoading;
+		},
 		get error() {
 			return error;
 		},
 		load,
-		selectZone,
 		loadBinsForZone
 	};
 }
