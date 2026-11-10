@@ -6,16 +6,16 @@ Frontend web de **Smart WMS**, migrado desde la plantilla Vite + Svelte a **Svel
 
 | Herramienta | Versión del equipo | Mínimo oficial SvelteKit 3 |
 |-------------|--------------------|----------------------------|
-| **Node.js** | `v22.14.0`         | `>= 22.17`                 |
-| **npm**     | `10.9.2`           | `>= 10.9.0`                |
+| **Node.js** | `26`               | `>= 22.17`                 |
+| **npm**     | `>= 10.9.0`        | `>= 10.9.0`                |
 
 El proyecto está configurado con:
 
-- `engines` en `package.json` (`node >=22.14.0`, `npm >=10.9.0`)
+- `engines` en `package.json` (`node >=26.0.0`, `npm >=10.9.0`)
 - `engine-strict=true` en `.npmrc` (npm falla si la versión no cumple)
-- `.nvmrc` y `.node-version` fijados a `22.14.0`
+- `.nvmrc` y `.node-version` fijados a `26`
 
-> **Nota:** La documentación oficial de SvelteKit 3 indica Node `>=22.17`. Con `22.14.0` debería funcionar en la mayoría de casos; si aparece algún warning o error de runtime, actualiza a Node 22.17+.
+Node 26 cumple y supera el mínimo requerido por SvelteKit 3.
 
 ## Stack
 
