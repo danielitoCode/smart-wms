@@ -4,6 +4,8 @@
 
 	let { warehouseId }: { warehouseId: number } = $props();
 
+	// Route param is fixed for this page instance; state holds the id from mount.
+	// svelte-ignore state_referenced_locally
 	const state = createWarehouseDetailState(warehouseId);
 
 	onMount(() => {
@@ -173,7 +175,7 @@
 		border-bottom: 1px solid #e2e8f0;
 	}
 	th {
-		background: #f8fafc;
+		background: #f1f5f9;
 		font-weight: 600;
 	}
 	tr.selected {
