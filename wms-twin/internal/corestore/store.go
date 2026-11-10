@@ -65,6 +65,7 @@ func(s *Store)Delete(kind,id string)error{
 	if !validKind(kind)||!validID(id){return fmt.Errorf("invalid kind or id")}
 	s.mu.Lock();defer s.mu.Unlock()
 	org,err:=s.manager.Get(orgName(kind,id));if err!=nil{return fmt.Errorf("record not found: %s/%s",kind,id)}
+	if org.Placement.Primary==s.nodeID&&org.Status!=organism.StatusRunning{org,err=s.manager.Start(org.ID);if err!=nil{return err}}
 	if !s.manager.IsLeader(org.ID){return ErrNotPrimary}
 	org,err=s.manager.AppendEpisode(org.ID,"wms.record.deleted",map[string]any{"record_id":id,"kind":kind},nil);if err!=nil{return err}
 	if s.replicator!=nil{if err:=s.replicator.SyncOrganism(org.ID);err!=nil{return &ReplicationError{OrganismID:org.ID,Cause:err}}}
