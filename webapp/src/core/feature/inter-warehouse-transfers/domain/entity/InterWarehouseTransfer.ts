@@ -1,19 +1,19 @@
 /**
  * Completed inter-warehouse inventory movement.
  *
- * This entity represents the physical movement recorded between two distinct
- * warehouses. In the current business flow, a Transfer Order authorizes and
- * controls picking/approval; this entity represents the resulting movement
- * record and its item quantities, not a second approval workflow.
+ * The current backend records the physical cross-warehouse movement when a
+ * Transfer Order approval is approved. The movement identity therefore maps
+ * to the approval aggregate (to_approval_id / external_id); it is not a
+ * separate persisted transfer header. This entity is the domain projection
+ * of that completed movement/event.
  */
 
-export type InterWarehouseTransferStatus = 'COMPLETED' | 'CANCELLED';
+export type InterWarehouseTransferStatus = 'COMPLETED';
 
 export type InterWarehouseTransferLine = {
-	transferLineId?: number;
 	itemId: number;
 	quantity: number;
-	lotNumber?: string | null;
+	itemExternalId: string;
 
 	/** Optional descriptive snapshot for domain consumers. */
 	sku?: string | null;
@@ -23,23 +23,22 @@ export type InterWarehouseTransferLine = {
 export type InterWarehouseTransfer = {
 	transferId: number;
 	externalId: string;
-	transferOrderId?: number | null;
-	transferOrderNumber?: string | null;
+	transferOrderId: number;
+	approvalId: number;
 	sourceWarehouseId: number;
 	destinationWarehouseId: number;
 	status: InterWarehouseTransferStatus;
 	lines: InterWarehouseTransferLine[];
 	transferredBy: string;
 	transferredAt: string | null;
-	reason?: string | null;
-	notes?: string | null;
 };
 
 export type RecordInterWarehouseTransfer = {
 	transferOrderId: number;
+	approvalId: number;
 	lines: Array<{
-		transferOrderLineId: number;
 		itemId: number;
+		itemExternalId: string;
 		quantity: number;
 	}>;
 };
