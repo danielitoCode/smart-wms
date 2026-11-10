@@ -1,5 +1,6 @@
 import { createReceivingDependencies } from '../../di/receiving.dependencies';
 import type {
+	CancelReceiptsResult,
 	PurchaseOrderDetail,
 	ReceiveLineInput,
 	ReceiveResult
@@ -25,11 +26,15 @@ export function createReceivingState() {
 	let submitting = $state(false);
 	let error = $state<string | null>(null);
 	let lastResult = $state<ReceiveResult | null>(null);
+	let lastCancel = $state<CancelReceiptsResult | null>(null);
+	let receiptIdsInput = $state('');
+	let cancelling = $state(false);
 
 	async function lookup() {
 		loading = true;
 		error = null;
 		lastResult = null;
+		lastCancel = null;
 		detail = null;
 		drafts = [];
 		try {
@@ -57,6 +62,10 @@ export function createReceivingState() {
 		barcode = value;
 	}
 
+	function setReceiptIdsInput(value: string) {
+		receiptIdsInput = value;
+	}
+
 	function updateDraft(index: number, patch: Partial<LineDraft>) {
 		drafts = drafts.map((d, i) => (i === index ? { ...d, ...patch } : d));
 	}
@@ -66,7 +75,6 @@ export function createReceivingState() {
 			error = 'Busca un PO primero';
 			return false;
 		}
-
 		const items: ReceiveLineInput[] = [];
 		for (const draft of drafts) {
 			if (!draft.quantity || draft.quantity <= 0) continue;
@@ -82,19 +90,19 @@ export function createReceivingState() {
 				lotNumber: draft.lotNumber.trim() || null
 			});
 		}
-
 		if (items.length === 0) {
 			error = 'Indica al menos una cantidad a recibir';
 			return false;
 		}
-
 		submitting = true;
 		error = null;
+		lastCancel = null;
 		try {
 			lastResult = await deps.receiveGoods.execute(detail.purchaseOrder.poId, items);
-			const refreshed = await deps.lookupPurchaseOrder.execute(
-				detail.purchaseOrder.poNumber
-			);
+			if (lastResult.receiptIds.length) {
+				receiptIdsInput = lastResult.receiptIds.join(', ');
+			}
+			const refreshed = await deps.lookupPurchaseOrder.execute(detail.purchaseOrder.poNumber);
 			detail = refreshed;
 			drafts = refreshed.lines
 				.filter((line) => line.quantityRemaining > 0)
@@ -116,31 +124,64 @@ export function createReceivingState() {
 		}
 	}
 
+	async function cancelReceipts(): Promise<boolean> {
+		if (!detail) {
+			error = 'Busca un PO primero';
+			return false;
+		}
+		const ids = receiptIdsInput
+			.split(/[\s,;]+/)
+			.map((s) => s.trim())
+			.filter(Boolean)
+			.map((s) => Number(s))
+			.filter((n) => Number.isInteger(n) && n > 0);
+		if (ids.length === 0) {
+			error = 'Indica al menos un receipt_id válido';
+			return false;
+		}
+		cancelling = true;
+		error = null;
+		lastResult = null;
+		try {
+			lastCancel = await deps.cancelReceipts.execute(detail.purchaseOrder.poId, ids);
+			const refreshed = await deps.lookupPurchaseOrder.execute(detail.purchaseOrder.poNumber);
+			detail = refreshed;
+			drafts = refreshed.lines
+				.filter((line) => line.quantityRemaining > 0)
+				.map((line) => ({
+					itemId: line.itemId,
+					sku: line.sku,
+					itemName: line.itemName,
+					remaining: line.quantityRemaining,
+					quantity: line.quantityRemaining,
+					binId: '',
+					lotNumber: ''
+				}));
+			return true;
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'No se pudo cancelar los recibos';
+			return false;
+		} finally {
+			cancelling = false;
+		}
+	}
+
 	return {
-		get barcode() {
-			return barcode;
-		},
-		get detail() {
-			return detail;
-		},
-		get drafts() {
-			return drafts;
-		},
-		get loading() {
-			return loading;
-		},
-		get submitting() {
-			return submitting;
-		},
-		get error() {
-			return error;
-		},
-		get lastResult() {
-			return lastResult;
-		},
+		get barcode() { return barcode; },
+		get detail() { return detail; },
+		get drafts() { return drafts; },
+		get loading() { return loading; },
+		get submitting() { return submitting; },
+		get cancelling() { return cancelling; },
+		get error() { return error; },
+		get lastResult() { return lastResult; },
+		get lastCancel() { return lastCancel; },
+		get receiptIdsInput() { return receiptIdsInput; },
 		setBarcode,
+		setReceiptIdsInput,
 		lookup,
 		updateDraft,
-		submitReceive
+		submitReceive,
+		cancelReceipts
 	};
 }
