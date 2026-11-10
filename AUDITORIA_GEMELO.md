@@ -17,6 +17,7 @@ Cada entrada identifica commit, archivos, detonante, síntoma, causa, correcció
 
 
 
+
 ### AUD-0002 — Documentación y workflow iniciales
 
 - **Commits:** `aef763491ddbcd24e6a3e02a78ca6777c2760f21`, `b12ec8179e175ce9eaa5f56caa3cf45d0f7e38e6`, `3d68a171b394cfca522042aaffca1c24d00c5e7c`.
@@ -25,11 +26,13 @@ Cada entrada identifica commit, archivos, detonante, síntoma, causa, correcció
 
 
 
+
 ### AUD-0003 — Primer corte Go/Core
 
 - **Commit:** `f4f4b979b3898901fbd4fe09e1ecb8f687d1ed5c`.
 - **Cambio:** runtime Go, nodo Core, AIP, episodios/CID, API técnica Bearer e invariantes puras de inventario.
 - **Riesgos:** autenticación y contratos de negocio no implementados; historial sin compactar; sin transacciones multi-organismo ni replicación WMS validada.
+
 
 
 
@@ -42,12 +45,14 @@ Cada entrada identifica commit, archivos, detonante, síntoma, causa, correcció
 
 
 
+
 ### AUD-0005 — Separación AIP y reglas de inventario
 
 - **Commit:** `026bad44df23e64faa22d91c844ba4942e4d131b`.
 - **Detonante:** AIP compartía handler con WMS y las validaciones de movimiento requerían endurecimiento.
 - **Cambio:** dos listeners, JSON limitado a 1 MiB, validación de balance, overflow e item/lote.
 - **Resultado CI:** la ejecución `42889670356` falló en gofmt; guard documental pasó.
+
 
 
 
@@ -60,12 +65,14 @@ Cada entrada identifica commit, archivos, detonante, síntoma, causa, correcció
 
 
 
+
 ### AUD-0007 — Grafo de módulos y go.sum
 
 - **Commit afectado:** `e7e18ba38b1f591659dc2e6ac224fa72cd4d49dc`.
 - **Detonante:** faltaban checksums de PrismaTec-Core al ejecutar vet.
 - **Corrección:** fijé el módulo y publiqué `wms-twin/go.sum`.
 - **Evidencia:** el workflow Go de `ee78910` pasó; un ciclo posterior fue cancelado por una nueva actualización antes de terminar todos sus pasos.
+
 
 
 
@@ -80,12 +87,14 @@ Cada entrada identifica commit, archivos, detonante, síntoma, causa, correcció
 
 
 
+
 ### AUD-0009 — Límite de replicación CID de PrismaTec-Core
 
 - **Detonante:** inspección de `core/replication/replication.go`, `core/node.go`, `network/libp2p.go` y `storage/cid/cid.go`.
 - **Hallazgo:** snapshots transportan organismo/episodios, pero no bytes del block store. `AppendEpisode` escribe bloques localmente. Kademlia DHT y GossipSub quedan como trabajo futuro; el CID predeterminado es `cid1:` SHA-256 local.
 - **Impacto:** no puedo afirmar que un registro WMS siga siendo legible después de replicar solo su organismo.
 - **Decisión:** no declarar replicación WMS hasta implementar transferencia autenticada de bloques y pruebas de recuperación.
+
 
 
 
@@ -98,6 +107,7 @@ Cada entrada identifica commit, archivos, detonante, síntoma, causa, correcció
 
 
 
+
 ### AUD-0011 — Un organismo por agregado WMS
 
 - **Commits:** `0d919ea0fc690ff575a9e20834c01b1368020922`, `eb414640bd7772b3f8fd5b170c13b069078b9947`.
@@ -105,6 +115,7 @@ Cada entrada identifica commit, archivos, detonante, síntoma, causa, correcció
 - **Cambio:** cada registro tiene organismo propio `wms.{kind}.{id}`; las versiones son episodios y los contenidos son bloques CID.
 - **Prueba añadida:** reabrir el nodo desde el mismo directorio y comprobar contenido/RootCID y tombstone.
 - **Estado:** la ejecución debe verificarse por commit, no inferirse.
+
 
 
 
@@ -130,16 +141,6 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 
 
 
-### AUD-0012 — Replicación WMS de bloques CID y snapshots firmados
-
-- **Commit de protocolo:** `74d75233afd70fdf299752ae6cec9bab14e8d897`.
-- **Detonante:** Core replica snapshots de organismos, pero no los bytes de los bloques CID que esos episodios referencian.
-- **Cambio:** añadí un protocolo WMS sobre network.Transport: firma Ed25519 derivada del NodeID, allowlist de peers, transferencia de bloques, validación del CID en el receptor, ACK firmado, snapshot posterior y verificación de bloques antes de Adopt.
-- **Autoridad:** el Store solo permite Put/Delete cuando Core IsLeader confirma que el nodo local es Primary y el organismo está Running. La réplica fría rechaza escritura.
-- **Fallo parcial:** el commit local precede a la réplica. Si falla el peer, la API devuelve 503 con local_commit=true y el registro. El cliente debe reintentar con el mismo ID.
-- **Límites:** no hay quorum, Kademlia ni GossipSub; el protocolo vuelve a enviar todo el historial de bloques por sync.
-
-
 
 ### AUD-0013 — Grafo de módulos no reproducible tras incorporar el ledger
 
@@ -155,13 +156,6 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 
 
 
-### AUD-0013 — Prueba de replicación con dos nodos
-
-- **Commit de test:** `6b08dec2b9ec048661495ac444a5430f79ad2b23`.
-- **Prueba:** `TestAuthenticatedReplicationTransfersCIDAndFencesReplicaWrites`.
-- **Cobertura:** CID llega antes del snapshot, contenido y RootCID se conservan, la réplica no puede escribir y el tombstone se propaga.
-- **Estado:** pendiente de ejecución de CI para esta nueva implementación.
-
 
 ### AUD-0014 — Fuentes Go sin formato en CI
 
@@ -176,6 +170,7 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 
 
 
+
 ### AUD-0015 — Cierre del grafo Go y corrección de vet
 
 - **Commit detonante:** `f52b807d4686a458227e7be064079f0e667ce27b`.
@@ -184,6 +179,7 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Causa confirmada:** import sobrante después de cambiar el DTO de movimiento a `Location`.
 - **Corrección:** elimino el import, incorporo el `go.mod` canónico generado por Go 1.25 y publico los archivos formateados. Restauro CI no mutante.
 - **Riesgo residual:** vet y race tests aún deben terminar en verde en la nueva ejecución.
+
 
 
 
@@ -201,6 +197,7 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 
 
 
+
 ### AUD-0017 — Replicación WMS de bloques CID y snapshots firmados
 
 - **Commits:** protocolo `74d75233af`; integración del store `008978e5ad`; configuración de peers `e3b5889a38`; manejo HTTP de commit local pendiente `995f2fcc27`.
@@ -210,6 +207,7 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Fallo parcial:** la persistencia local ocurre antes de la replicación; si un peer falla, la API devuelve 503 con local_commit=true y el registro.
 - **Límites:** peers explícitos, sin quorum, Kademlia ni GossipSub; se reenvía el historial completo en cada sincronización.
 
+
 ### AUD-0018 — Prueba de replicación con dos nodos
 
 - **Commit:** `6b08dec2b9`.
@@ -217,12 +215,14 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Cobertura:** bloque CID transferido antes del snapshot, integridad del contenido, RootCID/ContentCID preservados, escritura de réplica rechazada y tombstone propagado.
 - **Estado:** pendiente de ejecución satisfactoria de CI para el corte que incluye el protocolo.
 
+
 ### AUD-0019 — Reintento de replicación mediante replay idempotente
 
 - **Detonante:** el primer commit de inventario puede persistir localmente y devolver 503 si un peer no confirma los bloques/snapshot. El replay idempotente anterior devolvía el resultado almacenado sin volver a sincronizar.
 - **Corrección:** añadí corestore.Store.Sync; el replay del mismo operation_id vuelve a intentar la replicación sin duplicar la mutación. Una réplica no intenta promoverse ni sincronizar si no es Primary.
 - **Prueba:** TestIdempotentReplayRetriesPendingReplication.
 - **Estado:** pendiente de CI del commit actual.
+
 
 
 ### AUD-0020 — Formato Go automatizado por CI
