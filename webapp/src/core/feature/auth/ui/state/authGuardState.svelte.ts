@@ -37,12 +37,14 @@ export function createAuthGuardState() {
 				message = result.message;
 
 				if (result.reason === 'unavailable') {
+					// Network / 5xx: keep token, allow retry
 					status = 'error';
 					return;
 				}
 
 				status = 'anonymous';
 			} catch (err) {
+				// Defensive: use case should not throw, but never leave UI stuck on checking
 				user = null;
 				message = err instanceof Error ? err.message : 'Error inesperado al validar sesión';
 				status = 'error';

@@ -77,7 +77,7 @@ describe('EnsureAuthenticatedUseCase', () => {
 		expect(result.ok).toBe(true);
 	});
 
-	it('clears session and returns unauthorized when refresh fails', async () => {
+	it('clears session and returns unauthorized when refresh fails with 401', async () => {
 		authSession.setSession('bad', {
 			userId: 1,
 			username: 'admin',
@@ -115,5 +115,47 @@ describe('EnsureAuthenticatedUseCase', () => {
 		expect(result.ok).toBe(false);
 		if (!result.ok) expect(result.reason).toBe('unavailable');
 		expect(authSession.getToken()).toBe('jwt');
+	});
+
+	it('does not clear session when refresh fails due to network after 401 on /me', async () => {
+		authSession.setSession('jwt', {
+			userId: 1,
+			username: 'admin',
+			fullName: 'Admin',
+			role: 'ADMIN',
+			warehouseIds: [1]
+		});
+		const repo = createRepo({
+			getCurrentUser: vi.fn().mockRejectedValue(new ApiError(401, 'unauthorized')),
+			refreshToken: vi.fn().mockRejectedValue(new ApiError(0, 'Network error', 'network')),
+			logout: vi.fn()
+		});
+		const useCase = new EnsureAuthenticatedUseCase(repo);
+		const result = await useCase.execute();
+		expect(repo.logout).not.toHaveBeenCalled();
+		expect(result.ok).toBe(false);
+		if (!result.ok) expect(result.reason).toBe('unavailable');
+		expect(authSession.getToken()).toBe('jwt');
+	});
+
+	it('treats 403 on /me as unauthorized path and tries refresh', async () => {
+		authSession.setSession('jwt', {
+			userId: 1,
+			username: 'admin',
+			fullName: 'Admin',
+			role: 'ADMIN',
+			warehouseIds: [1]
+		});
+		const repo = createRepo({
+			getCurrentUser: vi
+				.fn()
+				.mockRejectedValueOnce(new ApiError(403, 'forbidden'))
+				.mockResolvedValueOnce(sampleUser),
+			refreshToken: vi.fn().mockResolvedValue('new')
+		});
+		const useCase = new EnsureAuthenticatedUseCase(repo);
+		const result = await useCase.execute();
+		expect(repo.refreshToken).toHaveBeenCalledOnce();
+		expect(result.ok).toBe(true);
 	});
 });
