@@ -37,14 +37,15 @@ wms-twin/
     ├── corestore/                 # organismo por registro, episodios y CID
     ├── domain/inventory/          # invariantes puras de stock
     ├── httpapi/                   # health, API técnica y ledger
-    └── runtime/                   # bootstrap Core y listeners separados
+    ├── replication/               # bloques CID + snapshots WMS firmados y ACK
+    └── runtime/                   # bootstrap Core, peers y listeners separados
 ```
 
 ## Persistencia por organismo
 
 Cada registro tiene un organismo `wms.{kind}.{id}`. Una escritura agrega un episodio `wms.record.upsert`; el contenido JSON se guarda en un bloque CID. Una eliminación agrega un episodio `wms.record.deleted`. RootCID identifica el manifiesto del organismo y ContentCID identifica el contenido de una versión.
 
-El ledger actual de inventario usa un registro dedicado `wms.inventory-ledger.global` y guarda la proyección completa de balances e idempotency records en un único append por operación. Esto evita escrituras parciales entre dos bins dentro de una instancia, pero no es una transacción distribuida.
+El ledger actual de inventario usa un registro dedicado `wms.inventory-ledger.global` y guarda la proyección completa de balances e idempotency records en un único append por operación. El replay de una operación idempotente intenta completar la replicación pendiente sin duplicar la mutación. Esto evita escrituras parciales entre dos bins dentro de una instancia, pero no es una transacción distribuida.
 
 ## Flujo del ledger
 
@@ -57,7 +58,8 @@ HTTP Bearer
        -> aplica invariantes del dominio
        -> serializa dentro del proceso
     -> corestore.Store.Put
-    -> PrismaTec organism / episodic memory / local CID block
+    -> PrismaTec organism / episodic memory / CID block
+    -> replicator: bloque firmado + ACK -> snapshot firmado + ACK
 ```
 
 ## Agregados objetivo

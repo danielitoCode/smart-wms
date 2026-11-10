@@ -7,7 +7,7 @@ Escribo esta guía para que cualquier desarrollador o agente de IA pueda arranca
 - Rama: `feat/wms-prismatec-genesis`; no trabajo sobre `main`.
 - El runtime Go arranca un nodo PrismaTec-Core, expone AIP en un listener separado y mantiene una API WMS técnica.
 - Cada registro genérico WMS tiene su propio organismo `wms.{kind}.{id}`; las versiones son episodios y los datos son bloques CID locales.
-- El primer agregado de inventario persistente permite ajustar, reservar, liberar y mover stock con un solo append del estado del ledger por operación, idempotencia y serialización dentro de un proceso.
+- El primer agregado de inventario persistente permite ajustar, reservar, liberar y mover stock con un solo append del ledger por operación, idempotencia y serialización dentro de un proceso. Cada registro WMS tiene su propio organismo Core; el ledger de inventario es un agregado global separado.
 - El endpoint de inventario es técnico (`/api/twin/inventory/*)); todavía no equivale a las rutas Flask originales.
 - El gemelo **NO ES SUSTITUIBLE**. No implementa todavía login JWT/cookies/CSRF, permisos ni los flujos WMS completos.
 - No agrego PostgreSQL, SQLite ni Redis al gemelo. El backend original conserva su infraestructura.
@@ -80,7 +80,7 @@ Todas las rutas `/api/twin/*` requieren `Authorization: Bearer $WMS_TWIN_API_TOK
 
 Las mutaciones requieren un `operation_id` estable. Repetir el mismo ID y comando devuelve el resultado original; reutilizarlo con otro contenido devuelve conflicto. En un movimiento, el servidor carga las existencias desde el ledger: el cliente solo envía identificadores de origen/destino y cantidad, no balances autoritativos.
 
-**Límite:** el mutex garantiza serialización dentro de una instancia. No es un protocolo de consenso entre nodos. Core replica snapshots de organismos, pero el snapshot no transporta los bytes de los bloques CID. La revisión fijada de Core deja Kademlia DHT y GossipSub como trabajo futuro y usa por defecto `cid1:` SHA-256 en un block store local. No se debe declarar inventario distribuido ni activar varios escritores hasta resolver transferencia autenticada de bloques, autoridad por partición, fencing efectivo y reconciliación probada. El historial de idempotencia aún no tiene compactación.
+**Estado distribuido:** añadí un protocolo WMS que transfiere bloques CID firmados con Ed25519, espera ACK y luego envía el snapshot del organismo. El receptor valida NodeID, allowlist, firma, timestamp, tamaño, CID, Primary, epoch y secuencia antes de adoptar. Una prueba con dos nodos y LocalTransport cubre contenido, RootCID, fencing y tombstone. La sincronización vuelve a enviar el historial completo; los peers son explícitos. No hay quorum, Kademlia ni GossipSub en la revisión Core fijada. El ledger actual sigue siendo un agregado global de un solo primario; no habilito varios escritores ni failover automático ante partición.
 
 ## Backend original simultáneo
 
@@ -116,7 +116,7 @@ curl -fsS -H "Authorization: Bearer $WMS_TWIN_API_TOKEN" http://127.0.0.1:5001/a
 curl -fsS -H "Authorization: Bearer $WMS_TWIN_API_TOKEN" http://127.0.0.1:5001/api/twin/inventory/balances
 ```
 
-La suite Flask original usa su configuración de pruebas y `TEST_DATABASE_URL`; nunca la ejecuto contra datos reales. GitHub Actions ejecuta guard de documentación/alcance, `go mod tidy -diff`, `go mod verify`, `gofmt`, `go vet` y `go test -race`.
+La suite Flask original usa su configuración de pruebas y `TEST_DATABASE_URL`; nunca la ejecuto contra datos reales. GitHub Actions ejecuta guard de documentación/alcance, `go mod tidy -diff`, `go mod verify`, gofmt, vet y tests con race detector. Si los tests pasan, el job de push publica un commit de formato exclusivamente Go; en PR no escribe en la rama.
 
 ## Diagnóstico
 
@@ -127,7 +127,7 @@ La suite Flask original usa su configuración de pruebas y `TEST_DATABASE_URL`; 
 | Go incompatible | `go version`; usar Go 1.25+ |
 | Descarga Core falla | `go env GOPROXY`, conectividad y `go mod download` |
 | Puerto ocupado | `ss -ltnp | grep -E '5001|8081'` |
-| 503 API técnica | falta `WMS_TWIN_API_TOKEN` |
+| 503 API técnica | falta `WMS_TWIN_API_TOKEN` o hay replicación pendiente; si `local_commit=true`, el dato ya existe localmente y debo reintentar con el mismo ID |
 | 401 API técnica | comprobar prefijo Bearer y token |
 | 409 inventario | stock disponible insuficiente o conflicto idempotente |
 | 422 inventario | identidad, cantidad u operación inválida |
@@ -136,8 +136,8 @@ La suite Flask original usa su configuración de pruebas y `TEST_DATABASE_URL`; 
 
 ## Dónde continuar
 
-1. Resolver la brecha de replicación CID: snapshots de Core no transfieren los bytes de los bloques.
-2. Implementar configuración de peers y pruebas TCP/libp2p; no declarar DHT/GossipSub disponibles hasta que existan.
+1. Ejecutar CI de la replicación firmada y ampliar pruebas TCP multi-proceso, reconexión, firma inválida, CID corrupto, epoch viejo y peer no autorizado.
+2. Diseñar autoridad por partición, quorum y reconciliación; no habilitar failover de dos nodos ni múltiples escritores.
 3. Portar autenticación JWT/cookies/CSRF, lockout, revocación y permisos sin reducir controles.
 4. Portar warehouses, zones, bins, items, vendors y preferred bins con DTO/errores exactos.
 5. Completar autoridad/fencing del inventario antes de activar varios escritores.

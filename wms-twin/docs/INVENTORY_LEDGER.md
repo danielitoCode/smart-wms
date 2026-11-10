@@ -83,14 +83,15 @@ Mantengo un registro canónico `inventory-ledger/global` que se convierte en org
 7. incrementa la versión;
 8. agrega un único episodio con `corestore.Store.Put`.
 
-Repetir el mismo `operation_id` y contenido devuelve el resultado original. Reutilizarlo con otro contenido produce conflicto. Un movimiento actualiza ambos balances dentro del mismo documento persistido.
+Repetir el mismo `operation_id` y contenido devuelve el resultado original. Reutilizarlo con otro contenido produce conflicto. Si el primer commit local quedó pendiente de replicación, el replay idempotente llama a `Store.Sync` para reintentar la sincronización sin volver a aplicar el movimiento. Un movimiento actualiza ambos balances dentro del mismo documento persistido.
 
 ## Límites que no oculto
 
 - El mutex serializa llamadas dentro de una instancia del proceso.
 - Dos procesos/nodos con copias distintas no comparten el mutex.
-- Los snapshots Core no transfieren bytes de bloques CID.
-- La replicación snapshot no es un commit distribuido ni quorum.
+- El snapshot nativo Core no transfiere bytes de bloques CID; el adaptador WMS ya los envía por separado, con firma Ed25519 y ACK antes del snapshot.
+- El protocolo WMS está probado con LocalTransport, pero faltan pruebas TCP/libp2p multi-proceso.
+- La replicación no es un commit distribuido ni quorum; no habilita failover seguro ante particiones.
 - DHT/GossipSub quedan como trabajo futuro en la revisión Core.
 - No hay compactación del historial ni expiración de idempotency keys.
 - El ledger no integra todavía SalesOrder/Picking ni eventos/outbox WMS.
@@ -106,7 +107,7 @@ go test -race -count=1 ./internal/application/inventoryledger
 go test ./internal/httpapi -v
 ```
 
-Se añadieron pruebas para ajuste/reserva/liberación, idempotencia, movimiento, persistencia tras reconstruir el nodo Core, concurrencia dentro de un proceso y HTTP. El resultado CI de este commit será la evidencia definitiva.
+Se añadieron pruebas para ajuste/reserva/liberación, idempotencia, movimiento, persistencia tras reconstruir el nodo Core, concurrencia dentro de un proceso, HTTP y reintento de replicación pendiente mediante replay idempotente.
 
 
 ## Evidencia automatizada

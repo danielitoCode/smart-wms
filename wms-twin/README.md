@@ -14,7 +14,8 @@ Servicio Go independiente. No reemplaza ni importa código del backend Flask ori
 - [ ] JWT HS256, cookies, CSRF, refresh/logout, lockout y revocación.
 - [ ] Roles, permisos por página, scopes por almacén y WMS token scopes.
 - [ ] DTO/rutas compatibles y pruebas diferenciales.
-- [ ] Autoridad multi-nodo, transferencia de bloques CID y reconciliación.
+- [x] Transferencia firmada de bloques CID + snapshots entre peers explícitos, con ACK y fencing de réplica.
+- [ ] Quorum, autoridad por partición, reconciliación y failover seguro.
 - [ ] Flujos WMS completos.
 
 **NO SUSTITUIBLE.** El ledger es un primer corte de dominio, no un backend equivalente.
@@ -50,7 +51,7 @@ Las mutaciones requieren `operation_id`. El mismo ID/comando es idempotente; el 
 
 ## Límites
 
-La serialización es por proceso, no consenso distribuido. Los snapshots Core no transfieren bytes CID; DHT/GossipSub están documentados como futuros. No usar el ledger como fuente de stock multi-nodo ni conectar el frontend original hasta completar autenticación y paridad. El historial no tiene compactación.
+La serialización del ledger es por proceso y el agregado es global con un solo primario. El protocolo WMS sí transfiere bloques CID firmados antes del snapshot y tiene prueba LocalTransport de dos nodos; falta TCP/libp2p multi-proceso. No hay quorum ni failover seguro ante partición. DHT/GossipSub siguen como futuros en Core. No conectar el frontend original hasta completar autenticación y paridad. El historial no tiene compactación.
 
 ## Documentación
 

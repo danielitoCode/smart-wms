@@ -178,4 +178,4 @@ En la revisión de PrismaTec-Core confirmé estas capacidades y límites:
 8. Mind y Zyrion están implementados como paquetes Go: Zyrion produce 0/1/2 epistemológico; Mind observa, evalúa y propone; Bridge consulta policy antes de ejecutar. No son un autorizador sustituto del control de acceso WMS.
 9. El audit log Core observado es JSONL local con buffer; no es equivalente por sí solo a la cadena SHA-256 de auditoría del WMS original.
 
-Estos límites se convierten en tareas explícitas del gemelo. No los oculto detrás de la palabra “descentralizado”.
+Estos límites se convierten en tareas explícitas del gemelo. No los oculto detrás de la palabra “descentralizado”. El ledger actual sigue siendo un agregado global con un primario; el protocolo de bloques no aporta quorum ni consenso.

@@ -13,20 +13,20 @@ No declaro paridad por tener rutas con nombres parecidos. Cada caso debe igualar
 | Área | Original | Gemelo | Paridad |
 |---|---|---|---|
 | Arranque API | Flask | Go + PrismaTec Node | Parcial, contratos distintos |
-| Persistencia | PostgreSQL/SQLAlchemy | Organismos + bloques CID locales | Implementada en corte técnico; no equivalente transaccional |
-| Identidad nodo/transporte | No aplica | NodeID + PeerID Core | Integrado; red WMS E2E pendiente |
+| Persistencia | PostgreSQL/SQLAlchemy | Un organismo por registro + ledger Core + CID | Persistencia local y replicación de bloques por protocolo WMS; no equivalente transaccional |
+| Identidad nodo/transporte | No aplica | NodeID + PeerID Core | Firma NodeID y peers explícitos probados con LocalTransport; TCP/libp2p multi-proceso pendiente |
 | AIP Core | No aplica | AIP v1 listener independiente | Integrado |
 | CRUD genérico | Rutas SQL específicas | `/api/twin/records/*` | No compatible |
 | Auth | JWT HS256 + estado vivo de usuario | Bearer técnico | No compatible |
 | Cookies/CSRF | `sentry_auth`, `sentry_csrf`, doble envío | No | Pendiente |
 | Roles/permisos | Roles, page permissions, warehouse scopes | No | Pendiente |
 | Warehouses/zones/bins/items | CRUD, validación y relaciones | Sin endpoints compatibles | Pendiente |
-| Inventario | Transacciones, locks, reservas y auditoría | Ledger técnico: adjust/allocate/release/move, idempotencia y un append por operación | Parcial de dominio; no paridad |
+| Inventario | Transacciones, locks, reservas y auditoría | Ledger global: adjust/allocate/release/move, idempotencia, append por operación y réplica CID | Parcial de dominio; un primario global, no paridad ni quorum |
 | Receiving/put-away | PO, recepción, cancelación y ubicación | No | Pendiente |
 | Picking/waves | Batch, wave, short pick, cancel | No | Pendiente |
 | Packing/shipping | Verificación y despacho | No | Pendiente |
 | Cycle counts/adjustments | Conteo, aprobación y ajustes | No | Pendiente |
-| Transfers | Movimiento y órdenes inter-almacén | Movimiento técnico de ledger | Parcial de dominio; no paridad |
+| Transfers | Movimiento y órdenes inter-almacén | Movimiento técnico dentro del ledger | Parcial de dominio; no paridad |
 | Orders/RMA/backorders/POS | Workflows completos | No | Pendiente |
 | Events/snapshots | Outbox, consumer groups, ack, cursor | Pulse/AIP no equivalen al contrato WMS | Pendiente |
 | Connectors/webhooks/inbound/Dockd | Scopes, firmas, retry, DLQ | No | Pendiente |
