@@ -3,7 +3,7 @@ import { ConfirmPutawayUseCase } from '../../../../../../core/feature/putaway/do
 import type { PutawayRepository } from '../../../../../../core/feature/putaway/domain/repository/PutawayRepository';
 
 describe('ConfirmPutawayUseCase', () => {
-	it('confirms valid putaway', async () => {
+	it('confirms valid putaway and trims lot', async () => {
 		const repo: PutawayRepository = {
 			listPending: vi.fn(),
 			suggest: vi.fn(),
@@ -21,10 +21,17 @@ describe('ConfirmPutawayUseCase', () => {
 			itemId: 1,
 			fromBinId: 2,
 			toBinId: 3,
-			quantity: 10
+			quantity: 10,
+			lotNumber: '  L1  '
 		});
 		expect(result.transferId).toBe(1);
-		expect(repo.confirm).toHaveBeenCalled();
+		expect(repo.confirm).toHaveBeenCalledWith({
+			itemId: 1,
+			fromBinId: 2,
+			toBinId: 3,
+			quantity: 10,
+			lotNumber: 'L1'
+		});
 	});
 
 	it('rejects quantity <= 0', async () => {
@@ -37,5 +44,17 @@ describe('ConfirmPutawayUseCase', () => {
 		await expect(
 			useCase.execute({ itemId: 1, fromBinId: 1, toBinId: 2, quantity: 0 })
 		).rejects.toThrow(/quantity/);
+	});
+
+	it('rejects same from/to bin', async () => {
+		const repo = {
+			listPending: vi.fn(),
+			suggest: vi.fn(),
+			confirm: vi.fn()
+		} as PutawayRepository;
+		const useCase = new ConfirmPutawayUseCase(repo);
+		await expect(
+			useCase.execute({ itemId: 1, fromBinId: 5, toBinId: 5, quantity: 1 })
+		).rejects.toThrow(/toBinId must differ/);
 	});
 });
