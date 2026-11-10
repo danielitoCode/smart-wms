@@ -4,7 +4,7 @@ import type { ItemRepository } from '../../../../../../core/feature/items/domain
 
 describe('ListItemsUseCase', () => {
 	it('rejects invalid page', async () => {
-		const repo = { list: vi.fn(), search: vi.fn() } as ItemRepository;
+		const repo = { list: vi.fn(), search: vi.fn() } as unknown as ItemRepository;
 		const uc = new ListItemsUseCase(repo);
 		await expect(uc.execute({ page: 0 })).rejects.toThrow(/page/);
 	});
@@ -13,7 +13,7 @@ describe('ListItemsUseCase', () => {
 		const repo = {
 			list: vi.fn().mockResolvedValue([]),
 			search: vi.fn()
-		} as ItemRepository;
+		} as unknown as ItemRepository;
 		const uc = new ListItemsUseCase(repo);
 		await uc.execute({ category: '  A  ', q: '  sku  ', active: true });
 		expect(repo.list).toHaveBeenCalledWith({

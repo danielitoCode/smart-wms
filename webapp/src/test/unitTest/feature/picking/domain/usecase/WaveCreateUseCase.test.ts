@@ -12,6 +12,7 @@ function createRepo(overrides: Partial<PickingRepository> = {}): PickingReposito
 		cancelBatch: vi.fn(),
 		waveValidate: vi.fn(),
 		waveCreate: vi.fn(),
+		createBatch: vi.fn(),
 		...overrides
 	};
 }

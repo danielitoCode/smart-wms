@@ -1,7 +1,12 @@
 {
-	"extends": "$app/tsconfig",
+	"extends": "./.svelte-kit/tsconfig.json",
 	"compilerOptions": {
-		"strict": true
-	},
-	"include": ["src", "vite.config.ts"]
+		"strict": true,
+		"paths": {
+			"#core/*": ["./src/core/*"],
+			"#shared/*": ["./src/shared/*"],
+			"#lib": ["./src/lib/index.ts"],
+			"#lib/*": ["./src/lib/*"]
+		}
+	}
 }

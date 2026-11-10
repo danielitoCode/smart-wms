@@ -20,7 +20,7 @@
 	{:else if state.error}
 		<p class="status error" role="alert">{state.error}</p>
 		<button type="button" onclick={() => state.load()}>Reintentar</button>
-	{:else if state.items.length === 0}
+	{:else if state.warehouses.length === 0}
 		<p class="status">No hay almacenes.</p>
 	{:else}
 		<div class="table-wrap">
@@ -34,7 +34,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each state.items as wh (wh.id)}
+					{#each state.warehouses as wh (wh.id)}
 						<tr>
 							<td>{wh.code}</td>
 							<td>{wh.name}</td>
