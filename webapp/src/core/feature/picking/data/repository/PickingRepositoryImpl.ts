@@ -2,6 +2,7 @@ import type { PickingRepository } from '../../domain/repository/PickingRepositor
 import type {
 	ActiveBatch,
 	ConfirmPickInput,
+	CreateBatchResult,
 	PickTask,
 	ShortPickInput,
 	SimpleMessageResult,
@@ -46,5 +47,11 @@ export class PickingRepositoryImpl implements PickingRepository {
 
 	async waveCreate(soIds: number[], warehouseId: number): Promise<WaveCreateResult> {
 		return PickingMapper.toWaveCreate(await this.datasource.waveCreate(soIds, warehouseId));
+	}
+
+	async createBatch(soIdentifiers: string[], warehouseId: number): Promise<CreateBatchResult> {
+		return PickingMapper.toCreateBatch(
+			await this.datasource.createBatch(soIdentifiers, warehouseId)
+		);
 	}
 }

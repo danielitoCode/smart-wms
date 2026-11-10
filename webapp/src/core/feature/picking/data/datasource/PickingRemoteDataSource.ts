@@ -2,6 +2,7 @@ import type { ApiClient } from '../../../../infrastructure/api/ApiClient';
 import type { ConfirmPickInput, ShortPickInput } from '../../domain/entity/Picking';
 import type {
 	ActiveBatchDto,
+	CreateBatchDto,
 	MessageDto,
 	PickTaskDto,
 	WaveCreateDto,
@@ -56,6 +57,13 @@ export class PickingRemoteDataSource {
 	waveCreate(soIds: number[], warehouseId: number): Promise<WaveCreateDto> {
 		return this.api.post<WaveCreateDto>('/api/picking/wave-create', {
 			so_ids: soIds,
+			warehouse_id: warehouseId
+		});
+	}
+
+	createBatch(soIdentifiers: string[], warehouseId: number): Promise<CreateBatchDto> {
+		return this.api.post<CreateBatchDto>('/api/picking/create-batch', {
+			so_identifiers: soIdentifiers,
 			warehouse_id: warehouseId
 		});
 	}
