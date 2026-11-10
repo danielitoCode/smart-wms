@@ -117,3 +117,8 @@ Añadí `internal/security/auth` para implementar HS256, CSRF double-submit y po
 ## Repositorio de identidad Core-backed
 
 Añadí `internal/application/identity`. Cada usuario se guarda como organismo `wms.users.{user_id}`, con hash bcrypt y estado versionado en episodios/CID. El repositorio conserva username, nombre, rol, warehouse_id/warehouse_ids, allowed_functions, page grants, overrides, actividad, timestamps y forced password change. El DTO público excluye el hash. La unicidad y asignación secuencial se serializan dentro del primario local; no las presento como coordinación multi-nodo. Login HTTP y middleware aún no están conectados.
+
+
+## Evidencia CI — repositorio de identidad
+
+La ejecución `42897626723` sobre el commit `d8c2c02e17c667620cccdf6dcb017a83f33e575c` terminó en success. Pasaron `go mod tidy -diff`, `go mod verify`, gofmt, `go vet ./...` y `go test -race -count=1 ./...`; el guard documental y de alcance también pasó. El workflow publicó el commit de formato `e0d2e20dea760ad99f71c1376d97a4896f28c284`. Esta evidencia valida las pruebas del repositorio de identidad y las primitivas, no los endpoints HTTP ni la paridad del WMS.

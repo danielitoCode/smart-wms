@@ -264,3 +264,14 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Pruebas añadidas:** creación, login, rechazo de credenciales, username duplicado, cambio de contraseña, DTO sin hash y recuperación tras reiniciar el nodo con el mismo DataDir.
 - **Límites:** no hay importador de usuarios, endpoints HTTP, lockout persistente, middleware JWT, cookies/CSRF ni autorización de rutas. El mutex solo coordina el proceso primario.
 - **Validación:** pendiente del CI de esta rama; no he ejecutado Go localmente en este entorno.
+
+
+### AUD-0022 — Validación CI de identidad y smoke manual del operador
+
+- **Commit probado:** `d8c2c02e17c667620cccdf6dcb017a83f33e575c`.
+- **Ejecución:** `42897626723`, WMS twin validation, success.
+- **Pasos:** guard de alcance/documentación, tidy diff, module verify, gofmt, vet y race tests.
+- **Resultado:** todos los pasos del workflow específico del gemelo pasaron. El formato final quedó en `e0d2e20dea760ad99f71c1376d97a4896f28c284`.
+- **Prueba manual reportada:** POST de `WH-001` devolvió 201; GET devolvió 200 con CID/RootCID; health WMS devolvió ok; AIP healthz devolvió 200 vacío; el nodo informó un organismo.
+- **Pendiente:** reiniciar el proceso local y comprobar de nuevo `WH-001`. La prueba unitaria de reapertura del Core store no sustituye esa comprobación del entorno del operador.
+- **Límite:** CI no demuestra login HTTP, importación de usuarios, permisos, paridad de rutas ni flujos WMS.

@@ -112,3 +112,10 @@ Implementé el primer repositorio Core-backed en `internal/application/identity`
 La prueba añadida cubre autenticación, duplicado, cambio de contraseña, ausencia de hash en el DTO y reapertura desde el mismo DataDir.
 
 **Límites abiertos:** todavía no hay importador de usuarios del PostgreSQL original, endpoints HTTP, lockout persistente, middleware JWT, cookies/CSRF ni autorización por request. El mutex de unicidad/ID es local al proceso y depende del fencing del primario; no equivale a una transacción distribuida.
+
+
+## Evidencia de validación automatizada — 2026-11-10
+
+La ejecución `42897626723` terminó en success sobre el commit `d8c2c02e17c667620cccdf6dcb017a83f33e575c`. Pasaron tidy diff, module verify, gofmt, vet, race tests y guard documental/de alcance. El commit de formato resultante es `e0d2e20dea760ad99f71c1376d97a4896f28c284`.
+
+Esta validación cubre las primitivas y el repositorio interno. No acredita login HTTP, importación de usuarios, lockout, middleware, cookies, CSRF integrado ni autorización de endpoints.

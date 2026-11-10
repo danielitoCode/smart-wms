@@ -91,3 +91,8 @@ Se añadieron primitives aisladas para JWT HS256, CSRF double-submit y validaci�
 ## Identidad persistente — primer bloque interno
 
 El paquete `internal/application/identity` persiste usuarios en organismos Core y usa bcrypt. Incluye normalización/duplicidad de username, autenticación interna, cambio de contraseña y DTO público sin hash. Aún no hay importador del backend original ni endpoints HTTP; el Bearer técnico sigue siendo el único guard activo. La fase continúa incompleta.
+
+
+## Validación del repositorio de identidad
+
+El corte `d8c2c02e17c667620cccdf6dcb017a83f33e575c` pasó la ejecución CI `42897626723`: tidy diff, module verify, gofmt, vet y race tests; el guard documental/alcance también pasó. El workflow publicó el formato final en `e0d2e20dea760ad99f71c1376d97a4896f28c284`. La autenticación HTTP sigue pendiente.

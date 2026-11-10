@@ -119,3 +119,10 @@ El Bearer técnico continúa siendo el único mecanismo activo. La fase completa
 | Permisos y warehouse scopes | Datos almacenables; no aplicados a requests | Pendiente |
 
 El repositorio es un bloque interno, no una autenticación utilizable por los frontends. Ver `wms-twin/docs/FASE_02_SEGURIDAD.md`.
+
+
+## Evidencia CI y estado de la prueba manual
+
+El corte de identidad del commit `d8c2c02e17c667620cccdf6dcb017a83f33e575c` pasó la ejecución `42897626723`: tidy diff, verificación de módulos, gofmt, vet y race tests. El guard de documentación/aislamiento también pasó. El formato final quedó publicado en `e0d2e20dea760ad99f71c1376d97a4896f28c284`.
+
+La prueba manual confirmó POST 201, GET 200, CID/RootCID y contador de organismos igual a uno. Aún no confirma persistencia después de reiniciar el servidor local. La matriz sigue indicando que el gemelo no sustituye el backend original.

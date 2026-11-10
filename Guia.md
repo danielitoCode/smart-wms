@@ -181,3 +181,10 @@ Añadí `internal/security/auth` con primitives de JWT HS256, CSRF double-submit
 ## Identidad Core-backed — primer repositorio
 
 El repositorio de usuarios está en `wms-twin/internal/application/identity`. Persiste un organismo por usuario, mantiene hash bcrypt, permisos y grants, normaliza username, rechaza duplicados en el primario local y soporta autenticación/cambio de contraseña. El DTO público no expone el hash. Todavía no hay importador desde PostgreSQL, endpoints HTTP, lockout, middleware de sesión ni cookies. La asignación de IDs y la unicidad solo están serializadas dentro del proceso primario. Ver `wms-twin/docs/FASE_02_SEGURIDAD.md`.
+
+
+## Evidencia de CI y prueba manual — 2026-11-10
+
+El commit `d8c2c02e17c667620cccdf6dcb017a83f33e575c` terminó en success en WMS twin validation, ejecución `42897626723`. Pasaron guard documental/alcance, `go mod tidy -diff`, `go mod verify`, gofmt, vet y `go test -race -count=1 ./...`. El workflow publicó después el commit de formato `e0d2e20dea760ad99f71c1376d97a4896f28c284`.
+
+También recibí y registro la prueba manual del operador: crear `WH-001` respondió 201; leerlo respondió 200 con el mismo ContentCID y RootCID; `/api/health` devolvió `{"service":"sentry-wms","status":"ok"}`; AIP `/healthz` respondió 200 con cuerpo vacío; el nodo informó `organisms: 1`. Todavía falta que el operador reinicie el proceso y confirme que `WH-001` sigue disponible. La prueba de reinicio ya existe en tests del store, pero no sustituyo con ella la comprobación del entorno local.
