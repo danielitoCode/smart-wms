@@ -5,6 +5,7 @@ import type {
 	ReceiveLineInput,
 	ReceiveResult
 } from '../../domain/entity/PurchaseOrder';
+import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 
 const deps = createReceivingDependencies();
 
@@ -31,6 +32,12 @@ export function createReceivingState() {
 	let cancelling = $state(false);
 
 	async function lookup() {
+		if (loading || submitting || cancelling) return false;
+		const code = barcode.trim();
+		if (!code) {
+			error = 'Indica un PO number o barcode';
+			return false;
+		}
 		loading = true;
 		error = null;
 		lastResult = null;
@@ -38,7 +45,7 @@ export function createReceivingState() {
 		detail = null;
 		drafts = [];
 		try {
-			const result = await deps.lookupPurchaseOrder.execute(barcode);
+			const result = await deps.lookupPurchaseOrder.execute(code);
 			detail = result;
 			drafts = result.lines
 				.filter((line) => line.quantityRemaining > 0)
@@ -52,7 +59,7 @@ export function createReceivingState() {
 					lotNumber: ''
 				}));
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'No se pudo buscar el PO';
+			error = toUserMessage(err, 'No se pudo buscar el PO');
 		} finally {
 			loading = false;
 		}
@@ -71,10 +78,12 @@ export function createReceivingState() {
 	}
 
 	async function submitReceive(): Promise<boolean> {
+		if (submitting || loading || cancelling) return false;
 		if (!detail) {
 			error = 'Busca un PO primero';
 			return false;
 		}
+
 		const items: ReceiveLineInput[] = [];
 		for (const draft of drafts) {
 			if (!draft.quantity || draft.quantity <= 0) continue;
@@ -90,10 +99,12 @@ export function createReceivingState() {
 				lotNumber: draft.lotNumber.trim() || null
 			});
 		}
+
 		if (items.length === 0) {
 			error = 'Indica al menos una cantidad a recibir';
 			return false;
 		}
+
 		submitting = true;
 		error = null;
 		lastCancel = null;
@@ -102,7 +113,9 @@ export function createReceivingState() {
 			if (lastResult.receiptIds.length) {
 				receiptIdsInput = lastResult.receiptIds.join(', ');
 			}
-			const refreshed = await deps.lookupPurchaseOrder.execute(detail.purchaseOrder.poNumber);
+			const refreshed = await deps.lookupPurchaseOrder.execute(
+				detail.purchaseOrder.poNumber
+			);
 			detail = refreshed;
 			drafts = refreshed.lines
 				.filter((line) => line.quantityRemaining > 0)
@@ -117,7 +130,7 @@ export function createReceivingState() {
 				}));
 			return true;
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'No se pudo registrar la recepción';
+			error = toUserMessage(err, 'No se pudo registrar la recepción');
 			return false;
 		} finally {
 			submitting = false;
@@ -125,6 +138,7 @@ export function createReceivingState() {
 	}
 
 	async function cancelReceipts(): Promise<boolean> {
+		if (cancelling || loading || submitting) return false;
 		if (!detail) {
 			error = 'Busca un PO primero';
 			return false;
@@ -135,16 +149,20 @@ export function createReceivingState() {
 			.filter(Boolean)
 			.map((s) => Number(s))
 			.filter((n) => Number.isInteger(n) && n > 0);
+
 		if (ids.length === 0) {
 			error = 'Indica al menos un receipt_id válido';
 			return false;
 		}
+
 		cancelling = true;
 		error = null;
 		lastResult = null;
 		try {
 			lastCancel = await deps.cancelReceipts.execute(detail.purchaseOrder.poId, ids);
-			const refreshed = await deps.lookupPurchaseOrder.execute(detail.purchaseOrder.poNumber);
+			const refreshed = await deps.lookupPurchaseOrder.execute(
+				detail.purchaseOrder.poNumber
+			);
 			detail = refreshed;
 			drafts = refreshed.lines
 				.filter((line) => line.quantityRemaining > 0)
@@ -159,7 +177,7 @@ export function createReceivingState() {
 				}));
 			return true;
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'No se pudo cancelar los recibos';
+			error = toUserMessage(err, 'No se pudo cancelar los recibos');
 			return false;
 		} finally {
 			cancelling = false;
@@ -167,16 +185,36 @@ export function createReceivingState() {
 	}
 
 	return {
-		get barcode() { return barcode; },
-		get detail() { return detail; },
-		get drafts() { return drafts; },
-		get loading() { return loading; },
-		get submitting() { return submitting; },
-		get cancelling() { return cancelling; },
-		get error() { return error; },
-		get lastResult() { return lastResult; },
-		get lastCancel() { return lastCancel; },
-		get receiptIdsInput() { return receiptIdsInput; },
+		get barcode() {
+			return barcode;
+		},
+		get detail() {
+			return detail;
+		},
+		get drafts() {
+			return drafts;
+		},
+		get loading() {
+			return loading;
+		},
+		get submitting() {
+			return submitting;
+		},
+		get cancelling() {
+			return cancelling;
+		},
+		get error() {
+			return error;
+		},
+		get lastResult() {
+			return lastResult;
+		},
+		get lastCancel() {
+			return lastCancel;
+		},
+		get receiptIdsInput() {
+			return receiptIdsInput;
+		},
 		setBarcode,
 		setReceiptIdsInput,
 		lookup,
