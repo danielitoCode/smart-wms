@@ -1,6 +1,6 @@
 # Guía de trabajo del backend gemelo WMS
 
-Escribo esta guía para que cualquier desarrollador o agente pueda continuar el trabajo sin depender de conversaciones externas. El backend original permanece intacto; el gemelo se desarrolla en `wms-twin/` sobre PrismaTec-Core.
+Escribo esta guía para que cualquier desarrollador o agente pueda continuar el trabajo sin depender de conversaciones externas. El backend original permanece intacto; el gemelo se desarrolla exclusivamente en `wms-twin/` sobre PrismaTec-Core.
 
 ## Estado real
 
@@ -8,7 +8,7 @@ La rama de trabajo es `feat/wms-prismatec-genesis`. La entrega actual contiene e
 
 ## Requisitos y puesta en marcha
 
-Necesito Go 1.25.0 o superior. El módulo PrismaTec-Core declara Go 1.25.0 y se consume como dependencia externa fijada a un commit; su código no se copia ni se vende dentro de este repositorio.
+Necesito Go 1.25.0 o superior. El módulo PrismaTec-Core declara `go 1.25.0` y se consume como dependencia externa fijada a un commit; su código no se copia ni se vende dentro de este repositorio.
 
 Desde la raíz:
 
@@ -46,6 +46,7 @@ El admin actual usa `/api` relativo. No es necesario modificar su código para a
 ```bash
 cd wms-twin
 gofmt -w .
+go mod download
 go test ./...
 go test -race -count=1 ./...
 go vet ./...

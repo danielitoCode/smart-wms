@@ -6,9 +6,7 @@ No declaro paridad por tener rutas con nombres parecidos. Cada caso debe igualar
 
 ## Estado global
 
-<badge>NO SUSTITUIBLE</badge>
-
-El gemelo es un primer corte ejecutable de infraestructura Core. Todavía no puede atender el frontend original. El backend Flask no se elimina ni se modifica.
+**NO SUSTITUIBLE.** El gemelo es un primer corte ejecutable de infraestructura Core. Todavía no puede atender el frontend original. El backend Flask no se elimina ni se modifica.
 
 ## Matriz de capacidades
 

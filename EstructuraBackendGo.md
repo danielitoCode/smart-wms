@@ -15,7 +15,7 @@ Repositorio: `github.com/yecharlot/PrismaTec-Core`. El módulo declara `go 1.25.
 - `api/aip.Server.Handler()` expone AIP v1, health, organismos, memoria/comandos, pulses y auditoría.
 - Transporte TCP/libp2p se activa desde la configuración del nodo.
 
-El commit Core fijado en `go.mod` es `84e9f40cbcc0fd0176c1d9057b20f099db2e7f5b`. No considero que esto demuestre por sí solo disponibilidad de Kademlia/GossipSub: no aparecen en la superficie de transporte que se integró en este corte. No habilito esas capacidades por inferencia.
+El commit Core fijado en `go.mod` es `84e9f40cbcc0fd0176c1d9057b20f099db2e7f5b`. No considero que esto demuestre disponibilidad de Kademlia/GossipSub: no aparecen en la superficie de transporte que se integró en este corte. No habilito esas capacidades por inferencia.
 
 ## Árbol implementado
 
@@ -59,6 +59,6 @@ La API técnica exige `WMS_TWIN_API_TOKEN` Bearer. No implementa todavía la aut
 
 - No añadir PostgreSQL/SQLite como persistencia paralela del gemelo.
 - No copiar PrismaTec-Core ni sus internals.
-- No mezclar el código Go con `api/`, `admin/`, `mobile/` o `db/` originales.
+- No escribir código nuevo en `api/`, `admin/`, `mobile/` o `db/` del backend original.
 - Mantener identidad del nodo, identidad del usuario y PeerID como conceptos distintos.
 - La conclusión de Mind no es autorización: las operaciones deben pasar por política/capacidad y validaciones de dominio.
