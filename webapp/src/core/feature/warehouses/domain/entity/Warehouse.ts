@@ -1,24 +1,24 @@
 /**
- * Warehouse master data.
- * Mobile list: GET /api/warehouses/list → { id, name, code }
- * Admin may expose richer fields (warehouse_id, warehouse_code, warehouse_name, active).
+ * Warehouse master data and physical storage hierarchy.
+ * A warehouse owns zones; each bin belongs to one warehouse and may belong
+ * to one zone. The shape follows the admin domain model and warehouse APIs.
  */
 
 export type Warehouse = {
 	id: number;
 	code: string;
 	name: string;
+	address?: string | null;
 	active: boolean;
+	createdAt?: string | null;
 };
 
 export type ZoneType =
-	| 'STORAGE'
 	| 'RECEIVING'
+	| 'STORAGE'
+	| 'PICKING'
 	| 'STAGING'
-	| 'SHIPPING'
-	| 'QUALITY'
-	| 'DAMAGE'
-	| string;
+	| 'SHIPPING';
 
 export type Zone = {
 	id: number;
@@ -26,15 +26,24 @@ export type Zone = {
 	code: string;
 	name: string;
 	zoneType: ZoneType;
+	active: boolean;
 };
 
-export type BinType = 'Pickable' | 'PickableStaging' | 'Staging' | string;
+export type BinType = 'Staging' | 'PickableStaging' | 'Pickable';
 
 export type Bin = {
 	id: number;
 	warehouseId: number;
 	zoneId: number | null;
+	zoneName?: string | null;
 	code: string;
 	barcode: string | null;
 	binType: BinType;
+	aisle: string | null;
+	rowNumber: number | null;
+	levelNumber: number | null;
+	positionNumber: number | null;
+	pickSequence: number;
+	putawaySequence: number;
+	active: boolean;
 };
