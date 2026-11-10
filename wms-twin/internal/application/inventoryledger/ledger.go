@@ -239,6 +239,9 @@ func (l *Ledger) execute(operationID string, command any, apply func(*state) ([]
 		}
 		result := previous.Result
 		result.Replayed = true
+		if err := l.store.Sync(ledgerKind, ledgerID); err != nil {
+			return result, fmt.Errorf("retry pending inventory replication: %w", err)
+		}
 		return result, nil
 	}
 
