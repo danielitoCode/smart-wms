@@ -12,11 +12,12 @@ import (
 	"time"
 
 	"github.com/yecharlot/PrismaTec-Core/core"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 )
-type Server struct{node *core.Node;store *corestore.Store;token string}
-func New(node *core.Node,store *corestore.Store,token string)*Server{return &Server{node:node,store:store,token:token}}
-func(s *Server)Handler()http.Handler{mux:=http.NewServeMux();mux.HandleFunc("/api/health",s.health);mux.HandleFunc("/api/twin/info",s.authorize(s.info));mux.HandleFunc("/api/twin/records/",s.authorize(s.records));return mux}
+type Server struct{node *core.Node;store *corestore.Store;ledger *inventoryledger.Ledger;token string}
+func New(node *core.Node,store *corestore.Store,token string)*Server{return &Server{node:node,store:store,ledger:inventoryledger.New(store),token:token}}
+func(s *Server)Handler()http.Handler{mux:=http.NewServeMux();mux.HandleFunc("/api/health",s.health);mux.HandleFunc("/api/twin/info",s.authorize(s.info));mux.HandleFunc("/api/twin/records/",s.authorize(s.records));mux.HandleFunc("/api/twin/inventory/",s.authorize(s.inventory));return mux}
 func writeJSON(w http.ResponseWriter,status int,v any){w.Header().Set("Content-Type","application/json; charset=utf-8");w.WriteHeader(status);_ = json.NewEncoder(w).Encode(v)}
 func(s *Server)health(w http.ResponseWriter,r *http.Request){if r.Method!=http.MethodGet{writeJSON(w,405,map[string]string{"error":"method not allowed"});return};writeJSON(w,200,map[string]any{"status":"ok","service":"smart-wms-twin","time":time.Now().UTC()})}
 func(s *Server)authorize(next http.HandlerFunc)http.HandlerFunc{return func(w http.ResponseWriter,r *http.Request){if s.token==""{writeJSON(w,503,map[string]string{"error":"WMS_TWIN_API_TOKEN is not configured"});return};v:=strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"),"Bearer "));if v==""||len(v)!=len(s.token)||subtle.ConstantTimeCompare([]byte(v),[]byte(s.token))!=1{writeJSON(w,401,map[string]string{"error":"Unauthorized"});return};next(w,r)}}
