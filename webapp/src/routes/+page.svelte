@@ -1,5 +1,5 @@
 <script lang="ts">
-	// Smart WMS — SvelteKit entry point
+	// Smart WMS — public entry
 </script>
 
 <main>
@@ -7,10 +7,10 @@
 	<p>Frontend en <strong>SvelteKit</strong> + TypeScript.</p>
 	<p>Arquitectura Feature-First / Clean Architecture.</p>
 	<ul>
-		<li><a href="/login">Login (auth)</a></li>
-		<li><a href="/inventory">Inventario</a></li>
-		<li><a href="/warehouses">Almacenes</a></li>
-		<li><a href="/items">Ítems</a></li>
+		<li><a href="/login">Login</a></li>
+		<li><a href="/inventory">Inventario</a> (requiere sesión)</li>
+		<li><a href="/warehouses">Almacenes</a> (requiere sesión)</li>
+		<li><a href="/items">Ítems</a> (requiere sesión)</li>
 	</ul>
 </main>
 
