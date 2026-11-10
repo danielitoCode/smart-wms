@@ -16,7 +16,7 @@ func newLedger(t *testing.T, dir string) *Ledger {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return New(corestore.New(node.Organisms()))
+	return New(corestore.New(node.Organisms(), string(node.ID())))
 }
 
 func TestAdjustAllocateReleaseAndIdempotency(t *testing.T) {
