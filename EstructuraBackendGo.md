@@ -13,7 +13,7 @@ La API pública inspeccionada incluye `core.NewNode`, ciclo de vida Node.Start/S
 ## Límites verificados
 
 1. Kademlia DHT y GossipSub quedan como trabajo futuro en la documentación Core revisada; no los declaro activos.
-2. Los snapshots de replicación contienen el organismo/episodios, pero no transfieren los bytes de los bloques CID.
+2. El snapshot nativo Core no transfiere bytes CID; el adaptador WMS ya transfiere bloques firmados, espera ACK y después adopta el snapshot. Está probado con LocalTransport; falta TCP/libp2p multi-proceso.
 3. El block store por defecto usa `cid1:` SHA-256 local. El método IPFS CIDv1 no equivale a una red IPFS ni a pinning distribuido.
 4. RootCID deriva del manifiesto; no cambia con cada versión operativa.
 5. El failover Core no es quorum seguro ante particiones de dos nodos.
@@ -101,9 +101,9 @@ La reconstrucción del grafo de módulos terminó correctamente y `go mod verify
 
 ## Grafo de módulos y calidad de código
 
-Incorporé las dependencias indirectas exactas generadas por `go mod tidy` con Go 1.25. El archivo `go.sum` ya estaba completo. También publiqué el formato producido por gofmt. El fallo de vet se debió a un import no utilizado en el test del ledger, ya retirado. El workflow final no debe formatear ni reescribir lockfiles: solo verifica y falla si el commit no está limpio.
+Incorporé las dependencias indirectas exactas generadas por `go mod tidy` con Go 1.25. El archivo `go.sum` ya estaba completo. También publiqué el formato producido por gofmt. El fallo de vet se debió a un import no utilizado en el test del ledger, ya retirado. El workflow no reescribe lockfiles. Formatea Go en su workspace temporal, ejecuta vet y race tests y, solo si pasan en un evento push, publica un commit exclusivamente de formato. En pull_request no escribe en la rama.
 
 
 ## Evidencia de validación
 
-La ejecución `42893176180` terminó satisfactoriamente: módulo reproducible, formato, vet y race tests en verde. Esto valida el runtime y los tests existentes, no el funcionamiento de replicación WMS ni la paridad de negocio. Mantengo explícitos esos límites.
+La ejecución `42893176180` validó el corte anterior del ledger. En la ejecución `42895311390`, formato y vet pasaron; inventoryledger, corestore, domain/inventory, replication y runtime pasaron sus tests. httpapi falló por aceptación de token sin esquema Bearer; ya estoy corrigiendo el middleware. La paridad Flask sigue sin demostrarse.

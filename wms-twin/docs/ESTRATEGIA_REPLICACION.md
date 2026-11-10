@@ -37,4 +37,4 @@ TestAuthenticatedReplicationTransfersCIDAndFencesReplicaWrites comprueba con dos
 - rechazo de escritura en réplica;
 - propagación de tombstone.
 
-Pendiente: pruebas TCP multi-proceso, desconexión/reconexión, firma inválida, CID corrupto, epoch viejo y peer no autorizado. El ledger de inventario usa un solo organismo global y un primario; no habilito failover ni varios escritores por falta de quorum.
+La prueba LocalTransport pasó en CI 42895311390. Pendiente: pruebas TCP multi-proceso, desconexión/reconexión, firma inválida, CID corrupto, epoch viejo y peer no autorizado. El ledger de inventario usa un solo organismo global y un primario; no habilito failover ni varios escritores por falta de quorum.

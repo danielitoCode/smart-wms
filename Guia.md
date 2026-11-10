@@ -166,3 +166,8 @@ La ejecución `42892797788` confirmó que `go mod tidy`, `gofmt` temporal y `go 
 ## Validación satisfactoria del ledger — 2026-11-10
 
 La ejecución GitHub Actions `42893176180`, sobre el commit `4b3880fe9a0dfec329cc88c8a2e08709454ecf14`, terminó en success. Pasaron guard documental/alcance, `go mod tidy -diff`, `go mod verify`, `gofmt -l`, `go vet ./...` y `go test -race -count=1 ./...`. Esta evidencia cubre el código y escenarios automatizados del corte actual; no demuestra paridad Flask ni consistencia multi-nodo.
+
+
+## Resultado de CI de replicación y corrección de autenticación — 2026-11-10
+
+La ejecución 42895311390 pasó el guard de documentación/alcance, verificación del grafo de módulos, formato Go y vet. La suite race ejecutó los paquetes: inventoryledger, corestore, domain/inventory, replication y runtime pasaron. El paquete httpapi falló porque el middleware aceptaba un token desnudo sin el esquema Bearer. Ya identifiqué el detonante y estoy endureciendo el parser para exigir Authorization: Bearer <token>, con prueba específica. El commit de formato automático no se publicó porque la suite no terminó en success.

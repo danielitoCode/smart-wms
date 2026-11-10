@@ -43,7 +43,7 @@ No declaro paridad por tener rutas con nombres parecidos. Cada caso debe igualar
 
 Requiere Bearer técnico y `operation_id`. El servidor carga las existencias desde el ledger; el cliente no puede fijar cantidades de origen/destino. El mismo ID/comando es idempotente; el mismo ID con otro comando produce conflicto.
 
-**Límite:** el mutex es local al proceso. No existe consenso/quorum, sincronización de bloques CID ni autoridad distribuida probada. No usar para stock autoritativo multi-nodo ni como ruta Flask equivalente.
+**Límite:** el mutex del ledger es local al proceso. La transferencia autenticada de bloques CID y snapshots WMS está implementada y pasó su prueba LocalTransport; aún no existe consenso/quorum, autoridad por partición ni prueba TCP/libp2p multi-proceso. No usar para stock autoritativo multi-nodo ni como ruta Flask equivalente.
 
 ## Seguridad que debo reproducir
 
@@ -51,7 +51,7 @@ JWT HS256 de ocho horas, cookies HttpOnly SameSite Strict, CSRF doble envío, es
 
 ## Distribución Core
 
-Los snapshots no transfieren los bytes CID; DHT/GossipSub están documentados como futuros y el block store predeterminado es local. No declaro replicación de registros WMS ni failover seguro ante particiones.
+El snapshot nativo no transfiere bytes CID; el protocolo WMS ya los transfiere por separado con firma y ACK. DHT/GossipSub siguen como futuros y no hay quorum ni failover seguro ante particiones. La replicación de dos nodos está probada en LocalTransport, no aún en TCP/libp2p.
 
 ## Frontends
 
@@ -87,4 +87,4 @@ La ejecución `42892797788` validó resolución del módulo, checksum y formato 
 
 ## Última evidencia de CI
 
-La ejecución `42893176180` sobre `4b3880fe` pasó guard documental/alcance, tidy diff, verificación de módulos, gofmt, vet y race tests. Por tanto, el ledger técnico está validado por su suite automatizada actual. No cambia el estado global: el gemelo sigue sin paridad de autenticación, DTO/rutas de negocio y flujos WMS, y no es sustituible.
+La ejecución `42893176180` validó el corte anterior del ledger. En `42895311390`, módulos, gofmt, vet y los paquetes inventoryledger/corestore/domain/replication/runtime pasaron; httpapi falló por aceptar un token sin el esquema Bearer. La corrección está en este commit y queda pendiente de CI. No cambia el estado global: no hay paridad de autenticación original, DTO/rutas de negocio y flujos WMS.

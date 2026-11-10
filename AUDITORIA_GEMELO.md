@@ -213,7 +213,7 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Commit:** `6b08dec2b9`.
 - **Prueba:** `TestAuthenticatedReplicationTransfersCIDAndFencesReplicaWrites`.
 - **Cobertura:** bloque CID transferido antes del snapshot, integridad del contenido, RootCID/ContentCID preservados, escritura de réplica rechazada y tombstone propagado.
-- **Estado:** pendiente de ejecución satisfactoria de CI para el corte que incluye el protocolo.
+- **Estado:** el paquete internal/replication pasó en CI 42895311390; el run global falló después en httpapi por un defecto de esquema Bearer, no por el protocolo.
 
 
 ### AUD-0019 — Reintento de replicación mediante replay idempotente
@@ -221,7 +221,7 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Detonante:** el primer commit de inventario puede persistir localmente y devolver 503 si un peer no confirma los bloques/snapshot. El replay idempotente anterior devolvía el resultado almacenado sin volver a sincronizar.
 - **Corrección:** añadí corestore.Store.Sync; el replay del mismo operation_id vuelve a intentar la replicación sin duplicar la mutación. Una réplica no intenta promoverse ni sincronizar si no es Primary.
 - **Prueba:** TestIdempotentReplayRetriesPendingReplication.
-- **Estado:** pendiente de CI del commit actual.
+- **Estado:** inventoryledger pasó en CI 42895311390; el test de replay idempotente está incluido en ese paquete.
 
 
 
@@ -229,4 +229,14 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 
 - **Detonante:** la ejecución 42894195703 pasó el guard de alcance/documentación, pero se detuvo al detectar siete archivos Go sin gofmt; vet y race tests no llegaron a ejecutarse.
 - **Corrección:** el workflow formatea únicamente el workspace temporal, ejecuta vet y race tests, y solo si pasan publica un commit de formato Go. No modifica código Flask/admin/mobile/db ni dependencias originales.
-- **Estado:** pendiente de la ejecución del workflow actualizado.
+- **Estado:** en CI 42895311390, gofmt y vet pasaron; los race tests fallaron en httpapi y por eso no se publicó el commit de formato. Tras corregir el esquema Bearer, se requiere nueva ejecución.
+
+
+### AUD-0021 — Middleware aceptaba token sin esquema Bearer
+
+- **Run que lo detectó:** 42895311390.
+- **Detonante:** TestInventoryLedgerHTTPRequiresBearerAndPersistsMovement envió el token desnudo y obtuvo 200; el contrato del gemelo exige Authorization: Bearer.
+- **Causa:** strings.TrimPrefix devolvía el valor original cuando no encontraba el prefijo, y el comparador aceptaba ese valor como token.
+- **Corrección:** parseo explícito del esquema HTTP, comparación case-insensitive del nombre Bearer, rechazo de esquema ausente/vacío y comparación constante del token.
+- **Prueba:** se mantiene la prueba del ledger HTTP y añado cobertura explícita del token desnudo en server_test.go.
+- **Estado:** corrección publicada en el commit actual; CI pendiente.

@@ -97,7 +97,7 @@ Repetir el mismo `operation_id` y contenido devuelve el resultado original. Reut
 - El ledger no integra todavía SalesOrder/Picking ni eventos/outbox WMS.
 - No implementa la ruta Flask `/api/transfers/move` ni JWT original.
 
-No autorizo usarlo como fuente de stock multi-nodo en producción. Antes necesito autoridad por partición, fencing monotónico aplicado a cada comando, transferencia autenticada de bloques, reconciliación y pruebas de partición/dual-primary.
+No autorizo usarlo como fuente de stock multi-nodo en producción. La transferencia autenticada de bloques CID ya está implementada y pasó la prueba LocalTransport. Antes necesito autoridad por partición, fencing monotónico aplicado a cada comando, quorum, reconciliación y pruebas TCP/libp2p de partición/dual-primary.
 
 ## Pruebas
 
@@ -112,4 +112,4 @@ Se añadieron pruebas para ajuste/reserva/liberación, idempotencia, movimiento,
 
 ## Evidencia automatizada
 
-La ejecución `42893176180` del commit `4b3880fe` pasó `go mod tidy -diff`, `go mod verify`, gofmt, vet y race tests. Los escenarios del ledger están cubiertos por la suite actual. Esta evidencia no cubre coordinación entre nodos ni particiones de red.
+La ejecución `42893176180` validó el corte anterior. En `42895311390` pasaron inventoryledger, corestore, domain/inventory, replication y runtime; httpapi falló por aceptación de token sin esquema Bearer. El middleware ya está corregido y la suite queda pendiente de repetición.

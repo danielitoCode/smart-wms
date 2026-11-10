@@ -76,3 +76,8 @@ El grafo Go canónico y el formato se recuperaron de un artefacto generado por G
 ## Validación
 
 La ejecución `42893176180` terminó en success. Pasaron tidy diff, verificación de módulos, gofmt, vet y race tests. La implementación técnica queda validada en el alcance cubierto por esos tests; no equivale a paridad con el backend original.
+
+
+## Último resultado de CI
+
+La ejecución 42895311390 pasó guard de alcance, grafo de módulos, gofmt y vet. Pasaron inventoryledger, corestore, domain/inventory, replication y runtime. httpapi detectó que el middleware aceptaba un token sin el esquema Bearer; el defecto está corregido en la rama y queda pendiente de nueva ejecución. No considero esta entrega validada hasta que CI termine en success.
