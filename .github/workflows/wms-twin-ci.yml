@@ -5,24 +5,20 @@ on:
     branches: [feat/wms-prismatec-genesis]
     paths:
       - 'wms-twin/**'
-      - 'api/prismatec/**'
-      - 'tests/wms-twin/**'
-      - '.github/workflows/wms-twin-ci.yml'
       - 'Guia.md'
       - 'EstructuraBackendGo.md'
       - 'NivelDeParidadConBackendOriginal.md'
       - 'AUDITORIA_GEMELO.md'
+      - '.github/workflows/wms-twin-ci.yml'
   pull_request:
     branches: [feat/wms-prismatec-genesis]
     paths:
       - 'wms-twin/**'
-      - 'api/prismatec/**'
-      - 'tests/wms-twin/**'
-      - '.github/workflows/wms-twin-ci.yml'
       - 'Guia.md'
       - 'EstructuraBackendGo.md'
       - 'NivelDeParidadConBackendOriginal.md'
       - 'AUDITORIA_GEMELO.md'
+      - '.github/workflows/wms-twin-ci.yml'
 
 permissions:
   contents: read
@@ -45,7 +41,7 @@ jobs:
           for file in Guia.md EstructuraBackendGo.md NivelDeParidadConBackendOriginal.md AUDITORIA_GEMELO.md; do
             test -s "$file" || { echo "Missing or empty required document: $file"; exit 1; }
           done
-      - name: Reject modifications to the original application
+      - name: Reject modifications to original application paths
         if: github.event_name == 'pull_request'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -57,14 +53,13 @@ jobs:
           forbidden=""
           while IFS= read -r path; do
             case "$path" in
-              api/prismatec/*) ;;
               api/*|admin/*|mobile/*|db/*) forbidden="${forbidden}${path}\n" ;;
             esac
           done < /tmp/changed-files.txt
           if [ -n "$forbidden" ]; then
             echo "Protected original paths were modified:"
             printf '%b' "$forbidden"
-            echo "Only the isolated twin and documentation may change in this workstream."
+            echo "The WMS twin must remain isolated under wms-twin/."
             exit 1
           fi
       - name: Check audit trail
@@ -73,61 +68,25 @@ jobs:
   go:
     name: Go tests and static checks
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: wms-twin
     steps:
       - uses: actions/checkout@v4
-      - name: Detect Go module
-        id: module
-        run: |
-          if [ -f wms-twin/go.mod ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/setup-go@v5
-        if: steps.module.outputs.present == 'true'
         with:
           go-version-file: wms-twin/go.mod
           cache: true
           cache-dependency-path: wms-twin/go.sum
-      - name: Verify dependencies
-        if: steps.module.outputs.present == 'true'
-        working-directory: wms-twin
-        run: go mod verify
+      - name: Download and verify dependencies
+        run: |
+          go mod download
+          go mod verify
       - name: Check formatting
-        if: steps.module.outputs.present == 'true'
-        working-directory: wms-twin
         run: |
           unformatted="$(gofmt -l .)"
           if [ -n "$unformatted" ]; then printf '%s\n' "$unformatted"; exit 1; fi
       - name: Vet
-        if: steps.module.outputs.present == 'true'
-        working-directory: wms-twin
         run: go vet ./...
       - name: Race-enabled tests
-        if: steps.module.outputs.present == 'true'
-        working-directory: wms-twin
         run: go test -race -count=1 ./...
-      - name: Report pending implementation
-        if: steps.module.outputs.present != 'true'
-        run: echo "wms-twin/go.mod is not present yet; Go checks remain pending."
-
-  python-boundary:
-    name: Python boundary tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Detect boundary tests
-        id: boundary
-        run: |
-          if compgen -G 'api/prismatec/tests/*.py' > /dev/null; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; fi
-      - uses: actions/setup-python@v5
-        if: steps.boundary.outputs.present == 'true'
-        with:
-          python-version: '3.11'
-      - name: Install pytest
-        if: steps.boundary.outputs.present == 'true'
-        run: python -m pip install pytest
-      - name: Run boundary tests
-        if: steps.boundary.outputs.present == 'true'
-        env:
-          PYTHONPATH: api
-        run: pytest -q api/prismatec/tests
-      - name: Report pending boundary tests
-        if: steps.boundary.outputs.present != 'true'
-        run: echo "No Python boundary tests found."

@@ -1,52 +1,34 @@
-# Auditoría de cambios y problemas — Backend gemelo
+# Auditoría de modificaciones del backend gemelo
 
-## Propósito y reglas
+Este registro conserva una traza verificable de cambios, problemas, detonantes, decisiones y evidencia. No registro como probado lo que no ejecuté.
 
-Mantengo este registro para que el equipo pueda reconstruir qué se modificó, por qué se hizo, qué lo detonó, qué consecuencias tuvo y cómo se verificó.
+## Formato obligatorio
 
-Cada entrada debe identificar commit/PR cuando exista, archivos afectados, detonante, decisión, impacto sobre el backend original, pruebas y resultado. No registraré secretos, tokens ni datos personales. Una hipótesis se marcará como hipótesis; no la presentaré como causa raíz demostrada.
+Cada entrada identifica fecha, commit, archivos, detonante, decisión, riesgo, pruebas y resultado. Los fallos se registran con síntoma, causa confirmada o hipótesis explícita, corrección y prueba de no regresión.
 
-## Registro cronológico
+## Entradas
 
-### AUD-0001 — Frontera técnica inicial
+### AUD-0001 — Frontera inicial PrismaTec
 
-- **Commit:** `0a47c26be3f805ff24779fb267bbb2d57b3f5aa9`
-- **Cambio:** incorporación de contratos exploratorios y adaptadores iniciales bajo `api/prismatec/`, pruebas iniciales y `docs/architecture/PRISMA_CORE_BOUNDARY.md`.
-- **Detonante:** necesidad de establecer una frontera entre capacidades WMS y tecnología PrismaTEC sin incorporar código privado del Core.
-- **Decisión:** definir puertos para identidad, eventos, contenido, transporte y gateway Core; mantener el Core fuera del repositorio.
-- **Impacto sobre backend original:** no se modificaron archivos preexistentes en ese commit. Los archivos nuevos quedaron dentro del árbol `api/`; por claridad arquitectónica, el gemelo definitivo se desarrollará de forma independiente en `wms-twin/` y no dependerá de esos archivos exploratorios hasta revisar su conveniencia.
-- **Pruebas:** se añadió un archivo de pruebas, pero no tengo evidencia registrada de que se haya ejecutado en CI o localmente. Estado: **no verificado**.
-- **Problemas / detonantes secundarios:** la frontera HTTP del Core y sus APIs exportadas no están verificadas; no afirmar conectividad funcional.
-- **Siguiente acción:** auditar el Core real y el contrato completo del backend original antes de implementar el servicio Go.
+- **Commit:** `0a47c26be3f805ff24779fb267bbb2d57b3f5aa9`.
+- **Cambio:** se añadieron contratos/adaptadores iniciales bajo `api/prismatec/`.
+- **Detonante:** explorar la integración entre WMS y PrismaTec-Core.
+- **Problema detectado después:** la ubicación dentro de `api/` puede confundirse con una modificación del backend Flask, contradiciendo la separación física que establecí.
+- **Decisión vigente:** el gemelo real vive en `wms-twin/`; no depender de `api/prismatec/`. La retirada de esos archivos propios se hará como limpieza aislada y quedará trazada; no se modificarán archivos originales.
 
-### AUD-0002 — Documentación operativa y controles de integración
+### AUD-0002 — Documentación y workflow
 
-- **Commit:** `aef763491ddbcd24e6a3e02a78ca6777c2760f21` (entrega documental); corrección posterior del workflow: `b12ec8179e175ce9eaa5f56caa3cf45d0f7e38e6`.
-- **Cambio:** creación de `Guia.md`, `EstructuraBackendGo.md`, `NivelDeParidadConBackendOriginal.md`, este registro y workflow de CI para validar cambios del gemelo.
-- **Detonante:** necesidad de que cualquier desarrollador o agente pueda retomar el trabajo sin depender de conversaciones privadas y de que los cambios se verifiquen antes de integrarse.
-- **Decisión:** documentar estado real, comandos, criterios de paridad, diagnóstico, límites y siguiente tarea. Ejecutar verificaciones automáticas en push y pull request hacia la rama gemela.
-- **Impacto sobre backend original:** los archivos de backend y frontend originales no deben modificarse. El workflow nuevo será adicional.
-- **Pruebas:** el workflow quedó registrado en el commit `aef763491ddbcd24e6a3e02a78ca6777c2760f21`. Aún no se ha observado una ejecución completada; resultado: **pendiente de CI**.
-- **Limitación:** GitHub Actions no puede impedir que un usuario ejecute `git pull` en su propia máquina. Sí puede bloquear la aceptación de un pull request si el repositorio exige los checks como reglas de protección. La exigencia de checks debe habilitarse en settings del repositorio con permisos administrativos.
-- **Siguiente acción:** auditar rutas, DTO, auth, permisos, pruebas y clientes; verificar APIs reales de PrismaTEC-Core; iniciar `wms-twin/` únicamente después.
+- **Commits:** `aef763491ddbcd24e6a3e02a78ca6777c2760f21`, `b12ec8179e175ce9eaa5f56caa3cf45d0f7e38e6`, `3d68a171b394cfca522042aaffca1c24d00c5e7c`.
+- **Cambio:** guía, estructura, matriz de paridad, auditoría y workflow.
+- **Detonante:** permitir continuidad por cualquier desarrollador/agente y validación antes de integrar.
+- **Resultado:** workflow escrito; no existe evidencia de una ejecución verde ni de protección de rama configurada.
 
-## Plantilla obligatoria para futuras entradas
+### AUD-0003 — Primer corte ejecutable Go/Core
 
-### AUD-XXXX — Título breve
-
-- **Fecha:**
-- **Commit / PR:**
-- **Área y archivos:**
-- **Detonante / problema observado:**
-- **Causa raíz:** confirmada / probable / desconocida, con evidencia.
-- **Cambio realizado:**
-- **Motivo de la decisión:**
-- **Impacto en backend original:** ninguno / riesgo / cambio autorizado.
-- **Pruebas ejecutadas:** comandos y entorno.
-- **Resultado:** aprobado / fallido / parcial / no ejecutado.
-- **Riesgos y deuda pendiente:**
-- **Siguiente paso:**
-
-## Cómo reportar fallos
-
-Un fallo debe incluir la operación que lo dispara, request sanitizado, response/status, logs correlacionados, commit, entorno, estado inicial de datos y pasos de reproducción. Si aún no se conoce el detonante, se registra como desconocido y se conserva la evidencia. Cada corrección debe agregar una prueba de regresión y actualizar el nivel de paridad.
+- **Commit:** pendiente de creación.
+- **Fecha:** 2026-11-10.
+- **Archivos:** `wms-twin/**`, `Guia.md`, `EstructuraBackendGo.md`, `NivelDeParidadConBackendOriginal.md`, este archivo.
+- **Detonante:** pasar de diseño documental a runtime funcional sin alterar Flask.
+- **Cambio:** bootstrap Core, AIP v1, almacenamiento de registros mediante organismos/episodios/CID, API técnica Bearer y primeras invariantes de inventario.
+- **Pruebas:** definidas en código; no ejecutadas localmente desde esta sesión. CI debe confirmarlas.
+- **Riesgos abiertos:** compatibilidad HTTP/auth pendiente; operaciones multi-registro no atómicas; no se ha probado replicación WMS.

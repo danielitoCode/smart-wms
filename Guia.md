@@ -1,128 +1,67 @@
-# Guía de trabajo — Backend gemelo PrismaTEC
+# Guía de trabajo del backend gemelo WMS
 
-## Propósito
+Escribo esta guía para que cualquier desarrollador o agente pueda continuar el trabajo sin depender de conversaciones externas. El backend original permanece intacto; el gemelo se desarrolla en `wms-twin/` sobre PrismaTec-Core.
 
-Estoy construyendo un segundo backend para Smart WMS, independiente del backend original y orientado a ejecutarse sobre PrismaTEC-Core. Mi objetivo es que ambos puedan funcionar simultáneamente y que el frontend actual pueda trabajar con cualquiera de ellos mediante configuración de despliegue, sin reescribir sus pantallas ni sus flujos.
+## Estado real
 
-**Regla principal:** no modifico, elimino ni sustituyo el backend original. Todo el backend gemelo nuevo vivirá en `wms-twin/`. La rama de trabajo es `feat/wms-prismatec-genesis`; no trabajo sobre `main`.
+La rama de trabajo es `feat/wms-prismatec-genesis`. La entrega actual contiene el primer servicio Go ejecutable, el arranque del nodo Core, persistencia por organismos/CID y una API técnica protegida. No existe todavía paridad funcional completa con Flask.
 
-## Estado real a la fecha de esta guía
+## Requisitos y puesta en marcha
 
-- La rama `feat/wms-prismatec-genesis` existe y parte de `main`.
-- Existe un primer commit de frontera técnica: `0a47c26be3f805ff24779fb267bbb2d57b3f5aa9`.
-- Ese commit añadió contratos/adaptadores exploratorios bajo `api/prismatec/` y documentación de frontera. No reemplaza ni modifica los módulos preexistentes del backend.
-- **Todavía no existe una implementación funcional completa del gemelo en `wms-twin/`.**
-- No declaro paridad funcional, integración real con PrismaTEC-Core, ni ejecución satisfactoria de pruebas hasta que existan evidencias reproducibles.
-- El repositorio ya dispone de workflows de CI para el backend original. Estoy añadiendo una comprobación separada para el gemelo y sus contratos.
-- No se ha habilitado todavía una regla de protección de rama que obligue a GitHub a bloquear merges por checks; esa configuración depende de permisos administrativos del repositorio.
+Necesito Go 1.25.0 o superior. El módulo PrismaTec-Core declara Go 1.25.0 y se consume como dependencia externa fijada a un commit; su código no se copia ni se vende dentro de este repositorio.
 
-## Límites que no voy a cruzar
-
-1. No modificar ni borrar el backend original.
-2. No cambiar el frontend original para adaptarlo al gemelo. Primero debo reproducir su contrato HTTP.
-3. No copiar, vendorizar, publicar ni incluir código fuente privado de PrismaTEC-Core en este repositorio.
-4. No introducir PostgreSQL como requisito del gemelo. La persistencia definitiva debe apoyarse en las capacidades reales y verificadas de PrismaTEC-Core; cualquier almacén local de desarrollo se identificará como tal.
-5. No presentar una interfaz simulada o un adaptador provisional como integración real.
-6. No activar escrituras distribuidas de inventario sin autoridad, idempotencia, fencing y reconciliación definidos.
-7. No fusionar esta rama en `main` sin autorización expresa.
-
-## Documentos que mantienen el contexto
-
-- [EstructuraBackendGo.md](EstructuraBackendGo.md): estructura prevista y reglas de diseño del backend Go.
-- [NivelDeParidadConBackendOriginal.md](NivelDeParidadConBackendOriginal.md): matriz de compatibilidad y estado por funcionalidad.
-- [AUDITORIA_GEMELO.md](AUDITORIA_GEMELO.md): registro cronológico de cambios, fallos, detonantes y acciones.
-- [docs/architecture/PRISMA_CORE_BOUNDARY.md](docs/architecture/PRISMA_CORE_BOUNDARY.md): límites de seguridad y conceptos de integración.
-
-## Cómo obtener la rama en mi máquina
-
-Si todavía no tengo esta rama local:
+Desde la raíz:
 
 ```bash
-git fetch origin
-git switch --track origin/feat/wms-prismatec-genesis
+export WMS_TWIN_DATA_DIR="$HOME/.local/share/smart-wms-twin"
+export WMS_TWIN_NODE_NAME="wms-node-local"
+export WMS_TWIN_HTTP_ADDR=":5001"
+export WMS_TWIN_AIP_ADDR=":8081"
+export WMS_TWIN_API_TOKEN="$(openssl rand -hex 32)"
+cd wms-twin
+go mod download
+go test ./...
+go run ./cmd/wms-twin
 ```
 
-Si ya existe localmente:
+- API técnica WMS: `http://127.0.0.1:5001`
+- Health Core: `http://127.0.0.1:5001/healthz`
+- AIP: `http://127.0.0.1:8081/aip/v1`
+- Datos persistentes: `WMS_TWIN_DATA_DIR`
+
+No necesito PostgreSQL ni Redis para este proceso. El backend original conserva sus propias dependencias y su forma de arranque.
+
+## Ejecutar el backend original simultáneamente
+
+El original continúa en su stack actual (Flask, PostgreSQL, Redis y procesos auxiliares). No comparto directorio de datos, secretos ni puertos con el gemelo. La configuración original sigue siendo la documentada en README y `docker-compose.yml`.
+
+## Cambiar el frontend entre backends
+
+El admin actual usa `/api` relativo. No es necesario modificar su código para alternar en un entorno con reverse proxy: el upstream de `/api` puede apuntar al original (puerto 5000) o al gemelo (puerto 5001). La app móvil cambia su URL base mediante su variable de deployment.
+
+**Advertencia actual:** todavía no se debe dirigir el frontend original al gemelo. El gemelo aún no implementa el contrato original de login/cookies/CSRF/JWT ni sus rutas. La ruta `/api/twin/*` es una API técnica protegida con Bearer token.
+
+## Pruebas y diagnóstico
 
 ```bash
-git switch feat/wms-prismatec-genesis
-git fetch origin
-git pull --ff-only origin feat/wms-prismatec-genesis
+cd wms-twin
+gofmt -w .
+go test ./...
+go test -race -count=1 ./...
+go vet ./...
+go test ./internal/corestore -run TestRecordsPersistThroughCoreCIDStore -v
 ```
 
-Para comprobar dónde estoy y qué cambios tengo:
+Si falla la descarga de dependencias, revisar Go 1.25, `GOPROXY`, conectividad a GitHub y el proxy de módulos. Si falla el arranque, comprobar que `WMS_TWIN_DATA_DIR` sea escribible y que los puertos 5001/8081 estén libres. Si una lectura CID falla, conservar el directorio de datos para análisis: no borrarlo como primera medida.
 
-```bash
-git status --short --branch
-git branch --show-current
-git log -5 --oneline --decorate
-```
+## Dónde continuar
 
-No debo ejecutar estos comandos desde una rama con cambios locales sin revisar antes `git status`. Si tengo trabajo sin guardar, debo confirmarlo o guardarlo antes de actualizar.
+1. Auditar y congelar el mapa completo de rutas, esquemas, middleware y respuestas del backend Flask.
+2. Implementar autenticación compatible, con revocación y CSRF sin debilitar el contrato.
+3. Portar primero almacenes, zonas, bins e items, con DTO y códigos HTTP exactos.
+4. Implementar inventario como agregado con operaciones atómicas e idempotentes.
+5. Portar recepción, put-away, picking, packing, shipping, transferencias y conteos.
+6. Completar usuarios, permisos, auditoría, integraciones, webhooks, snapshots e importaciones.
+7. Ejecutar pruebas diferenciales original vs gemelo y pruebas de concurrencia/particiones.
 
-## Cómo ejecutar la infraestructura hoy
-
-### Backend original
-
-El backend original conserva sus instrucciones y dependencias propias. Su despliegue actual exige PostgreSQL mediante `DATABASE_URL`; también usa Redis/Celery en los flujos que lo requieren. No debo interpretar esta dependencia como requisito del gemelo.
-
-Antes de ejecutarlo, reviso el README raíz, `.env.example`, `docker-compose.yml` y los scripts existentes. No invento variables ni valores secretos: copio el archivo de ejemplo a un archivo local ignorado por Git y completo credenciales de desarrollo propias.
-
-### Backend gemelo
-
-La implementación Go todavía no está creada. Por tanto, no hay un comando honesto de arranque para ella en este estado. Cuando se incorpore el primer servicio ejecutable, actualizaré aquí el comando exacto, versión de Go, variables, puertos, dependencias, persistencia y procedimiento de apagado.
-
-### Frontend
-
-El cliente admin actualmente usa rutas relativas bajo `/api` y credenciales de sesión/cookies; por ello, cambiar solamente una variable genérica `VITE_API_BASE_URL` no está demostrado como compatible. La estrategia inicial es mantener el frontend intacto y seleccionar el backend mediante el proxy inverso o la configuración del servidor web que resuelva `/api` hacia el backend elegido.
-
-No se afirmará que el frontend puede alternar hasta comprobar también el cliente móvil, CORS/cookies, CSRF, autenticación y todos los endpoints consumidos.
-
-## Cómo seleccionar uno u otro backend
-
-La forma segura prevista es desplegar cada backend en un puerto/servicio diferente y dirigir el mismo prefijo público `/api` al destino elegido desde el proxy inverso:
-
-- modo original: `/api` → backend original;
-- modo gemelo: `/api` → backend gemelo;
-- modo de comparación: dos hosts o entornos separados, cada uno apuntando a un backend; no enviar una misma mutación a ambos en producción.
-
-No se recomienda replicar escrituras automáticamente a ambos backends: puede duplicar recepciones, movimientos, picking o ajustes. La comparación debe usar datos aislados, fixtures o tráfico de solo lectura hasta diseñar una estrategia explícita.
-
-## Pruebas, diagnóstico y aceptación
-
-La prueba de una funcionalidad no se limita a comprobar que el endpoint responde HTTP 200. Para cada ruta debo comparar:
-
-- método, ruta, autenticación y permisos;
-- payload aceptado, validaciones y valores por defecto;
-- código HTTP y estructura JSON de respuesta/error;
-- efectos persistidos y transacciones;
-- idempotencia, concurrencia y auditoría cuando aplique;
-- comportamiento consumido por admin y mobile.
-
-Para investigar un fallo:
-
-1. Identifico commit, rama, entorno y versión de configuración.
-2. Reproduzco el caso con datos de prueba, sin credenciales reales.
-3. Comparo request/response original y gemelo, ocultando tokens y datos sensibles.
-4. Reviso logs correlacionados por request/event ID.
-5. Aíslo si el origen es contrato, dominio, persistencia, red, Core, autorización o frontend.
-6. Registro detonante, impacto, evidencia, corrección y prueba de regresión en `AUDITORIA_GEMELO.md`.
-7. Actualizo matriz de paridad y guía en el mismo cambio que corrige el problema.
-
-Los comandos concretos de test del gemelo se incorporarán cuando exista el módulo Go. Hasta entonces, no se debe asumir que `go test ./...` ya es aplicable.
-
-## Continuidad para desarrolladores y agentes de IA
-
-Antes de cambiar código, leer en este orden:
-
-1. este archivo;
-2. `NivelDeParidadConBackendOriginal.md`;
-3. `EstructuraBackendGo.md`;
-4. `AUDITORIA_GEMELO.md`;
-5. los contratos y código del organismo que se vaya a modificar.
-
-Después de cada actualización debo dejar claro: qué cambié, por qué, qué no cambié, cómo lo probé, resultado exacto, riesgos conocidos y siguiente tarea concreta. Si una afirmación no está verificada, debe permanecer marcada como pendiente.
-
-## Regla de actualización documental
-
-Cada commit que modifique el gemelo debe actualizar en el mismo commit los documentos afectados. Como mínimo revisar esta guía, la estructura, la paridad y la auditoría. Si el cambio altera comandos, dependencias, variables, puertos o pruebas, esta guía debe reflejarlo.
+Antes de cada commit actualizo esta guía, `EstructuraBackendGo.md`, `NivelDeParidadConBackendOriginal.md` y `AUDITORIA_GEMELO.md`. El siguiente agente debe leer primero esos cuatro documentos y `wms-twin/README.md`.
