@@ -67,6 +67,7 @@ func(s *Store)Sync(kind,id string)error{
 	s.mu.Lock();defer s.mu.Unlock()
 	org,err:=s.manager.Get(orgName(kind,id));if err!=nil{return fmt.Errorf("record not found: %s/%s",kind,id)}
 	if org.Placement.Primary==s.nodeID&&org.Status!=organism.StatusRunning{org,err=s.manager.Start(org.ID);if err!=nil{return err}}
+	if org.Placement.Primary!=s.nodeID{return nil}
 	if !s.manager.IsLeader(org.ID){return ErrNotPrimary}
 	if err:=s.replicator.SyncOrganism(org.ID);err!=nil{return &ReplicationError{OrganismID:org.ID,Cause:err}}
 	return nil
