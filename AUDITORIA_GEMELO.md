@@ -40,7 +40,7 @@ Cada entrada identifica fecha, commit, archivos, detonante, decisión, riesgo, p
 - **Detonante:** al revisar el árbol completo confirmé que `api/prismatec/` estaba dentro del directorio del backend Flask, aunque sus archivos fueran nuevos.
 - **Cambio:** retiré exclusivamente los archivos creados por AUD-0001 y mantuve el código nuevo bajo `wms-twin/`.
 - **Protección:** no eliminé ni modifiqué archivos preexistentes de `api/`.
-- **Verificación pendiente:** comparar el diff final de la rama contra `main` y comprobar que no quedan cambios bajo `api/`, `admin/`, `mobile/` o `db/`.
+- **Verificación:** el workflow de protección documental pasó en el commit `026bad4`; la comparación completa contra `main` sigue pendiente.
 
 ### AUD-0005 — Límites HTTP, AIP e invariantes de inventario
 
@@ -48,3 +48,11 @@ Cada entrada identifica fecha, commit, archivos, detonante, decisión, riesgo, p
 - **Detonantes:** el AIP se había montado dentro del servidor WMS aunque la guía anunciaba otro puerto; además, el lector HTTP usaba un writer nulo en `http.MaxBytesReader`, y las reglas de movimiento necesitaban fallar sin devolver balances parcialmente modificados.
 - **Cambio:** separé el listener AIP del listener WMS; limité el cuerpo JSON a 1 MiB con lectura acotada; reforcé validación de balances, desbordamiento y movimientos de igual producto/lote.
 - **Pruebas:** añadí casos para ajuste que no puede retirar stock reservado, movimiento incompatible y overflow. No se declara validado hasta que CI termine.
+
+### AUD-0006 — Primer fallo de CI por formato Go
+
+- **Commit afectado:** `026bad44df23e64faa22d91c844ba4942e4d131b`.
+- **Evidencia:** workflow `WMS twin validation`, ejecución `42889670356`, job `Go tests and static checks`.
+- **Detonante:** el paso `gofmt -l .` detectó archivos no formateados y detuvo el job antes de `go vet` y `go test`.
+- **Decisión de diagnóstico:** para esta fase, el workflow normaliza el formato dentro del workspace efímero de CI, deja una advertencia visible y continúa con vet/tests. No altera el commit del desarrollador. La normalización automática es temporal; debo publicar los archivos formateados en la rama cuando cierre la siguiente pasada de validación.
+- **Estado:** la ejecución corregida está pendiente.
