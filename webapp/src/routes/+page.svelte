@@ -1,19 +1,14 @@
 <script lang="ts">
 	// Smart WMS — SvelteKit entry point
-	// Feature-First + Clean Architecture will be built from here.
 </script>
 
 <main>
 	<h1>Smart WMS</h1>
-	<p>
-		Frontend migrado a <strong>SvelteKit</strong> + TypeScript.
-	</p>
-	<p>
-		Base lista para arquitectura Feature-First / Clean Architecture.
-	</p>
-	<p>
-		<a href="https://svelte.dev/docs/kit" target="_blank" rel="noreferrer">Documentación SvelteKit</a>
-	</p>
+	<p>Frontend en <strong>SvelteKit</strong> + TypeScript.</p>
+	<p>Arquitectura Feature-First / Clean Architecture.</p>
+	<ul>
+		<li><a href="/inventory">Inventario (feature piloto)</a></li>
+	</ul>
 </main>
 
 <style>
@@ -27,5 +22,8 @@
 	h1 {
 		font-size: 2rem;
 		margin-bottom: 0.5rem;
+	}
+	ul {
+		padding-left: 1.25rem;
 	}
 </style>
