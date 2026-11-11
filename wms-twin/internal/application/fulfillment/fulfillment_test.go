@@ -112,11 +112,15 @@ func TestVoidReversesPOSInventoryExactlyOnce(t *testing.T) {
 	// otherwise the ledger would treat the second void as the first replay.
 	if _, err := ledger.Release(inventoryledger.QuantityCommand{OperationID:"seed-pos-release-2",WarehouseID:warehouse.WarehouseID,BinID:bin.BinID,ItemID:item.ItemID,Quantity:2}); err != nil { t.Fatal(err) }
 	if _, err := ledger.Adjust(inventoryledger.AdjustCommand{OperationID:"seed-pos-dispatch-2",WarehouseID:warehouse.WarehouseID,BinID:bin.BinID,ItemID:item.ItemID,Delta:-2}); err != nil { t.Fatal(err) }
-	sale["status"], sale["dispatch_key"] = "DISPATCHED", "dispatch-2"
+	sale["status"], sale["dispatch_key"] = "DISPATCHING", "dispatch-2"
 	data, err = json.Marshal(sale)
 	if err != nil { t.Fatal(err) }
 	if _, err := store.Put("wms_pos_sale","pos-sale-void",data); err != nil { t.Fatal(err) }
-	if _, err := service.Fulfill(FulfillInput{SOID:so.SOID,Carrier:"UPS",TrackingNumber:"POS-VOID-TRACK-2"},[]int64{warehouse.WarehouseID},false); err != nil { t.Fatal(err) }
+	if _, err := service.Fulfill(FulfillInput{SOID:so.SOID,Carrier:"UPS",TrackingNumber:"POS-VOID-TRACK-2",POSDispatchKey:"dispatch-2"},[]int64{warehouse.WarehouseID},false); err != nil { t.Fatal(err) }
+	sale["status"] = "DISPATCHED"
+	data, err = json.Marshal(sale)
+	if err != nil { t.Fatal(err) }
+	if _, err := store.Put("wms_pos_sale","pos-sale-void",data); err != nil { t.Fatal(err) }
 	secondVoid, err := service.VoidLegacy(so.SOID,"operator","customer cancelled")
 	if err != nil { t.Fatal(err) }
 	if secondVoid.Status!="VOIDED" { t.Fatalf("second shipment generation was not voided: %+v",secondVoid) }
