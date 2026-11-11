@@ -27,6 +27,7 @@ type Config struct {
 	MaxLoginAttempts                              int
 	LoginLockout                                  time.Duration
 	RequirePacking                                bool
+	AllowDemoBootstrap                            bool
 }
 
 func ConfigFromEnv() Config {
@@ -60,6 +61,7 @@ func ConfigFromEnv() Config {
 		MaxLoginAttempts:   envPositiveInt("WMS_TWIN_MAX_LOGIN_ATTEMPTS", 5),
 		LoginLockout:       time.Duration(lockoutMinutes) * time.Minute,
 		RequirePacking:     requirePacking,
+		AllowDemoBootstrap: strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_TWIN_ALLOW_DEMO_BOOTSTRAP")), "true"),
 	}
 }
 
@@ -83,6 +85,9 @@ func New(cfg Config) (*Runtime, error) {
 	}
 	if cfg.NodeName == "" {
 		return nil, fmt.Errorf("node name is required")
+	}
+	if len(strings.TrimSpace(cfg.JWTSecret)) < 32 {
+		return nil, fmt.Errorf("JWT_SECRET must contain at least 32 characters")
 	}
 	if len(cfg.Peers) > 0 && cfg.NetworkAddr == "" {
 		return nil, fmt.Errorf("PRISMATEC_NETWORK_ADDR is required when PRISMATEC_PEERS is configured")
@@ -134,9 +139,20 @@ func New(cfg Config) (*Runtime, error) {
 			return nil, fmt.Errorf("bootstrap Core identities: %w", err)
 		}
 	}
-	// Laboratorio: si no hay usuarios, siembra operator/admin para demos del equipo.
-	// No sustituye un import real de producción; solo evita login vacío en local.
-	if list, err := users.List(); err == nil && len(list) == 0 {
+	userList, err := users.List()
+	if err != nil {
+		cancel()
+		_ = node.Stop()
+		return nil, fmt.Errorf("read Core identities: %w", err)
+	}
+	if len(userList) == 0 {
+		if !cfg.AllowDemoBootstrap {
+			cancel()
+			_ = node.Stop()
+			return nil, fmt.Errorf("no WMS identities configured: import WMS_TWIN_BOOTSTRAP_USERS_FILE or explicitly set WMS_TWIN_ALLOW_DEMO_BOOTSTRAP=true for a local demo")
+		}
+		// Explicit opt-in only. These credentials are for isolated local demos,
+		// never for a shared or production environment.
 		if _, err := users.CreateWithPassword(identity.User{
 			Username: "operator", FullName: "Demo Operator", Role: "ADMIN", IsActive: true,
 		}, "Operator123"); err != nil {
@@ -153,10 +169,6 @@ func New(cfg Config) (*Runtime, error) {
 		}
 	}
 	jwtSecret := strings.TrimSpace(cfg.JWTSecret)
-	if len(jwtSecret) < 32 {
-		// Solo laboratorio: secret determinista documentado (NO usar en producción).
-		jwtSecret = "wms-twin-lab-jwt-secret-min-32-bytes!!"
-	}
 	apiServer := httpapi.NewWithIdentity(node, store, cfg.APIToken, users, []byte(jwtSecret), cfg.MaxLoginAttempts, cfg.LoginLockout, cfg.RequirePacking)
 	if err := apiServer.StartBackground(ctx); err != nil {
 		cancel()
