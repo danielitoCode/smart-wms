@@ -486,3 +486,10 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 
 - El ledger conserva balances con cantidad cero como historial estructural.
 - Corregí la prueba para verificar OnHand=0 y Allocated=0 en lugar de exigir que desaparezca la fila.
+
+
+### AUD-0031 — RMA limitado a mercancía efectivamente despachada
+
+- Eliminé el fallback que trataba ordered/picked/packed como cantidades retornables.
+- `rma.Create` usa únicamente `QuantityShipped`, resta POS refunds y reservas de otros RMAs.
+- Añadí una prueba que rechaza un RMA cuando existe cantidad empaquetada pero no cantidad shipped confirmada.
