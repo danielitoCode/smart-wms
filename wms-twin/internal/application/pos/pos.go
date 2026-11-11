@@ -446,7 +446,7 @@ type RefundRecord struct {
 func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]any, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if strings.TrimSpace(in.SONumber) == "" || strings.TrimSpace(in.IdempotencyKey) == "" || len(in.IdempotencyKey) > 128 || strings.TrimSpace(in.ExternalRefundRef) == "" || len(in.ExternalRefundRef) > 256 || strings.TrimSpace(in.CashierID) == "" || len(in.CashierID) > 128 || strings.TrimSpace(in.Reason) == "" || len(in.Reason) > 500 || in.TotalCents <= 0 {
+	if strings.TrimSpace(in.SONumber) == "" || len(in.SONumber) > 128 || len(in.Lines) > 200 || strings.TrimSpace(in.IdempotencyKey) == "" || len(in.IdempotencyKey) > 128 || strings.TrimSpace(in.ExternalRefundRef) == "" || len(in.ExternalRefundRef) > 256 || strings.TrimSpace(in.CashierID) == "" || len(in.CashierID) > 128 || strings.TrimSpace(in.Reason) == "" || len(in.Reason) > 500 || in.TotalCents <= 0 {
 		return nil, false, ErrInvalid
 	}
 	so, err := s.GetSO(in.SONumber)
@@ -462,6 +462,7 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 			break
 		}
 	}
+	if !found { return nil, false, salesorders.ErrNotFound }
 
 	fingerprintBytes, err := json.Marshal(struct { Request RefundInput `json:"request"`; Actor string `json:"actor"` }{Request:in, Actor:actor})
 	if err != nil { return nil, false, err }
