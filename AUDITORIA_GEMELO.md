@@ -464,3 +464,19 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - La reversión por ubicación se registra en `VoidReversedKeys` y usa operaciones deterministas en el ledger.
 - La venta telefónica vuelve a COMPLETED y permite un nuevo despacho con otra clave; las ventas normales no reciben una reserva artificial.
 - Se añadió una prueba de despacho → void → redispatch que verifica on-hand y allocated en cada transición.
+
+
+### AUD-0029 — Cierre de reversión POS, idempotencia y observabilidad
+
+- Añadí la reversión de inventario POS al void de fulfillment. La operación persiste VOIDING, aplica movimientos compensatorios con IDs deterministas, registra cada ubicación revertida y solo después termina el void. Un retry retoma el trabajo sin volver a sumar stock.
+- La reversión identifica el tipo de venta: no permite anular un pedido telefónico antes de que POS haya confirmado DISPATCHED y bloquea el void cuando existen devoluciones parciales/totales que requieren conciliación.
+- Serialicé DispatchWithDetails con el mutex del servicio POS. Agregué agregación de líneas repetidas en refund para que un mismo operation_id no haga que la segunda fila se interprete como replay y deje cantidades sin reponer.
+- Serialicé el enqueue local del webhook outbox, reporto errores de persistencia de DLQ y dejo visibles los errores del worker y de la reconciliación de eventos.
+- El endpoint de restore devuelve el backup_snapshot_id generado antes de reemplazar el ledger.
+- Inbound amplía el mapping de items, sales orders y purchase orders, valida tipos escalares, exige external_version al activar idempotencia y compara el payload completo en la recuperación por clave natural.
+- Añadí pruebas para refund con líneas duplicadas, void POS con reversión exacta, mapeo de item/SO/PO y comunicación GossipSub entre dos transportes LibP2P reales de PrismaTec-Core.
+- Endurecí el arranque: JWT_SECRET es obligatorio (mínimo 32 caracteres); no se crean usuarios demo ni se usa una clave JWT fija salvo opt-in explícito con WMS_TWIN_ALLOW_DEMO_BOOTSTRAP=true.
+- La entrega webhook es at-least-once. No afirmo exactly-once ni exclusión de workers entre nodos; para la primera validación operativa usaré un solo nodo worker.
+- Los external_version distintos del ya registrado siguen en conflicto hasta definir la semántica de actualización/cancelación por recurso del ERP. No aplico sobrescrituras de estado de pedidos sin contrato.
+- La integración con un procesador de pagos real no está incluida: POS valida y conserva referencias/tenders del proveedor; el gateway debe autorizar/capturar/reembolsar externamente.
+- Validación CI y ejecución local completa pendientes de resultado; no declaro aprobado lo que no se haya ejecutado.
