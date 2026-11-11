@@ -328,3 +328,8 @@ Añadí pruebas unitarias para checkout/replay, refund/restock/replay, dispatch 
 ### Conciliación de devoluciones y RMA
 
 El refund parcial ya no acepta un importe arbitrario: calcula el importe por cantidad a partir del total de línea original y el acumulado ya devuelto. El envío se devuelve por separado mediante `shipping_refund_cents`; la SO permanece PARTIALLY_REFUNDED hasta que artículos y cargos queden conciliados. RMA descuenta cantidades ya devueltas por POS y las cantidades comprometidas por RMAs anteriores que no estén cancelados. Así no puedo abrir dos expedientes que reclamen las mismas unidades.
+
+
+### Cancelación segura de devoluciones
+
+Añadí una compensación explícita al cancelar un RMA que ya recibió mercancía con disposición RESTOCK. La cancelación pasa primero a CANCELLING, revierte cada movimiento de inventario con un operation_id determinista y persiste el avance receipt por receipt. Si el proceso cae, la siguiente llamada reanuda la compensación; si el stock ya fue consumido y no se puede retirar, la cancelación queda pendiente y devuelve el error en lugar de fingir que terminó. Los movimientos SCRAP y HOLD no se alteran.
