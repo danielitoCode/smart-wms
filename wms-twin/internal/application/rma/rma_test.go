@@ -2,6 +2,7 @@ package rma
 
 import (
 	"testing"
+	"encoding/json"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
@@ -47,4 +48,31 @@ func TestRMAReceiptDispositionRestocksIdempotentlyAndCompletes(t *testing.T) {
 	balances, _, err := ledger.List()
 	if err != nil { t.Fatal(err) }
 	if len(balances)!=1 || balances[0].OnHand!=2 { t.Fatalf("RMA restock did not apply exactly once: %+v",balances) }
+}
+
+func TestRMAUsesOnlyUnrefundedShippedQuantity(t *testing.T) {
+	node, err := core.NewNode(core.Config{DataDir:t.TempDir(),Name:"wms-rma-partial-refund-test"})
+	if err != nil { t.Fatal(err) }
+	store := corestore.New(node.Organisms(),string(node.ID()))
+	ledger := inventoryledger.New(store)
+	cat := catalog.New(store,ledger)
+	warehouse, err := cat.CreateWarehouse(catalog.WarehouseInput{WarehouseCode:"RMA-PART",WarehouseName:"RMA Partial"})
+	if err != nil { t.Fatal(err) }
+	item, err := cat.CreateItem(catalog.ItemInput{SKU:"RMA-PART-SKU",ItemName:"Partial return item"})
+	if err != nil { t.Fatal(err) }
+	sos := salesorders.New(store,cat)
+	so, err := sos.Create(salesorders.CreateInput{SONumber:"SO-RMA-PART-1",WarehouseID:warehouse.WarehouseID,Lines:[]salesorders.LineInput{{ItemID:item.ItemID,QuantityOrdered:3}}},"tester")
+	if err != nil { t.Fatal(err) }
+	so.Status = salesorders.StatusPartiallyRefunded
+	so.Lines[0].QuantityShipped = 3
+	so.Lines[0].Status = salesorders.LineShipped
+	if err := sos.Save(so); err != nil { t.Fatal(err) }
+	saleData, _ := json.Marshal(map[string]any{"id":"sale-partial","so_id":so.SOID,"status":"PARTIALLY_REFUNDED"})
+	if _, err := store.Put("wms_pos_sale","sale-partial",saleData); err != nil { t.Fatal(err) }
+	refundData, _ := json.Marshal(map[string]any{"sale_id":"sale-partial","status":"COMPLETED","lines":[]map[string]any{{"item_id":item.ItemID,"quantity":2}}})
+	if _, err := store.Put("wms_pos_refund","refund-partial",refundData); err != nil { t.Fatal(err) }
+	service := New(store,sos,cat,ledger)
+	rma, err := service.Create(so.SONumber,"remaining unit returned","tester",false)
+	if err != nil { t.Fatal(err) }
+	if len(rma.Lines)!=1 || rma.Lines[0].Expected!=1 { t.Fatalf("RMA included already-refunded quantity: %+v",rma.Lines) }
 }
