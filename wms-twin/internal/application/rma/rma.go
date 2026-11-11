@@ -187,7 +187,7 @@ func (s *Service) ReceiveLine(id, itemID, quantity, binID int64, lot, dispositio
 	r, err := s.Get(id)
 	if err != nil { return RMA{}, err }
 	if r.Status != "OPEN" && r.Status != "RECEIVED" { return RMA{}, fmt.Errorf("rma status %s cannot receive", r.Status) }
-	if quantity <= 0 || strings.TrimSpace(operationID) == "" || strings.TrimSpace(actor) == "" { return RMA{}, fmt.Errorf("positive quantity, operation_id and actor are required") }
+	if quantity <= 0 || !validRMAOperationID(operationID) || strings.TrimSpace(actor) == "" { return RMA{}, fmt.Errorf("positive quantity, valid operation_id and actor are required") }
 	disposition = strings.ToUpper(strings.TrimSpace(disposition))
 	if disposition != "RESTOCK" && disposition != "SCRAP" && disposition != "HOLD" { return RMA{}, fmt.Errorf("disposition must be RESTOCK, SCRAP or HOLD") }
 	var target *RMALine
@@ -285,3 +285,11 @@ func (s *Service) Cancel(id int64, actor string) (RMA, error) {
 }
 
 func formatID(id int64) string { return fmt.Sprintf("%d", id) }
+
+func validRMAOperationID(value string) bool {
+	if len(value) == 0 || len(value) > 128 { return false }
+	for _, r := range value {
+		if !(r >= 'a' && r <= 'z') && !(r >= 'A' && r <= 'Z') && !(r >= '0' && r <= '9') && r != '-' && r != '_' { return false }
+	}
+	return true
+}
