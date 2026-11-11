@@ -113,7 +113,7 @@ func NewWithIdentity(node *core.Node, store *corestore.Store, token string, user
 		cycleCounts: cyclecounts.New(store, master, ledger),
 		pos:         posSvc,
 		dockd:       dockd.New(sos, master, ful),
-		inbound:     inbound.New(store, master, sos),
+		inbound:     inbound.New(store, master, sos, poRepo),
 		events:      ev,
 		webhooks:    wh,
 		snapshot:    snapshot.New(ledger),
