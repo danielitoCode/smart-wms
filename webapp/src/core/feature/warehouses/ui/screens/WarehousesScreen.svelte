@@ -84,7 +84,7 @@
 {/if}
 {#if deleteTarget}
 	<div class="backdrop"><section class="dialog" role="alertdialog" aria-modal="true">
-		<h2>Eliminar almacén</h2><p>¿Eliminar <strong>{deleteTarget.code} — {deleteTarget.name}</strong>? Solo será posible si no tiene inventario, bins ni zonas asociados.</p>
+		<h2>Eliminar almacén</h2><p>¿Eliminar <strong>{deleteTarget.code} — {deleteTarget.name}</strong>? Solo será posible si no tiene inventario, ubicaciones ni zonas asociadas.</p>
 		{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
 		<footer><button type="button" class="quiet" onclick={() => deleteTarget = null} disabled={vm.mutating}>Cancelar</button><button type="button" class="danger" onclick={remove} disabled={vm.mutating}>{vm.mutating ? 'Eliminando…' : 'Eliminar'}</button></footer>
 	</section></div>
