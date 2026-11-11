@@ -203,6 +203,7 @@ func (s *Service) ProcessPending(ctx context.Context) error {
 			if err != nil { failures = append(failures, record.ID+": secret migration persist: "+err.Error()) }
 		}
 	}
+	if len(failures) > 0 { return fmt.Errorf("webhook secret migration blocked dispatch: %s", strings.Join(failures, "; ")) }
 	records, err := s.store.List(deliveryKind)
 	if err != nil { return err }
 	now := time.Now().UTC()
@@ -225,7 +226,7 @@ func (s *Service) ProcessPending(ctx context.Context) error {
 		case sendErr == nil && status >= 200 && status < 300:
 			delivery.Status = "DELIVERED"; delivery.LastError = ""
 			delivered := time.Now().UTC(); delivery.DeliveredAt = &delivered
-		case sendErr == nil && status >= 400 && status < 500 && status != http.StatusTooManyRequests:
+		case sendErr == nil && ((status >= 400 && status < 500 && status != http.StatusTooManyRequests) || (status >= 300 && status < 400)):
 			delivery.Status = "DEAD"; delivery.LastError = fmt.Sprintf("permanent webhook response: HTTP %d", status)
 		default:
 			if sendErr != nil { delivery.LastError = sendErr.Error() } else { delivery.LastError = fmt.Sprintf("webhook response: HTTP %d", status) }
