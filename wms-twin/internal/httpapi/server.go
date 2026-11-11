@@ -101,8 +101,11 @@ func NewWithIdentity(node *core.Node, store *corestore.Store, token string, user
 		}
 	}
 	auditSvc := wmsaudit.New(store, node.Audit())
-	ev := events.New(store, meshLayer)
 	wh := webhooks.New(store)
+	ev := events.New(store, meshLayer)
+	ev.OnRemote(func(event events.Event) {
+		_ = wh.DeliverEvent(event.EventID, event.Type, event.Payload)
+	})
 	posSvc := pos.New(store, master, sos, ledger, ful)
 	return &Server{
 		node: node, store: store, ledger: ledger, catalog: master,
