@@ -258,3 +258,33 @@ Cada ruta debe compararse con el Flask original mediante fixtures reales request
 
 
 En el corte más reciente, el snapshot usa filas tipadas para conservar enteros en el checksum y Events expone un reintento manual protegido por scope `events.publish`. Esto mejora integridad/operabilidad, pero no convierte el outbox en un dispatcher autónomo ni garantiza entrega exactamente-una-vez.
+
+
+## Revisión de cierre funcional — corte de noviembre de 2026
+
+| Área | Estado de implementación Go | Lo que todavía no demuestra paridad |
+|---|---|---|
+| POS checkout | Checkout persistente, tender validado, stock decrementado o reservado, saga idempotente y compensación parcial | Fixtures completos de Flask; terminal/tender edge cases; integración de pago externo |
+| POS refund | Reembolso parcial/total con control de tender/90 días, devolución de stock y registro de referencia externa | No ejecuta el movimiento financiero externo ni reproduce todavía cada credit memo Flask |
+| POS dispatch | Despacho de phone order con release de reserva, decremento y recuperación idempotente del shipment | Faltan fixtures y pruebas de fallos concurrentes multinodo |
+| Dockd void | Reversión persistente al estado pre-shipment, cantidad shipped cero, reason y operation ID | No sustituye la logística física; debe compararse con todos los estados/errores Flask |
+| RMA | Líneas esperadas/recibidas, RESTOCK/SCRAP/HOLD y ledger idempotente | Falta paridad de los modelos/credit memos y casos de backorder del original |
+| Webhooks | Outbox durable, worker, backoff, DLQ, retry manual, AES-GCM, SSRF guard | Falta rotación de claves, métricas/alertas y entrega multinodo exactamente una vez; delivery es al menos una vez |
+| Snapshot | Exportación verificable y restore con checksum + expected ledger version | No hay CAS distribuido; el restore exige ventana controlada y respaldo externo |
+| Inbound | Idempotencia source-scoped, recuperación por claves naturales, mapping por SKU/warehouse_code | Versiones nuevas no aplican upsert; mapeo por recurso todavía requiere contrato de actualización |
+| Mesh | Kademlia DHT + GossipSub real sobre LibP2PTransport; fallback TTL para transportes no libp2p | Debe probarse bootstrap, churn, partitions, provider records y persistencia en red real; fallback TCP no es DHT |
+| Audit | Cadena verificada antes de append | No hay anclaje externo ni quorum multinodo |
+| Inventory | Ledger con operation_id, restore y movimientos idempotentes | Sin transacción distribuida ni fencing/quorum entre nodos |
+
+### Reglas de operación
+
+1. No ejecutar POS checkout sin bin_id, idempotency_key, referencia de transacción y tender reconciliado.
+2. No enviar un phone order sin que el pedido haya alcanzado PICKED/PACKED y sin carrier/tracking/idempotency_key.
+3. No anular shipment sin reason e idempotency_key.
+4. No completar RMA si quedan cantidades sin recibir/disponer.
+5. No crear suscripciones webhook sin clave AES de 32 bytes configurada.
+6. No restaurar snapshot sin verificar SHA-256 y confirmar expected_ledger_version.
+7. No tratar external_version nueva como update: el endpoint la rechaza hasta portar el contrato de UPSERT.
+8. No afirmar DHT/GossipSub cuando el transporte activo no expone un host libp2p.
+
+**Estado global:** el gemelo tiene ahora más operaciones reales y recuperables, pero sigue **NO SUSTITUIBLE** hasta ejecutar CI, comparar fixtures Flask/Go y validar concurrencia, particiones y efectos laterales multinodo.
