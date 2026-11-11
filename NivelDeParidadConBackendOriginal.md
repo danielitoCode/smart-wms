@@ -167,3 +167,10 @@ La importación ahora es idempotente y reanudable. Omite IDs existentes sin sobr
 | Suite general `Tests` | En curso al documentar |
 
 El commit probado es `5d8d334bb24dc21bf2609f8c8089092297563de8`; el formato final quedó en `2720ed7d70fb69e46422c3338dc354f15d30cc3a`.
+
+
+## Evidencia de paridad de catálogo
+
+La primera validación encontró dos errores de compilación por sombreado de variables al leer filtros de bins. Los corregí en `bb645444a830cee3b244a3f9d576b4d2b9e3433c`. El WMS twin validation `42974486856` aprobó el código, incluidos `go vet` y tests `-race`. El commit de formato resultante es `ccf1934b2640feb45df852d515316be73d408de1`.
+
+La suite general del repositorio `42974487059` seguía ejecutándose. Esto no cambia la conclusión: datos maestros iniciales implementados, gemelo global todavía no sustituible.

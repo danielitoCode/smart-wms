@@ -326,3 +326,13 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 
 - **Resultado CI inicial:** ejecución `42974237383`; el guard de documentación/alcance pasó, pero `go vet` detectó dos variables locales declaradas y no utilizadas por sombreado en el parseo de filtros `warehouse_id` y `zone_id`. Race tests quedaron omitidos.
 - **Corrección:** sustituyo las declaraciones cortas que ocultaban las variables externas por variables temporales y asignación explícita. La nueva validación debe completar vet y race tests antes de cerrar la fase.
+
+
+### AUD-0027 — Corrección de filtros y validación del catálogo
+
+- **Commit de corrección:** `bb645444a830cee3b244a3f9d576b4d2b9e3433c`.
+- **Commit de formato publicado por CI:** `ccf1934b2640feb45df852d515316be73d408de1`.
+- **Incidencia:** `go vet` detectó dos variables no utilizadas por sombreado en el parseo de `warehouse_id` y `zone_id` de filtros de bins.
+- **Corrección:** variables temporales y asignación explícita a los filtros externos.
+- **CI:** WMS twin validation `42974486856` success; module verify, gofmt, vet, race tests y guard documental/alcance aprobados.
+- **Suite general:** `42974487059` seguía en curso al registrar.

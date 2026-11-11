@@ -155,3 +155,8 @@ Las reglas de dominio cubren:
 - Borrado bloqueado por dependencias: zonas/bins/stock.
 
 El repositorio serializa sus operaciones dentro del proceso. Esto no constituye exclusión distribuida ni una transacción atómica multi-organismo. La replicación conserva el comportamiento CoreStore: un fallo de réplica puede informar `local_commit=true`.
+
+
+## Evidencia de validación de Fase 03
+
+La ejecución WMS twin validation `42974486856` terminó en success para `bb645444a830cee3b244a3f9d576b4d2b9e3433c`. Pasaron guard documental/de alcance, module verify, gofmt, vet y race tests. CI publicó formato en `ccf1934b2640feb45df852d515316be73d408de1`. La suite general `42974487059` seguía en curso.

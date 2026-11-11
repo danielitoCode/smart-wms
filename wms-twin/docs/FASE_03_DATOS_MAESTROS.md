@@ -78,3 +78,10 @@ curl -i -X POST http://localhost:5001/api/admin/warehouses \
 ```
 
 El endpoint técnico `/api/twin/records/*` no es el contrato de negocio. El frontend original no debe cambiar de destino todavía.
+
+
+## Validación de catálogo
+
+El corte de warehouses/zones/bins pasó WMS twin validation `42974486856`, incluidos gofmt, vet, tests con race detector y guard de documentación/alcance. El código inicial se corrigió tras un fallo de vet por variables sombreadas. El HEAD con formato es `ccf1934b2640feb45df852d515316be73d408de1`.
+
+La suite general del repositorio seguía en ejecución. El frontend original debe continuar conectado al backend Flask hasta completar las demás rutas y las pruebas diferenciales.
