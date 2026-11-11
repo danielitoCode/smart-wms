@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"strings"
+	"strconv"
 	"time"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
@@ -38,7 +39,7 @@ func (s *Service) Emit(eventType string, payload map[string]any) (Event, error) 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.seq++
-	id := time.Now().UTC().Format("20060102T150405") + "-" + formatN(s.seq)
+	id := strconv.FormatInt(time.Now().UTC().UnixNano(), 10) + "-" + formatN(s.seq)
 	ev := Event{EventID: id, Type: eventType, Version: 1, Payload: payload, CreatedAt: time.Now().UTC()}
 	data, err := json.Marshal(ev)
 	if err != nil {
@@ -103,6 +104,8 @@ func (s *Service) Ack(eventID string) error {
 // PublishPending retries durable events whose mesh publication did not
 // complete. It is safe to call repeatedly because message IDs are stable.
 func (s *Service) PublishPending() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.mesh == nil {
 		return nil
 	}
