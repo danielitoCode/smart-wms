@@ -23,6 +23,10 @@ type hostProvider interface { Host() host.Host }
 func (m *Mesh) Start(parent context.Context) error {
 	provider, ok := m.transport.(hostProvider)
 	if !ok { return nil }
+	m.mu.Lock()
+	alreadyStarted := m.dht != nil && m.pubsub != nil
+	m.mu.Unlock()
+	if alreadyStarted { return nil }
 	ctx, cancel := context.WithCancel(parent)
 	host := provider.Host()
 	routing, err := dht.New(ctx, host, dht.Mode(dht.ModeServer))
@@ -139,7 +143,7 @@ func (m *Mesh) GossipSubReady() bool { m.mu.Lock(); defer m.mu.Unlock(); return 
 
 func (m *Mesh) Close() error {
 	m.mu.Lock()
-	cancel, routing := m.cancel, m.dht
+	cancel := m.cancel
 	for _, sub := range m.subs { sub.Cancel() }
 	for _, topic := range m.topics { _ = topic.Close() }
 	m.subs = make(map[string]*pubsub.Subscription)
@@ -147,7 +151,6 @@ func (m *Mesh) Close() error {
 	m.dht, m.pubsub, m.cancel, m.ctx = nil, nil, nil, nil
 	m.mu.Unlock()
 	if cancel != nil { cancel() }
-	if routing != nil { return routing.Close() }
 	return nil
 }
 
