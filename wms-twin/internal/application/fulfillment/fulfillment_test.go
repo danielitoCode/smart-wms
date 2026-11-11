@@ -58,7 +58,7 @@ func TestVoidReversesPOSInventoryExactlyOnce(t *testing.T) {
 	if err != nil { t.Fatal(err) }
 	zone, err := cat.CreateZone(catalog.ZoneInput{WarehouseID:warehouse.WarehouseID,ZoneCode:"ST",ZoneName:"Storage",ZoneType:"STORAGE"})
 	if err != nil { t.Fatal(err) }
-	bin, err := cat.CreateBin(catalog.BinInput{WarehouseID:warehouse.WarehouseID,ZoneID:zone.ZoneID,BinCode:"POS-VOID-BIN",BinType:"Pickable"})
+	bin, err := cat.CreateBin(catalog.BinInput{WarehouseID:warehouse.WarehouseID,ZoneID:zone.ZoneID,BinCode:"POS-VOID-BIN",BinBarcode:"POS-VOID-BARCODE",BinType:"Pickable"})
 	if err != nil { t.Fatal(err) }
 	item, err := cat.CreateItem(catalog.ItemInput{SKU:"POS-VOID-SKU",ItemName:"POS void item"})
 	if err != nil { t.Fatal(err) }
