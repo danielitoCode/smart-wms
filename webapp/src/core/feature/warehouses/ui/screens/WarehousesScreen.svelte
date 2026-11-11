@@ -44,7 +44,7 @@
 
 <section class="page">
 	<header class="page-header">
-		<div><h1>Almacenes</h1><p class="subtitle">Maestro de almacenes</p></div>
+		<div><h1>Almacenes</h1><p class="subtitle">Gestiona los almacenes y consulta su estructura.</p></div>
 		<button class="primary" type="button" onclick={openCreate}>Nuevo almacén</button>
 	</header>
 	{#if vm.loading}
@@ -59,7 +59,7 @@
 			<tbody>{#each vm.warehouses as wh (wh.id)}
 				<tr><td class="mono">{wh.code}</td><td>{wh.name}</td><td>{wh.address ?? '—'}</td>
 					<td><span class:inactive={!wh.active} class="status-pill">{wh.active ? 'Activo' : 'Inactivo'}</span></td>
-					<td class="actions">{#if canOpenLayout}<a href={'/warehouses/' + wh.id}>Zonas y bins</a>{/if}
+					<td class="actions">{#if canOpenLayout}<a href={'/warehouses/' + wh.id}>Zonas y ubicaciones</a>{/if}
 						<button type="button" class="quiet" onclick={() => openEdit(wh)}>Editar</button>
 						<button type="button" class="danger" onclick={() => deleteTarget = wh}>Eliminar</button></td>
 				</tr>

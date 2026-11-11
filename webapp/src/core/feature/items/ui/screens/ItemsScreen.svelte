@@ -16,14 +16,14 @@
 
 <section class="page">
 	<header>
-		<h1>Ítems</h1>
-		<p class="subtitle">Catálogo de SKU</p>
+		<h1>Productos</h1>
+		<p class="subtitle">Consulta y busca los productos registrados en el almacén.</p>
 	</header>
 
 	<form class="search" onsubmit={onSearch}>
 		<input
 			type="search"
-			placeholder="Buscar por SKU, nombre o UPC"
+			placeholder="Buscar por código, nombre o código de barras"
 			value={state.query}
 			oninput={(e) => state.setQuery(e.currentTarget.value)}
 		/>
@@ -36,7 +36,7 @@
 		<p class="status error" role="alert">{state.error}</p>
 		<button type="button" onclick={() => state.load()}>Reintentar</button>
 	{:else if state.items.length === 0}
-		<p class="status">No hay ítems.</p>
+		<p class="status">Todavía no hay productos registrados.</p>
 	{:else}
 		<div class="table-wrap">
 			<table>
@@ -44,7 +44,7 @@
 					<tr>
 						<th>SKU</th>
 						<th>Nombre</th>
-						<th>UPC</th>
+						<th>Código de barras</th>
 						<th>Categoría</th>
 						<th>Estado</th>
 					</tr>

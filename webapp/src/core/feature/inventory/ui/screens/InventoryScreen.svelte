@@ -17,16 +17,16 @@
 <section class="inventory">
 	<header>
 		<h1>Inventario</h1>
-		<p class="subtitle">Vista general de stock (GET /api/admin/inventory)</p>
+		<p class="subtitle">Consulta las existencias por producto, ubicación y lote.</p>
 	</header>
 
 	<form class="filters" onsubmit={onFilter}>
 		<label>
-			Warehouse ID
+			ID de almacén
 			<input
 				type="number"
 				min="1"
-				placeholder="todos"
+				placeholder="Todos"
 				value={state.warehouseId ?? ''}
 				oninput={(e) => {
 					const v = e.currentTarget.value;
@@ -49,7 +49,7 @@
 	{:else if state.loading && !state.loadedOnce}
 		<p class="status">Cargando inventario…</p>
 	{:else if state.items.length === 0}
-		<p class="status">No hay registros de inventario.</p>
+		<p class="status">Todavía no hay existencias registradas.</p>
 	{:else}
 		<div class="table-wrap">
 			<table>
@@ -57,7 +57,7 @@
 					<tr>
 						<th>SKU</th>
 						<th>Nombre</th>
-						<th>Bin</th>
+						<th>Ubicación</th>
 						<th>Cantidad</th>
 						<th>Lote</th>
 					</tr>

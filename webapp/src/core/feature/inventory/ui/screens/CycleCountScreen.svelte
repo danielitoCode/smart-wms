@@ -16,13 +16,13 @@
 
 <section class="page">
 	<header>
-		<h1>Cycle count</h1>
-		<p class="subtitle">Crear conteos por bin, contar y enviar variaciones</p>
+		<h1>Conteo cíclico</h1>
+		<p class="subtitle">Cuenta las existencias por ubicación y registra las diferencias encontradas.</p>
 	</header>
 
 	<form class="panel" onsubmit={onCreate}>
 		<label>
-			Warehouse ID
+			ID de almacén
 			<input
 				type="number"
 				min="1"
@@ -32,7 +32,7 @@
 			/>
 		</label>
 		<label class="grow">
-			Bin IDs
+			ID de ubicaciones
 			<input
 				type="text"
 				placeholder="ej. 3, 4, 5"
@@ -65,7 +65,7 @@
 						onclick={() => state.loadDetail(c.countId)}
 						disabled={state.loading || state.busy}
 					>
-						#{c.countId} · bin {c.binCode} · {c.status} · {c.lines} líneas
+						Conteo #{c.countId} · ubicación {c.binCode} · {c.status} · {c.lines} líneas
 					</button>
 				</li>
 			{/each}
@@ -77,7 +77,7 @@
 	{:else if state.detail}
 		<section class="panel detail">
 			<p class="meta">
-				Conteo #{state.detail.countId} · bin {state.detail.binCode} · {state.detail.status}
+				Conteo #{state.detail.countId} · ubicación {state.detail.binCode} · {state.detail.status}
 			</p>
 			<form onsubmit={onSubmit}>
 				<div class="table-wrap">
@@ -120,13 +120,13 @@
 		<section class="panel">
 			<p class="ok">
 				{state.submitResult.status} · líneas {state.submitResult.totalLines} ·
-				variaciones {state.submitResult.linesWithVariance}
+				diferencias: {state.submitResult.linesWithVariance}
 			</p>
 			{#if state.submitResult.adjustments.length}
 				<ul>
 					{#each state.submitResult.adjustments as a, i (a.adjustmentId + '-' + i)}
 						<li>
-							{a.sku}: esperado {a.expected} / contado {a.counted} (Δ {a.variance}) · adj
+							{a.sku}: esperado {a.expected} / contado {a.counted} (Δ {a.variance}) · ajuste
 							#{a.adjustmentId}
 						</li>
 					{/each}
