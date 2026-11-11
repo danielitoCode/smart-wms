@@ -259,3 +259,8 @@ Refund calcula el importe proporcional acumulado de cada ubicación artículo/bi
 ### Saga de cancelación RMA
 
 `rma.Cancel` ya no cambia directamente el estado a CANCELLED. Persiste CANCELLING, recorre recibos RESTOCK no revertidos y ejecuta `inventoryledger.Adjust` con delta negativo y operation_id determinista derivado del operation_id del recibo. Después de cada ajuste marca `Reversed` en el recibo y persiste el RMA. Un retry repite el mismo operation_id del ledger, por lo que una caída entre el ajuste y el marcador no duplica la reversión. Solo al completar todas las compensaciones cambia a CANCELLED. Si no hay stock disponible para retirar, queda CANCELLING y se informa el error.
+
+
+El servicio POS agrupa líneas de refund por `item_id:bin_id` antes de calcular y ejecutar la operación de ledger. El identificador idempotente se aplica una sola vez a la cantidad consolidada. La salida HTTP mantiene el desglose financiero calculado sobre el total original de la línea.
+
+El cliente HTTP de webhooks desactiva redirects y resuelve DNS al conectar; ahora `isPublicWebhookIP` rechaza también CGNAT, redes de documentación, benchmarking y bloques especiales IPv6, además de direcciones privadas/locales.
