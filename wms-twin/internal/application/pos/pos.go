@@ -267,6 +267,17 @@ func (s *Service) CheckoutTransaction(in CheckoutInput, actor string) (salesorde
 			return so, true, err
 		}
 	} else {
+		// A different idempotency key must not be able to reuse a gateway
+		// transaction reference and create a second sale for one payment.
+		existingSales, err := s.store.List("wms_pos_sale")
+		if err != nil { return salesorders.SalesOrder{}, false, err }
+		for _, record := range existingSales {
+			var prior SaleRecord
+			if json.Unmarshal(record.Data,&prior) != nil { continue }
+			if prior.TerminalID == in.TerminalID && prior.ExternalTxnRef == in.ExternalTxnRef {
+				return salesorders.SalesOrder{}, false, fmt.Errorf("external transaction reference already belongs to another POS sale")
+			}
+		}
 		items, err := s.catalog.ListItems()
 		if err != nil { return salesorders.SalesOrder{}, false, err }
 		skuByID := make(map[int64]string, len(items))
@@ -523,6 +534,9 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 	for _, record := range refundRecords {
 		var prior RefundRecord
 		if json.Unmarshal(record.Data, &prior) != nil || prior.SaleID != sale.ID { continue }
+		if prior.ExternalRefundRef == in.ExternalRefundRef && prior.ID != refundID {
+			return nil, false, fmt.Errorf("external refund reference already belongs to another refund")
+		}
 		if prior.Status == "PREPARING" && prior.ID != refundID {
 			return nil, false, fmt.Errorf("another refund transaction is still pending for this sale")
 		}
