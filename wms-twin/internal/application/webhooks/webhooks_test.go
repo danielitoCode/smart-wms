@@ -14,8 +14,8 @@ func TestValidateSubscriptionRequiresHTTPSAndStrongSecret(t *testing.T) {
 	if err := validateSubscription("http://hooks.example.com/wms", secret, nil); err == nil {
 		t.Fatal("plain HTTP subscription accepted")
 	}
-	if err := validateSubscription("https://127.0.0.1/hook", secret, nil); err != nil {
-		t.Fatalf("public URL syntax should pass create-time validation; dispatch guard handles IPs: %v", err)
+	if err := validateSubscription("https://127.0.0.1/hook", secret, nil); err == nil {
+		t.Fatal("loopback IP webhook accepted")
 	}
 	if err := validateSubscription("https://hooks.example.com/wms", "short", nil); err == nil {
 		t.Fatal("weak webhook secret accepted")
