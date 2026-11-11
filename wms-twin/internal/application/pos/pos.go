@@ -542,11 +542,32 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 			base.Quantity = line.Quantity
 			requested = append(requested, base)
 		}
-		requestedByLocation := make(map[string]int64)
+		// Normalize repeated cart rows to one refund movement per item/bin.
+		// The ledger operation ID is location-scoped; retaining duplicate rows
+		// here would cause the second movement to be treated as an idempotent replay.
+		aggregated := make(map[string]SaleLine)
+		order := make([]string, 0, len(requested))
 		for _, requestedLine := range requested {
 			key := fmt.Sprintf("%d:%d", requestedLine.ItemID, requestedLine.BinID)
-			requestedByLocation[key] += requestedLine.Quantity
-			if requestedByLocation[key] > original[key].Quantity-already[key] { return nil, false, fmt.Errorf("repeated refund lines exceed remaining quantity") }
+			current, exists := aggregated[key]
+			if !exists {
+				current = requestedLine
+				current.Quantity = 0
+				order = append(order, key)
+			}
+			if current.Quantity > math.MaxInt64-requestedLine.Quantity {
+				return nil, false, ErrInvalid
+			}
+			current.Quantity += requestedLine.Quantity
+			aggregated[key] = current
+		}
+		requested = requested[:0]
+		for _, key := range order {
+			line := aggregated[key]
+			if line.Quantity > original[key].Quantity-already[key] {
+				return nil, false, fmt.Errorf("repeated refund lines exceed remaining quantity")
+			}
+			requested = append(requested, line)
 		}
 	}
 	// Consolidate repeated request lines by item/bin before creating ledger
