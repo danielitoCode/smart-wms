@@ -304,3 +304,6 @@ La cancelación de RMA ahora compensa las cantidades recibidas con disposición 
 
 
 Se añadió una prueba que cubre dos líneas POS repetidas para el mismo artículo/bin y verifica que ambas unidades se reintegran una sola vez. La política de egress de webhooks rechaza redes especiales que no estaban cubiertas por el filtro inicial de IP privada.
+
+
+La anulación de un despacho POS telefónico restaura tanto on-hand como la reserva previa y permite una nueva expedición con una clave nueva. Para ventas POS normales la anulación restaura on-hand sin crear una reserva inexistente. Se añadió prueba de anulación, replay y reexpedición; falta contrastar el comportamiento con los estados y reglas del backend Flask.
