@@ -344,10 +344,49 @@ func (s *Service) DispatchWithDetails(soNumber, carrier, tracking, actor string,
 	if s.fulfill == nil { return nil, ErrUnsupported }
 	so, err := s.GetSO(soNumber)
 	if err != nil { return nil, err }
+	if !isAdmin {
+		inScope := false
+		for _, id := range allowed { if id == so.WarehouseID { inScope = true; break } }
+		if !inScope { return nil, fulfillment.ErrScope }
+	}
+	records, err := s.store.List("wms_pos_sale")
+	if err != nil { return nil, err }
+	for _, record := range records {
+		var sale SaleRecord
+		if json.Unmarshal(record.Data, &sale) != nil || sale.SOID != so.SOID { continue }
+		if sale.PhoneOrder && sale.Status != "DISPATCHED" {
+			aggregated := make(map[string]SaleLine)
+			for _, line := range sale.Lines {
+				key := fmt.Sprintf("%d:%d:%d", line.WarehouseID, line.BinID, line.ItemID)
+				current := aggregated[key]
+				current.WarehouseID, current.BinID, current.ItemID = line.WarehouseID, line.BinID, line.ItemID
+				current.Quantity += line.Quantity
+				aggregated[key] = current
+			}
+			for key, line := range aggregated {
+				base := sha256.Sum256([]byte(sale.ID + "|dispatch|" + key))
+				releaseID := "pos-rel-" + hex.EncodeToString(base[:12])
+				commitID := "pos-out-" + hex.EncodeToString(base[:12])
+				if _, err := s.ledger.Release(inventoryledger.QuantityCommand{OperationID:releaseID, WarehouseID:line.WarehouseID, BinID:line.BinID, ItemID:line.ItemID, Quantity:line.Quantity}); err != nil { return nil, err }
+				if _, err := s.ledger.Adjust(inventoryledger.AdjustCommand{OperationID:commitID, WarehouseID:line.WarehouseID, BinID:line.BinID, ItemID:line.ItemID, Delta:-line.Quantity}); err != nil { return nil, err }
+			}
+			sale.Status = "DISPATCHING"
+			data, _ := json.Marshal(sale)
+			if _, err := s.store.Put("wms_pos_sale", sale.ID, data); err != nil { return nil, err }
+		}
+	}
 	shipment, err := s.fulfill.Fulfill(fulfillment.FulfillInput{
 		SOID:so.SOID, Carrier:carrier, TrackingNumber:tracking, WarehouseID:so.WarehouseID,
 	}, allowed, isAdmin)
 	if err != nil { return nil, err }
+	for _, record := range records {
+		var sale SaleRecord
+		if json.Unmarshal(record.Data, &sale) == nil && sale.SOID == so.SOID && sale.PhoneOrder {
+			sale.Status = "DISPATCHED"
+			data, _ := json.Marshal(sale)
+			if _, err := s.store.Put("wms_pos_sale", sale.ID, data); err != nil { return nil, err }
+		}
+	}
 	return map[string]any{
 		"so_id":so.SOID, "so_number":so.SONumber, "status":shipment.Status,
 		"carrier":shipment.Carrier, "tracking_number":shipment.TrackingNumber,
