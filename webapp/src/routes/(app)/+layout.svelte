@@ -5,10 +5,10 @@
 	import AppIcon from '../../lib/components/AppIcon.svelte';
 	import LocaleSwitcher from '../../lib/components/LocaleSwitcher.svelte';
 	import type { I18nState } from '../../lib/i18n/i18n.svelte';
-	const i18n = getContext<I18nState>('i18n');
 	import { createAuthGuardState } from '../../core/feature/auth/ui/state/authGuardState.svelte';
 	import { createWarehouseSelectionState } from '../../core/feature/warehouses/ui/state/warehouseSelectionState.svelte';
 
+	const i18n = getContext<I18nState>('i18n');
 	let { children } = $props();
 	let sidebarOpen = $state(false);
 	const guard = createAuthGuardState();
