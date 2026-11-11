@@ -349,7 +349,16 @@ func (s *Service) reversePOSDispatch(shipment *Shipment, operationID string) err
 			if _, err := s.ledger.Adjust(inventoryledger.AdjustCommand{
 				OperationID:ledgerOperationID, WarehouseID:line.WarehouseID, BinID:line.BinID,
 				ItemID:line.ItemID, Delta:line.Quantity,
-			}); err != nil { return fmt.Errorf("reverse POS inventory movement %s: %w",key,err) }
+			}); err != nil { return fmt.Errorf("restore POS on-hand inventory movement %s: %w",key,err) }
+			// POS phone-order checkout reserves stock. Dispatch releases that
+			// allocation before decrementing on-hand. Voiding must restore both
+			// sides of the pre-dispatch state, not merely increase on-hand.
+			allocateSum := sha256.Sum256([]byte("fulfillment-void-pos-allocation|" + operationID + "|" + key))
+			allocateID := "void-pos-alloc-" + hex.EncodeToString(allocateSum[:12])
+			if _, err := s.ledger.Allocate(inventoryledger.QuantityCommand{
+				OperationID:allocateID, WarehouseID:line.WarehouseID, BinID:line.BinID,
+				ItemID:line.ItemID, Quantity:line.Quantity,
+			}); err != nil { return fmt.Errorf("restore POS reservation %s: %w",key,err) }
 			shipment.VoidReversedKeys = append(shipment.VoidReversedKeys,key)
 			data, err := json.Marshal(shipment)
 			if err != nil { return err }
