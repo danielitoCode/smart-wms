@@ -1,9 +1,9 @@
 # Plan de migración funcional React → Svelte
 
 > **Proyecto:** Smart WMS  
-> **Origen funcional:** \`admin/\` (React)  
-> **Destino:** \`webapp/\` (SvelteKit)  
-> **Rama de trabajo:** \`svelte-webapp\`  
+> **Origen funcional:** `admin/` (React)  
+> **Destino:** `webapp/` (SvelteKit)  
+> **Rama de trabajo:** `svelte-webapp`  
 > **Estado inicial:** planificación  
 > **Última revisión:** 2026-11-11
 
@@ -13,7 +13,7 @@
 
 Este documento define una migración progresiva, verificable y completa de las funcionalidades administrativas y operativas que existen en el frontend React y que todavía no tienen una implementación equivalente en Svelte.
 
-El objetivo no es reproducir cada pantalla de React de forma literal. Se debe conservar la **capacidad funcional**, las reglas de negocio, los permisos, los flujos, los estados y los resultados que espera el usuario, adaptando la experiencia a SvelteKit y a la arquitectura actual de \`webapp/\`.
+El objetivo no es reproducir cada pantalla de React de forma literal. Se debe conservar la **capacidad funcional**, las reglas de negocio, los permisos, los flujos, los estados y los resultados que espera el usuario, adaptando la experiencia a SvelteKit y a la arquitectura actual de `webapp/`.
 
 La migración se considera terminada cuando:
 
@@ -34,14 +34,14 @@ La migración se considera terminada cuando:
 6. **Dependencias explícitas.** No iniciar un módulo si sus catálogos, contratos o flujos previos necesarios no están estabilizados.
 7. **Pruebas independientes por capa.** Los tests de dominio no deben necesitar DOM ni backend; los de aplicación deben usar puertos simulados; los de infraestructura deben verificar HTTP; los de UI deben verificar interacción y estados.
 8. **Autorización real.** Respetar sesión, permisos por usuario, almacenes asignados y restricciones devueltas por el backend. Ocultar una acción en UI no sustituye la autorización del servidor.
-9. **No romper autenticación.** Mantener el contrato existente de cookies JWT HttpOnly + CSRF, consulta de sesión \`/auth/me\`, cambio obligatorio de contraseña, expiración y almacenes autorizados. No introducir tokens de sesión en \`localStorage\`.
+9. **No romper autenticación.** Mantener el contrato existente de cookies JWT HttpOnly + CSRF, consulta de sesión `/auth/me`, cambio obligatorio de contraseña, expiración y almacenes autorizados. No introducir tokens de sesión en `localStorage`.
 10. **No migrar pantallas retiradas sin decisión.** Picking/Packing/Shipping administrativos antiguos fueron retirados en React al trasladar la operación a escáneres. Se preservan los flujos Svelte actuales; solo se migran capacidades administrativas que sigan teniendo sentido.
 11. **No mezclar refactorizaciones ajenas.** Cada entrega debe limitarse al módulo y a las dependencias justificadas.
 12. **Trazabilidad.** Toda casilla marcada debe enlazar en el PR o commit con pruebas, evidencias y cualquier desviación respecto a React.
 
 ## 3. Estado inicial y leyenda
 
-La clasificación inicial procede de la auditoría comparativa de \`admin/\` y \`webapp/\`. Debe actualizarse cuando una inspección del código o del backend demuestre un estado diferente.
+La clasificación inicial procede de la auditoría comparativa de `admin/` y `webapp/`. Debe actualizarse cuando una inspección del código o del backend demuestre un estado diferente.
 
 - [ ] Pendiente: no iniciado.
 - [~] En curso: trabajo iniciado, todavía no cumple todos los criterios.
@@ -60,7 +60,7 @@ Estados funcionales iniciales:
 
 ## 4. Arquitectura y entregables obligatorios por feature
 
-Cada feature debe conservar la estructura y convenciones ya adoptadas en \`webapp/\`. Los nombres concretos de carpetas pueden adaptarse al módulo existente; no crear capas vacías para cumplir una plantilla.
+Cada feature debe conservar la estructura y convenciones ya adoptadas en `webapp/`. Los nombres concretos de carpetas pueden adaptarse al módulo existente; no crear capas vacías para cumplir una plantilla.
 
 ### 4.1 Dominio
 
@@ -133,7 +133,7 @@ Responsabilidad: representar los casos de uso y permitir completar el flujo.
 
 La migración se ejecutará en incrementos verticales pequeños. Cada incremento termina con pruebas propias antes de abrir el siguiente. Las fases expresan dependencias funcionales; pueden solaparse tareas de documentación o pruebas, pero no se debe saltar una dependencia crítica.
 
-\`\`\`text
+```text
 Base transversal
    |
    +--> Catálogos: Items + Vendors + Warehouses/Zones/Bins
@@ -171,7 +171,7 @@ Base transversal
    +--> Imports --> catálogos y documentos compatibles
    |
    +--> POS Activity + Fraud --> Dashboard / Sales Orders
-\`\`\`
+```
 
 El diagrama es una guía de dependencias funcionales, no una afirmación de que todos los módulos deban compartir tablas o endpoints.
 
@@ -182,7 +182,7 @@ El diagrama es una guía de dependencias funcionales, no una afirmación de que 
 **Objetivo:** establecer una base repetible para migrar features sin introducir arquitecturas paralelas.
 
 - [ ] F0.1. Congelar inventario de capacidades React por módulo, incluyendo acciones, filtros, permisos, estados y exportaciones.
-- [ ] F0.2. Confirmar el árbol actual de \`webapp/src\` y las convenciones de feature-first existentes.
+- [ ] F0.2. Confirmar el árbol actual de `webapp/src` y las convenciones de feature-first existentes.
 - [ ] F0.3. Documentar para cada feature endpoints Flask reales, DTO, errores, permisos y efectos secundarios.
 - [ ] F0.4. Definir matriz de trazabilidad React → caso de uso → endpoint → ruta Svelte → prueba.
 - [ ] F0.5. Establecer comandos de validación y suites separadas: dominio, aplicación, infraestructura, UI e integración.
@@ -615,7 +615,7 @@ Dependencias: F4.1, F7.1 y Settings de revisión.
 - [ ] F8.5. Ejecutar suites de infraestructura/contrato.
 - [ ] F8.6. Ejecutar suites de UI y flujos integrados.
 - [ ] F8.7. Ejecutar regresión de permisos, almacenes y sesión.
-- [ ] F8.8. Ejecutar \`npm run check\`, \`npm test\` y \`npm run build\` desde \`webapp/\`.
+- [ ] F8.8. Ejecutar `npm run check`, `npm test` y `npm run build` desde `webapp/`.
 - [ ] F8.9. Revisar errores de consola, red, logs y accesibilidad básica.
 - [ ] F8.10. Verificar rendimiento de listados, paginación, filtros y dashboards.
 - [ ] F8.11. Documentar diferencias intencionales frente a React.
@@ -709,7 +709,7 @@ Una feature solo pasa a [x] cuando todos los puntos aplicables están demostrado
 - [ ] i18n italiano/español/inglés sin textos nuevos sin traducir.
 - [ ] Pruebas UI e integración aprobadas.
 - [ ] Regresión de features dependientes aprobada.
-- [ ] \`npm run check\`, \`npm test\` y \`npm run build\` aprobados en el commit candidato.
+- [ ] `npm run check`, `npm test` y `npm run build` aprobados en el commit candidato.
 - [ ] Sin TODO funcional, mocks de producción, botones inertes ni placeholders.
 - [ ] Evidencia de aceptación manual para flujos críticos.
 - [ ] Documentación y decisión de paridad actualizadas.
