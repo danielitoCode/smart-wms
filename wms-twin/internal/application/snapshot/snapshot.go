@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/domain/inventory"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 )
 
@@ -127,6 +128,28 @@ func (s *Service) Get(id string) (InventorySnapshot, error) {
 		return InventorySnapshot{}, fmt.Errorf("snapshot %s checksum mismatch", id)
 	}
 	return snap, nil
+}
+
+// Restore verifies the immutable export and replaces its warehouse projection
+// only when the current ledger version matches expectedVersion. A global
+// snapshot (WarehouseID=0) replaces the full ledger. The ledger write is one
+// Core organism update and is idempotent by operationID.
+func (s *Service) Restore(id, operationID string, expectedVersion uint64) (inventoryledger.Result, error) {
+	snap, err := s.Get(id)
+	if err != nil {
+		return inventoryledger.Result{}, err
+	}
+	balances := make([]inventory.Balance, 0, len(snap.Rows))
+	for _, row := range snap.Rows {
+		if row.Available != row.OnHand-row.Allocated {
+			return inventoryledger.Result{}, fmt.Errorf("snapshot %s contains inconsistent available quantity", id)
+		}
+		balances = append(balances, inventory.Balance{
+			WarehouseID: row.WarehouseID, BinID: row.BinID, ItemID: row.ItemID,
+			LotNumber: row.LotNumber, OnHand: row.OnHand, Allocated: row.Allocated,
+		})
+	}
+	return s.ledger.RestoreBalances(operationID, expectedVersion, snap.WarehouseID, balances)
 }
 
 func checksum(s InventorySnapshot) (string, error) {
