@@ -8,7 +8,7 @@ export function createI18nState() {
 	function applyLocale(next: Locale) {
 		locale = next;
 		if (typeof document !== 'undefined') document.documentElement.lang = locale;
-		if (typeof localStorage !== 'undefined') localStorage.setItem('abellis-locale', locale);
+		try { localStorage.setItem('abellis-locale', locale); } catch { /* Storage may be disabled by browser policy. */ }
 	}
 	return {
 		get locale() { return locale; },
@@ -18,8 +18,8 @@ export function createI18nState() {
 			applyLocale(next as Locale);
 		},
 		init() {
-			if (typeof localStorage === 'undefined') return;
-			const saved = localStorage.getItem('abellis-locale');
+			let saved: string | null = null;
+			try { saved = localStorage.getItem('abellis-locale'); } catch { /* Keep the Italian default when storage is unavailable. */ }
 			applyLocale(saved && supported.includes(saved as Locale) ? saved as Locale : 'it');
 		}
 	};
