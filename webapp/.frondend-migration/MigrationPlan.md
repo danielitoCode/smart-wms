@@ -183,17 +183,19 @@ El diagrama es una guía de dependencias funcionales, no una afirmación de que 
 
 - [x] F0.1. Congelar inventario de capacidades React por módulo, incluyendo acciones, filtros, permisos, estados y exportaciones. **Evidencia:** auditoría comparativa React `admin/` → Svelte `webapp/` registrada antes de iniciar esta fase.
 - [x] F0.2. Confirmar el árbol actual de `webapp/src` y las convenciones de feature-first existentes. **Evidencia:** inspección de `core/feature`, `core/infrastructure`, `lib`, `routes` y `test/unitTest`.
-- [ ] F0.3. Documentar para cada feature endpoints Flask reales, DTO, errores, permisos y efectos secundarios. **En curso:** contratos de autenticación y cliente HTTP inspeccionados; falta el inventario endpoint por endpoint del resto de módulos.
+- [ ] F0.3. Documentar para cada feature endpoints Flask reales, DTO, errores, permisos y efectos secundarios. **En curso:** inventario transversal de rutas, esquemas Pydantic, guards de página, sesión y alcance de almacén incorporado en `webapp/docs/API-Contracts.md`; los payloads/respuestas y side effects se verifican feature por feature mediante tests.
 - [x] F0.4. Definir matriz de trazabilidad React → caso de uso → endpoint → ruta Svelte → prueba. **Evidencia:** matriz y plantilla de trazabilidad incorporadas en este documento; su rellenado por feature continúa durante cada migración.
 - [~] F0.5. Establecer comandos de validación y suites separadas: dominio, aplicación, infraestructura, UI e integración. **En curso:** `npm run check`, `npm test` y `npm run build` están operativos; la suite Vitest completa pasa en CI. Existen pruebas de casos de uso, mapper e infraestructura, pero faltan suites independientes de aplicación, UI e integración y comandos filtrados por capa.
 - [x] F0.6. Verificar cliente HTTP compartido: cookies, CSRF, expiración, timeout, cancelación y traducción de errores. **Evidencia:** cookies HttpOnly mediante `credentials: include`, CSRF de doble envío, respuesta 401/403, normalización de errores, timeout y cancelación cubiertos por código y pruebas; CI Webapp verde en el commit `46c0f48`.
-- [~] F0.7. Verificar i18n en italiano (idioma principal), español e inglés; no introducir textos nuevos sin claves de traducción. **En curso:** italiano es el locale inicial; español funciona como texto fuente/canonical fallback (por eso su diccionario explícito está vacío); inglés tiene cobertura parcial y cae a texto español en claves no traducidas.
-- [~] F0.8. Verificar navegación, guardas de sesión, permisos y resolución de almacenes. **En curso:** verificados `/api/auth/me`, tratamiento de 401, redirección por `must_change_password`, restricciones de páginas por `allowedPages` y carga de almacenes autorizados; falta una matriz completa de permisos por acción/almacén y pruebas de regresión.
+- [~] F0.7. Verificar i18n en italiano (idioma principal), español e inglés; no introducir textos nuevos sin claves de traducción. **En curso:** catálogo registrado: 204 claves únicas; italiano 204/204, inglés inicialmente 201/204 (98,53%); se completaron `Contraseña actualizada`, `Código` y `¿Eliminar`. Test actualizado para recorrer las llamadas literales `t(...)` de todos los `.svelte`/`.ts` y medir claves reales; cerrar cuando CI confirme 100%. Español conserva fallback canónico.
+- [~] F0.8. Verificar navegación, guardas de sesión, permisos y resolución de almacenes. **En curso:** matriz P-01…P-16 en `webapp/docs/API-Contracts.md`; política de acceso frontend extraída y probada; selección de almacén descarta IDs persistidos fuera de `warehouse_ids` y rechaza selección fuera del conjunto autorizado. Falta regresión HTTP real contra Flask.
 - [x] F0.9. Definir convención de evidencia por PR: tests ejecutados, resultado, endpoints contrastados y limitaciones. **Evidencia:** protocolo de trabajo, Definition of Done y registro de progreso incluidos en este documento.
 
 **Salida obligatoria:** plantilla de checklist aprobada, contratos localizados y validaciones base ejecutables.
 
 ### Ejecución Fase 0 — auditoría y avances
+
+**Documentación de contratos:** `webapp/docs/API-Contracts.md` contiene el inventario de rutas Flask, request schemas, page grants, controles de sesión, WMS token scopes y matriz de regresión P-01…P-16. Se distingue el inventario de endpoints del cierre de cada response DTO: cada feature debe añadir pruebas de contrato para envelope, nulabilidad, errores y efectos secundarios.
 
 **Corte de trabajo:** 2026-11-11. La fase permanece **en curso**; no se marca completa hasta cerrar contratos, suites independientes, cobertura de idioma y regresión de autorización. Se ha iniciado el levantamiento contractual de F1.1 (Items) para que el primer módulo de Fase 1 no arranque sobre DTO o endpoints supuestos.
 
@@ -265,10 +267,10 @@ Completar una fila por operación significativa; no basta con una fila por panta
 #### Próximos cierres de Fase 0
 
 - [x] F0-A. Confirmar CI verde después de corregir las aserciones síncronas y añadir pruebas de timeout/cancelación. **CI:** [Webapp CI — commit `46c0f48`](https://github.com/danielitoCode/smart-wms/actions/runs/42974442039).
-- [ ] F0-B. Crear suites ejecutables independientes para dominio, aplicación, infraestructura, UI e integración; no etiquetar tests de casos de uso como dominio puro sin revisar su responsabilidad.
-- [ ] F0-C. Medir cobertura de claves por locale y cerrar brechas de italiano/inglés con pruebas de paridad.
+- [~] F0-B. Crear suites ejecutables independientes para dominio, aplicación, infraestructura, UI e integración. **Implementado:** scripts separados y CI por suite; pendiente confirmar todos los jobs verdes.
+- [~] F0-C. Medir cobertura de claves por locale y cerrar brechas de italiano/inglés. **Implementado:** completadas las tres claves detectadas en el catálogo; test escanea llamadas literales `t(...)` del código fuente. Pendiente confirmar que no existan claves fuera de catálogo.
 - [~] F0-D. Completar inventario de endpoints Flask por feature. **Avance:** F1.1 Items tiene identificadas rutas, métodos, parámetros, esquemas Pydantic, respuestas, permisos y restricciones de borrado; faltan sus pruebas de contrato y el resto de features.
-- [ ] F0-E. Crear matriz de regresión de sesión, permisos de página/acción y ámbito de almacén.
+- [~] F0-E. Crear y ejecutar matriz de regresión de sesión, permisos y ámbito de almacén. **Implementado:** matriz P-01…P-16 y pruebas de política; pendiente regresión HTTP con usuarios y almacenes de prueba.
 - [x] F0-F. Registrar comandos y evidencias de CI por commit y dejar el checklist listo para el primer módulo.
 
 ### Fase 1 — Catálogos maestros y estructura del almacén
@@ -800,7 +802,7 @@ Actualizar esta sección al cerrar cada PR/feature. Mantener una única fuente d
 
 | Hito | Estado | PR/commit | Evidencia / notas |
 |---|---|---|---|
-| Fase 0 — Preparación | [~] En curso | `268bfd0`, `cde8ebe`, `0105ac4`, `46c0f48` | Inventario/árbol y matriz definidos; cliente HTTP y tests corregidos; Webapp CI verde; suites por capa, contratos, i18n y permisos aún pendientes |
+| Fase 0 — Preparación | [~] En curso | commits de preparación previos + cambios actuales | Contratos y matriz documentados; suites separadas; política de permisos y selección de almacén probadas; cobertura i18n medida y test estático añadido; pendiente CI y regresión backend real |
 | Fase 1 — Catálogos | [ ] Pendiente | — | — |
 | Fase 2 — Inventario y conteos | [ ] Pendiente | — | — |
 | Fase 3 — Abastecimiento | [ ] Pendiente | — | — |
