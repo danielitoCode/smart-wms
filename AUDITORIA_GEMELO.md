@@ -385,3 +385,19 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Cambio:** `lookup`, `transfers`, `cyclecounts`; rutas `/api/lookup/*`, `/api/transfers/move`, `/api/inventory/cycle-count/*`, wave-validate/create; tests `ops_flow_test.go`.
 - **Pruebas:** `go test ./internal/httpapi` ok.
 - **Límite:** connectors, dockd, POS, webhooks, backorders y paridad diferencial Flask siguen fuera.
+
+
+
+### AUD-0024 — Endurecimiento de integraciones desde 18c389e
+
+- **Base:** `18c389e691d25e8366516835402a6f5efcaf2e1d`.
+- **Rama de trabajo:** `fix/wms-twin-operational-completion`.
+- **Detonante:** revisión del nuevo corte POS/Dockd/Inbound/Events/Webhooks/Snapshot/RMA/Mesh/Audit.
+- **Correcciones:** corregí la aridad del test AddLine; Dockd propaga errores de packing y no finge void; Inbound crea Purchase Orders mediante el repositorio real; POS acumula cantidades repetidas y deja de declarar checkout/refund/dispatch/reference lookup como exitosos sin contratos completos; RMA bloquea completion sin disposición de stock.
+- **Persistencia e integridad:** snapshots exportados persistidos con versión/checksum; eventos con estado Published y reintento invocable; auditoría con verificación secuencial/hash antes de cada append; secuencias RMA y webhook recuperadas desde Core.
+- **Seguridad:** webhook exige HTTPS y secreto de longitud mínima; el transporte no sigue redirects ni usa proxy de entorno, comprueba todas las IP resueltas y conecta a la IP validada para evitar una segunda resolución DNS.
+- **Clasificación mesh:** corregí la descripción operativa para no declarar Kademlia/GossipSub. La implementación actual es peer table + TTL gossip.
+- **Pruebas añadidas:** rechazo de destinos webhook privados, detección de checksum alterado en snapshot y detección de alteración/gap de auditoría.
+- **Riesgos que permanecen:** webhook secrets todavía se almacenan sin cifrado en reposo; Deliver sigue usando goroutines y no una cola durable con retry/DLQ; POS checkout/refund/dispatch no están portados; RMA no restock; Dockd void no revierte; snapshot no restaura; mesh no es DHT/GossipSub; inbound no tiene idempotencia completa.
+- **Alcance:** no modifiqué backend Flask, frontend, ni los cuatro artefactos existentes en la raíz.
+- **Validación:** no declaro tests, gofmt, vet, race detector ni Actions como aprobados hasta recibir el resultado del workflow de esta rama/PR.
