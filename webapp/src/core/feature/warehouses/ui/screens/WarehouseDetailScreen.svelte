@@ -26,7 +26,7 @@
 	onMount(() => { void vm.load(); });
 	function zoneTypeLabel(type: ZoneType): string {
 		const labels: Record<ZoneType, string> = { RECEIVING: i18n.t('Recepción'), STORAGE: i18n.t('Almacenamiento'), PICKING: i18n.t('Preparación'), STAGING: i18n.t('Zona temporal'), SHIPPING: i18n.t('Despacho') };
-		return i18n.t(labels[type]);
+		return labels[type];
 	}
 	function binTypeLabel(type: BinType): string {
 		const labels: Record<BinType, string> = { Staging: 'Temporal', PickableStaging: 'Temporal para preparación', Pickable: 'Disponible para preparación' };
