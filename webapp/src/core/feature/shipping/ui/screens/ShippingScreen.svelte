@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { getContext } from 'svelte';
+	import type { I18nState } from '../../../../lib/i18n/i18n.svelte';
+	const i18n = getContext<I18nState>('i18n');
 	import { createShippingState } from '../state/shippingState.svelte';
 
 	const state = createShippingState();
@@ -16,20 +19,20 @@
 
 <section class="page">
 	<header>
-		<h1>Despacho de pedidos</h1>
-		<p class="subtitle">Consulta el pedido y registra su salida con los datos de transporte.</p>
+		<h1>{i18n.t(i18n.t('Despacho de pedidos'))}</h1>
+		<p class="subtitle">{i18n.t(i18n.t('Consulta el pedido y registra su salida con los datos de transporte.'))}</p>
 	</header>
 
 	<form class="row" onsubmit={onLoad}>
 		<input
 			type="text"
-			placeholder="Número o código de barras del pedido"
+			placeholder={i18n.t(i18n.t('Número o código de barras del pedido'))}
 			value={state.barcode}
 			oninput={(e) => state.setBarcode(e.currentTarget.value)}
 			disabled={state.loading || state.busy}
 		/>
 		<button type="submit" disabled={state.loading || !state.barcode.trim()}>
-			{state.loading ? 'Cargando…' : 'Cargar'}
+			{state.loading ? i18n.t('Cargando…') : i18n.t('Cargar')}
 		</button>
 	</form>
 
@@ -51,7 +54,7 @@
 			<div class="table-wrap">
 				<table>
 					<thead>
-						<tr><th>SKU</th><th>Cantidad</th><th>Nombre</th></tr>
+						<tr><th>{i18n.t(i18n.t(i18n.t('SKU')))}</th><th>{i18n.t(i18n.t(i18n.t('Cantidad')))}</th><th>{i18n.t(i18n.t('Nombre'))}</th></tr>
 					</thead>
 					<tbody>
 						{#each state.detail.lines as line, i (line.sku + '-' + i)}
@@ -85,7 +88,7 @@
 					oninput={(e) => state.setShipMethod(e.currentTarget.value)}
 					disabled={state.busy} />
 			</label>
-			<button type="submit" class="accent" disabled={state.busy}>Registrar despacho</button>
+			<button type="submit" class="accent" disabled={state.busy}>{i18n.t(i18n.t('Registrar despacho'))}</button>
 		</form>
 	{/if}
 </section>
