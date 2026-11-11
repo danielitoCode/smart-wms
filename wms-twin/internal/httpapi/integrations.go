@@ -448,6 +448,19 @@ func (s *Server) webhooksV1(w http.ResponseWriter, r *http.Request, rest string)
 		writeJSON(w, 403, map[string]string{"error": "ADMIN required"})
 		return
 	}
+	if rest == "deliveries" && r.Method == http.MethodGet {
+		list, err := s.webhooks.Deliveries(500)
+		if err != nil { writeJSON(w, 500, map[string]string{"error": err.Error()}); return }
+		writeJSON(w, 200, map[string]any{"deliveries": list, "total": len(list)})
+		return
+	}
+	if strings.HasPrefix(rest, "deliveries/") && strings.HasSuffix(rest, "/retry") && r.Method == http.MethodPost {
+		id := strings.TrimSuffix(strings.TrimPrefix(rest, "deliveries/"), "/retry")
+		if id == "" || strings.Contains(id, "/") { writeJSON(w, 400, map[string]string{"error": "invalid delivery id"}); return }
+		if err := s.webhooks.RetryDeadDelivery(id); err != nil { writeJSON(w, 409, map[string]string{"error": err.Error()}); return }
+		writeJSON(w, 200, map[string]any{"ok": true, "delivery_id": id, "status": "RETRY"})
+		return
+	}
 	if rest == "" || rest == "/" {
 		switch r.Method {
 		case http.MethodGet:
