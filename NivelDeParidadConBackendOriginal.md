@@ -288,3 +288,10 @@ En el corte más reciente, el snapshot usa filas tipadas para conservar enteros 
 8. No afirmar DHT/GossipSub cuando el transporte activo no expone un host libp2p.
 
 **Estado global:** el gemelo tiene ahora más operaciones reales y recuperables, pero sigue **NO SUSTITUIBLE** hasta ejecutar CI, comparar fixtures Flask/Go y validar concurrencia, particiones y efectos laterales multinodo.
+
+
+### Garantías adicionales de este corte
+
+- Snapshot restore crea automáticamente un respaldo previo y devuelve su ID; la repetición del operation_id recupera el mismo resultado y respaldo. Sigue sin ser CAS distribuido.
+- El dispatcher repara el intervalo entre guardar un evento y crear el outbox webhook, sin reproducir eventos anteriores a la fecha de creación de la suscripción.
+- Kademlia/GossipSub se activan solo con `PRISMATEC_TRANSPORT=libp2p` y una multiaddr en `PRISMATEC_NETWORK_ADDR`. Si el mesh libp2p falla, el runtime no inicia parcialmente.
