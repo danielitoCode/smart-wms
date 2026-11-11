@@ -229,7 +229,7 @@ func (s *Service) VoidWithID(soID int64, actor, reason, operationID string) (Shi
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.store == nil { return Shipment{}, fmt.Errorf("fulfillment store is not configured") }
-	if strings.TrimSpace(operationID) == "" || strings.TrimSpace(actor) == "" || strings.TrimSpace(reason) == "" { return Shipment{}, ErrInvalid }
+	if strings.TrimSpace(operationID) == "" || len(operationID) > 128 || strings.TrimSpace(actor) == "" || strings.TrimSpace(reason) == "" || len(reason) > 500 { return Shipment{}, ErrInvalid }
 	key := strconv.FormatInt(soID, 10)
 	rec, ok, err := s.store.Get(shipmentKind, key)
 	if err != nil { return Shipment{}, err }
