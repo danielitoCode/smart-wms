@@ -2,6 +2,7 @@ import type { ApiClient } from '../../../../infrastructure/api/ApiClient';
 import type {
 	BinDto,
 	BinListResponseDto,
+	WarehouseDetailResponseDto,
 	WarehouseListItemDto,
 	WarehouseListResponseDto,
 	ZoneDto,
@@ -24,9 +25,7 @@ export class WarehouseRemoteDataSource {
 	constructor(private readonly api: ApiClient) {}
 
 	async listActive(): Promise<WarehouseListItemDto[]> {
-		const body = await this.api.get<WarehouseListResponseDto | WarehouseListItemDto[]>(
-			'/api/warehouses/list'
-		);
+		const body = await this.api.get<WarehouseListResponseDto | WarehouseListItemDto[]>('/api/warehouses/list');
 		return asList(body, ['warehouses', 'items', 'data']);
 	}
 
@@ -42,7 +41,8 @@ export class WarehouseRemoteDataSource {
 	}
 
 	async getById(id: number): Promise<WarehouseListItemDto> {
-		return this.api.get<WarehouseListItemDto>(`/api/admin/warehouses/${id}`);
+		const response = await this.api.get<WarehouseDetailResponseDto>(`/api/admin/warehouses/${id}`);
+		return response.warehouse;
 	}
 
 	async listZones(warehouseId: number): Promise<ZoneDto[]> {
@@ -56,15 +56,18 @@ export class WarehouseRemoteDataSource {
 		warehouseId?: number;
 		zoneId?: number;
 		page?: number;
-	}): Promise<BinDto[]> {
+		perPage?: number;
+		q?: string;
+	}): Promise<BinListResponseDto> {
 		const query = new URLSearchParams();
 		if (params?.warehouseId != null) query.set('warehouse_id', String(params.warehouseId));
 		if (params?.zoneId != null) query.set('zone_id', String(params.zoneId));
 		if (params?.page != null) query.set('page', String(params.page));
+		if (params?.perPage != null) query.set('per_page', String(params.perPage));
+		if (params?.q) query.set('q', params.q);
 		const qs = query.toString();
-		const body = await this.api.get<BinListResponseDto | BinDto[]>(
+		return this.api.get<BinListResponseDto>(
 			`/api/admin/bins${qs ? `?${qs}` : ''}`
 		);
-		return asList(body, ['bins', 'items', 'data']);
 	}
 }
