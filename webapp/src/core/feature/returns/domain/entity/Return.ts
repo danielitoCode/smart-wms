@@ -12,8 +12,9 @@ export type ReturnLine = SalesOrderLine & {
 	originalSalesOrderLineId?: number | null;
 };
 
-export type Return = Omit<SalesOrder, 'orderType' | 'lines'> & {
+export type Return = Omit<SalesOrder, 'orderType' | 'lines' | 'status'> & {
 	orderType: 'return';
+	status: ReturnStatus;
 	parentSalesOrderId: number;
 	lines: ReturnLine[];
 	/** Soft void from migration 076; voided rows remain auditable. */
