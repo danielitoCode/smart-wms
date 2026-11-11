@@ -14,16 +14,20 @@ export WMS_TWIN_HTTP_ADDR=":5001"
 export WMS_TWIN_AIP_ADDR=":8081"
 export WMS_TWIN_API_TOKEN="$(openssl rand -hex 32)"
 export JWT_SECRET="$(openssl rand -hex 32)"
+# Solo para una demo local aislada; crea operator/admin con claves conocidas.
+export WMS_TWIN_ALLOW_DEMO_BOOTSTRAP=true
 ```
 
-Usuario de demo: crear uno con bootstrap o el flujo de tests (`operator` / `Operator123` si usas el fixture de desarrollo documentado en auth).
+Con `WMS_TWIN_ALLOW_DEMO_BOOTSTRAP=true`, el runtime crea `operator / Operator123` y `admin / Admin1234`. No activar este flag en una instalación compartida. Para una instalación real, importar identidades con `WMS_TWIN_BOOTSTRAP_USERS_FILE`.
 
 ## 2. Arranque del API
 
 ```bash
 cd wms-twin
 go mod download
-go test ./internal/httpapi -count=1
+go test ./... -count=1
+go vet ./...
+go test -race ./... -count=1
 go run ./cmd/wms-twin
 ```
 
@@ -83,8 +87,26 @@ cd wms-twin
 go test ./internal/httpapi -count=1
 ```
 
-Incluye rutas operativas, lookup, receive/putaway y pack/ship.
+Incluye rutas operativas, lookup, receive/putaway y pack/ship, además de POS, RMA, inbound, snapshots, webhooks y mesh.
 
 ## 7. Límites a comunicar
 
-No presentar el gemelo como sustituto total de producción todavía. Connectors, POS, webhooks y paridad diferencial completa siguen en la matriz de `NivelDeParidadConBackendOriginal.md`.
+No presentar el gemelo como sustituto total de producción. El gateway de pagos es externo; inbound aún no aplica versiones externas nuevas; webhooks son at-least-once y requieren un único worker; falta validar red multinodo/particiones y paridad diferencial completa. La matriz vigente está en `NivelDeParidadConBackendOriginal.md` y `docs/PARIDAD_OPERATIVA.md`.
+
+
+## 8. Secretos de webhook y mesh
+
+Para crear webhooks en la demo, configura una clave AES de 32 bytes:
+
+```bash
+export WMS_WEBHOOK_ENCRYPTION_KEY="$(openssl rand -base64 32)"
+```
+
+Para probar Kademlia/GossipSub real, el Core debe usar el transporte libp2p:
+
+```bash
+export PRISMATEC_TRANSPORT=libp2p
+export PRISMATEC_NETWORK_ADDR="/ip4/0.0.0.0/tcp/4001"
+```
+
+En una red TCP/local el servicio reporta el fallback TTL; no se debe interpretar como DHT.
