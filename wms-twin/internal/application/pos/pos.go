@@ -441,13 +441,7 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 			break
 		}
 	}
-	if !found || (sale.Status != "COMPLETED" && sale.Status != "DISPATCHED") || so.Status != salesorders.StatusShipped {
-		return nil, false, salesorders.ErrNotFound
-	}
-	if time.Since(sale.CreatedAt) > 90*24*time.Hour { return nil, false, fmt.Errorf("refund window expired") }
-	if strings.ToLower(strings.TrimSpace(in.PaymentMethod)) != sale.PaymentMethod {
-		return nil, false, fmt.Errorf("tender mismatch: original sale used %s", sale.PaymentMethod)
-	}
+
 	fingerprintBytes, err := json.Marshal(in)
 	if err != nil { return nil, false, err }
 	fingerprintSum := sha256.Sum256(fingerprintBytes)
@@ -463,6 +457,13 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 		if prior.Status == "COMPLETED" {
 			return map[string]any{"refund_id":prior.ID,"original_so_number":in.SONumber,"fully_refunded":prior.FullyRefunded,"total_cents":prior.TotalCents,"replayed":true}, true, nil
 		}
+	}
+	if !found || (sale.Status != "COMPLETED" && sale.Status != "DISPATCHED") || so.Status != salesorders.StatusShipped {
+		return nil, false, salesorders.ErrNotFound
+	}
+	if time.Since(sale.CreatedAt) > 90*24*time.Hour { return nil, false, fmt.Errorf("refund window expired") }
+	if strings.ToLower(strings.TrimSpace(in.PaymentMethod)) != sale.PaymentMethod {
+		return nil, false, fmt.Errorf("tender mismatch: original sale used %s", sale.PaymentMethod)
 	}
 	original := make(map[string]SaleLine)
 	for _, line := range sale.Lines {
