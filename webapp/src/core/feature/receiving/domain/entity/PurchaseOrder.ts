@@ -1,20 +1,22 @@
 /**
- * Receiving workflow projection returned by GET /receiving/po/<barcode>.
+ * Receiving workflow projection returned by GET /api/receiving/po/{barcode}.
  *
- * The projection intentionally contains only fields emitted by that
- * endpoint. Canonical purchasing details and administrative fields belong
- * to the purchase-orders feature.
+ * This is deliberately not the canonical purchasing aggregate. It contains
+ * only the operational fields exposed by the receiving lookup endpoint;
+ * administrative purchasing fields and lifecycle operations remain owned
+ * by the purchase-orders feature.
  */
 export type PurchaseOrderStatus = 'OPEN' | 'PARTIAL' | 'RECEIVED';
 export type PoLineStatus = 'PENDING' | 'PARTIAL' | 'RECEIVED';
+export type ReceivePurchaseOrderStatus = 'PARTIAL' | 'RECEIVED';
 
 export type PurchaseOrder = {
 	poId: number;
 	poNumber: string;
+	poBarcode: string | null;
 	vendorName: string | null;
 	status: PurchaseOrderStatus;
 	warehouseId: number;
-	poBarcode: string | null;
 	expectedDate: string | null;
 	notes: string | null;
 	createdAt: string | null;
@@ -51,7 +53,7 @@ export type ReceiveLineInput = {
 export type ReceiveResult = {
 	message: string;
 	receiptIds: number[];
-	poStatus: PurchaseOrderStatus;
+	poStatus: ReceivePurchaseOrderStatus;
 	warnings: string[];
 };
 
