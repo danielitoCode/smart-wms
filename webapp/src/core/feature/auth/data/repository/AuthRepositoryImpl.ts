@@ -8,28 +8,27 @@ export class AuthRepositoryImpl implements AuthRepository {
 	constructor(private readonly datasource: AuthRemoteDataSource) {}
 
 	async login(credentials: Credentials): Promise<LoginResult> {
-		const dto = await this.datasource.login(credentials.username, credentials.password);
-		const user = AuthMapper.toUser(dto.user);
-		authSession.setUser({
-			userId: user.userId,
-			username: user.username,
-			fullName: user.fullName,
-			role: user.role,
-			warehouseIds: user.warehouseIds
-		});
+		const user = AuthMapper.toUser(await this.datasource.login(credentials.username, credentials.password).then(r => r.user));
+		this.storeSessionUser(user);
 		return { user };
 	}
 
 	async getCurrentUser(): Promise<User> {
 		const user = AuthMapper.toUser(await this.datasource.me());
+		this.storeSessionUser(user);
+		return user;
+	}
+
+	private storeSessionUser(user: User): void {
 		authSession.setUser({
 			userId: user.userId,
 			username: user.username,
 			fullName: user.fullName,
 			role: user.role,
-			warehouseIds: user.warehouseIds
+			warehouseIds: user.warehouseIds,
+			allowedPages: user.allowedPages,
+			allowedFunctions: user.allowedFunctions
 		});
-		return user;
 	}
 
 	async refreshToken(): Promise<void> {

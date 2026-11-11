@@ -8,15 +8,15 @@
 	const guard = createAuthGuardState();
 
 	const nav = [
-		{ href: '/inventory', label: 'Inventario' },
-		{ href: '/cycle-count', label: 'Cycle count' },
-		{ href: '/receiving', label: 'Recepción' },
-		{ href: '/putaway', label: 'Putaway' },
+		{ href: '/inventory', label: 'Inventario', pageKey: 'inventory' },
+		{ href: '/cycle-count', label: 'Cycle count', pageKey: 'cycle-counts' },
+		{ href: '/receiving', label: 'Recepción', pageKey: 'receiving' },
+		{ href: '/putaway', label: 'Putaway', pageKey: 'putaway' },
 		{ href: '/picking', label: 'Picking' },
 		{ href: '/packing', label: 'Packing' },
 		{ href: '/shipping', label: 'Shipping' },
-		{ href: '/warehouses', label: 'Almacenes' },
-		{ href: '/items', label: 'Ítems' }
+		{ href: '/warehouses', label: 'Almacenes', pageKey: 'warehouses' },
+		{ href: '/items', label: 'Ítems', pageKey: 'items' }
 	] as const;
 
 	onMount(() => { void bootstrap(); });
@@ -27,6 +27,33 @@
 			void goto('/change-password', { replaceState: true });
 		}
 	});
+
+	const hasRouteAccess = $derived(
+		guard.status !== 'authenticated' || canAccessPages(requiredPageKeys(page.url.pathname))
+	);
+
+	function canAccessPages(keys: string[]): boolean {
+		if (keys.length === 0 || guard.user?.role === 'ADMIN') return true;
+		const granted = guard.user?.allowedPages ?? [];
+		return keys.every(key => granted.includes(key));
+	}
+
+	function requiredPageKeys(pathname: string): string[] {
+		if (pathname === '/inventory' || pathname.startsWith('/inventory/')) return ['inventory'];
+		if (pathname === '/cycle-count' || pathname.startsWith('/cycle-count/')) return ['cycle-counts'];
+		if (pathname === '/receiving' || pathname.startsWith('/receiving/')) return ['receiving'];
+		if (pathname === '/putaway' || pathname.startsWith('/putaway/')) return ['putaway'];
+		if (pathname === '/items' || pathname.startsWith('/items/')) return ['items'];
+		if (pathname === '/warehouses') return ['warehouses'];
+		if (pathname.startsWith('/warehouses/')) return ['warehouses', 'zones', 'bins'];
+		return [];
+	}
+
+	function canSeeNavItem(item: (typeof nav)[number]): boolean {
+		return !('pageKey' in item) || canAccessPages([item.pageKey]);
+	}
+
+	onMount(() => { void bootstrap(); });
 
 	async function bootstrap() {
 		await guard.verify();
@@ -59,6 +86,12 @@
 			<button type="button" onclick={logout}>Cerrar sesión</button>
 		</div>
 	</section>
+{:else if guard.status === 'authenticated' && !hasRouteAccess}
+	<section class="boot panel" role="alert">
+		<p class="title">Acceso no autorizado</p>
+		<p class="detail">Tu cuenta no tiene los permisos de página necesarios para este módulo.</p>
+		<button type="button" class="primary" onclick={() => goto('/inventory')}>Continuar</button>
+	</section>
 {:else if guard.status === 'authenticated'}
 	<div class="shell">
 		<header class="topbar">
@@ -68,7 +101,7 @@
 			</a>
 			{#if !guard.user?.mustChangePassword}
 				<nav aria-label="Principal">
-					{#each nav as item}<a href={item.href} class:active={isActive(item.href)}>{item.label}</a>{/each}
+					{#each nav.filter(canSeeNavItem) as item}<a href={item.href} class:active={isActive(item.href)}>{item.label}</a>{/each}
 				</nav>
 			{/if}
 			<div class="session">
