@@ -8,7 +8,7 @@
 </script>
 
 <section class="workspace">
-	<header class="header"><div><p class="eyebrow">Datos maestros</p><h1>{mode === 'zones' ? 'Zonas' : 'Bins'}</h1></div>
+	<header class="header"><div><p class="eyebrow">Datos maestros</p><h1>{mode === 'zones' ? 'Zonas' : 'Ubicaciones'}</h1></div>
 		{#if selection.canSelect && selection.warehouses.length > 0}
 			<label>Almacén<select value={selection.warehouseId ?? ''} onchange={(e) => selection.select(Number(e.currentTarget.value))}>
 				{#each selection.warehouses as wh}<option value={wh.id}>{wh.code} — {wh.name}</option>{/each}

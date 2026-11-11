@@ -21,6 +21,15 @@
 	let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
 	onMount(() => { void vm.load(); });
+	function zoneTypeLabel(type: ZoneType): string {
+		const labels: Record<ZoneType, string> = { RECEIVING: 'Recepción', STORAGE: 'Almacenamiento', PICKING: 'Preparación', STAGING: 'Zona temporal', SHIPPING: 'Despacho' };
+		return labels[type];
+	}
+	function binTypeLabel(type: BinType): string {
+		const labels: Record<BinType, string> = { Staging: 'Temporal', PickableStaging: 'Temporal para preparación', Pickable: 'Disponible para preparación' };
+		return labels[type];
+	}
+
 	onDestroy(() => { if (searchTimer) clearTimeout(searchTimer); });
 
 	function openCreateZone() {
@@ -76,14 +85,14 @@
 			};
 			const csv = [columns.join(','), ...rows.map(bin => [bin.code,bin.barcode,bin.zoneName,bin.warehouseId,bin.binType,bin.aisle,bin.pickSequence,bin.putawaySequence,''].map(csvCell).join(','))].join('\r\n');
 			const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-			const link = document.createElement('a'); link.href = url; link.download = 'bins_warehouse' + warehouseId + '_' + new Date().toISOString().slice(0,10) + '.csv'; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
-		} catch { vm.setError('No se pudo exportar el listado de bins.'); }
+			const link = document.createElement('a'); link.href = url; link.download = 'ubicaciones_almacen' + warehouseId + '_' + new Date().toISOString().slice(0,10) + '.csv'; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
+		} catch { vm.setError('No se pudo exportar el listado de ubicaciones.'); }
 		finally { exporting = false; }
 	}
 </script>
 
 <section class="page">
-	<header><p class="back"><a href={backHref}>← Volver a datos</a></p>
+	<header><p class="back"><a href={backHref}>← Volver a datos maestros</a></p>
 		{#if vm.warehouse}<h1>{vm.warehouse.name}</h1><p class="subtitle">{vm.warehouse.code} · {vm.warehouse.active ? 'Activo' : 'Inactivo'}</p>{#if vm.warehouse.address}<p class="subtitle">{vm.warehouse.address}</p>{/if}
 		{:else}<h1>Almacén #{warehouseId}</h1>{/if}
 	</header>
@@ -95,42 +104,42 @@
 			<div class="section-header"><h2>Zonas</h2><button class="primary" type="button" onclick={openCreateZone}>Nueva zona</button></div>
 			{#if vm.zones.length === 0}<p class="status">Sin zonas.</p>
 			{:else}<div class="table-wrap"><table><thead><tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
-				{#each vm.zones as zone (zone.id)}<tr class:selected={vm.selectedZoneId === zone.id}><td class="mono">{zone.code}</td><td>{zone.name}</td><td>{zone.zoneType}</td><td>{zone.active ? 'Activo' : 'Inactivo'}</td>
-					<td class="actions"><button class="quiet" type="button" onclick={() => vm.loadBinsForZone(zone.id,1)}>Bins</button><button class="quiet" type="button" onclick={() => openEditZone(zone)}>Editar</button><button class="danger" type="button" onclick={() => deleteZoneTarget = zone}>Eliminar</button></td></tr>{/each}
+				{#each vm.zones as zone (zone.id)}<tr class:selected={vm.selectedZoneId === zone.id}><td class="mono">{zone.code}</td><td>{zone.name}</td><td>{zoneTypeLabel(zone.zoneType)}</td><td>{zone.active ? 'Activo' : 'Inactivo'}</td>
+					<td class="actions"><button class="quiet" type="button" onclick={() => vm.loadBinsForZone(zone.id,1)}>Ubicaciones</button><button class="quiet" type="button" onclick={() => openEditZone(zone)}>Editar</button><button class="danger" type="button" onclick={() => deleteZoneTarget = zone}>Eliminar</button></td></tr>{/each}
 			</tbody></table></div>
 			{#if vm.selectedZoneId != null}<p class="filter-hint">Filtrando por zona #{vm.selectedZoneId} <button class="linkish" type="button" onclick={() => vm.loadBinsForZone(null,1)}>Quitar filtro</button></p>{/if}{/if}
 		</section>{/if}
 		{#if showBins}<section class="panel">
-			<div class="section-header bin-heading"><h2>Bins</h2><div class="bin-tools"><input aria-label="Buscar bins" placeholder="Buscar código o barcode" value={vm.binSearch} oninput={(e) => onSearch(e.currentTarget.value)} /><button class="quiet" type="button" onclick={exportCsv} disabled={exporting || vm.binTotal === 0}>{exporting ? 'Exportando…' : 'Exportar CSV'}</button><button class="primary" type="button" onclick={openCreateBin} disabled={vm.zones.length === 0}>Nuevo bin</button></div></div>
-			{#if vm.binsLoading}<p class="status">Actualizando bins…</p>
-			{:else if vm.bins.length === 0}<p class="status">Sin bins para este filtro.</p>
-			{:else}<div class="table-wrap"><table><thead><tr><th>Código</th><th>Barcode</th><th>Tipo</th><th>Zona</th><th>Pasillo</th><th>Sec. picking</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
-				{#each vm.bins as bin (bin.id)}<tr><td><button class="linkish mono" type="button" onclick={() => vm.viewBin(bin.id)}>{bin.code}</button></td><td class="mono">{bin.barcode ?? '—'}</td><td>{bin.binType}</td><td>{bin.zoneName ?? bin.zoneId ?? '—'}</td><td>{bin.aisle ?? '—'}</td><td>{bin.pickSequence}</td><td>{bin.active ? 'Activo' : 'Inactivo'}</td><td class="actions"><button class="quiet" type="button" onclick={() => openEditBin(bin)}>Editar</button><button class="danger" type="button" onclick={() => deleteBinTarget = bin}>Eliminar</button></td></tr>{/each}
+			<div class="section-header bin-heading"><h2>Ubicaciones</h2><div class="bin-tools"><input aria-label="Buscar ubicaciones" placeholder="Buscar código o código de barras" value={vm.binSearch} oninput={(e) => onSearch(e.currentTarget.value)} /><button class="quiet" type="button" onclick={exportCsv} disabled={exporting || vm.binTotal === 0}>{exporting ? 'Exportando…' : 'Exportar CSV'}</button><button class="primary" type="button" onclick={openCreateBin} disabled={vm.zones.length === 0}>Nueva ubicación</button></div></div>
+			{#if vm.binsLoading}<p class="status">Actualizando ubicaciones…</p>
+			{:else if vm.bins.length === 0}<p class="status">No hay ubicaciones para este filtro.</p>
+			{:else}<div class="table-wrap"><table><thead><tr><th>Código</th><th>Código de barras</th><th>Tipo</th><th>Zona</th><th>Pasillo</th><th>Orden de preparación</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+				{#each vm.bins as bin (bin.id)}<tr><td><button class="linkish mono" type="button" onclick={() => vm.viewBin(bin.id)}>{bin.code}</button></td><td class="mono">{bin.barcode ?? '—'}</td><td>{binTypeLabel(bin.binType)}</td><td>{bin.zoneName ?? bin.zoneId ?? '—'}</td><td>{bin.aisle ?? '—'}</td><td>{bin.pickSequence}</td><td>{bin.active ? 'Activo' : 'Inactivo'}</td><td class="actions"><button class="quiet" type="button" onclick={() => openEditBin(bin)}>Editar</button><button class="danger" type="button" onclick={() => deleteBinTarget = bin}>Eliminar</button></td></tr>{/each}
 			</tbody></table></div>
-			<div class="pagination"><span>{vm.binTotal} bins · página {vm.binPage} de {vm.binPages}</span><div><button type="button" disabled={vm.binPage <= 1 || vm.binsLoading} onclick={() => vm.loadBinsForZone(vm.selectedZoneId,vm.binPage - 1)}>Anterior</button><button type="button" disabled={vm.binPage >= vm.binPages || vm.binsLoading} onclick={() => vm.loadBinsForZone(vm.selectedZoneId,vm.binPage + 1)}>Siguiente</button></div></div>{/if}
+			<div class="pagination"><span>{vm.binTotal} ubicaciones · página {vm.binPage} de {vm.binPages}</span><div><button type="button" disabled={vm.binPage <= 1 || vm.binsLoading} onclick={() => vm.loadBinsForZone(vm.selectedZoneId,vm.binPage - 1)}>Anterior</button><button type="button" disabled={vm.binPage >= vm.binPages || vm.binsLoading} onclick={() => vm.loadBinsForZone(vm.selectedZoneId,vm.binPage + 1)}>Siguiente</button></div></div>{/if}
 		</section>{/if}
 	{/if}
 </section>
 
 {#if showZoneForm}<div class="backdrop"><section class="dialog" role="dialog" aria-modal="true"><h2>{editingZone ? 'Editar zona' : 'Nueva zona'}</h2><form onsubmit={saveZone}>
 	<label>Código<input bind:value={zoneForm.code} maxlength="32" required disabled={vm.mutating} /></label><label>Nombre<input bind:value={zoneForm.name} maxlength="128" required disabled={vm.mutating} /></label>
-	<label>Tipo<select bind:value={zoneForm.zoneType} disabled={vm.mutating}>{#each ['RECEIVING','STORAGE','PICKING','STAGING','SHIPPING'] as type}<option value={type}>{type}</option>{/each}</select></label>
+	<label>Tipo<select bind:value={zoneForm.zoneType} disabled={vm.mutating}>{#each ['RECEIVING','STORAGE','PICKING','STAGING','SHIPPING'] as type}<option value={type}>{zoneTypeLabel(type as ZoneType)}</option>{/each}</select></label>
 	{#if editingZone}<label class="check"><input type="checkbox" bind:checked={zoneForm.active} /> Activa</label>{/if}
 	{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}<footer><button class="quiet" type="button" onclick={() => showZoneForm = false}>Cancelar</button><button class="primary" type="submit" disabled={vm.mutating}>Guardar</button></footer>
 </form></section></div>{/if}
-{#if showBinForm}<div class="backdrop"><section class="dialog" role="dialog" aria-modal="true"><h2>{editingBin ? 'Editar bin' : 'Nuevo bin'}</h2><form onsubmit={saveBin}>
-	<label>Código<input bind:value={binForm.code} maxlength="64" required disabled={vm.mutating} /></label><label>Barcode<input bind:value={binForm.barcode} maxlength="128" required disabled={vm.mutating} /></label>
-	<label>Tipo<select bind:value={binForm.binType} disabled={vm.mutating}>{#each ['Staging','PickableStaging','Pickable'] as type}<option value={type}>{type}</option>{/each}</select></label>
+{#if showBinForm}<div class="backdrop"><section class="dialog" role="dialog" aria-modal="true"><h2>{editingBin ? 'Editar ubicación' : 'Nueva ubicación'}</h2><form onsubmit={saveBin}>
+	<label>Código<input bind:value={binForm.code} maxlength="64" required disabled={vm.mutating} /></label><label>Código de barras<input bind:value={binForm.barcode} maxlength="128" required disabled={vm.mutating} /></label>
+	<label>Tipo<select bind:value={binForm.binType} disabled={vm.mutating}>{#each ['Staging','PickableStaging','Pickable'] as type}<option value={type}>{binTypeLabel(type as BinType)}</option>{/each}</select></label>
 	<label>Zona<select bind:value={binForm.zoneId} required disabled={vm.mutating}><option value={null}>Seleccionar zona</option>{#each vm.zones as zone}<option value={zone.id}>{zone.code} — {zone.name}</option>{/each}</select></label>
-	<label>Pasillo<input bind:value={binForm.aisle} maxlength="32" disabled={vm.mutating} /></label><label>Secuencia de picking<input type="number" min="0" step="1" bind:value={binForm.pickSequence} disabled={vm.mutating} /></label>
+	<label>Pasillo<input bind:value={binForm.aisle} maxlength="32" disabled={vm.mutating} /></label><label>Orden de preparación<input type="number" min="0" step="1" bind:value={binForm.pickSequence} disabled={vm.mutating} /></label>
 	{#if editingBin}<label class="check"><input type="checkbox" bind:checked={binForm.active} /> Activo</label>{/if}
 	{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}<footer><button class="quiet" type="button" onclick={() => showBinForm = false}>Cancelar</button><button class="primary" type="submit" disabled={vm.mutating || binForm.zoneId == null}>Guardar</button></footer>
 </form></section></div>{/if}
-{#if deleteZoneTarget}<div class="backdrop"><section class="dialog" role="alertdialog" aria-modal="true"><h2>Eliminar zona</h2><p>¿Eliminar <strong>{deleteZoneTarget.code} — {deleteZoneTarget.name}</strong>? El backend rechazará la operación si aún tiene bins asociados.</p>{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}<footer><button class="quiet" type="button" onclick={() => deleteZoneTarget = null}>Cancelar</button><button class="danger" type="button" onclick={deleteZone} disabled={vm.mutating}>Eliminar</button></footer></section></div>{/if}
-{#if deleteBinTarget}<div class="backdrop"><section class="dialog" role="alertdialog" aria-modal="true"><h2>Eliminar bin</h2><p>¿Eliminar <strong>{deleteBinTarget.code}</strong>? No puede tener existencias ni referencias de bins preferidos.</p>{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}<footer><button class="quiet" type="button" onclick={() => deleteBinTarget = null}>Cancelar</button><button class="danger" type="button" onclick={deleteBin} disabled={vm.mutating}>Eliminar</button></footer></section></div>{/if}
-{#if vm.selectedBinDetail}<div class="backdrop"><section class="dialog wide" role="dialog" aria-modal="true"><h2>Bin {vm.selectedBinDetail.bin.code}</h2>
-	<dl><dt>Barcode</dt><dd>{vm.selectedBinDetail.bin.barcode ?? '—'}</dd><dt>Tipo</dt><dd>{vm.selectedBinDetail.bin.binType}</dd><dt>Zona</dt><dd>{vm.selectedBinDetail.bin.zoneName ?? '—'}</dd><dt>Pasillo</dt><dd>{vm.selectedBinDetail.bin.aisle ?? '—'}</dd><dt>Secuencia picking</dt><dd>{vm.selectedBinDetail.bin.pickSequence}</dd><dt>Estado</dt><dd>{vm.selectedBinDetail.bin.active ? 'Activo' : 'Inactivo'}</dd></dl>
-	<h3>Inventario</h3>{#if vm.selectedBinDetail.inventory.length === 0}<p class="status">Sin inventario en este bin.</p>{:else}<div class="table-wrap"><table><thead><tr><th>SKU</th><th>Producto</th><th>Disponible</th><th>Asignado</th></tr></thead><tbody>{#each vm.selectedBinDetail.inventory as row (row.inventoryId)}<tr><td class="mono">{row.sku}</td><td>{row.itemName}</td><td>{row.quantityOnHand}</td><td>{row.quantityAllocated}</td></tr>{/each}</tbody></table></div>{/if}
+{#if deleteZoneTarget}<div class="backdrop"><section class="dialog" role="alertdialog" aria-modal="true"><h2>Eliminar zona</h2><p>¿Eliminar <strong>{deleteZoneTarget.code} — {deleteZoneTarget.name}</strong>? El backend rechazará la operación si aún tiene ubicaciones asociadas.</p>{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}<footer><button class="quiet" type="button" onclick={() => deleteZoneTarget = null}>Cancelar</button><button class="danger" type="button" onclick={deleteZone} disabled={vm.mutating}>Eliminar</button></footer></section></div>{/if}
+{#if deleteBinTarget}<div class="backdrop"><section class="dialog" role="alertdialog" aria-modal="true"><h2>Eliminar ubicación</h2><p>¿Eliminar <strong>{deleteBinTarget.code}</strong>? No puede tener existencias ni referencias de ubicaciones preferidas.</p>{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}<footer><button class="quiet" type="button" onclick={() => deleteBinTarget = null}>Cancelar</button><button class="danger" type="button" onclick={deleteBin} disabled={vm.mutating}>Eliminar</button></footer></section></div>{/if}
+{#if vm.selectedBinDetail}<div class="backdrop"><section class="dialog wide" role="dialog" aria-modal="true"><h2>Ubicación {vm.selectedBinDetail.bin.code}</h2>
+	<dl><dt>Código de barras</dt><dd>{vm.selectedBinDetail.bin.barcode ?? '—'}</dd><dt>Tipo</dt><dd>{binTypeLabel(vm.selectedBinDetail.bin.binType)}</dd><dt>Zona</dt><dd>{vm.selectedBinDetail.bin.zoneName ?? '—'}</dd><dt>Pasillo</dt><dd>{vm.selectedBinDetail.bin.aisle ?? '—'}</dd><dt>Orden de preparación</dt><dd>{vm.selectedBinDetail.bin.pickSequence}</dd><dt>Estado</dt><dd>{vm.selectedBinDetail.bin.active ? 'Activo' : 'Inactivo'}</dd></dl>
+	<h3>Inventario</h3>{#if vm.selectedBinDetail.inventory.length === 0}<p class="status">Esta ubicación no tiene existencias.</p>{:else}<div class="table-wrap"><table><thead><tr><th>SKU</th><th>Producto</th><th>Disponible</th><th>Asignado</th></tr></thead><tbody>{#each vm.selectedBinDetail.inventory as row (row.inventoryId)}<tr><td class="mono">{row.sku}</td><td>{row.itemName}</td><td>{row.quantityOnHand}</td><td>{row.quantityAllocated}</td></tr>{/each}</tbody></table></div>{/if}
 	<footer><button class="quiet" type="button" onclick={() => vm.closeBinDetail()}>Cerrar</button></footer></section></div>{/if}
 
 <style>

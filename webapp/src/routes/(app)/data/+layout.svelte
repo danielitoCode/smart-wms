@@ -8,8 +8,8 @@
 	const tabs = [
 		{ href: '/data/warehouses', label: 'Almacenes', keys: ['warehouses'] },
 		{ href: '/data/zones', label: 'Zonas', keys: ['zones'] },
-		{ href: '/data/bins', label: 'Bins', keys: ['bins', 'zones'] },
-		{ href: '/data/preferred-bins', label: 'Bins preferidos', keys: ['preferred-bins'] }
+		{ href: '/data/bins', label: 'Ubicaciones', keys: ['bins', 'zones'] },
+		{ href: '/data/preferred-bins', label: 'Ubicaciones preferidas', keys: ['preferred-bins'] }
 	];
 	const visibleTabs = tabs.filter(tab => admin || tab.keys.every(key => pages.includes(key)));
 	function isActive(href: string) { return page.url.pathname === href || page.url.pathname.startsWith(href + '/'); }
