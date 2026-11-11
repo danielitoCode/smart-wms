@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"strconv"
 	"time"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/salesorders"
@@ -39,7 +40,15 @@ type Service struct {
 }
 
 func New(store *corestore.Store, sos *salesorders.Repository) *Service {
-	return &Service{store: store, sos: sos}
+	service := &Service{store: store, sos: sos}
+	if records, err := store.List(kind); err == nil {
+		for _, record := range records {
+			if id, err := strconv.ParseInt(record.ID, 10, 64); err == nil && id > service.seq {
+				service.seq = id
+			}
+		}
+	}
+	return service
 }
 
 func (s *Service) Create(soNumber, reason, actor string, backorder bool) (RMA, error) {
