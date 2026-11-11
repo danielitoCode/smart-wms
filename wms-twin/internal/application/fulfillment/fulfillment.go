@@ -256,17 +256,22 @@ func (s *Service) VoidWithID(soID int64, actor, reason, operationID string) (Shi
 		if _, err := s.store.Put(shipmentKind, key, data); err != nil { return Shipment{}, err }
 	}
 	if so.Status == salesorders.StatusShipped {
-		so.Status = shipment.PreShipStatus
-		for i := range so.Lines {
-			line := &so.Lines[i]
-			line.QuantityShipped = 0
-			if shipment.PreShipStatus == salesorders.StatusPacked {
-				line.Status = salesorders.LinePacked
-			} else {
-				line.Status = salesorders.LinePicked
+		// A corrective admin shipment can have SHIPPED as its pre-ship
+		// status. In that case the original order/line shipment data belongs
+		// to the imported order and must not be erased by voiding this marker.
+		if shipment.PreShipStatus != salesorders.StatusShipped {
+			so.Status = shipment.PreShipStatus
+			for i := range so.Lines {
+				line := &so.Lines[i]
+				line.QuantityShipped = 0
+				if shipment.PreShipStatus == salesorders.StatusPacked {
+					line.Status = salesorders.LinePacked
+				} else {
+					line.Status = salesorders.LinePicked
+				}
 			}
+			if err := s.sos.Save(so); err != nil { return Shipment{}, err }
 		}
-		if err := s.sos.Save(so); err != nil { return Shipment{}, err }
 	} else if so.Status != shipment.PreShipStatus {
 		return Shipment{}, fmt.Errorf("%w: order is %s, expected SHIPPED or %s", ErrState, so.Status, shipment.PreShipStatus)
 	}
