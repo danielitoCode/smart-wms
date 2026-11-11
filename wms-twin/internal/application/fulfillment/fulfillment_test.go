@@ -63,6 +63,7 @@ func TestVoidReversesPOSInventoryExactlyOnce(t *testing.T) {
 	item, err := cat.CreateItem(catalog.ItemInput{SKU:"POS-VOID-SKU",ItemName:"POS void item"})
 	if err != nil { t.Fatal(err) }
 	if _, err := ledger.Adjust(inventoryledger.AdjustCommand{OperationID:"seed-pos-void",WarehouseID:warehouse.WarehouseID,BinID:bin.BinID,ItemID:item.ItemID,Delta:8}); err != nil { t.Fatal(err) }
+	if _, err := ledger.Adjust(inventoryledger.AdjustCommand{OperationID:"seed-pos-dispatch",WarehouseID:warehouse.WarehouseID,BinID:bin.BinID,ItemID:item.ItemID,Delta:-2}); err != nil { t.Fatal(err) }
 	sos := salesorders.New(store,cat)
 	so, err := sos.Create(salesorders.CreateInput{SONumber:"POS-VOID-SO",WarehouseID:warehouse.WarehouseID,Lines:[]salesorders.LineInput{{ItemID:item.ItemID,QuantityOrdered:2}}},"operator")
 	if err != nil { t.Fatal(err) }
