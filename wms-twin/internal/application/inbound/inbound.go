@@ -139,18 +139,15 @@ func (s *Service) writeSO(rec map[string]any, actor string) (map[string]any, err
 	if soNumber == "" {
 		return nil, fmt.Errorf("so_number required")
 	}
-	wid := int64(0)
-	switch v := rec["warehouse_id"].(type) {
-	case float64:
-		wid = int64(v)
-	case int64:
-		wid = v
-	case int:
-		wid = int64(v)
-	}
+	wid, _ := integerField(rec["warehouse_id"])
 	if wid == 0 {
-		return nil, fmt.Errorf("warehouse_id required")
+		if code, ok := rec["warehouse_code"].(string); ok && strings.TrimSpace(code) != "" {
+			warehouses, err := s.cat.ListWarehouses()
+			if err != nil { return nil, err }
+			for _, warehouse := range warehouses { if warehouse.WarehouseCode == code { wid = warehouse.WarehouseID; break } }
+		}
 	}
+	if wid <= 0 { return nil, fmt.Errorf("warehouse_id or a valid warehouse_code is required") }
 	rawLines, _ := rec["lines"].([]any)
 	lines := make([]salesorders.LineInput, 0)
 	for _, rl := range rawLines {
@@ -158,12 +155,13 @@ func (s *Service) writeSO(rec map[string]any, actor string) (map[string]any, err
 		if !ok {
 			continue
 		}
-		itemID := int64(0)
-		switch v := m["item_id"].(type) {
-		case float64:
-			itemID = int64(v)
-		case int64:
-			itemID = v
+		itemID, _ := integerField(m["item_id"])
+		if itemID <= 0 {
+			if sku, ok := m["sku"].(string); ok && strings.TrimSpace(sku) != "" {
+				items, err := s.cat.ListItems()
+				if err != nil { return nil, err }
+				for _, item := range items { if item.SKU == sku { itemID = item.ItemID; break } }
+			}
 		}
 		qty := int64(0)
 		switch v := m["quantity"].(type) {
@@ -179,7 +177,11 @@ func (s *Service) writeSO(rec map[string]any, actor string) (map[string]any, err
 	if len(lines) == 0 {
 		return nil, fmt.Errorf("at least one line required")
 	}
-	so, err := s.sos.Create(salesorders.CreateInput{SONumber: soNumber, WarehouseID: wid, Lines: lines}, actor)
+	var customerName *string
+	if value, ok := rec["customer_name"].(string); ok { customerName = &value }
+	var notes *string
+	if value, ok := rec["notes"].(string); ok { notes = &value }
+	so, err := s.sos.Create(salesorders.CreateInput{SONumber: soNumber, WarehouseID: wid, Lines: lines, CustomerName: customerName, Notes: notes}, actor)
 	if err != nil {
 		return nil, err
 	}
@@ -196,8 +198,13 @@ func (s *Service) writePO(rec map[string]any, actor string) (map[string]any, err
 	}
 	warehouseID, ok := integerField(rec["warehouse_id"])
 	if !ok || warehouseID <= 0 {
-		return nil, fmt.Errorf("warehouse_id must be a positive integer")
+		if code, exists := rec["warehouse_code"].(string); exists && strings.TrimSpace(code) != "" {
+			warehouses, err := s.cat.ListWarehouses()
+			if err != nil { return nil, err }
+			for _, warehouse := range warehouses { if warehouse.WarehouseCode == code { warehouseID = warehouse.WarehouseID; ok = true; break } }
+		}
 	}
+	if !ok || warehouseID <= 0 { return nil, fmt.Errorf("warehouse_id or valid warehouse_code required") }
 	rawLines, ok := rec["lines"].([]any)
 	if !ok || len(rawLines) == 0 {
 		return nil, fmt.Errorf("at least one purchase-order line is required")
@@ -209,6 +216,13 @@ func (s *Service) writePO(rec map[string]any, actor string) (map[string]any, err
 			return nil, fmt.Errorf("line %d must be an object", i)
 		}
 		itemID, okID := integerField(line["item_id"])
+		if !okID {
+			if sku, exists := line["sku"].(string); exists && strings.TrimSpace(sku) != "" {
+				items, err := s.cat.ListItems()
+				if err != nil { return nil, err }
+				for _, item := range items { if item.SKU == sku { itemID, okID = item.ItemID, true; break } }
+			}
+		}
 		quantity, okQty := integerField(line["quantity_ordered"])
 		if !okQty {
 			quantity, okQty = integerField(line["quantity"])
