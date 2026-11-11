@@ -251,3 +251,6 @@ Las actualizaciones de una external_version más nueva se rechazan explícitamen
 `Server.StartBackground(ctx)` devuelve error si el transporte expone un host libp2p y no se pueden iniciar DHT/GossipSub. `Runtime.New` propaga el error y detiene el nodo, en vez de iniciar la API anunciando una red no disponible. Para la ruta libp2p configuro `PRISMATEC_TRANSPORT=libp2p` y una multiaddr en `PRISMATEC_NETWORK_ADDR`; TCP y modo offline conservan el fallback experimental.
 
 El dispatcher de eventos recorre los eventos persistidos y llama `DeliverEventAt` con CreatedAt original. La suscripción no recibe eventos anteriores a su CreatedAt. El registro de delivery por subscription/event_id evita duplicados.
+
+
+Refund calcula el importe proporcional acumulado de cada ubicación artículo/bin y permite `ShippingRefundCents` separado. El estado PARTIALLY_REFUNDED se conserva hasta que cantidades y monto original estén completamente conciliados. RMA.Create lee `wms_pos_sale`/`wms_pos_refund` y RMAs existentes para calcular solo las cantidades todavía retornables; bloquea creación si hay una refund saga pendiente o falta historial necesario.
