@@ -93,8 +93,31 @@ func (s *Service) Create(soNumber, reason, actor string, backorder bool) (RMA, e
 	if so == nil {
 		return RMA{}, salesorders.ErrNotFound
 	}
-	if so.Status != salesorders.StatusShipped {
-		return RMA{}, fmt.Errorf("only shipped sales orders can be returned")
+	if so.Status != salesorders.StatusShipped && so.Status != salesorders.StatusPartiallyRefunded {
+		return RMA{}, fmt.Errorf("only shipped or partially refunded sales orders can be returned")
+	}
+	saleID := ""
+	saleRecords, err := s.store.List("wms_pos_sale")
+	if err != nil { return RMA{}, err }
+	for _, record := range saleRecords {
+		var sale struct { ID string `json:"id"`; SOID int64 `json:"so_id"` }
+		if json.Unmarshal(record.Data, &sale) == nil && sale.SOID == so.SOID { saleID = sale.ID; break }
+	}
+	refundedByItem := make(map[int64]int64)
+	if saleID != "" {
+		refundRecords, err := s.store.List("wms_pos_refund")
+		if err != nil { return RMA{}, err }
+		for _, record := range refundRecords {
+			var refund struct {
+				SaleID string `json:"sale_id"`
+				Status string `json:"status"`
+				Lines []struct { ItemID int64 `json:"item_id"`; Quantity int64 `json:"quantity"` } `json:"lines"`
+			}
+			if json.Unmarshal(record.Data, &refund) != nil || refund.SaleID != saleID || refund.Status != "COMPLETED" { continue }
+			for _, line := range refund.Lines { refundedByItem[line.ItemID] += line.Quantity }
+		}
+	} else if so.Status == salesorders.StatusPartiallyRefunded {
+		return RMA{}, fmt.Errorf("POS refund ledger is missing; cannot determine remaining returnable quantities")
 	}
 	s.seq++
 	r := RMA{
@@ -103,12 +126,21 @@ func (s *Service) Create(soNumber, reason, actor string, backorder bool) (RMA, e
 		CreatedBy: actor, Backorder: backorder, UpdatedAt: time.Now().UTC(),
 		Lines: []RMALine{},
 	}
+	expectedByItem := make(map[int64]int64)
+	itemOrder := make([]int64,0)
 	for _, line := range so.Lines {
 		expected := line.QuantityShipped
 		if expected <= 0 { expected = line.QuantityPacked }
 		if expected <= 0 { expected = line.QuantityPicked }
 		if expected <= 0 { expected = line.QuantityOrdered }
-		if expected > 0 { r.Lines = append(r.Lines, RMALine{ItemID: line.ItemID, Expected: expected, Receipts: []RMAReceipt{}}) }
+		if expected <= 0 { continue }
+		if _, exists := expectedByItem[line.ItemID]; !exists { itemOrder = append(itemOrder,line.ItemID) }
+		expectedByItem[line.ItemID] += expected
+	}
+	for _, itemID := range itemOrder {
+		expected := expectedByItem[itemID] - refundedByItem[itemID]
+		if expected < 0 { return RMA{}, fmt.Errorf("refunded quantity exceeds shipped quantity for item %d",itemID) }
+		if expected > 0 { r.Lines = append(r.Lines, RMALine{ItemID:itemID,Expected:expected,Receipts:[]RMAReceipt{}}) }
 	}
 	if len(r.Lines) == 0 { return RMA{}, fmt.Errorf("sales order has no returnable lines") }
 	data, _ := json.Marshal(r)
