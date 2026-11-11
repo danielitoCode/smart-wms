@@ -223,3 +223,35 @@ Implementé receiving, put-away, sales orders, picking batch y packing/shipping 
 ## Corte lookup/transfers/cycle (AUD-0023)
 
 Añadí lookup item/bin/so/search, transfers/move, cycle-count create/get/submit y wave-validate/create. Documenté tests de flujo HTTP. Sigo sin declarar el gemelo como sustituible al 100%.
+
+
+
+## Revisión de paridad del corte 18c389e y endurecimiento posterior
+
+No cuento la existencia de una ruta como paridad. La siguiente matriz separa lo que ahora tiene comportamiento persistente de lo que deliberadamente responde como no soportado para evitar falsos positivos.
+
+| Área | Estado en el gemelo tras el endurecimiento | Paridad real |
+|---|---|---|
+| Inbound items | Crea artículos mediante catálogo | Parcial; falta mapeo completo, idempotencia y auditoría del contrato original |
+| Inbound sales orders | Crea SO persistente | Parcial; falta idempotencia/origen/canonical payload |
+| Inbound purchase orders | Crea PO real y líneas persistentes; elimina shadow record | Parcial; falta idempotencia, versionado de origen y receipts |
+| POS availability | Lectura filtrada por warehouse y SKU | Parcial; falta barcode, shape y reglas de visibilidad originales |
+| POS validate-cart | Valida cantidades acumuladas por artículo | Parcial; no reproduce todos los errores/headers del original |
+| POS checkout | Devuelve 501; no crea una venta falsa | Pendiente de tender, total, inventario, idempotencia, audit y outbox |
+| POS refund | Devuelve 501; no declara devolución falsa | Pendiente de credit memo, tender match, ventana temporal, idempotencia y reintegro |
+| POS dispatch/reference orders | Devuelve 501 | Pendiente |
+| Dockd ship | Propaga error de packing y valida transición | Parcial; faltan DTO, idempotencia, audit y comparación diferencial |
+| Dockd void-ship | No informa éxito sin reversión persistente | Pendiente |
+| RMA | Expediente persistente; no completa sin disposición de stock | Parcial; faltan cantidades/condición por línea, destino, reintegro y backorder equivalente |
+| Events | Evento persistido y estado Published; reintento invocable | Parcial; falta worker durable/consumer cursor y garantías de entrega |
+| Webhooks | HTTPS, bloqueo SSRF en conexión y redirects deshabilitados | Parcial; falta outbox/retry/DLQ, rotación y cifrado de secretos en reposo |
+| Inventory snapshot | Exportación persistida versionada con checksum | Parcial; no hay restore transaccional ni snapshot consistente bajo escritura concurrente |
+| Audit chain | Verificación completa antes de append y bloqueo ante corrupción | Parcial; falta prueba de concurrencia multinodo y anclaje externo |
+| Mesh | Peer table + TTL gossip | Experimental; no Kademlia DHT ni GossipSub |
+| Inventario | Ledger Core con mutex local e idempotencia | Parcial; sin transacción distribuida, quorum ni fencing multinodo |
+
+### Criterio para cerrar cada pendiente
+
+Cada ruta debe compararse con el Flask original mediante fixtures reales request/response y pruebas de efectos laterales. Para POS y RMA también debo demostrar las variaciones del ledger antes/después, repetición idempotente, fallos intermedios y recuperación tras reinicio. Para webhooks necesito verificar persistencia de cada delivery, reintentos, DLQ, SSRF, rotación de secreto y comportamiento bajo caída del consumidor. Para snapshots debo probar integridad, consistencia y restauración en un entorno aislado antes de ofrecer un endpoint restore.
+
+**Estado global: NO SUSTITUIBLE.** La rama de endurecimiento corrige comportamientos falsamente exitosos y añade controles; no equivale a paridad funcional ni autoriza mover tráfico productivo.
