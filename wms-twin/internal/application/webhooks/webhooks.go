@@ -304,6 +304,7 @@ func webhookEncryptionKey() ([]byte, error) {
 	if raw == "" { return nil, fmt.Errorf("SENTRY_ENCRYPTION_KEY or WMS_WEBHOOK_ENCRYPTION_KEY is required to encrypt webhook secrets") }
 	key, err := base64.StdEncoding.DecodeString(raw)
 	if err != nil { key, err = base64.RawStdEncoding.DecodeString(raw) }
+	if err != nil { key, err = base64.RawURLEncoding.DecodeString(raw) }
 	if err != nil || len(key) != 32 { return nil, fmt.Errorf("webhook encryption key must be base64-encoded 32 bytes") }
 	return key, nil
 }
