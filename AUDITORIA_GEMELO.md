@@ -401,3 +401,10 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Riesgos que permanecen:** webhook secrets todavía se almacenan sin cifrado en reposo; Deliver sigue usando goroutines y no una cola durable con retry/DLQ; POS checkout/refund/dispatch no están portados; RMA no restock; Dockd void no revierte; snapshot no restaura; mesh no es DHT/GossipSub; inbound no tiene idempotencia completa.
 - **Alcance:** no modifiqué backend Flask, frontend, ni los cuatro artefactos existentes en la raíz.
 - **Validación:** no declaro tests, gofmt, vet, race detector ni Actions como aprobados hasta recibir el resultado del workflow de esta rama/PR.
+
+
+### AUD-0025 — Precisión de snapshot y retry explícito de eventos
+
+- **Cambio:** filas de snapshot tipadas para evitar coerción numérica durante verificación SHA-256; scope `events.publish` y endpoint `POST /api/v1/events/retry-pending`; `Verify` de auditoría limpia el latch cuando una re-verificación completa tiene éxito.
+- **Riesgo:** el retry de eventos es invocable por operador y no reemplaza un worker supervisado; no afirmo entrega exactamente-una-vez.
+- **Validación:** pendiente del resultado de GitHub Actions.
