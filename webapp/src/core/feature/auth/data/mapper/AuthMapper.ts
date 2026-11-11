@@ -3,8 +3,7 @@ import type { UserDto } from '../dto/AuthDto';
 
 export const AuthMapper = {
 	toUser(dto: UserDto): User {
-		const warehouseIds =
-			dto.warehouse_ids ?? (dto.warehouse_id != null ? [dto.warehouse_id] : []);
+		const warehouseIds = dto.warehouse_ids;
 
 		return {
 			userId: dto.user_id,

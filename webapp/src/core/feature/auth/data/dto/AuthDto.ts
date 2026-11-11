@@ -5,14 +5,14 @@ export type UserDto = {
 	username: string;
 	full_name: string;
 	role: UserRole;
-	warehouse_id?: number | null;
-	warehouse_ids?: number[];
-	allowed_functions?: string[];
+	warehouse_id: number | null;
+	warehouse_ids: number[];
+	allowed_functions: string[];
 	allowed_pages?: string[];
 	allowed_overrides?: string[];
 	is_active?: boolean;
 	require_packing?: boolean;
-	must_change_password?: boolean;
+	must_change_password: boolean;
 };
 
 export type LoginResponseDto = { token: string; user: UserDto };
