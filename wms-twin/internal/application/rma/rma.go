@@ -231,7 +231,6 @@ func (s *Service) ReceiveLine(id, itemID, quantity, binID int64, lot, dispositio
 	defer s.mu.Unlock()
 	r, err := s.Get(id)
 	if err != nil { return RMA{}, err }
-	if r.Status != "OPEN" && r.Status != "RECEIVED" { return RMA{}, fmt.Errorf("rma status %s cannot receive", r.Status) }
 	if quantity <= 0 || !validRMAOperationID(operationID) || strings.TrimSpace(actor) == "" || len(actor) > 128 || len(lot) > 128 || strings.TrimSpace(lot) != lot { return RMA{}, fmt.Errorf("positive quantity, valid operation_id and actor are required") }
 	disposition = strings.ToUpper(strings.TrimSpace(disposition))
 	if disposition != "RESTOCK" && disposition != "SCRAP" && disposition != "HOLD" { return RMA{}, fmt.Errorf("disposition must be RESTOCK, SCRAP or HOLD") }
@@ -241,7 +240,7 @@ func (s *Service) ReceiveLine(id, itemID, quantity, binID int64, lot, dispositio
 	for _, existingLine := range r.Lines {
 		for _, prior := range existingLine.Receipts {
 			if prior.OperationID == operationID {
-				if existingLine.ItemID != itemID || prior.Quantity != quantity || prior.BinID != binID || prior.LotNumber != lot || prior.Disposition != disposition {
+				if existingLine.ItemID != itemID || prior.Quantity != quantity || prior.BinID != binID || prior.LotNumber != lot || prior.Disposition != disposition || prior.ReceivedBy != actor {
 					return RMA{}, fmt.Errorf("RMA receipt operation_id reused with different command")
 				}
 				return r, nil
@@ -251,13 +250,14 @@ func (s *Service) ReceiveLine(id, itemID, quantity, binID int64, lot, dispositio
 	if priorRecord, exists, err := s.store.Get("wms_rma_receipt_ops", operationID); err != nil {
 		return RMA{}, err
 	} else if exists {
-		var prior struct { RMAID int64 `json:"rma_id"`; ItemID int64 `json:"item_id"`; Quantity int64 `json:"quantity"`; BinID int64 `json:"bin_id"`; Lot string `json:"lot"`; Disposition string `json:"disposition"` }
+		var prior struct { RMAID int64 `json:"rma_id"`; ItemID int64 `json:"item_id"`; Quantity int64 `json:"quantity"`; BinID int64 `json:"bin_id"`; Lot string `json:"lot"`; Disposition string `json:"disposition"`; Actor string `json:"actor"` }
 		if err := json.Unmarshal(priorRecord.Data, &prior); err != nil { return RMA{}, err }
-		if prior.RMAID != id || prior.ItemID != itemID || prior.Quantity != quantity || prior.BinID != binID || prior.Lot != lot || prior.Disposition != disposition {
+		if prior.RMAID != id || prior.ItemID != itemID || prior.Quantity != quantity || prior.BinID != binID || prior.Lot != lot || prior.Disposition != disposition || prior.Actor != actor {
 			return RMA{}, fmt.Errorf("RMA receipt operation_id already belongs to another command")
 		}
 		return r, nil
 	}
+	if r.Status != "OPEN" && r.Status != "RECEIVED" { return RMA{}, fmt.Errorf("rma status %s cannot receive", r.Status) }
 	if quantity > target.Expected-target.Received { return RMA{}, fmt.Errorf("receipt exceeds remaining return quantity") }
 	if disposition == "RESTOCK" {
 		if binID <= 0 || s.cat == nil || s.ledger == nil { return RMA{}, fmt.Errorf("RESTOCK requires a configured inventory ledger and destination bin") }
@@ -285,7 +285,7 @@ func (s *Service) ReceiveLine(id, itemID, quantity, binID int64, lot, dispositio
 	data, err := json.Marshal(r)
 	if err != nil { return RMA{}, err }
 	if _, err := s.store.Put(kind, formatID(r.RMAID), data); err != nil { return RMA{}, err }
-	opData, err := json.Marshal(map[string]any{"rma_id":id,"item_id":itemID,"quantity":quantity,"bin_id":binID,"lot":lot,"disposition":disposition})
+	opData, err := json.Marshal(map[string]any{"rma_id":id,"item_id":itemID,"quantity":quantity,"bin_id":binID,"lot":lot,"disposition":disposition,"actor":actor})
 	if err != nil { return RMA{}, err }
 	if _, err := s.store.Put("wms_rma_receipt_ops", operationID, opData); err != nil { return RMA{}, err }
 	return r, nil
