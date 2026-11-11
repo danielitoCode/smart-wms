@@ -4,6 +4,7 @@ import type {
 	UpdateZoneInput, Warehouse, Zone
 } from '../../domain/entity/Warehouse';
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
+import { authSession } from '../../../../infrastructure/auth/AuthSession';
 
 const deps = createWarehousesDependencies();
 
@@ -37,10 +38,14 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 		bins = [];
 		selectedZoneId = null;
 		try {
-			// The operational lookup is available to authenticated warehouse users;
-			// the admin detail endpoint is only a fallback for inactive warehouses.
-			const activeWarehouses = await deps.listWarehouses.execute();
-			warehouse = activeWarehouses.find(row => row.id === warehouseId) ?? await deps.getWarehouse.execute(warehouseId);
+			// Warehouse metadata is page-protected. Users with only Zones/Bins
+			// grants operate on the persisted warehouse ID without receiving the
+			// full admin warehouse list or detail projection.
+			const user = authSession.getUser();
+			const canReadWarehouse = user?.role === 'ADMIN' || (user?.allowedPages ?? []).includes('warehouses');
+			warehouse = canReadWarehouse
+				? await deps.getWarehouse.execute(warehouseId)
+				: { id: warehouseId, code: String(warehouseId), name: 'Almacén seleccionado', address: null, active: true, createdAt: null };
 			zones = await deps.listZones.execute(warehouseId);
 			if (includeBins) await loadBinsForZone(null, 1);
 			return true;
