@@ -78,10 +78,10 @@ func (s *Service) Ship(soNumber, carrier, tracking, actor string, allowed []int6
 }
 
 func (s *Service) VoidShip(soNumber, actor string) (map[string]any, error) {
-	return s.VoidShipWithReason(soNumber, actor, "operator requested void", nil, true)
+	return s.VoidShipWithReason(soNumber, actor, "operator requested void", "legacy-void-"+soNumber, nil, true)
 }
 
-func (s *Service) VoidShipWithReason(soNumber, actor, reason string, allowed []int64, isAdmin bool) (map[string]any, error) {
+func (s *Service) VoidShipWithReason(soNumber, actor, reason, operationID string, allowed []int64, isAdmin bool) (map[string]any, error) {
 	so, err := s.Order(soNumber)
 	if err != nil { return nil, err }
 	if !isAdmin && !containsWarehouse(allowed, so.WarehouseID) {
@@ -90,12 +90,12 @@ func (s *Service) VoidShipWithReason(soNumber, actor, reason string, allowed []i
 	if strings.TrimSpace(reason) == "" || len(reason) > 500 {
 		return nil, fulfillment.ErrInvalid
 	}
-	shipment, err := s.fulfill.Void(so.SOID, actor, reason)
+	shipment, err := s.fulfill.VoidWithID(so.SOID, actor, reason, operationID)
 	if err != nil { return nil, err }
 	return map[string]any{
 		"so_number": so.SONumber, "status": shipment.PreShipStatus,
 		"voided_at": shipment.VoidedAt, "voided_by": shipment.VoidedBy,
-		"void_reason": shipment.VoidReason, "tracking_number": shipment.TrackingNumber,
+		"void_reason": shipment.VoidReason, "tracking_number": shipment.TrackingNumber, "replayed": shipment.Replayed,
 	}, nil
 }
 
