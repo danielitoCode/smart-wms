@@ -185,8 +185,8 @@ El diagrama es una guía de dependencias funcionales, no una afirmación de que 
 - [x] F0.2. Confirmar el árbol actual de `webapp/src` y las convenciones de feature-first existentes. **Evidencia:** inspección de `core/feature`, `core/infrastructure`, `lib`, `routes` y `test/unitTest`.
 - [ ] F0.3. Documentar para cada feature endpoints Flask reales, DTO, errores, permisos y efectos secundarios. **En curso:** contratos de autenticación y cliente HTTP inspeccionados; falta el inventario endpoint por endpoint del resto de módulos.
 - [x] F0.4. Definir matriz de trazabilidad React → caso de uso → endpoint → ruta Svelte → prueba. **Evidencia:** matriz y plantilla de trazabilidad incorporadas en este documento; su rellenado por feature continúa durante cada migración.
-- [~] F0.5. Establecer comandos de validación y suites separadas: dominio, aplicación, infraestructura, UI e integración. **En curso:** existen `npm run check`, `npm test`, `npm run build` y suites Vitest de casos de uso/dominio e infraestructura; faltan suites independientes de aplicación, UI e integración y comandos filtrados por capa.
-- [~] F0.6. Verificar cliente HTTP compartido: cookies, CSRF, expiración, timeout, cancelación y traducción de errores. **En curso:** cookies HttpOnly mediante `credentials: include`, CSRF de doble envío y normalización de errores verificadas; corregida la pérdida del timeout al pasar un `AbortSignal` externo. La validación final depende de CI.
+- [~] F0.5. Establecer comandos de validación y suites separadas: dominio, aplicación, infraestructura, UI e integración. **En curso:** `npm run check`, `npm test` y `npm run build` están operativos; la suite Vitest completa pasa en CI. Existen pruebas de casos de uso, mapper e infraestructura, pero faltan suites independientes de aplicación, UI e integración y comandos filtrados por capa.
+- [x] F0.6. Verificar cliente HTTP compartido: cookies, CSRF, expiración, timeout, cancelación y traducción de errores. **Evidencia:** cookies HttpOnly mediante `credentials: include`, CSRF de doble envío, respuesta 401/403, normalización de errores, timeout y cancelación cubiertos por código y pruebas; CI Webapp verde en el commit `46c0f48`.
 - [~] F0.7. Verificar i18n en italiano (idioma principal), español e inglés; no introducir textos nuevos sin claves de traducción. **En curso:** italiano es el locale inicial; español funciona como texto fuente/canonical fallback (por eso su diccionario explícito está vacío); inglés tiene cobertura parcial y cae a texto español en claves no traducidas.
 - [~] F0.8. Verificar navegación, guardas de sesión, permisos y resolución de almacenes. **En curso:** verificados `/api/auth/me`, tratamiento de 401, redirección por `must_change_password`, restricciones de páginas por `allowedPages` y carga de almacenes autorizados; falta una matriz completa de permisos por acción/almacén y pruebas de regresión.
 - [x] F0.9. Definir convención de evidencia por PR: tests ejecutados, resultado, endpoints contrastados y limitaciones. **Evidencia:** protocolo de trabajo, Definition of Done y registro de progreso incluidos en este documento.
@@ -210,8 +210,8 @@ El diagrama es una guía de dependencias funcionales, no una afirmación de que 
 
 #### Hallazgos y acciones correctivas
 
-1. **Timeout y cancelación HTTP:** el cliente original seleccionaba `options.signal ?? controller.signal`; al suministrar señal externa, el timeout interno dejaba de controlar la petición. Se implementó un único `AbortController` que combina timeout y cancelación externa, limpia el listener al finalizar y distingue `timeout` de `cancelled`.
-2. **Pruebas de validaciones síncronas:** el primer CI encontró 16 aserciones distribuidas en 12 archivos que usaban `.rejects.toThrow()` sobre casos de uso que lanzan el error de validación sincrónicamente. Se alinearon esas aserciones con el comportamiento real mediante `.toThrow()`; no se modificó la lógica de negocio para satisfacer tests incorrectos.
+1. **Timeout y cancelación HTTP:** el cliente original seleccionaba `options.signal ?? controller.signal`; al suministrar señal externa, el timeout interno dejaba de controlar la petición. Se implementó un único `AbortController` que combina timeout y cancelación externa, limpia el listener al finalizar y distingue `timeout` de `cancelled`. Pruebas aprobadas en CI.
+2. **Pruebas de validaciones síncronas:** el primer CI encontró 16 aserciones distribuidas en 12 archivos que usaban `.rejects.toThrow()` sobre casos de uso que lanzan el error de validación sincrónicamente. Se alinearon esas aserciones con el comportamiento real mediante `.toThrow()`; también se corrigió una expectativa que no coincidía con el nombre real del campo (`scannedBarcode`). No se modificó la lógica de negocio para satisfacer tests incorrectos. La suite completa terminó aprobada.
 3. **Suites por capa:** la estructura actual separa parcialmente pruebas de casos de uso y de infraestructura, pero no garantiza independencia para aplicación, UI e integración. Se debe completar antes de dar F0.5 por terminado.
 4. **Idiomas:** el diccionario español vacío es intencional porque las claves fuente ya están en español; el riesgo real está en la cobertura incompleta de inglés y en verificar que italiano tenga traducción para todas las claves visibles.
 5. **Permisos:** la comprobación de páginas existe en el layout, pero se necesita contrastar acciones sensibles con el backend y probar usuarios con distintos almacenes y permisos.
@@ -222,7 +222,8 @@ El diagrama es una guía de dependencias funcionales, no una afirmación de que 
 |---|---|
 | Combinar timeout y cancelación externa en ApiClient | `268bfd0` |
 | Añadir pruebas de timeout/cancelación al cliente HTTP | `cde8ebe` |
-| Corregir aserciones de validación síncrona en 12 archivos de tests | `e4958fa` |
+| Alinear aserciones síncronas en 12 archivos de tests | `0105ac4` |
+| Corregir expectativa del campo `scannedBarcode` | `46c0f48` |
 
 #### Plantilla de trazabilidad por capacidad
 
@@ -235,12 +236,12 @@ Completar una fila por operación significativa; no basta con una fila por panta
 
 #### Próximos cierres de Fase 0
 
-- [ ] F0-A. Confirmar CI verde después de corregir las aserciones síncronas y añadir pruebas de timeout/cancelación.
+- [x] F0-A. Confirmar CI verde después de corregir las aserciones síncronas y añadir pruebas de timeout/cancelación. **CI:** [Webapp CI — commit `46c0f48`](https://github.com/danielitoCode/smart-wms/actions/runs/42974442039).
 - [ ] F0-B. Crear suites ejecutables independientes para dominio, aplicación, infraestructura, UI e integración; no etiquetar tests de casos de uso como dominio puro sin revisar su responsabilidad.
 - [ ] F0-C. Medir cobertura de claves por locale y cerrar brechas de italiano/inglés con pruebas de paridad.
 - [ ] F0-D. Completar inventario de endpoints Flask por feature, empezando por F1.1 Items y sus dependencias.
 - [ ] F0-E. Crear matriz de regresión de sesión, permisos de página/acción y ámbito de almacén.
-- [ ] F0-F. Registrar comandos y evidencias de CI por commit y dejar el checklist listo para el primer módulo.
+- [x] F0-F. Registrar comandos y evidencias de CI por commit y dejar el checklist listo para el primer módulo.
 
 ### Fase 1 — Catálogos maestros y estructura del almacén
 
@@ -771,7 +772,7 @@ Actualizar esta sección al cerrar cada PR/feature. Mantener una única fuente d
 
 | Hito | Estado | PR/commit | Evidencia / notas |
 |---|---|---|---|
-| Fase 0 — Preparación | [~] En curso | `268bfd0`, `cde8ebe`, `e4958fa` | Inventario/árbol y matriz definidos; cliente HTTP corregido; CI y cierres F0-A…F0-F pendientes |
+| Fase 0 — Preparación | [~] En curso | `268bfd0`, `cde8ebe`, `0105ac4`, `46c0f48` | Inventario/árbol y matriz definidos; cliente HTTP y tests corregidos; Webapp CI verde; suites por capa, contratos, i18n y permisos aún pendientes |
 | Fase 1 — Catálogos | [ ] Pendiente | — | — |
 | Fase 2 — Inventario y conteos | [ ] Pendiente | — | — |
 | Fase 3 — Abastecimiento | [ ] Pendiente | — | — |
