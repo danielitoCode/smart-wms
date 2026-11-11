@@ -61,7 +61,7 @@
 		if (guard.status === 'authenticated') await warehouseSelection.load(guard.user ? {
 			userId: guard.user.userId, username: guard.user.username, fullName: guard.user.fullName,
 			role: guard.user.role, warehouseIds: guard.user.warehouseIds,
-			allowedPages: guard.user.allowedPages, allowedFunctions: guard.user.allowedFunctions
+			allowedPages: guard.user.allowedPages, allowedFunctions: guard.user.allowedFunctions, mustChangePassword: guard.user.mustChangePassword
 		} : null);
 		if (guard.status === 'anonymous') {
 			const redirect = encodeURIComponent(page.url.pathname + page.url.search);
