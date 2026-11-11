@@ -45,7 +45,7 @@
 <section class="page">
 	<header class="page-header">
 		<div><h1>Almacenes</h1><p class="subtitle">Gestiona los almacenes y consulta su estructura.</p></div>
-		<button class="primary" type="button" onclick={openCreate}>Nuevo almacén</button>
+		<button class="accent" type="button" onclick={openCreate}>Nuevo almacén</button>
 	</header>
 	{#if vm.loading}
 		<p class="status">Cargando almacenes…</p>
@@ -78,7 +78,7 @@
 			<label>Dirección<input bind:value={form.address} maxlength="512" disabled={vm.mutating} /></label>
 			{#if editing}<label class="check"><input type="checkbox" bind:checked={form.active} disabled={vm.mutating} /> Activo</label>{/if}
 			{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
-			<footer><button type="button" class="quiet" onclick={() => showForm = false} disabled={vm.mutating}>Cancelar</button><button type="submit" class="primary" disabled={vm.mutating}>{vm.mutating ? 'Guardando…' : 'Guardar'}</button></footer>
+			<footer><button type="button" class="quiet" onclick={() => showForm = false} disabled={vm.mutating}>Cancelar</button><button type="submit" class="accent" disabled={vm.mutating}>{vm.mutating ? 'Guardando…' : 'Guardar'}</button></footer>
 		</form>
 	</section></div>
 {/if}
