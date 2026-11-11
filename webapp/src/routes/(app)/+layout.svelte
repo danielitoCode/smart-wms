@@ -1,10 +1,9 @@
 <script lang="ts">
-	import { onMount, setContext } from 'svelte';
+	import { getContext, onMount, setContext } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import AppIcon from '../../lib/components/AppIcon.svelte';
 	import LocaleSwitcher from '../../lib/components/LocaleSwitcher.svelte';
-	import { getContext } from 'svelte';
 	import type { I18nState } from '../../lib/i18n/i18n.svelte';
 	const i18n = getContext<I18nState>('i18n');
 	import { createAuthGuardState } from '../../core/feature/auth/ui/state/authGuardState.svelte';
