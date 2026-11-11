@@ -255,3 +255,6 @@ No cuento la existencia de una ruta como paridad. La siguiente matriz separa lo 
 Cada ruta debe compararse con el Flask original mediante fixtures reales request/response y pruebas de efectos laterales. Para POS y RMA también debo demostrar las variaciones del ledger antes/después, repetición idempotente, fallos intermedios y recuperación tras reinicio. Para webhooks necesito verificar persistencia de cada delivery, reintentos, DLQ, SSRF, rotación de secreto y comportamiento bajo caída del consumidor. Para snapshots debo probar integridad, consistencia y restauración en un entorno aislado antes de ofrecer un endpoint restore.
 
 **Estado global: NO SUSTITUIBLE.** La rama de endurecimiento corrige comportamientos falsamente exitosos y añade controles; no equivale a paridad funcional ni autoriza mover tráfico productivo.
+
+
+En el corte más reciente, el snapshot usa filas tipadas para conservar enteros en el checksum y Events expone un reintento manual protegido por scope `events.publish`. Esto mejora integridad/operabilidad, pero no convierte el outbox en un dispatcher autónomo ni garantiza entrega exactamente-una-vez.
