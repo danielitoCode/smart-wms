@@ -16,16 +16,27 @@
 		{ href: '/packing', label: 'Packing' },
 		{ href: '/shipping', label: 'Shipping' },
 		{ href: '/warehouses', label: 'Almacenes' },
-		{ href: '/items', label: 'Ítems' }
+		{ href: '/items', label: 'Ítems' },
+		{ href: '/change-password', label: 'Cambiar contraseña' }
 	] as const;
 
 	onMount(() => { void bootstrap(); });
+
+	$effect(() => {
+		if (guard.status === 'authenticated' && guard.user?.mustChangePassword &&
+			page.url.pathname !== '/change-password') {
+			void goto('/change-password', { replaceState: true });
+		}
+	});
 
 	async function bootstrap() {
 		await guard.verify();
 		if (guard.status === 'anonymous') {
 			const redirect = encodeURIComponent(page.url.pathname + page.url.search);
 			await goto(`/login?redirect=${redirect}`);
+		} else if (guard.status === 'authenticated' && guard.user?.mustChangePassword &&
+			page.url.pathname !== '/change-password') {
+			await goto('/change-password', { replaceState: true });
 		}
 	}
 
@@ -59,11 +70,14 @@
 				<img src="/brand/abellis_mark_blanco.svg" width="28" height="28" alt="" />
 				<span class="brand-text"><span class="name">Abellis</span><span class="product">Smart WMS</span></span>
 			</a>
-			<nav aria-label="Principal">
-				{#each nav as item}<a href={item.href} class:active={isActive(item.href)}>{item.label}</a>{/each}
-			</nav>
+			{#if !guard.user?.mustChangePassword}
+				<nav aria-label="Principal">
+					{#each nav as item}<a href={item.href} class:active={isActive(item.href)}>{item.label}</a>{/each}
+				</nav>
+			{/if}
 			<div class="session">
 				{#if guard.user}<span class="user">{guard.user.fullName || guard.user.username}</span>{/if}
+				{#if !guard.user?.mustChangePassword}<a class="ghost" href="/change-password">Cambiar contraseña</a>{/if}
 				<button type="button" class="ghost" onclick={logout}>Salir</button>
 			</div>
 		</header>
@@ -87,7 +101,7 @@
 	nav a.active { color: #fff; background: rgba(255,255,255,0.1); font-weight: 600; }
 	.session { display: flex; align-items: center; gap: 0.65rem; margin-left: auto; }
 	.user { font-size: 0.82rem; color: rgba(245,248,252,0.8); max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.ghost { padding: 0.3rem 0.7rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.22); background: transparent; color: inherit; cursor: pointer; font-size: 0.82rem; }
+	.ghost { padding: 0.3rem 0.7rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.22); background: transparent; color: inherit; cursor: pointer; font-size: 0.82rem; text-decoration: none; }
 	.ghost:hover { background: rgba(255,255,255,0.08); }
 	.content { flex: 1; animation: fade-in 160ms ease-out; }
 	.boot { padding: 3rem 1.25rem; text-align: center; color: var(--slate); animation: fade-in 160ms ease-out; }

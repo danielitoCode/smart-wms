@@ -7,20 +7,18 @@ export type RequestOptions = {
 	method?: HttpMethod;
 	body?: unknown;
 	headers?: Record<string, string>;
-	/** Skip auth-specific behavior for public endpoints such as login. */
-	anonymous?: boolean;
 	signal?: AbortSignal;
 };
 
 function readCsrfCookie(): string | null {
 	if (typeof document === 'undefined') return null;
-	const match = document.cookie.match(/(?:^|;\\s*)sentry_csrf=([^;]+)/);
+	const match = document.cookie.match(/(?:^|;\s*)sentry_csrf=([^;]+)/);
 	return match ? decodeURIComponent(match[1]) : null;
 }
 
 /**
- * Shared HTTP client. Browser sessions use the backend's HttpOnly auth cookie
- * and double-submit CSRF cookie; bearer tokens are reserved for non-browser clients.
+ * Shared browser HTTP client. Authentication is carried by the backend's
+ * HttpOnly cookie; mutating requests use its readable double-submit CSRF cookie.
  */
 export class ApiClient {
 	constructor(private readonly baseUrl: string = apiConfig.baseUrl) {}
@@ -33,8 +31,7 @@ export class ApiClient {
 		};
 
 		if (options.body !== undefined) headers['Content-Type'] = 'application/json';
-
-		if (!options.anonymous && method !== 'GET') {
+		if (method !== 'GET') {
 			const csrfToken = readCsrfCookie();
 			if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
 		}
@@ -44,7 +41,7 @@ export class ApiClient {
 		const signal = options.signal ?? controller.signal;
 
 		try {
-			const response = await fetch(`${this.baseUrl}${path}`, {
+			const response = await fetch(\`\${this.baseUrl}\${path}\`, {
 				method,
 				headers,
 				body: options.body !== undefined ? JSON.stringify(options.body) : undefined,

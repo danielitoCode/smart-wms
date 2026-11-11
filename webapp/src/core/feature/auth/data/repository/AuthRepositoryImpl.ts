@@ -1,5 +1,5 @@
 import type { AuthRepository } from '../../domain/repository/AuthRepository';
-import type { Credentials, LoginResult, User } from '../../domain/entity/User';
+import type { ChangePasswordInput, Credentials, LoginResult, User } from '../../domain/entity/User';
 import type { AuthRemoteDataSource } from '../datasource/AuthRemoteDataSource';
 import { AuthMapper } from '../mapper/AuthMapper';
 import { authSession } from '../../../../infrastructure/auth/AuthSession';
@@ -21,8 +21,7 @@ export class AuthRepositoryImpl implements AuthRepository {
 	}
 
 	async getCurrentUser(): Promise<User> {
-		const dto = await this.datasource.me();
-		const user = AuthMapper.toUser(dto);
+		const user = AuthMapper.toUser(await this.datasource.me());
 		authSession.setUser({
 			userId: user.userId,
 			username: user.username,
@@ -34,7 +33,6 @@ export class AuthRepositoryImpl implements AuthRepository {
 	}
 
 	async refreshToken(): Promise<void> {
-		// The backend rotates the HttpOnly cookie as a side effect.
 		await this.datasource.refresh();
 	}
 
@@ -44,5 +42,12 @@ export class AuthRepositoryImpl implements AuthRepository {
 		} finally {
 			authSession.clear();
 		}
+	}
+
+	async changePassword(input: ChangePasswordInput): Promise<void> {
+		await this.datasource.changePassword({
+			current_password: input.currentPassword,
+			new_password: input.newPassword
+		});
 	}
 }

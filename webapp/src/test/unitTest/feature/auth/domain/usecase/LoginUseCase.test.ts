@@ -9,6 +9,7 @@ function createRepo(overrides: Partial<AuthRepository> = {}): AuthRepository {
 		getCurrentUser: vi.fn(),
 		refreshToken: vi.fn(),
 		logout: vi.fn(),
+		changePassword: vi.fn(),
 		...overrides
 	};
 }
@@ -16,41 +17,24 @@ function createRepo(overrides: Partial<AuthRepository> = {}): AuthRepository {
 describe('LoginUseCase', () => {
 	it('logs in with trimmed username', async () => {
 		const expected: LoginResult = {
-			token: 'jwt',
 			user: {
-				userId: 1,
-				username: 'admin',
-				fullName: 'Admin',
-				role: 'ADMIN',
-				warehouseId: 1,
-				warehouseIds: [1],
-				allowedFunctions: ['receive'],
-				isActive: true,
-				requirePacking: false
+				userId: 1, username: 'admin', fullName: 'Admin', role: 'ADMIN',
+				warehouseId: 1, warehouseIds: [1], allowedFunctions: ['receive'],
+				allowedPages: [], allowedOverrides: [], isActive: true,
+				requirePacking: true, mustChangePassword: false
 			}
 		};
-		const repo = createRepo({
-			login: vi.fn().mockResolvedValue(expected)
-		});
-		const useCase = new LoginUseCase(repo);
-
-		const result = await useCase.execute({ username: '  admin  ', password: 'secret' });
-
+		const repo = createRepo({ login: vi.fn().mockResolvedValue(expected) });
+		const result = await new LoginUseCase(repo).execute({ username: '  admin  ', password: 'secret' });
 		expect(repo.login).toHaveBeenCalledWith({ username: 'admin', password: 'secret' });
 		expect(result).toEqual(expected);
 	});
 
 	it('rejects empty username', async () => {
-		const useCase = new LoginUseCase(createRepo());
-		await expect(useCase.execute({ username: '  ', password: 'x' })).rejects.toThrow(
-			/username/
-		);
+		await expect(new LoginUseCase(createRepo()).execute({ username: '  ', password: 'x' })).rejects.toThrow(/username/);
 	});
 
 	it('rejects empty password', async () => {
-		const useCase = new LoginUseCase(createRepo());
-		await expect(useCase.execute({ username: 'admin', password: '' })).rejects.toThrow(
-			/password/
-		);
+		await expect(new LoginUseCase(createRepo()).execute({ username: 'admin', password: '' })).rejects.toThrow(/password/);
 	});
 });

@@ -1,7 +1,3 @@
-/**
- * Domain user identity returned by /api/auth/login and /api/auth/me.
- * Role and permission values mirror the backend contract.
- */
 export type UserRole = 'ADMIN' | 'USER';
 
 export type User = {
@@ -19,11 +15,6 @@ export type User = {
 	mustChangePassword: boolean;
 };
 
-export type Credentials = {
-	username: string;
-	password: string;
-};
-
-export type LoginResult = {
-	user: User;
-};
+export type Credentials = { username: string; password: string };
+export type LoginResult = { user: User };
+export type ChangePasswordInput = { currentPassword: string; newPassword: string };
