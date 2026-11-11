@@ -5,6 +5,8 @@
 **Ámbito:** interfaz interna de operaciones, control y configuración.  
 **Idioma de esta interfaz:** español.
 
+> El manual establece que los materiales de Abellis se publiquen en español e italiano. Esta fase de la interfaz interna sigue tu decisión explícita de usar solo español; no se mezclan etiquetas en italiano ni se cambia el idioma de los datos recibidos del backend.
+
 ## 1. Propósito del producto
 
 Abellis opera un centro de micro fulfillment para negocios que venden en línea. Smart WMS debe ayudar al equipo a ejecutar y controlar el ciclo completo de la mercancía:
