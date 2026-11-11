@@ -301,3 +301,6 @@ El refund parcial ahora reconcilia el valor calculado de las cantidades por lín
 
 
 La cancelación de RMA ahora compensa las cantidades recibidas con disposición RESTOCK. La reversión es idempotente por recibo y recuperable tras reinicio. Los recibos SCRAP/HOLD no generan ajustes inversos. Esta garantía está cubierta por una prueba que verifica cancelación repetida sin doble movimiento; falta ejecutar la suite race y escenarios multinodo.
+
+
+Se añadió una prueba que cubre dos líneas POS repetidas para el mismo artículo/bin y verifica que ambas unidades se reintegran una sola vez. La política de egress de webhooks rechaza redes especiales que no estaban cubiertas por el filtro inicial de IP privada.
