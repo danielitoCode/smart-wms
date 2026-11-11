@@ -31,6 +31,7 @@ const (
 	LineOpen       = "OPEN"
 	LinePicked     = "PICKED"
 	LinePacked     = "PACKED"
+	LineShipped    = "SHIPPED"
 )
 
 type Line struct {
@@ -40,6 +41,7 @@ type Line struct {
 	QuantityOrdered  int64 `json:"quantity_ordered"`
 	QuantityPicked   int64 `json:"quantity_picked"`
 	QuantityPacked   int64 `json:"quantity_packed"`
+	QuantityShipped  int64 `json:"quantity_shipped"`
 	Status           string `json:"status"`
 }
 
