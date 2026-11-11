@@ -2,7 +2,7 @@
 	type IconName =
 		| 'inbox' | 'map-pin' | 'clipboard-list' | 'package-check' | 'truck'
 		| 'boxes' | 'scan' | 'package' | 'warehouse' | 'database'
-		| 'menu' | 'user' | 'logout' | 'lock';
+		| 'menu' | 'user' | 'logout' | 'lock' | 'globe';
 
 	let { name, size = 20, strokeWidth = 1.8 }: {
 		name: IconName;
@@ -38,6 +38,8 @@
 		<circle cx="12" cy="8" r="3.5" /><path d="M4 21a8 8 0 0 1 16 0" />
 	{:else if name === 'logout'}
 		<path d="M10 17l5-5-5-5M15 12H3M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5" />
+	{:else if name === 'globe'}
+		<circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" />
 	{:else if name === 'lock'}
 		<rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 1 1 8 0v3M12 14v3" />
 	{/if}

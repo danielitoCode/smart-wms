@@ -19,14 +19,14 @@
 
 <section class="page">
 	<header>
-		<h1>{i18n.t(i18n.t('Despacho de pedidos'))}</h1>
-		<p class="subtitle">{i18n.t(i18n.t('Consulta el pedido y registra su salida con los datos de transporte.'))}</p>
+		<h1>{i18n.t('Despacho de pedidos')}</h1>
+		<p class="subtitle">{i18n.t('Consulta el pedido y registra su salida con los datos de transporte.')}</p>
 	</header>
 
 	<form class="row" onsubmit={onLoad}>
 		<input
 			type="text"
-			placeholder={i18n.t(i18n.t('Número o código de barras del pedido'))}
+			placeholder={i18n.t('Número o código de barras del pedido')}
 			value={state.barcode}
 			oninput={(e) => state.setBarcode(e.currentTarget.value)}
 			disabled={state.loading || state.busy}
@@ -54,7 +54,7 @@
 			<div class="table-wrap">
 				<table>
 					<thead>
-						<tr><th>{i18n.t(i18n.t(i18n.t('SKU')))}</th><th>{i18n.t(i18n.t(i18n.t('Cantidad')))}</th><th>{i18n.t(i18n.t('Nombre'))}</th></tr>
+						<tr><th>{i18n.t('SKU')}</th><th>{i18n.t('Cantidad')}</th><th>{i18n.t('Nombre')}</th></tr>
 					</thead>
 					<tbody>
 						{#each state.detail.lines as line, i (line.sku + '-' + i)}
@@ -73,13 +73,13 @@
 			<label>
 				Código de seguimiento
 				<input type="text" maxlength="255" value={state.trackingNumber}
-					oninput={(e) => state.setCódigo de seguimientoNumber(e.currentTarget.value)}
+					oninput={(e) => state.setTrackingNumber(e.currentTarget.value)}
 					disabled={state.busy} required />
 			</label>
 			<label>
 				Transportista
 				<input type="text" maxlength="100" value={state.carrier}
-					oninput={(e) => state.setTransportista(e.currentTarget.value)}
+					oninput={(e) => state.setCarrier(e.currentTarget.value)}
 					disabled={state.busy} required />
 			</label>
 			<label>
@@ -88,7 +88,7 @@
 					oninput={(e) => state.setShipMethod(e.currentTarget.value)}
 					disabled={state.busy} />
 			</label>
-			<button type="submit" class="accent" disabled={state.busy}>{i18n.t(i18n.t('Registrar despacho'))}</button>
+			<button type="submit" class="accent" disabled={state.busy}>{i18n.t('Registrar despacho')}</button>
 		</form>
 	{/if}
 </section>
