@@ -27,11 +27,13 @@ const (
 	StatusPicked   = "PICKED"
 	StatusPacked   = "PACKED"
 	StatusShipped  = "SHIPPED"
+	StatusRefunded = "REFUNDED"
 	StatusClosed   = "CLOSED"
 	LineOpen       = "OPEN"
 	LinePicked     = "PICKED"
 	LinePacked     = "PACKED"
 	LineShipped    = "SHIPPED"
+	LineRefunded   = "REFUNDED"
 )
 
 type Line struct {
