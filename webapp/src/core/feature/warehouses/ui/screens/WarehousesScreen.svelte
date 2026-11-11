@@ -79,7 +79,7 @@
 			{#if !editing}<label>{i18n.t('Código')}<input bind:value={form.code} maxlength="32" required disabled={vm.mutating} /></label>{/if}
 			<label>{i18n.t('Nombre')}<input bind:value={form.name} maxlength="256" required disabled={vm.mutating} /></label>
 			<label>{i18n.t('Dirección')}<input bind:value={form.address} maxlength="512" disabled={vm.mutating} /></label>
-			{#if editing}<label class="check"><input type="checkbox" bind:checked={form.active} disabled={vm.mutating} /> Activo</label>{/if}
+			{#if editing}<label class="check"><input type="checkbox" bind:checked={form.active} disabled={vm.mutating} /> {i18n.t("Activo")}</label>{/if}
 			{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
 			<footer><button type="button" class="quiet" onclick={() => showForm = false} disabled={vm.mutating}>{i18n.t('Cancelar')}</button><button type="submit" class="accent" disabled={vm.mutating}>{vm.mutating ? i18n.t('Guardando…') : i18n.t('Guardar')}</button></footer>
 		</form>
@@ -87,7 +87,7 @@
 {/if}
 {#if deleteTarget}
 	<div class="backdrop"><section class="dialog" role="alertdialog" aria-modal="true">
-		<h2>{i18n.t('Eliminar almacén')}</h2><p>¿Eliminar <strong>{deleteTarget.code} — {deleteTarget.name}</strong>? Solo será posible si no tiene inventario, ubicaciones ni zonas asociadas.</p>
+		<h2>{i18n.t('Eliminar almacén')}</h2><p>{i18n.t("¿Eliminar")} <strong>{deleteTarget.code} — {deleteTarget.name}</strong>? Solo será posible si no tiene inventario, ubicaciones ni zonas asociadas.</p>
 		{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
 		<footer><button type="button" class="quiet" onclick={() => deleteTarget = null} disabled={vm.mutating}>{i18n.t('Cancelar')}</button><button type="button" class="danger" onclick={remove} disabled={vm.mutating}>{vm.mutating ? 'Eliminando…' : i18n.t('Eliminar')}</button></footer>
 	</section></div>
