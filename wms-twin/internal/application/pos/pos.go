@@ -662,6 +662,8 @@ func (s *Service) Refund(soNumber string, actor string) (map[string]any, error) 
 }
 
 func (s *Service) DispatchWithDetails(soNumber, carrier, tracking, actor, operationID string, allowed []int64, isAdmin bool) (map[string]any, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.fulfill == nil { return nil, ErrUnsupported }
 	so, err := s.GetSO(soNumber)
 	if err != nil { return nil, err }
