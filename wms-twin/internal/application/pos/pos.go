@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"strings"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
@@ -35,6 +36,9 @@ type CartLine struct {
 }
 
 func (s *Service) Availability(warehouseID int64, sku string) (map[string]any, error) {
+	if warehouseID <= 0 || strings.TrimSpace(sku) == "" {
+		return nil, ErrInvalid
+	}
 	items, err := s.catalog.ListItems()
 	if err != nil {
 		return nil, err
@@ -109,32 +113,12 @@ func (s *Service) ValidateCart(warehouseID int64, lines []CartLine) (map[string]
 }
 
 func (s *Service) Checkout(warehouseID int64, lines []CartLine, actor string) (salesorders.SalesOrder, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	v, err := s.ValidateCart(warehouseID, lines)
-	if err != nil {
-		return salesorders.SalesOrder{}, err
-	}
-	if v["ok"] != true {
-		return salesorders.SalesOrder{}, fmt.Errorf("%w: insufficient stock", ErrInvalid)
-	}
-	items, _ := s.catalog.ListItems()
-	skuToID := map[string]int64{}
-	for _, it := range items {
-		skuToID[it.SKU] = it.ItemID
-	}
-	soLines := make([]salesorders.LineInput, 0, len(lines))
-	for _, ln := range lines {
-		id := ln.ItemID
-		if id == 0 {
-			id = skuToID[ln.SKU]
-		}
-		soLines = append(soLines, salesorders.LineInput{ItemID: id, QuantityOrdered: ln.Quantity})
-	}
-	num := fmt.Sprintf("POS-%d", time.Now().UTC().UnixNano()%1_000_000_000)
-	return s.sos.Create(salesorders.CreateInput{
-		SONumber: num, WarehouseID: warehouseID, Lines: soLines,
-	}, actor)
+	// A real POS checkout must atomically bind tender/payment, inventory
+	// commitment, the POS order metadata and its audit event. The current
+	// Go request contract carries none of the tender/refund fields required
+	// by the Flask contract, so creating an ordinary OPEN sales order here
+	// would falsely report a completed sale.
+	return salesorders.SalesOrder{}, ErrUnsupported
 }
 
 func (s *Service) GetSO(soNumber string) (salesorders.SalesOrder, error) {
