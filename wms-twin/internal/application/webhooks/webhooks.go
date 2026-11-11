@@ -120,7 +120,7 @@ func (s *Service) List() ([]Subscription, error) {
 // eventID is stable across caller retries, so duplicate enqueue requests do
 // not create duplicate deliveries.
 func (s *Service) DeliverEvent(eventID, eventType string, payload any) error {
-	if strings.TrimSpace(eventID) == "" || strings.TrimSpace(eventType) == "" { return fmt.Errorf("event id and type are required") }
+	if strings.TrimSpace(eventID) == "" || len(eventID) > 256 || strings.TrimSpace(eventType) == "" || len(eventType) > 128 { return fmt.Errorf("event id and type are required and must be within length limits") }
 	body, err := json.Marshal(map[string]any{"event_id":eventID,"event_type":eventType,"payload":payload,"ts":time.Now().UTC()})
 	if err != nil { return err }
 	records, err := s.store.List(kind)
