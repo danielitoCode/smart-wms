@@ -78,7 +78,7 @@ func (s *Service) Ship(soNumber, carrier, tracking, actor string, allowed []int6
 }
 
 func (s *Service) VoidShip(soNumber, actor string) (map[string]any, error) {
-	return s.VoidShipWithReason(soNumber, actor, "operator requested void", "legacy-void-"+soNumber, nil, true)
+	return s.VoidShipWithReason(soNumber, actor, "operator requested void", "", nil, true)
 }
 
 func (s *Service) VoidShipWithReason(soNumber, actor, reason, operationID string, allowed []int64, isAdmin bool) (map[string]any, error) {
@@ -90,7 +90,12 @@ func (s *Service) VoidShipWithReason(soNumber, actor, reason, operationID string
 	if strings.TrimSpace(reason) == "" || len(reason) > 500 {
 		return nil, fulfillment.ErrInvalid
 	}
-	shipment, err := s.fulfill.VoidWithID(so.SOID, actor, reason, operationID)
+	var shipment fulfillment.Shipment
+	if strings.TrimSpace(operationID) == "" {
+		shipment, err = s.fulfill.VoidLegacy(so.SOID,actor,reason)
+	} else {
+		shipment, err = s.fulfill.VoidWithID(so.SOID,actor,reason,operationID)
+	}
 	if err != nil { return nil, err }
 	return map[string]any{
 		"so_number": so.SONumber, "status": shipment.PreShipStatus,
