@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
+	import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
 	import WarehouseDetailScreen from './WarehouseDetailScreen.svelte';
 	import type { WarehouseSelectionState } from '../state/warehouseSelectionState.svelte';
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { authSession } from '../../../core/infrastructure/auth/AuthSession';
+	import { authSession } from '#core/infrastructure/auth/AuthSession.ts';
 	let noAccess = $state(false);
 	onMount(() => {
 		const user = authSession.getUser();

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
+	import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
 	const i18n = getContext<I18nState>('i18n');
 	import { onMount } from 'svelte';
 	import { createItemsState } from '../state/itemsState.svelte';
@@ -72,7 +72,7 @@
 	@keyframes page-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 	.page {
-		font-family: var(--body);
+		font-family: var(--body),serif;
 		max-width: 56rem;
 		margin: 2rem auto;
 		padding: 0 1.25rem;

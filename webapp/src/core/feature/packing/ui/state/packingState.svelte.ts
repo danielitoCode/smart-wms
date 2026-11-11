@@ -1,6 +1,6 @@
 import { createPackingDependencies } from '../../di/packing.dependencies';
 import type { PackingOrderDetail } from '../../domain/entity/Packing';
-import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
+import { toUserMessage } from '#core/infrastructure/errors/ApiError.ts';
 
 const deps = createPackingDependencies();
 

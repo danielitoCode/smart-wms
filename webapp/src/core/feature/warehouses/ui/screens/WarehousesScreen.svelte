@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { getContext, onMount } from 'svelte';
-	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
+	import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
 	import { createWarehousesState } from '../state/warehousesState.svelte';
-	import { authSession } from '../../../../infrastructure/auth/AuthSession';
+	import { authSession } from '#core/infrastructure/auth/AuthSession.ts';
 	import type { WarehouseSelectionState } from '../state/warehouseSelectionState.svelte';
 	import type { Warehouse } from '../../domain/entity/Warehouse';
 
@@ -72,17 +72,19 @@
 </section>
 
 {#if showForm}
-	<div class="backdrop"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="warehouse-form-title">
-		<h2 id="warehouse-form-title">{editing ? 'Editar almacén' : i18n.t('Nuevo almacén')}</h2>
-		<form onsubmit={(e) => { e.preventDefault(); void save(); }}>
-			{#if !editing}<label>{i18n.t('Código')}<input bind:value={form.code} maxlength="32" required disabled={vm.mutating} /></label>{/if}
-			<label>{i18n.t('Nombre')}<input bind:value={form.name} maxlength="256" required disabled={vm.mutating} /></label>
-			<label>{i18n.t('Dirección')}<input bind:value={form.address} maxlength="512" disabled={vm.mutating} /></label>
-			{#if editing}<label class="check"><input type="checkbox" bind:checked={form.active} disabled={vm.mutating} /> {i18n.t("Activo")}</label>{/if}
-			{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
-			<footer><button type="button" class="quiet" onclick={() => showForm = false} disabled={vm.mutating}>{i18n.t('Cancelar')}</button><button type="submit" class="accent" disabled={vm.mutating}>{vm.mutating ? i18n.t('Guardando…') : i18n.t('Guardar')}</button></footer>
-		</form>
-	</section></div>
+	<div class="backdrop">
+		<section class="dialog" role="dialog" aria-modal="true" aria-labelledby="warehouse-form-title">
+			<h2 id="warehouse-form-title">{editing ? 'Editar almacén' : i18n.t('Nuevo almacén')}</h2>
+			<form onsubmit={(e) => { e.preventDefault(); void save(); }}>
+				{#if !editing}<label>{i18n.t('Código')}<input bind:value={form.code} maxlength="32" required disabled={vm.mutating} /></label>{/if}
+				<label>{i18n.t('Nombre')}<input bind:value={form.name} maxlength="256" required disabled={vm.mutating} /></label>
+				<label>{i18n.t('Dirección')}<input bind:value={form.address} maxlength="512" disabled={vm.mutating} /></label>
+				{#if editing}<label class="check"><input type="checkbox" bind:checked={form.active} disabled={vm.mutating} /> {i18n.t("Activo")}</label>{/if}
+				{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
+				<footer><button type="button" class="quiet" onclick={() => showForm = false} disabled={vm.mutating}>{i18n.t('Cancelar')}</button><button type="submit" class="accent" disabled={vm.mutating}>{vm.mutating ? i18n.t('Guardando…') : i18n.t('Guardar')}</button></footer>
+			</form>
+		</section>
+	</div>
 {/if}
 {#if deleteTarget}
 	<div class="backdrop"><section class="dialog" role="alertdialog" aria-modal="true">

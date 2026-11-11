@@ -4,7 +4,7 @@
 	import { getContext } from 'svelte';
 	import type { I18nState } from '../../../lib/i18n/i18n.svelte';
 	const i18n = getContext<I18nState>('i18n');
-	import { authSession } from '../../../core/infrastructure/auth/AuthSession';
+	import { authSession } from '#core/infrastructure/auth/AuthSession.ts';
 	let { children } = $props();
 	const user = authSession.getUser();
 	const admin = user?.role === 'ADMIN';

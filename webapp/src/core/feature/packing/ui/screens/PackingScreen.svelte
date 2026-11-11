@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
+	import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
 	const i18n = getContext<I18nState>('i18n');
 	import { createPackingState } from '../state/packingState.svelte';
 
@@ -101,7 +101,7 @@
 	.row { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
 	input { padding: 0.45rem 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; }
 	button { padding: 0.45rem 0.9rem; border-radius: 6px; border: 1px solid #0f172a; background: #0f172a; color: #fff; cursor: pointer; }
-	button.primary { margin-top: 0.75rem; }
+
 	button:disabled { opacity: 0.6; }
 	.err { color: #b91c1c; }
 	.ok { color: #166534; }
