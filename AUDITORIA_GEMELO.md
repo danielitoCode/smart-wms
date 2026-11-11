@@ -433,3 +433,10 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - El worker de eventos recorre los eventos persistidos y reintenta su inclusión en webhook outbox por event_id/subscription, respetando CreatedAt de la suscripción.
 - El runtime propaga el error de arranque del DHT/GossipSub cuando el transporte es LibP2PTransport; no inicia API si la configuración libp2p no puede inicializarse.
 - Configuración requerida para DHT real: `PRISMATEC_TRANSPORT=libp2p` y `PRISMATEC_NETWORK_ADDR` multiaddr. TCP/local conserva TTL fan-out.
+
+
+### AUD-0028 — Conciliación monetaria parcial y exclusión de cantidades ya devueltas de RMA
+
+- Refund calcula el importe proporcional por cantidad sobre el total de línea original y permite `shipping_refund_cents` separado; el estado PARTIALLY_REFUNDED permanece hasta la conciliación total.
+- RMA calcula unidades retornables restando devoluciones POS completadas y unidades reservadas por RMAs existentes no cancelados. Rechaza crear un RMA desde una SO parcialmente reembolsada si falta historial de refunds o hay una saga PREPARING.
+- Añadí pruebas para devoluciones parciales, devolución de envío separada, y exclusión de cantidades POS-refunded del RMA.
