@@ -333,3 +333,8 @@ El refund parcial ya no acepta un importe arbitrario: calcula el importe por can
 ### Cancelación segura de devoluciones
 
 Añadí una compensación explícita al cancelar un RMA que ya recibió mercancía con disposición RESTOCK. La cancelación pasa primero a CANCELLING, revierte cada movimiento de inventario con un operation_id determinista y persiste el avance receipt por receipt. Si el proceso cae, la siguiente llamada reanuda la compensación; si el stock ya fue consumido y no se puede retirar, la cancelación queda pendiente y devuelve el error en lugar de fingir que terminó. Los movimientos SCRAP y HOLD no se alteran.
+
+
+### Últimos endurecimientos de POS y webhooks
+
+En las devoluciones POS consolido las líneas repetidas del mismo artículo/ubicación antes de ejecutar el movimiento de inventario. Esto evita que dos renglones compartan el mismo operation_id y el segundo quede tratado como replay de la primera cantidad. En webhooks amplié el bloqueo de destinos SSRF para incluir redes especiales y de documentación, además de redes privadas, loopback y link-local.
