@@ -230,6 +230,12 @@ class TestWarehouseAuthorization:
         assert "warehouse_ids" in payload
         assert payload["warehouse_ids"] == [1, 2]
 
+    def test_me_returns_all_assigned_warehouse_ids(self, client):
+        headers = self._create_user_and_login(client, "wh_me_ids", 1, [1, 2])
+        resp = client.get("/api/auth/me", headers=headers)
+        assert resp.status_code == 200
+        assert resp.get_json()["warehouse_ids"] == [1, 2]
+
     def test_user_can_access_assigned_warehouse(self, client):
         """Non-admin accessing their assigned warehouse should pass the auth check."""
         headers = self._create_user_and_login(client, "wh_ok_user", 1, [1])

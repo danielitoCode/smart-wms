@@ -17,6 +17,18 @@ describe('ChangePasswordUseCase', () => {
 		expect(repo.changePassword).not.toHaveBeenCalled();
 	});
 
+	it('accepts Unicode letters and decimal digits like the backend policy', async () => {
+		const repo = repository();
+		await new ChangePasswordUseCase(repo).execute({ currentPassword: 'old', newPassword: 'contraseña１２３' });
+		expect(repo.changePassword).toHaveBeenCalled();
+	});
+
+	it('counts Unicode code points like Python len', async () => {
+		const repo = repository();
+		await expect(new ChangePasswordUseCase(repo).execute({ currentPassword: 'old', newPassword: '😀😀😀😀a1' })).rejects.toThrow(/8 caracteres/);
+		expect(repo.changePassword).not.toHaveBeenCalled();
+	});
+
 	it('delegates valid password changes to the repository', async () => {
 		const repo = repository();
 		await new ChangePasswordUseCase(repo).execute({ currentPassword: 'old', newPassword: 'secure123' });

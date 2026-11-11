@@ -197,7 +197,7 @@ def me():
     user_id = g.current_user["user_id"]
     row = g.db.execute(
         text(
-            "SELECT user_id, username, full_name, role, warehouse_id, allowed_functions, "
+            "SELECT user_id, username, full_name, role, warehouse_id, warehouse_ids, allowed_functions, "
             "must_change_password FROM users WHERE user_id = :uid"
         ),
         {"uid": user_id},
@@ -249,6 +249,7 @@ def me():
         "full_name": row.full_name,
         "role": row.role,
         "warehouse_id": row.warehouse_id,
+        "warehouse_ids": list(row.warehouse_ids) if row.warehouse_ids else [],
         "allowed_functions": functions,
         "allowed_pages": allowed_pages,
         "allowed_overrides": allowed_overrides,

@@ -6,7 +6,11 @@ const deps = createAuthDependencies();
 function changePasswordErrorMessage(err: unknown): string {
 	if (err instanceof ApiError) {
 		if (err.isNetwork) return 'No se pudo conectar con el servidor. Comprueba la conexión e inténtalo de nuevo.';
-		if (err.status === 403) return 'La contraseña actual no es correcta o la sesión no tiene autorización.';
+		if (err.status === 403) {
+			if (err.message === 'Current password is incorrect') return 'La contraseña actual no es correcta.';
+			if (err.message === 'CSRF token missing or invalid') return 'No se pudo validar la protección de la sesión. Recarga la página e inténtalo de nuevo.';
+			return 'La sesión no tiene autorización para cambiar la contraseña.';
+		}
 		if (err.status === 400) {
 			const known: Record<string, string> = {
 				"Password cannot be 'admin'": 'La contraseña no puede ser «admin».',
