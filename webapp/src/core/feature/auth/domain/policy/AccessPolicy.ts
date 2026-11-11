@@ -25,12 +25,13 @@ export function canAccessWarehouse(role: AccessRole, assignedWarehouseIds: reado
 
 export function resolveWarehouseSelection(input: { role: AccessRole; allowedPages: readonly string[]; assignedWarehouseIds: readonly number[]; availableWarehouseIds: readonly number[]; savedId: number | null }): number | null {
 	const canBrowseAll = input.role === 'ADMIN' || input.allowedPages.includes('warehouses');
-	const candidates = canBrowseAll ? input.availableWarehouseIds : input.assignedWarehouseIds;
+	const candidates = canBrowseAll && input.availableWarehouseIds.length > 0 ? input.availableWarehouseIds : input.assignedWarehouseIds;
 	if (input.savedId !== null && candidates.includes(input.savedId)) return input.savedId;
 	return candidates[0] ?? null;
 }
 
 export function canSelectWarehouse(input: { role: AccessRole; allowedPages: readonly string[]; assignedWarehouseIds: readonly number[]; availableWarehouseIds: readonly number[] }, warehouseId: number): boolean {
 	const canBrowseAll = input.role === 'ADMIN' || input.allowedPages.includes('warehouses');
-	return (canBrowseAll ? input.availableWarehouseIds : input.assignedWarehouseIds).includes(warehouseId);
+	const candidates = canBrowseAll && input.availableWarehouseIds.length > 0 ? input.availableWarehouseIds : input.assignedWarehouseIds;
+	return candidates.includes(warehouseId);
 }
