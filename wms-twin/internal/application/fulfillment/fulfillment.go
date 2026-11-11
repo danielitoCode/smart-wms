@@ -118,6 +118,7 @@ type FulfillInput struct {
 	Carrier         string `json:"carrier"`
 	TrackingNumber  string `json:"tracking_number"`
 	WarehouseID     int64  `json:"warehouse_id"`
+	POSDispatchKey  string `json:"-"`
 }
 
 type Shipment struct {
@@ -152,9 +153,16 @@ func (s *Service) Fulfill(in FulfillInput, allowed []int64, isAdmin bool) (Shipm
 		saleRecords, readErr := s.store.List("wms_pos_sale")
 		if readErr != nil { return Shipment{}, readErr }
 		for _, record := range saleRecords {
-			var sale struct { SOID int64 `json:"so_id"`; PhoneOrder bool `json:"phone_order"`; Status string `json:"status"` }
-			if json.Unmarshal(record.Data,&sale) == nil && sale.SOID == so.SOID && sale.PhoneOrder && sale.Status != "DISPATCHING" {
-				return Shipment{}, fmt.Errorf("%w: phone POS order must use POS dispatch before fulfillment",ErrState)
+			var sale struct {
+				SOID int64 `json:"so_id"`
+				PhoneOrder bool `json:"phone_order"`
+				Status string `json:"status"`
+				DispatchKey string `json:"dispatch_key"`
+			}
+			if json.Unmarshal(record.Data,&sale) == nil && sale.SOID == so.SOID && sale.PhoneOrder {
+				if sale.Status != "DISPATCHING" || strings.TrimSpace(in.POSDispatchKey) == "" || sale.DispatchKey != in.POSDispatchKey {
+					return Shipment{}, fmt.Errorf("%w: phone POS order must use its persisted POS dispatch operation",ErrState)
+				}
 			}
 		}
 		if record, exists, readErr := s.store.Get(shipmentKind, strconv.FormatInt(so.SOID, 10)); readErr != nil {
