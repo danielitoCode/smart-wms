@@ -112,34 +112,25 @@ func (s *Server) posV1(w http.ResponseWriter, r *http.Request, rest string) {
 		})(w, r)
 	case r.Method == http.MethodPost && rest == "checkout":
 		s.requireWMSToken("pos.checkout", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
-			var in struct {
-				WarehouseID int64          `json:"warehouse_id"`
-				Lines       []pos.CartLine `json:"lines"`
-			}
+			var in pos.CheckoutInput
 			if err := decodeBody(r, &in); err != nil {
 				writeJSON(w, 400, map[string]string{"error": "Invalid request body"})
 				return
 			}
-			if rec.WarehouseID != nil {
-				in.WarehouseID = *rec.WarehouseID
-			}
-			so, err := s.pos.Checkout(in.WarehouseID, in.Lines, rec.Name)
+			if rec.WarehouseID != nil { in.WarehouseID = *rec.WarehouseID }
+			so, replayed, err := s.pos.CheckoutTransaction(in, rec.Name)
 			if err != nil {
-				if errors.Is(err, pos.ErrUnsupported) {
-					writeJSON(w, 501, map[string]string{"error": err.Error()})
-				} else {
-					writeJSON(w, 400, map[string]string{"error": err.Error()})
-				}
+				if errors.Is(err, pos.ErrUnsupported) { writeJSON(w, 501, map[string]string{"error": err.Error()})
+				} else { writeJSON(w, 409, map[string]string{"error": err.Error()}) }
 				return
 			}
 			var eventID string
 			if s.events != nil {
-				ev, _ := s.events.Emit("pos.checkout", map[string]any{"so_id": so.SOID, "so_number": so.SONumber})
+				ev, _ := s.events.Emit("pos.checkout", map[string]any{"so_id": so.SOID, "so_number": so.SONumber, "replayed": replayed})
 				eventID = ev.EventID
 			}
-			if s.webhooks != nil && eventID != "" {
-				_ = s.webhooks.DeliverEvent(eventID, "pos.checkout", so)
-			}
+			if s.webhooks != nil && eventID != "" { _ = s.webhooks.DeliverEvent(eventID, "pos.checkout", so) }
+			if replayed { w.Header().Set("X-Idempotent-Replay", "true") }
 			writeJSON(w, 201, so)
 		})(w, r)
 	case r.Method == http.MethodPost && rest == "refund":
@@ -169,12 +160,16 @@ func (s *Server) posV1(w http.ResponseWriter, r *http.Request, rest string) {
 		s.requireWMSToken("pos.dispatch", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
 			var in struct {
 				SONumber string `json:"so_number"`
+				Carrier string `json:"carrier"`
+				TrackingNumber string `json:"tracking_number"`
 			}
 			if err := decodeBody(r, &in); err != nil {
 				writeJSON(w, 400, map[string]string{"error": "Invalid request body"})
 				return
 			}
-			out, err := s.pos.Dispatch(in.SONumber, rec.Name)
+			allowed := []int64{}
+			if rec.WarehouseID != nil { allowed = []int64{*rec.WarehouseID} }
+			out, err := s.pos.DispatchWithDetails(in.SONumber, in.Carrier, in.TrackingNumber, rec.Name, allowed, rec.WarehouseID == nil)
 			if err != nil {
 				if errors.Is(err, pos.ErrUnsupported) {
 					writeJSON(w, 501, map[string]string{"error": err.Error()})
