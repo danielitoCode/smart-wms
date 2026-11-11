@@ -104,7 +104,7 @@ func NewWithIdentity(node *core.Node, store *corestore.Store, token string, user
 	wh := webhooks.New(store)
 	ev := events.New(store, meshLayer)
 	ev.OnRemote(func(event events.Event) {
-		_ = wh.DeliverEvent(event.EventID, event.Type, event.Payload)
+		_ = wh.DeliverEventAt(event.EventID, event.Type, event.Payload, event.CreatedAt)
 	})
 	posSvc := pos.New(store, master, sos, ledger, ful)
 	return &Server{
@@ -145,7 +145,15 @@ func (s *Server) StartBackground(ctx context.Context) {
 			for {
 				select {
 				case <-ctx.Done(): return
-				case <-ticker.C: _ = s.events.PublishPending()
+				case <-ticker.C:
+					_ = s.events.PublishPending()
+					if s.webhooks != nil {
+						if pendingEvents, err := s.events.List(0); err == nil {
+							for _, event := range pendingEvents {
+								_ = s.webhooks.DeliverEventAt(event.EventID, event.Type, event.Payload, event.CreatedAt)
+							}
+						}
+					}
 				}
 			}
 		}()
