@@ -4,6 +4,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -32,6 +34,7 @@ type Service struct {
 	mu    sync.Mutex
 	last  string
 	seq   int64
+	verificationErr error
 }
 
 func New(store *corestore.Store, coreLog *audit.Log) *Service {
@@ -41,40 +44,70 @@ func New(store *corestore.Store, coreLog *audit.Log) *Service {
 }
 
 func (s *Service) recoverTip() {
+	s.verificationErr = s.verifyAndRecover()
+}
+
+func (s *Service) Verify() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.verifyAndRecover()
+}
+
+func (s *Service) verifyAndRecover() error {
 	records, err := s.store.List(kind)
-	if err != nil || len(records) == 0 {
-		return
+	if err != nil {
+		return fmt.Errorf("list WMS audit chain: %w", err)
 	}
-	var maxSeq int64
-	var lastHash string
-	for _, r := range records {
-		var e Entry
-		if json.Unmarshal(r.Data, &e) != nil {
-			continue
+	entries := make([]Entry, 0, len(records))
+	for _, record := range records {
+		var entry Entry
+		if err := json.Unmarshal(record.Data, &entry); err != nil {
+			return fmt.Errorf("decode audit entry %s: %w", record.ID, err)
 		}
-		if e.Seq > maxSeq {
-			maxSeq = e.Seq
-			lastHash = e.Hash
-		}
+		entries = append(entries, entry)
 	}
-	s.seq = maxSeq
-	s.last = lastHash
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Seq < entries[j].Seq })
+	var previous string
+	for i, entry := range entries {
+		expectedSeq := int64(i + 1)
+		if entry.Seq != expectedSeq {
+			return fmt.Errorf("audit chain sequence gap: expected %d, got %d", expectedSeq, entry.Seq)
+		}
+		if entry.PrevHash != previous {
+			return fmt.Errorf("audit chain link mismatch at sequence %d", entry.Seq)
+		}
+		expectedHash := hashEntry(entry)
+		if entry.Hash != expectedHash {
+			return fmt.Errorf("audit entry hash mismatch at sequence %d", entry.Seq)
+		}
+		previous = entry.Hash
+	}
+	s.seq = int64(len(entries))
+	s.last = previous
+	return nil
 }
 
 func (s *Service) Record(actor, action, resource string, ok bool, detail string, meta map[string]any) (Entry, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.seq++
+	if s.verificationErr != nil {
+		return Entry{}, fmt.Errorf("WMS audit chain is not writable until integrity is restored: %w", s.verificationErr)
+	}
+	nextSeq := s.seq + 1
 	e := Entry{
-		Seq: s.seq, Time: time.Now().UTC(), Actor: actor, Action: action,
+		Seq: nextSeq, Time: time.Now().UTC(), Actor: actor, Action: action,
 		Resource: resource, OK: ok, Detail: detail, Meta: meta, PrevHash: s.last,
 	}
 	e.Hash = hashEntry(e)
-	s.last = e.Hash
-	data, _ := json.Marshal(e)
+	data, err := json.Marshal(e)
+	if err != nil {
+		return e, err
+	}
 	if _, err := s.store.Put(kind, formatSeq(e.Seq), data); err != nil {
 		return e, err
 	}
+	s.seq = nextSeq
+	s.last = e.Hash
 	if s.core != nil {
 		s.core.Record(audit.Event{
 			Type: "wms." + action, Actor: actor, Action: action, OK: ok, Detail: detail, Meta: meta,
