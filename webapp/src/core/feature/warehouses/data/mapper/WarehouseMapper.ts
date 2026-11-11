@@ -1,17 +1,12 @@
-import type { Bin, Warehouse, Zone, ZoneType, BinType } from '../../domain/entity/Warehouse';
-import type { BinDto, WarehouseListItemDto, ZoneDto } from '../dto/WarehouseDto';
+import type { Bin, BinDetail, BinInventoryRow, Warehouse, Zone, ZoneType, BinType } from '../../domain/entity/Warehouse';
+import type { BinDetailResponseDto, BinDto, WarehouseListItemDto, ZoneDto } from '../dto/WarehouseDto';
 
 function requiredId(value: number | undefined, label: string): number {
-	if (!Number.isInteger(value) || (value as number) <= 0) {
-		throw new Error(`Invalid ${label} returned by warehouse API`);
-	}
+	if (!Number.isInteger(value) || (value as number) <= 0) throw new Error('Invalid ' + label + ' returned by warehouse API');
 	return value as number;
 }
-
 function requiredText(value: string | undefined, label: string): string {
-	if (typeof value !== 'string' || value.length === 0) {
-		throw new Error(`Missing ${label} returned by warehouse API`);
-	}
+	if (typeof value !== 'string' || value.length === 0) throw new Error('Missing ' + label + ' returned by warehouse API');
 	return value;
 }
 
@@ -26,11 +21,10 @@ export const WarehouseMapper = {
 			createdAt: dto.created_at ?? null
 		};
 	},
-
 	toZone(dto: ZoneDto): Zone {
 		const zoneType = requiredText(dto.zone_type, 'zone type');
 		if (!['RECEIVING', 'STORAGE', 'PICKING', 'STAGING', 'SHIPPING'].includes(zoneType)) {
-			throw new Error(`Unsupported zone type returned by warehouse API: ${zoneType}`);
+			throw new Error('Unsupported zone type returned by warehouse API: ' + zoneType);
 		}
 		return {
 			id: requiredId(dto.id ?? dto.zone_id, 'zone id'),
@@ -41,11 +35,10 @@ export const WarehouseMapper = {
 			active: dto.is_active ?? dto.active ?? true
 		};
 	},
-
 	toBin(dto: BinDto): Bin {
 		const binType = requiredText(dto.bin_type, 'bin type');
 		if (!['Staging', 'PickableStaging', 'Pickable'].includes(binType)) {
-			throw new Error(`Unsupported bin type returned by warehouse API: ${binType}`);
+			throw new Error('Unsupported bin type returned by warehouse API: ' + binType);
 		}
 		return {
 			id: requiredId(dto.id ?? dto.bin_id, 'bin id'),
@@ -63,5 +56,16 @@ export const WarehouseMapper = {
 			putawaySequence: dto.putaway_sequence ?? 0,
 			active: dto.is_active ?? dto.active ?? true
 		};
+	},
+	toBinDetail(dto: BinDetailResponseDto): BinDetail {
+		const inventory: BinInventoryRow[] = dto.inventory.map(row => ({
+			inventoryId: requiredId(row.inventory_id, 'inventory id'),
+			itemId: requiredId(row.item_id, 'inventory item id'),
+			sku: requiredText(row.sku, 'inventory SKU'),
+			itemName: requiredText(row.item_name, 'inventory item name'),
+			quantityOnHand: row.quantity_on_hand,
+			quantityAllocated: row.quantity_allocated
+		}));
+		return { bin: this.toBin(dto.bin), inventory };
 	}
 };
