@@ -1,149 +1,107 @@
-# WMS Twin — backend gemelo sobre PrismaTec-Core
+# WMS Twin — backend Go sobre PrismaTec-Core
 
-Servicio Go independiente. No reemplaza ni importa código del backend Flask original. PrismaTec-Core es una dependencia externa fijada en `go.mod` y `go.sum`.
+Este módulo es un gemelo operativo independiente del backend Flask original. Mantengo Flask y los frontends sin cambios: el gemelo se valida en paralelo y no debe recibir tráfico de producción hasta demostrar paridad funcional, seguridad y recuperación.
 
-## Estado
+## Estado de esta rama
 
-- [x] Nodo Core y listeners WMS/AIP separados.
-- [x] Health WMS con contrato público original básico.
-- [x] Persistencia genérica: un organismo por registro, episodios y bloques CID locales.
-- [x] API técnica Bearer para CRUD genérico.
-- [x] Invariantes puras de balance.
-- [x] Ledger Core-backed para ajuste, reserva, liberación y movimiento.
-- [x] Idempotencia por `operation_id`, reinicio y serialización local cubiertos por tests añadidos.
-- [x] JWT HS256, cookies, CSRF, refresh/logout y lockout persistente; revocación individual por jti pendiente.
-- [~] Roles, permisos por página y scopes por almacén en la capa actual; WMS token scopes y cobertura total de rutas pendientes.
-- [ ] DTO/rutas compatibles y pruebas diferenciales.
-- [x] Transferencia firmada de bloques CID + snapshots entre peers explícitos, con ACK y fencing de réplica.
-- [ ] Quorum, autoridad por partición, reconciliación y failover seguro.
-- [~] Primer corte de datos maestros (warehouses/zones/bins); demás flujos WMS pendientes.
+La rama `fix/wms-twin-operational-completion` concentra el cierre funcional previo a las pruebas reales.
 
-Rutas operativas ampliadas: lookup, transfers, cycle-count, wave parcial.
+- **POS:** checkout persistente e idempotente, conciliación de tenders, descuento/reserva de inventario, dispatch telefónico, refunds parciales con reposición de stock y control de cantidades/importes acumulados.
+- **Fulfillment/Dockd:** envío persistido y void recuperable. Si el envío corresponde a una venta POS, el void revierte inventario con operation IDs deterministas.
+- **RMA:** recepción por línea, disposición RESTOCK/SCRAP/HOLD, restock idempotente, finalización condicionada y compensación al cancelar.
+- **Inbound:** idempotencia por source_system/resource/external_id/external_version y mapping de campos soportados de items, sales orders y purchase orders.
+- **Webhooks:** outbox persistente, worker, backoff, DLQ/retry manual, cifrado AES-256-GCM de secretos y controles SSRF.
+- **Snapshots:** exportaciones persistentes con SHA-256, verificación y restore con expected version y backup previo.
+- **Events/audit:** publicación pendiente recuperable y verificación de la cadena de auditoría.
+- **Mesh:** Kademlia DHT y GossipSub reales cuando PrismaTec-Core usa LibP2PTransport; TCP/local conserva el fallback peer-table + TTL fan-out.
 
-**NO SUSTITUIBLE al 100%.** El ledger es un primer corte de dominio, no un backend equivalente.
+Esto describe el código de la rama, no una aprobación de producción. El CI de este último corte debe terminar antes de empezar la validación funcional real.
 
-## Arranque
+## Límites conocidos antes de las pruebas reales
 
-Requiere Go 1.25+ y acceso inicial al proxy de módulos.
+1. No hay integración con un procesador de pagos: el servicio conserva tenders y referencias externas, pero autorización/captura/reembolso los ejecuta el gateway POS.
+2. Inbound rechaza una external_version diferente de la ya aplicada. Falta definir el contrato de supersession/PATCH por recurso para no sobrescribir estados WMS sin reglas del ERP.
+3. Webhooks ofrecen entrega **at-least-once**. No hay lease distribuido ni exactly-once entre varios nodos; operar un único worker hasta implementar coordinación HA.
+4. El mesh dispone de DHT/GossipSub en transporte libp2p, pero falta validar bootstrap de red real, particiones, failover, confianza de peers y providers CID a escala.
+5. La consistencia del ledger/CoreStore sigue siendo local al organismo y no constituye quorum ni transacción distribuida multinodo.
+6. La paridad diferencial completa Flask-Go y la migración gradual de tráfico siguen pendientes.
+
+## Requisitos y arranque local
+
+- Go 1.25 o superior.
+- Acceso al proxy de módulos durante la primera descarga.
+- JWT secret de al menos 32 caracteres.
+- Identidades importadas o bootstrap demo explícito.
+
+Para una demo local aislada:
 
 ```bash
-export WMS_TWIN_DATA_DIR="$HOME/.local/share/smart-wms-twin"
-export WMS_TWIN_NODE_NAME="wms-node-local"
+cd wms-twin
+export WMS_TWIN_DATA_DIR="$HOME/.local/share/smart-wms-twin-demo"
+export WMS_TWIN_NODE_NAME="wms-demo"
 export WMS_TWIN_HTTP_ADDR=":5001"
 export WMS_TWIN_AIP_ADDR=":8081"
 export WMS_TWIN_API_TOKEN="$(openssl rand -hex 32)"
+export JWT_SECRET="$(openssl rand -hex 32)"
+export WMS_TWIN_ALLOW_DEMO_BOOTSTRAP=true
 go mod download
 go mod verify
-go test ./...
+go test ./... -count=1
+go vet ./...
+go test -race ./... -count=1
 go run ./cmd/wms-twin
 ```
 
-WMS :5001; AIP :8081. No requiere PostgreSQL ni Redis. El original conserva sus dependencias.
+El opt-in de demo crea `operator / Operator123` y `admin / Admin1234`. Solo usar en una instalación local aislada. En una instalación compartida debo importar identidades mediante `WMS_TWIN_BOOTSTRAP_USERS_FILE` y no activar el bootstrap demo.
 
-## API técnica
+WMS escucha en `:5001` y AIP en `:8081`. Health:
 
-Todas las rutas `/api/twin/*` requieren Bearer token:
-- `GET /api/twin/inventory/balances`
-- `POST /api/twin/inventory/adjust`
-- `POST /api/twin/inventory/allocate`
-- `POST /api/twin/inventory/release`
-- `POST /api/twin/inventory/move`
+```bash
+curl -i http://127.0.0.1:5001/api/health
+```
 
-Las mutaciones requieren `operation_id`. El mismo ID/comando es idempotente; el mismo ID con otro contenido devuelve 409. El movimiento envía solo identificadores de ubicación; el servidor lee balances autoritativos desde su ledger local.
+## Configuración adicional
 
-## Límites
+### Mesh libp2p
 
-La serialización del ledger es por proceso y el agregado es global con un solo primario. El protocolo WMS sí transfiere bloques CID firmados antes del snapshot y tiene prueba LocalTransport de dos nodos; falta TCP/libp2p multi-proceso. No hay quorum ni failover seguro ante partición. DHT/GossipSub siguen como futuros en Core. No conectar el frontend original hasta completar autenticación y paridad. El historial no tiene compactación.
+Para habilitar Kademlia/GossipSub sobre el transporte real de PrismaTec-Core:
 
-## Demo para el equipo
+```bash
+export PRISMATEC_TRANSPORT=libp2p
+export PRISMATEC_NETWORK_ADDR="/ip4/0.0.0.0/tcp/4001"
+```
 
-- Panel visual: `demo/index.html` (servir con `python3 -m http.server` y API en `:5001`)
-- Script: `scripts/demo-flow.sh`
-- Guía: `docs/DEMO_EQUIPO.md`
-- PrismaTec-Core: `docs/RUNTIME_PROPIETARIO.md`, `third_party/prismatec/`
+La API de estado del mesh debe informar `kademlia_ready=true` y `gossipsub_ready=true`. Si se usa TCP/local, la capa reportada es `peer-table+ttl-fanout`, no Kademlia.
 
-## Documentación
+### Webhooks
 
-Leer `Guia.md`, `EstructuraBackendGo.md`, `NivelDeParidadConBackendOriginal.md`, `AUDITORIA_GEMELO.md`, `docs/CONTRATO_FRONTEND.md`, `docs/MAPA_RUTAS_ORIGINAL.md` y `docs/INVENTORY_LEDGER.md`.
+Para crear suscripciones se requiere una clave AES de 32 bytes codificada en Base64:
 
+```bash
+export WMS_WEBHOOK_ENCRYPTION_KEY="$(openssl rand -base64 32)"
+```
 
-## Estado de CI de la entrega de inventario
+Mantener la misma clave entre reinicios y respaldarla fuera del organismo. Si se pierde, los secretos cifrados existentes no podrán descifrarse.
 
-En el primer run posterior al ledger, el guard de alcance/documentación pasó, pero `go mod tidy -diff` falló antes de compilar. El grafo se está reconstruyendo en CI para obtener los archivos de módulo canónicos. No se debe interpretar el commit como validado hasta que el workflow completo termine en success.
+## Demo de equipo
 
+- Panel: `demo/index.html` servido con `python3 -m http.server 8765`.
+- Script: `scripts/demo-flow.sh`.
+- Guía: `docs/DEMO_EQUIPO.md`.
 
-## Última validación
+## Documentación de arquitectura y contratos
 
-El guard de alcance pasó y el módulo Go pudo resolverse y verificarse. El job se detuvo en gofmt antes de vet y race tests. Estoy recuperando fuentes formateadas desde un artefacto temporal; no marco el ledger como probado hasta que el siguiente CI completo termine en success.
+Leer en este orden:
 
+1. `../Guia.md`
+2. `../EstructuraBackendGo.md`
+3. `../NivelDeParidadConBackendOriginal.md`
+4. `../AUDITORIA_GEMELO.md`
+5. `docs/CONTRATO_FRONTEND.md`
+6. `docs/PARIDAD_OPERATIVA.md`
+7. `docs/MAPA_RUTAS_ORIGINAL.md`
+8. `docs/INVENTORY_LEDGER.md`
 
-## Corrección de calidad
+## Frontera protegida
 
-El grafo Go canónico y el formato se recuperaron de un artefacto generado por Go 1.25 en CI. Se retiró el import no utilizado que detuvo vet. El workflow vuelve a ser estricto y no reescribe archivos. La implementación queda pendiente de la ejecución completa de vet y race tests.
-
-
-## Validación
-
-La ejecución `42893176180` terminó en success. Pasaron tidy diff, verificación de módulos, gofmt, vet y race tests. La implementación técnica queda validada en el alcance cubierto por esos tests; no equivale a paridad con el backend original.
-
-
-## Último resultado de CI
-
-La ejecución 42895311390 pasó guard de alcance, grafo de módulos, gofmt y vet. Pasaron inventoryledger, corestore, domain/inventory, replication y runtime. httpapi detectó que el middleware aceptaba un token sin el esquema Bearer; el defecto está corregido en la rama y queda pendiente de nueva ejecución. No considero esta entrega validada hasta que CI termine en success.
-
-
-## Seguridad de identidad — fase 02 en curso
-
-Se añadieron primitives aisladas para JWT HS256, CSRF double-submit y validación de password. No hay todavía endpoints de login/logout/refresh ni persistencia de usuarios; el Bearer técnico sigue siendo el único mecanismo HTTP activo. La especificación contractual y el orden de implementación están en [FASE_02_SEGURIDAD.md](docs/FASE_02_SEGURIDAD.md). No conectar el frontend hasta cerrar la fase completa.
-
-
-## Identidad persistente — primer bloque interno
-
-El paquete `internal/application/identity` persiste usuarios en organismos Core y usa bcrypt. Incluye normalización/duplicidad de username, autenticación interna, cambio de contraseña y DTO público sin hash. Aún no hay importador del backend original ni endpoints HTTP; el Bearer técnico sigue siendo el único guard activo. La fase continúa incompleta.
-
-
-## Validación del repositorio de identidad
-
-El corte `d8c2c02e17c667620cccdf6dcb017a83f33e575c` pasó la ejecución CI `42897626723`: tidy diff, module verify, gofmt, vet y race tests; el guard documental/alcance también pasó. El workflow publicó el formato final en `e0d2e20dea760ad99f71c1376d97a4896f28c284`. La autenticación HTTP sigue pendiente.
-
-
-## Autenticación HTTP disponible en el gemelo
-
-Se implementaron `/api/auth/login`, `logout`, `me`, `refresh` y `change-password`, con JWT HS256, cookies HttpOnly/CSRF, estado vivo de usuario, lockout persistente y wrappers de page/warehouse permissions. El runtime acepta `JWT_SECRET` y un `WMS_TWIN_BOOTSTRAP_USERS_FILE` con hashes bcrypt (modo 0600). No hay aún rutas WMS de negocio portadas ni gestión HTTP de usuarios; el frontend sigue sin estar habilitado para este gemelo.
-
-
-## Importación de usuarios
-
-El bootstrap de identidades es reanudable: no sobrescribe IDs existentes y añade los faltantes, por lo que puede recuperarse de una importación parcial. El archivo JSON debe contener hashes bcrypt, con permisos 0600 o más restrictivos. El coste bcrypt para hashes nuevos es 12.
-
-
-## Validación de auth y bootstrap
-
-El corte `5d8d334bb24dc21bf2609f8c8089092297563de8` pasó WMS twin validation `42899616129`, incluidos tidy diff, module verify, gofmt, vet, race tests y guard documental. El formato final quedó en `2720ed7d70fb69e46422c3338dc354f15d30cc3a`. La auditoría global npm/pip del repositorio continúa fallando en componentes admin/mobile/Python, separada de esta validación Go.
-
-
-## Validación automatizada de Fase 03
-
-WMS twin validation `42974486856` terminó correctamente. Pasaron guard de alcance y documentación, verificación del módulo, gofmt, vet y tests con detector de carreras. El commit final de formato es `ccf1934b2640feb45df852d515316be73d408de1`.
-
-La suite general de pruebas del repositorio aún estaba ejecutándose al registrar esta actualización. Esta validación no autoriza cambiar el frontend ni declara el gemelo completo.
-
-
-## Fase 04 — artículos, ubicaciones preferidas y proveedores
-
-El gemelo incorpora rutas de catálogo extendido:
-- `/api/admin/items` (GET/POST), `/items/{id}` (GET/PUT/DELETE), `/items/{id}/archive` (POST).
-- `/api/admin/preferred-bins` (GET/POST), `/preferred-bins/{id}` (PUT/DELETE).
-- `/api/admin/vendors` (GET/POST), `/vendors/{canonical_id}` (GET/PUT/DELETE).
-
-Las ubicaciones preferidas solo aceptan bins Pickable y mantienen prioridades contiguas. Los proveedores usan UUID. Consulta `docs/FASE_04_CATALOGO_EXTENDIDO.md`. El gemelo continúa sin ser sustituto: faltan workflows operativos y pruebas diferenciales.
-
-
-## Estado CI de Fase 04
-
-WMS twin validation `42975654846` terminó en success, incluidos vet y tests con detector de carreras. El commit final con formato es `6b7d821277b29baf1754f3aa2038a1a85bf33a2d`. La suite general del repositorio `42975655011` seguía ejecutándose al registrar.
-
-
-## Fase 05 — Purchase Orders disponibles
-
-El gemelo ya expone administración de órdenes de compra y líneas bajo `/api/admin/purchase-orders`, con estado OPEN/PARTIAL/RECEIVED/CLOSED/ARCHIVED, close/reopen, validación de referencias a warehouse/items y autorización por almacén. No incluye todavía recepción, cancelación, receipts ni putaway. Consulta `docs/FASE_05_PURCHASE_ORDERS.md`.
+No modifico el backend Flask, los frontends ni los cuatro artefactos existentes en la raíz. La documentación de esta rama describe solo el gemelo Go y sus límites. No se debe declarar paridad ni sustituir el backend original por la mera existencia de endpoints o tests unitarios.
