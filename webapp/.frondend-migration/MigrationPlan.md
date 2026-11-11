@@ -890,3 +890,10 @@ Actualizar esta sección al cerrar cada PR/feature. Mantener una única fuente d
 ---
 
 **Regla final:** el progreso se mide por capacidades verificadas y pruebas aprobadas, no por cantidad de rutas, componentes, entidades o archivos creados.
+
+
+#### Auditoría de features entity-only y primera integración UI — 2026-11-11
+
+Se verificó la rama `svelte-webapp` contra las páginas React de `main` y los contratos Flask. Se confirmó que carecían de capas de datos/UI: backorders, cycle-count-approvals, fraud, inter-warehouse-transfers, inventory-adjustments, pos-activity, preferred-bins, purchase-orders, refunds, returns, transfer-orders, users y vendors. `customers` se conserva como entidad canónica embebida en órdenes e integración: el React original no contiene pantalla administrativa independiente ni se confirmó un endpoint admin CRUD; no se inventa esa feature.
+
+Se añadió una vertical común de consulta conectada al ApiClient Flask: DTO, datasource, repositorio, caso de uso, DI, estado Svelte, catálogo de pantallas y ruta dinámica para los 13 módulos. Se añadieron navegación y guardas usando los page keys ya definidos en Flask. La consulta incluye filtros básicos, colas de backorders y resumen POS. **No equivale aún a paridad funcional completa de escritura**: CRUD, aprobaciones, cancelaciones, recepción RMA, importación y acciones de ciclo de vida necesitan implementaciones específicas y pruebas antes de cerrar estas migraciones.
