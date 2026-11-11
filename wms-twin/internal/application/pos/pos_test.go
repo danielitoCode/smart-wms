@@ -41,7 +41,7 @@ func newPOSFixture(t *testing.T) *posFixture {
 	item, err := cat.CreateItem(catalog.ItemInput{SKU:"POS-SKU-1", ItemName:"POS Test Item"})
 	if err != nil { t.Fatal(err) }
 	sos := salesorders.New(store, cat)
-	fulfill := fulfillment.New(store, sos)
+	fulfill := fulfillment.New(store, sos, ledger)
 	service := New(store, cat, sos, ledger, fulfill)
 	if _, err := ledger.Adjust(inventoryledger.AdjustCommand{OperationID:"pos-seed", WarehouseID:warehouse.WarehouseID, BinID:bin.BinID, ItemID:item.ItemID, Delta:10}); err != nil { t.Fatal(err) }
 	return &posFixture{service:service,catalog:cat,ledger:ledger,sos:sos,warehouseID:warehouse.WarehouseID,binID:bin.BinID,itemID:item.ItemID}
@@ -113,6 +113,18 @@ func TestPhoneOrderDispatchCommitsReservationAndRecoversReplay(t *testing.T) {
 	balances, _, err = f.ledger.List()
 	if err != nil { t.Fatal(err) }
 	if balances[0].OnHand!=8 || balances[0].Allocated!=0 { t.Fatalf("dispatch replay changed inventory: %+v",balances) }
+	voided, err := f.service.fulfill.VoidWithID(so.SOID,"supervisor","carrier cancelled before handoff","void-phone-1")
+	if err != nil { t.Fatal(err) }
+	if voided.Status != "VOIDED" { t.Fatalf("shipment was not voided: %+v",voided) }
+	balances, _, err = f.ledger.List()
+	if err != nil { t.Fatal(err) }
+	if balances[0].OnHand!=10 || balances[0].Allocated!=2 { t.Fatalf("void did not restore pre-dispatch on-hand and reservation: %+v",balances) }
+	redispatched, err := f.service.DispatchWithDetails(so.SONumber,"UPS","TRACK-2","cashier-1","dispatch-phone-2",[]int64{f.warehouseID},false)
+	if err != nil { t.Fatal(err) }
+	if redispatched["status"] != "SHIPPED" { t.Fatalf("order could not be dispatched again after void: %v",redispatched) }
+	balances, _, err = f.ledger.List()
+	if err != nil { t.Fatal(err) }
+	if balances[0].OnHand!=8 || balances[0].Allocated!=0 { t.Fatalf("redispatch after void did not commit stock exactly once: %+v",balances) }
 }
 
 func TestPartialRefundsCannotExceedOriginalQuantityAndCanFinishSale(t *testing.T) {
