@@ -16,8 +16,7 @@
 		{ href: '/packing', label: 'Packing' },
 		{ href: '/shipping', label: 'Shipping' },
 		{ href: '/warehouses', label: 'Almacenes' },
-		{ href: '/items', label: 'Ítems' },
-		{ href: '/change-password', label: 'Cambiar contraseña' }
+		{ href: '/items', label: 'Ítems' }
 	] as const;
 
 	onMount(() => { void bootstrap(); });
@@ -34,9 +33,6 @@
 		if (guard.status === 'anonymous') {
 			const redirect = encodeURIComponent(page.url.pathname + page.url.search);
 			await goto(`/login?redirect=${redirect}`);
-		} else if (guard.status === 'authenticated' && guard.user?.mustChangePassword &&
-			page.url.pathname !== '/change-password') {
-			await goto('/change-password', { replaceState: true });
 		}
 	}
 
