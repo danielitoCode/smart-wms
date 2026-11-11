@@ -36,7 +36,7 @@ type CartLine struct {
 }
 
 func (s *Service) Availability(warehouseID int64, sku string) (map[string]any, error) {
-	if warehouseID <= 0 || strings.TrimSpace(sku) == "" {
+	if warehouseID <= 0 {
 		return nil, ErrInvalid
 	}
 	items, err := s.catalog.ListItems()
