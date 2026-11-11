@@ -557,7 +557,8 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 		data, err = json.Marshal(sale)
 		if err != nil { return nil, false, err }
 		if _, err := s.store.Put("wms_pos_sale", sale.ID, data); err != nil { return nil, false, err }
-		so.Status = "REFUNDED"
+		so.Status = salesorders.StatusRefunded
+		for i := range so.Lines { so.Lines[i].Status = salesorders.LineRefunded }
 		if err := s.sos.Save(so); err != nil { return nil, false, err }
 	}
 	return map[string]any{"refund_id":refundID,"original_so_number":in.SONumber,"fully_refunded":full,"total_cents":in.TotalCents,"external_refund_ref":in.ExternalRefundRef,"actor":actor,"replayed":false}, false, nil
