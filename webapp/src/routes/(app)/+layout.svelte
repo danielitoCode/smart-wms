@@ -49,11 +49,11 @@
 
 
 	function canSeeNavItem(item: NavItem): boolean {
-		if (item.pageKey) return canAccessPages([item.pageKey]);
+		if (item.pageKey) return canAccessPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], [item.pageKey]);
 		if (item.href === '/data') {
 			return guard.user?.role === 'ADMIN' ||
-				canAccessPages(['warehouses']) || canAccessPages(['zones']) ||
-				canAccessPages(['bins', 'zones']) || canAccessPages(['preferred-bins']);
+				canAccessPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], ['warehouses']) || canAccessPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], ['zones']) ||
+				canAccessPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], ['bins', 'zones']) || canAccessPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], ['preferred-bins']);
 		}
 		return true;
 	}
