@@ -55,6 +55,13 @@ Las mutaciones requieren `operation_id`. El mismo ID/comando es idempotente; el 
 
 La serialización del ledger es por proceso y el agregado es global con un solo primario. El protocolo WMS sí transfiere bloques CID firmados antes del snapshot y tiene prueba LocalTransport de dos nodos; falta TCP/libp2p multi-proceso. No hay quorum ni failover seguro ante partición. DHT/GossipSub siguen como futuros en Core. No conectar el frontend original hasta completar autenticación y paridad. El historial no tiene compactación.
 
+## Demo para el equipo
+
+- Panel visual: `demo/index.html` (servir con `python3 -m http.server` y API en `:5001`)
+- Script: `scripts/demo-flow.sh`
+- Guía: `docs/DEMO_EQUIPO.md`
+- Runtime propietario: `docs/RUNTIME_PROPIETARIO.md`, `third_party/prismatec/`
+
 ## Documentación
 
 Leer `Guia.md`, `EstructuraBackendGo.md`, `NivelDeParidadConBackendOriginal.md`, `AUDITORIA_GEMELO.md`, `docs/CONTRATO_FRONTEND.md`, `docs/MAPA_RUTAS_ORIGINAL.md` y `docs/INVENTORY_LEDGER.md`.
