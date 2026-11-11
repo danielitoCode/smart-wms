@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inbound"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/pos"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/rma"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/security/wmstoken"
@@ -362,25 +363,64 @@ func (s *Server) snapshotV1(w http.ResponseWriter, r *http.Request, rest string)
 		})(w, r)
 		return
 	}
-	if r.Method == http.MethodGet && strings.HasPrefix(rest, "snapshots/") {
-		s.requireWMSToken("snapshot.inventory", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
-			id := strings.TrimPrefix(rest, "snapshots/")
-			if id == "" || strings.Contains(id, "/") {
-				writeJSON(w, 400, map[string]string{"error": "invalid snapshot id"})
-				return
-			}
-			out, err := s.snapshot.Get(id)
-			if err != nil {
-				writeJSON(w, 404, map[string]string{"error": err.Error()})
-				return
-			}
-			if rec.WarehouseID != nil && out.WarehouseID != 0 && out.WarehouseID != *rec.WarehouseID {
-				writeJSON(w, 404, map[string]string{"error": "snapshot not found"})
-				return
-			}
-			writeJSON(w, 200, out)
-		})(w, r)
-		return
+	if strings.HasPrefix(rest, "snapshots/") {
+		parts := strings.Split(strings.TrimPrefix(rest, "snapshots/"), "/")
+		if len(parts) == 1 && r.Method == http.MethodGet {
+			s.requireWMSToken("snapshot.inventory", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
+				id := parts[0]
+				if id == "" {
+					writeJSON(w, 400, map[string]string{"error": "invalid snapshot id"})
+					return
+				}
+				out, err := s.snapshot.Get(id)
+				if err != nil {
+					writeJSON(w, 404, map[string]string{"error": "snapshot not found"})
+					return
+				}
+				if rec.WarehouseID != nil && out.WarehouseID != *rec.WarehouseID {
+					writeJSON(w, 404, map[string]string{"error": "snapshot not found"})
+					return
+				}
+				writeJSON(w, 200, out)
+			})(w, r)
+			return
+		}
+		if len(parts) == 2 && parts[1] == "restore" && r.Method == http.MethodPost {
+			s.requireWMSToken("snapshot.restore", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
+				var in struct {
+					OperationID string `json:"operation_id"`
+					ExpectedVersion uint64 `json:"expected_ledger_version"`
+				}
+				if err := decodeBody(r, &in); err != nil || strings.TrimSpace(in.OperationID) == "" {
+					writeJSON(w, 400, map[string]string{"error": "operation_id and expected_ledger_version are required"})
+					return
+				}
+				snap, err := s.snapshot.Get(parts[0])
+				if err != nil {
+					writeJSON(w, 404, map[string]string{"error": "snapshot not found"})
+					return
+				}
+				if rec.WarehouseID != nil && snap.WarehouseID != *rec.WarehouseID {
+					writeJSON(w, 404, map[string]string{"error": "snapshot not found"})
+					return
+				}
+				if rec.WarehouseID != nil && snap.WarehouseID == 0 {
+					writeJSON(w, 403, map[string]string{"error": "global snapshot restore requires an unscoped token"})
+					return
+				}
+				result, err := s.snapshot.Restore(parts[0], in.OperationID, in.ExpectedVersion)
+				if err != nil {
+					if errors.Is(err, inventoryledger.ErrVersionConflict) || errors.Is(err, inventoryledger.ErrIdempotencyConflict) {
+						writeJSON(w, 409, map[string]string{"error": err.Error()})
+					} else {
+						writeJSON(w, 422, map[string]string{"error": err.Error()})
+					}
+					return
+				}
+				writeJSON(w, 200, result)
+			})(w, r)
+			return
+		}
 	}
 	writeJSON(w, 404, map[string]string{"error": "not found"})
 }
