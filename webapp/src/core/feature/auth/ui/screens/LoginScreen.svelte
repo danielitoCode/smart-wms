@@ -24,6 +24,13 @@
 		event.preventDefault();
 		const ok = await state.submit();
 		if (ok) {
+			// The backend marks a fresh-install admin with must_change_password.
+			// Route directly to the only screen allowed by the auth middleware;
+			// do not briefly enter a protected operational page first.
+			if (state.user?.mustChangePassword) {
+				await goto('/change-password', { replaceState: true });
+				return;
+			}
 			const redirect = page.url.searchParams.get('redirect');
 			const target =
 				redirect && redirect.startsWith('/') && !redirect.startsWith('//')

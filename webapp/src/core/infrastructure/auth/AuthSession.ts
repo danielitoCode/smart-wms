@@ -10,6 +10,7 @@ export type AuthUser = {
 	warehouseIds: number[];
 	allowedPages: string[];
 	allowedFunctions: string[];
+	mustChangePassword: boolean;
 };
 
 export type AuthSessionState = { user: AuthUser | null };

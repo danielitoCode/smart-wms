@@ -81,6 +81,24 @@ To skip the forced change (CI, deterministic dev environments), set `ADMIN_PASSW
 docker compose logs db | grep "Admin password"
 ```
 
+**Important — existing PostgreSQL volumes:** the official Postgres entrypoint runs
+`db/seed.sh` only when `pgdata` is initialized for the first time. Recreating or
+restarting containers does not reset an existing admin password. The optional
+`ADMIN_PASSWORD` variable is now forwarded to the database container, but it
+also applies only on a fresh database initialization.
+
+If an existing development database has an unknown admin password, reset only
+that account explicitly and force the normal first-login password change:
+
+```bash
+docker compose exec db psql -U "${POSTGRES_USER:-sentry}" -d "${POSTGRES_DB:-sentry}" -c "CREATE EXTENSION IF NOT EXISTS pgcrypto; UPDATE users SET password_hash = crypt('admin', gen_salt('bf')), must_change_password = TRUE, password_changed_at = NOW(), is_active = TRUE WHERE username = 'admin' RETURNING user_id, username, must_change_password;"
+```
+
+The command must return the admin row. It invalidates previously issued sessions
+through `password_changed_at`; sign in with `admin` / `admin`, then choose a
+new password. Do not use `docker compose down -v` to solve a login problem:
+that deletes the entire database volume and all stored WMS data.
+
 ### Demo Data
 
 The default seed includes 1 warehouse, 6 zones, 16 bins, 20 items, 5 POs, and 20 SOs for testing. To start with a clean system:

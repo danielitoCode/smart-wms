@@ -7,6 +7,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-sentry}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sentry}
       POSTGRES_DB: ${POSTGRES_DB:-sentry}
+      # Forward the optional first-install admin password to seed.sh.
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       SKIP_SEED: ${SKIP_SEED:-false}
     ports:
       - "127.0.0.1:5432:5432"

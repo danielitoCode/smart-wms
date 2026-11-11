@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { createChangePasswordState } from '../state/changePasswordState.svelte';
+	import { authSession } from '../../../../infrastructure/auth/AuthSession';
 
 	const state = createChangePasswordState();
+	const forced = authSession.getUser()?.mustChangePassword ?? false;
 
 	async function onSubmit(event: SubmitEvent) {
 		event.preventDefault();
@@ -12,6 +14,7 @@
 
 <section class="page">
 	<div class="card">
+		{#if forced}<p class="forced-banner" role="alert"><strong>Configuración inicial:</strong> debes establecer una contraseña nueva antes de continuar.</p>{/if}
 		<p class="eyebrow">Seguridad de la cuenta</p>
 		<h1>Cambiar contraseña</h1>
 		<p class="intro">Actualiza tu contraseña para continuar usando Smart WMS.</p>
@@ -43,7 +46,7 @@
 <style>
 	.page { min-height: 70vh; display: grid; place-items: center; padding: 2rem 1rem; }
 	.card { width: 100%; max-width: 30rem; padding: 1.5rem; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--card); box-shadow: var(--shadow-1); }
-	.eyebrow { margin: 0 0 0.35rem; color: var(--navy); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+	.forced-banner { margin:0 0 1rem; padding:.75rem .85rem; border-radius:8px; background:#8e2716; color:#fff; font-size:.86rem; line-height:1.45; } .eyebrow { margin: 0 0 0.35rem; color: var(--navy); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
 	h1 { margin: 0; color: var(--ink); font-size: 1.45rem; }
 	.intro { margin: 0.55rem 0 1.2rem; color: var(--slate); font-size: 0.9rem; }
 	form { display: flex; flex-direction: column; gap: 0.85rem; }

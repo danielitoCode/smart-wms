@@ -28,7 +28,8 @@ export class AuthRepositoryImpl implements AuthRepository {
 			role: user.role,
 			warehouseIds: user.warehouseIds,
 			allowedPages: user.allowedPages,
-			allowedFunctions: user.allowedFunctions
+			allowedFunctions: user.allowedFunctions,
+			mustChangePassword: user.mustChangePassword
 		});
 	}
 
