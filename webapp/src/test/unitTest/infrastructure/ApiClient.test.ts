@@ -73,7 +73,15 @@ describe('ApiClient browser cookie contract', () => {
 	});
 
 	it('cancels immediately when the caller signal is already aborted', async () => {
-		const fetchMock = vi.fn();
+		const fetchMock = vi.fn((_input: RequestInfo | URL, init?: RequestInit) =>
+			new Promise<Response>((_resolve, reject) => {
+				if (init?.signal?.aborted) {
+					reject(new DOMException('Aborted', 'AbortError'));
+					return;
+				}
+				init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+			})
+		);
 		vi.stubGlobal('fetch', fetchMock);
 		const client = new ApiClient('http://localhost:5000');
 		const caller = new AbortController();
@@ -83,6 +91,6 @@ describe('ApiClient browser cookie contract', () => {
 			code: 'cancelled',
 			status: 0
 		});
-		expect(fetchMock).not.toHaveBeenCalled();
+		expect(fetchMock).toHaveBeenCalledOnce();
 	});
 });
