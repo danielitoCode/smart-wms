@@ -440,3 +440,12 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - Refund calcula el importe proporcional por cantidad sobre el total de línea original y permite `shipping_refund_cents` separado; el estado PARTIALLY_REFUNDED permanece hasta la conciliación total.
 - RMA calcula unidades retornables restando devoluciones POS completadas y unidades reservadas por RMAs existentes no cancelados. Rechaza crear un RMA desde una SO parcialmente reembolsada si falta historial de refunds o hay una saga PREPARING.
 - Añadí pruebas para devoluciones parciales, devolución de envío separada, y exclusión de cantidades POS-refunded del RMA.
+
+
+### AUD-0029 — Compensación de inventario al cancelar RMA
+
+- Se detectó que cancelar un RMA después de recibir mercancía RESTOCK dejaba las unidades incorporadas al inventario.
+- La cancelación ahora utiliza estado intermedio CANCELLING y revierte cada recibo RESTOCK con operación determinista.
+- Se persiste el avance por recibo para recuperar tras caída; un retry no vuelve a descontar dos veces.
+- Si las unidades ya no están disponibles para retirar, la cancelación queda pendiente en vez de declararse exitosa.
+- Añadí prueba de cancelación y repetición idempotente.
