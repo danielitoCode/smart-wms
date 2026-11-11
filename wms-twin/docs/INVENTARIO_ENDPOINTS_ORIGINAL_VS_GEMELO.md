@@ -244,3 +244,10 @@ Documento en primera persona. **Regla de oro para conmutar backends sin que el f
 ## Rutas solo-gemelo (no del original)
 
 - `/api/twin/*` — operación del nodo PrismaTec-Core; el frontend original no debe depender de ellas.
+
+
+## Actualización AUD-0026
+
+Los prefijos que estaban en `missing` para el panel admin y dashboard v1 **ya no devuelven 404**: tienen handlers en `admin_extended.go` / `dashboardV1` con persistencia PrismaTec-Core.
+
+Importante: la **paridad de negocio profunda** (misma validación SQLAlchemy, mismos jobs, mismos side-effects que Flask) sigue refinándose. Lo crítico para conmutar el frontend —**mismos paths y métodos sin 404**— queda cubierto para el inventario Flask bajo `/api/admin/*` extendido, `/api/warehouses/list` y `/api/v1/dashboard/*`.

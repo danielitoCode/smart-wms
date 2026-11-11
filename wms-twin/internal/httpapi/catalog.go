@@ -20,32 +20,61 @@ func (s *Server) adminCatalog(w http.ResponseWriter, r *http.Request) {
 	}
 	path := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/admin/"), "/")
 	parts := strings.Split(path, "/")
-	if len(parts) == 0 || (parts[0] != "warehouses" && parts[0] != "zones" && parts[0] != "bins" && parts[0] != "items" && parts[0] != "preferred-bins" && parts[0] != "vendors" && parts[0] != "purchase-orders" && parts[0] != "sales-orders") {
+	if len(parts) == 0 || parts[0] == "" {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "Not found"})
-		return
-	}
-	pageKey := parts[0]
-	if user.Role != "ADMIN" && !containsString(user.AllowedPages, pageKey) {
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": "Permission denied", "page_key": pageKey})
 		return
 	}
 	switch parts[0] {
 	case "warehouses":
+		if user.Role != "ADMIN" && !containsString(user.AllowedPages, "warehouses") {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "Permission denied", "page_key": "warehouses"})
+			return
+		}
 		s.warehouseRoutes(w, r, user, parts[1:])
 	case "zones":
+		if user.Role != "ADMIN" && !containsString(user.AllowedPages, "zones") {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "Permission denied", "page_key": "zones"})
+			return
+		}
 		s.zoneRoutes(w, r, user, parts[1:])
 	case "bins":
+		if user.Role != "ADMIN" && !containsString(user.AllowedPages, "bins") {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "Permission denied", "page_key": "bins"})
+			return
+		}
 		s.binRoutes(w, r, user, parts[1:])
 	case "items":
+		if user.Role != "ADMIN" && !containsString(user.AllowedPages, "items") {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "Permission denied", "page_key": "items"})
+			return
+		}
 		s.itemRoutes(w, r, parts[1:])
 	case "preferred-bins":
+		if user.Role != "ADMIN" && !containsString(user.AllowedPages, "preferred-bins") {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "Permission denied", "page_key": "preferred-bins"})
+			return
+		}
 		s.preferredBinRoutes(w, r, parts[1:])
 	case "vendors":
+		if user.Role != "ADMIN" && !containsString(user.AllowedPages, "vendors") {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "Permission denied", "page_key": "vendors"})
+			return
+		}
 		s.vendorRoutes(w, r, parts[1:])
 	case "purchase-orders":
+		if user.Role != "ADMIN" && !containsString(user.AllowedPages, "purchase-orders") {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "Permission denied", "page_key": "purchase-orders"})
+			return
+		}
 		s.purchaseOrderRoutes(w, r, user, parts[1:])
 	case "sales-orders":
+		if user.Role != "ADMIN" && !containsString(user.AllowedPages, "sales-orders") {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "Permission denied", "page_key": "sales-orders"})
+			return
+		}
 		s.salesOrdersAdmin(w, r, strings.Join(parts[1:], "/"))
+	default:
+		s.adminExtended(w, r, user, parts)
 	}
 }
 

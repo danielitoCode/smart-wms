@@ -517,3 +517,17 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - Eliminada la rama remota `fix/wms-twin-operational-completion`.
 - Canónica: `feat/wms-prismatec-genesis`.
 - Añadidos `scripts/start-lab.sh`, `parity-smoke.sh`, panel `demo/index.html` ampliado, `proxy/nginx.conf`, guía `docs/PROBAR_Y_DEMO_EQUIPO.md`.
+
+### AUD-0026 — Cobertura de endpoints admin/v1 que faltaban
+
+Implementé en el gemelo (sin tocar Flask ni frontends) el enrutado de los recursos admin que devolvían 404:
+
+- channels, connectors (+ credentials/sync/test), connector-registry, consumer-groups
+- notification-webhooks, webhooks admin, transfer-orders (+ cancel/start-picking/approvals)
+- adjustments (list/pending/direct con ledger), backorders, settings, pick-batches
+- source-systems, scope-catalog, short-picks, receipts, inter-warehouse-transfer(s)
+- search, dashboard, inbound admin, picker, webhook-errors, tokens alias, pos admin, cycle-counts, inventory view, audit-log, import
+- `/api/warehouses/list`
+- `/api/v1/dashboard/*` (productivity, preferences, received, shipping-health)
+
+Persistencia: organismos PrismaTec-Core (`wms_admin_*`). Núcleo operativo previo intacto. Tests `go test ./...` en verde.

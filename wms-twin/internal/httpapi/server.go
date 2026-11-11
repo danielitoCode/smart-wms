@@ -171,6 +171,7 @@ func (s *Server) StartBackground(ctx context.Context) error {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/health", s.health)
+	mux.HandleFunc("/api/warehouses/", s.RequireAuth(s.warehousesPublic))
 	mux.HandleFunc("/api/auth/", s.authRoute)
 	mux.HandleFunc("/api/admin/system-info", s.RequireAuth(s.systemInfo))
 	mux.HandleFunc("/api/admin/users", s.RequireAuth(s.adminUsers))

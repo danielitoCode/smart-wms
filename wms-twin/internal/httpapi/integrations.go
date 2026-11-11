@@ -65,6 +65,30 @@ func (s *Server) v1Route(w http.ResponseWriter, r *http.Request) {
 		s.snapshotV1(w, r, strings.Join(parts[1:], "/"))
 	case "webhooks":
 		s.webhooksV1(w, r, strings.Join(parts[1:], "/"))
+	case "dashboard":
+		s.dashboardV1(w, r, strings.Join(parts[1:], "/"))
+	default:
+		writeJSON(w, 404, map[string]string{"error": "not found"})
+	}
+}
+
+func (s *Server) dashboardV1(w http.ResponseWriter, r *http.Request, rest string) {
+	switch {
+	case r.Method == http.MethodGet && (rest == "" || rest == "productivity"):
+		wh, _ := s.catalog.ListWarehouses()
+		items, _ := s.catalog.ListItems()
+		writeJSON(w, 200, map[string]any{
+			"productivity": map[string]any{"warehouses": len(wh), "items": len(items), "picks": 0, "ships": 0},
+			"engine": "PrismaTec-Core",
+		})
+	case r.Method == http.MethodGet && rest == "preferences":
+		writeJSON(w, 200, map[string]any{"preferences": map[string]any{}})
+	case r.Method == http.MethodPut && rest == "preferences":
+		writeJSON(w, 200, map[string]any{"status": "ok"})
+	case r.Method == http.MethodGet && rest == "received":
+		writeJSON(w, 200, map[string]any{"received": []any{}, "total": 0})
+	case r.Method == http.MethodGet && rest == "shipping-health":
+		writeJSON(w, 200, map[string]any{"status": "ok", "open_shipments": 0})
 	default:
 		writeJSON(w, 404, map[string]string{"error": "not found"})
 	}
