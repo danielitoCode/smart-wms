@@ -179,3 +179,19 @@ En la revisión de PrismaTec-Core confirmé estas capacidades y límites:
 9. El audit log Core observado es JSONL local con buffer; no es equivalente por sí solo a la cadena SHA-256 de auditoría del WMS original.
 
 Estos límites se convierten en tareas explícitas del gemelo. No los oculto detrás de la palabra “descentralizado”. El ledger actual sigue siendo un agregado global con un primario; el protocolo de bloques no aporta quorum ni consenso.
+
+
+## Rutas añadidas al gemelo en el corte de cierre
+
+| Ruta Go | Método | Comportamiento |
+|---|---|---|
+| `/api/v1/pos/checkout` | POST | Checkout idempotente, valida bins/tenders, descuenta o reserva ledger |
+| `/api/v1/pos/refund` | POST | Refund parcial/total, repone ledger y guarda referencia externa |
+| `/api/v1/pos/dispatch` | POST | Convierte reserva de phone order en salida y persiste shipment |
+| `/api/v1/dockd/ship/{so_number}/void` | POST | Reversión persistente e idempotente a pre-ship status |
+| `/api/v1/rma/{id}/receive-line` | POST | Recepción por línea con RESTOCK/SCRAP/HOLD |
+| `/api/v1/snapshots/{id}/restore` | POST | Restore con checksum y expected ledger version |
+| `/api/v1/webhooks/deliveries` | GET | Consulta outbox/DLQ sin revelar secretos |
+| `/api/v1/webhooks/deliveries/{id}/retry` | POST | Reintento manual de delivery DEAD |
+
+Estas rutas no se deben declarar equivalentes a Flask hasta comparar fixtures de request/response y efectos laterales. La devolución financiera externa y el UPSERT de versiones inbound mayores siguen fuera del contrato implementado.
