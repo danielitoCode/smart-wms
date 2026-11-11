@@ -202,3 +202,6 @@ En la rama `fix/wms-twin-operational-completion` mantuve la frontera: todo el c�
 - `application/mesh` sigue siendo una tabla de peers y difusión con TTL sobre el transporte Core. No implementa DHT Kademlia ni GossipSub.
 
 Los tests nuevos cubren la validación de URL/SSRF, persistencia e integridad de snapshots y detección de manipulación del audit chain. La evidencia de CI queda pendiente hasta ejecutar Actions sobre esta rama.
+
+
+El snapshot ahora conserva los campos numéricos en una estructura tipada `InventoryRow`; evito convertir IDs/cantidades a float64 antes de calcular/verificar SHA-256. Para el outbox de eventos añadí `events.publish` como scope independiente y `POST /api/v1/events/retry-pending`; es un reintento explícito, no un worker automático permanente.
