@@ -116,3 +116,26 @@ func TestRMACancelReversesRestockedInventoryIdempotently(t *testing.T) {
 		t.Fatalf("cancelled RMA left stock in inventory: %+v", balances)
 	}
 }
+
+func TestRMADoesNotClaimOrderedOrPackedButUnshippedUnits(t *testing.T) {
+	node, err := core.NewNode(core.Config{DataDir:t.TempDir(),Name:"wms-rma-unshipped-test"})
+	if err != nil { t.Fatal(err) }
+	store := corestore.New(node.Organisms(),string(node.ID()))
+	ledger := inventoryledger.New(store)
+	cat := catalog.New(store,ledger)
+	warehouse, err := cat.CreateWarehouse(catalog.WarehouseInput{WarehouseCode:"RMA-UNSHIPPED",WarehouseName:"RMA Unshipped"})
+	if err != nil { t.Fatal(err) }
+	item, err := cat.CreateItem(catalog.ItemInput{SKU:"RMA-UNSHIPPED-SKU",ItemName:"Not shipped"})
+	if err != nil { t.Fatal(err) }
+	sos := salesorders.New(store,cat)
+	so, err := sos.Create(salesorders.CreateInput{SONumber:"SO-RMA-UNSHIPPED",WarehouseID:warehouse.WarehouseID,Lines:[]salesorders.LineInput{{ItemID:item.ItemID,QuantityOrdered:4}}},"tester")
+	if err != nil { t.Fatal(err) }
+	so.Status = salesorders.StatusShipped
+	so.Lines[0].QuantityPacked = 4
+	so.Lines[0].Status = salesorders.LineShipped
+	if err := sos.Save(so); err != nil { t.Fatal(err) }
+	service := New(store,sos,cat,ledger)
+	if _, err := service.Create(so.SONumber,"attempt to return unshipped quantity","tester",false); err == nil {
+		t.Fatal("RMA accepted ordered/packed quantity without a committed shipped quantity")
+	}
+}
