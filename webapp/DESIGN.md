@@ -89,7 +89,7 @@ SKU, UPC y los códigos de pedido pueden conservarse como identificadores técni
 | Pizarra | `#5C6B7D` | Texto secundario |
 | Línea | `#D9E2EC` | Separadores y bordes |
 
-Proporción de referencia: 60 % neutros, 30 % azules y 10 % oro. El oro no se usa como texto corrido sobre blanco ni como superficie extensa. Como máximo debe existir una acción dorada dominante en una vista; las demás acciones usan azul o contorno.
+Proporción de referencia: 60 % neutros, 30 % azules y 10 % oro. El oro no se usa como texto corrido sobre blanco ni como superficie extensa. La acción principal de avance usa oro con texto azul profundo; las acciones secundarias usan azul o contorno y las destructivas nunca usan oro. Solo puede haber una acción dorada dominante por vista.
 
 El verde y el azul claro son colores de apoyo. No se debe comunicar un estado únicamente mediante color: cada estado lleva texto.
 
