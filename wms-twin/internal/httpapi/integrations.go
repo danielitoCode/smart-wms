@@ -605,12 +605,16 @@ func (s *Server) meshStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.mesh == nil {
-		writeJSON(w, 200, map[string]any{"peers": []any{}, "engine": "PrismaTec-Core"})
+		writeJSON(w, 200, map[string]any{"peers": []any{}, "engine": "PrismaTec-Core", "layer": "unavailable", "kademlia_ready": false, "gossipsub_ready": false})
 		return
 	}
+	kademliaReady, gossipSubReady := s.mesh.KademliaReady(), s.mesh.GossipSubReady()
+	layer := "peer-table+ttl-fanout"
+	if kademliaReady && gossipSubReady { layer = "libp2p-kademlia+gossipsub" }
 	writeJSON(w, 200, map[string]any{
 		"peers": s.mesh.Peers(), "closest": s.mesh.Closest(string(s.node.ID()), 8),
-		"engine": "PrismaTec-Core", "layer": "peer-table+ttl-gossip",
+		"engine": "PrismaTec-Core", "layer": layer,
+		"kademlia_ready": kademliaReady, "gossipsub_ready": gossipSubReady,
 	})
 }
 
