@@ -86,13 +86,16 @@ func (s *Service) CompletePack(soID int64, allowed []int64, isAdmin bool) (sales
 		return salesorders.SalesOrder{}, ErrScope
 	}
 	for i := range so.Lines {
-		if so.Lines[i].QuantityPacked < so.Lines[i].QuantityOrdered {
-			// allow complete if at least picked
-			if so.Lines[i].QuantityPacked == 0 && so.Lines[i].QuantityPicked > 0 {
-				so.Lines[i].QuantityPacked = so.Lines[i].QuantityPicked
-				so.Lines[i].Status = salesorders.LinePacked
+		line := &so.Lines[i]
+		if line.QuantityPacked < line.QuantityOrdered {
+			if line.QuantityPacked == 0 && line.QuantityPicked > 0 {
+				line.QuantityPacked = line.QuantityPicked
+			}
+			if line.QuantityPacked < line.QuantityOrdered {
+				return salesorders.SalesOrder{}, ErrState
 			}
 		}
+		line.Status = salesorders.LinePacked
 	}
 	so.Status = salesorders.StatusPacked
 	return so, s.sos.Save(so)
