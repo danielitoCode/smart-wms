@@ -25,7 +25,7 @@
 
 	<form class="filters" onsubmit={onFilter}>
 		<label>
-			ID de almacén
+			{i18n.t("ID de almacén")}
 			<input
 				type="number"
 				min="1"
@@ -42,7 +42,7 @@
 			{state.loading ? i18n.t('Cargando…') : i18n.t('Filtrar')}
 		</button>
 		<button type="button" class="secondary" onclick={() => state.load()} disabled={state.loading}>
-			Actualizar
+			{i18n.t("Actualizar")}
 		</button>
 	</form>
 

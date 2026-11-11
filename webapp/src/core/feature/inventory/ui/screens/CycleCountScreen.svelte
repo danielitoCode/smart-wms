@@ -25,7 +25,7 @@
 
 	<form class="panel" onsubmit={onCreate}>
 		<label>
-			ID de almacén
+			{i18n.t("ID de almacén")}
 			<input
 				type="number"
 				min="1"
@@ -35,7 +35,7 @@
 			/>
 		</label>
 		<label class="grow">
-			ID de ubicaciones
+			{i18n.t("ID de ubicaciones")}
 			<input
 				type="text"
 				placeholder="ej. 3, 4, 5"
@@ -46,7 +46,7 @@
 			/>
 		</label>
 		<button type="submit" class:accent={!state.detail || state.detail.status === 'COMPLETED'} class:quiet={!!state.detail && state.detail.status !== 'COMPLETED'} disabled={state.busy || !state.binIdsInput.trim()}>
-			Crear conteos
+			{i18n.t("Crear conteos")}
 		</button>
 	</form>
 

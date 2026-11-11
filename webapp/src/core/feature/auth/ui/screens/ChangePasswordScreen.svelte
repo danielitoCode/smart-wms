@@ -17,7 +17,7 @@
 
 <section class="page">
 	<div class="card">
-		{#if forced}<p class="forced-banner" role="alert"><strong>{i18n.t('Configuración inicial:')}</strong> debes establecer una contraseña nueva antes de continuar.</p>{/if}
+		{#if forced}<p class="forced-banner" role="alert"><strong>{i18n.t('Configuración inicial:')}</strong> {i18n.t("debes establecer una contraseña nueva antes de continuar.")}</p>{/if}
 		<p class="eyebrow">{i18n.t('Seguridad de la cuenta')}</p>
 		<h1>{i18n.t('Cambiar contraseña')}</h1>
 		<p class="intro">{i18n.t('Actualiza tu contraseña para continuar usando Smart WMS.')}</p>
