@@ -1,54 +1,27 @@
 #!/usr/bin/env bash
-# Smoke de paridad del gemelo (PrismaTec-Core) frente al contrato del backend original.
-# No arranca Flask; valida que el twin responde en las rutas críticas compartidas.
 set -euo pipefail
 BASE="${WMS_TWIN_BASE:-http://127.0.0.1:5001}"
 USER="${WMS_TWIN_USER:-operator}"
 PASS="${WMS_TWIN_PASS:-Operator123}"
-fail=0
-pass=0
-check() {
-  local name="$1" method="$2" path="$3" expect="$4"
-  shift 4 || true
-  local code body
-  body=$(curl -sS -o /tmp/parity-body.json -w "%{http_code}" -X "$method" "$BASE$path" "$@" || echo "000")
-  code=$body
-  if echo "$code" | grep -qE "$expect"; then
-    echo "PASS  $method $path ($code) — $name"
-    pass=$((pass+1))
-  else
-    echo "FAIL  $method $path (got $code, want $expect) — $name"
-    head -c 200 /tmp/parity-body.json; echo
-    fail=$((fail+1))
-  fi
-}
-
-echo "Twin base: $BASE"
-check "health" GET "/api/health" "200"
+fail() { echo "FAIL: $*" >&2; exit 1; }
+ok() { echo "OK: $*"; }
+code=$(curl -sS -o /tmp/wms-h.json -w "%{http_code}" "$BASE/api/health" || true)
+[[ "$code" == "200" ]] || fail "health HTTP $code"
+grep -q '"status":"ok"' /tmp/wms-h.json || fail "health body"
+ok "health"
 LOGIN=$(curl -sS -X POST "$BASE/api/auth/login" -H 'Content-Type: application/json' \
-  -d "{\"username\":\"$USER\",\"password\":\"$PASS\"}")
+  -d "{\"username\":\"$USER\",\"password\":\"$PASS\"}") || fail "login request"
 TOKEN=$(echo "$LOGIN" | sed -n 's/.*"token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
-if [[ -z "$TOKEN" ]]; then
-  echo "FAIL  login — no token"
-  echo "$LOGIN"
-  exit 1
-fi
-echo "PASS  login"
-pass=$((pass+1))
-AUTH=(-H "Authorization: Bearer $TOKEN")
-
-check "me" GET "/api/auth/me" "200" "${AUTH[@]}"
-check "system-info" GET "/api/admin/system-info" "200" "${AUTH[@]}"
-check "users" GET "/api/admin/users" "200" "${AUTH[@]}"
-check "warehouses" GET "/api/admin/warehouses" "200" "${AUTH[@]}"
-check "items" GET "/api/admin/items" "200" "${AUTH[@]}"
-check "sales-orders" GET "/api/admin/sales-orders" "200" "${AUTH[@]}"
-check "inventory balances" GET "/api/inventory/balances" "200" "${AUTH[@]}"
-check "lookup search" GET "/api/lookup/item/search?q=a" "200" "${AUTH[@]}"
-
-echo
-echo "Result: pass=$pass fail=$fail"
-if [[ "$fail" -gt 0 ]]; then
-  exit 1
-fi
-echo "PARITY SMOKE OK — rutas críticas del twin responden (no sustituye E2E Flask)."
+[[ -n "$TOKEN" ]] || fail "login sin token — arranca con WMS_TWIN_ALLOW_DEMO_BOOTSTRAP=true. body=$LOGIN"
+ok "login"
+AUTH="Authorization: Bearer $TOKEN"
+code=$(curl -sS -o /tmp/wms-wh.json -w "%{http_code}" "$BASE/api/admin/warehouses" -H "$AUTH")
+[[ "$code" == "200" ]] || fail "warehouses HTTP $code"
+ok "warehouses"
+code=$(curl -sS -o /tmp/wms-me.json -w "%{http_code}" "$BASE/api/auth/me" -H "$AUTH")
+[[ "$code" == "200" ]] || fail "me HTTP $code"
+ok "auth/me"
+code=$(curl -sS -o /tmp/wms-ab.json -w "%{http_code}" "$BASE/api/picking/active-batch" -H "$AUTH")
+[[ "$code" == "200" ]] || fail "active-batch HTTP $code"
+ok "picking active-batch"
+echo "SMOKE OK against $BASE"

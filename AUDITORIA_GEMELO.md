@@ -511,3 +511,9 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **mesh:** reintento de publish GossipSub entre dos nodos Core.
 - **demo-flow.sh:** mensaje explícito si falta `WMS_TWIN_ALLOW_DEMO_BOOTSTRAP=true`.
 - **Pruebas:** `go test ./... -count=1` en verde.
+
+### AUD-0025 — Rama única, lab scripts y demo visual de equipo
+
+- Eliminada la rama remota `fix/wms-twin-operational-completion`.
+- Canónica: `feat/wms-prismatec-genesis`.
+- Añadidos `scripts/start-lab.sh`, `parity-smoke.sh`, panel `demo/index.html` ampliado, `proxy/nginx.conf`, guía `docs/PROBAR_Y_DEMO_EQUIPO.md`.
