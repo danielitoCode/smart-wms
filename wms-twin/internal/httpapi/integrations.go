@@ -135,25 +135,27 @@ func (s *Server) posV1(w http.ResponseWriter, r *http.Request, rest string) {
 		})(w, r)
 	case r.Method == http.MethodPost && rest == "refund":
 		s.requireWMSToken("pos.refund", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
-			var in struct {
-				SONumber string `json:"so_number"`
-			}
+			var in pos.RefundInput
 			if err := decodeBody(r, &in); err != nil {
 				writeJSON(w, 400, map[string]string{"error": "Invalid request body"})
 				return
 			}
-			out, err := s.pos.Refund(in.SONumber, rec.Name)
+			original, lookupErr := s.pos.GetSO(in.SONumber)
+			if lookupErr != nil || (rec.WarehouseID != nil && original.WarehouseID != *rec.WarehouseID) {
+				writeJSON(w, 404, map[string]string{"error": "original POS sale not found"})
+				return
+			}
+			if in.CashierID == "" { in.CashierID = rec.Name }
+			out, replayed, err := s.pos.RefundTransaction(in, rec.Name)
 			if err != nil {
-				if errors.Is(err, pos.ErrUnsupported) {
-					writeJSON(w, 501, map[string]string{"error": err.Error()})
-				} else {
-					writeJSON(w, 404, map[string]string{"error": err.Error()})
-				}
+				writeJSON(w, 409, map[string]string{"error": err.Error()})
 				return
 			}
 			if s.events != nil {
-				_, _ = s.events.Emit("pos.refund", out)
+				ev, _ := s.events.Emit("pos.refund", out)
+				if s.webhooks != nil && ev.EventID != "" { _ = s.webhooks.DeliverEvent(ev.EventID, "pos.refund", out) }
 			}
+			if replayed { w.Header().Set("X-Idempotent-Replay", "true") }
 			writeJSON(w, 200, out)
 		})(w, r)
 	case r.Method == http.MethodPost && rest == "dispatch":
@@ -179,7 +181,8 @@ func (s *Server) posV1(w http.ResponseWriter, r *http.Request, rest string) {
 				return
 			}
 			if s.events != nil {
-				_, _ = s.events.Emit("pos.dispatch", out)
+				ev, _ := s.events.Emit("pos.dispatch", out)
+				if s.webhooks != nil && ev.EventID != "" { _ = s.webhooks.DeliverEvent(ev.EventID, "pos.dispatch", out) }
 			}
 			writeJSON(w, 200, out)
 		})(w, r)
