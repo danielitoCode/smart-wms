@@ -1,11 +1,10 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
+	import { getContext, onDestroy, onMount } from 'svelte';
 	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
-	const i18n = getContext<I18nState>('i18n');
-	import { onDestroy, onMount } from 'svelte';
 	import { createWarehouseDetailState } from '../state/warehouseDetailState.svelte';
 	import type { Bin, BinType, Zone, ZoneType } from '../../domain/entity/Warehouse';
 
+	const i18n = getContext<I18nState>('i18n');
 	let { warehouseId, showZones = true, showBins = true, includeBins = true, backHref = '/warehouses' }: { warehouseId: number; showZones?: boolean; showBins?: boolean; includeBins?: boolean; backHref?: string } = $props();
 	// svelte-ignore state_referenced_locally
 	const vm = createWarehouseDetailState(warehouseId, includeBins);
