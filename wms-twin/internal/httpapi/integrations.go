@@ -405,9 +405,9 @@ func (s *Server) snapshotV1(w http.ResponseWriter, r *http.Request, rest string)
 			s.requireWMSToken("snapshot.restore", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
 				var in struct {
 					OperationID string `json:"operation_id"`
-					ExpectedVersion uint64 `json:"expected_ledger_version"`
+					ExpectedVersion *uint64 `json:"expected_ledger_version"`
 				}
-				if err := decodeBody(r, &in); err != nil || strings.TrimSpace(in.OperationID) == "" {
+				if err := decodeBody(r, &in); err != nil || strings.TrimSpace(in.OperationID) == "" || in.ExpectedVersion == nil {
 					writeJSON(w, 400, map[string]string{"error": "operation_id and expected_ledger_version are required"})
 					return
 				}
@@ -424,7 +424,7 @@ func (s *Server) snapshotV1(w http.ResponseWriter, r *http.Request, rest string)
 					writeJSON(w, 403, map[string]string{"error": "global snapshot restore requires an unscoped token"})
 					return
 				}
-				result, err := s.snapshot.Restore(parts[0], in.OperationID, in.ExpectedVersion)
+				result, err := s.snapshot.Restore(parts[0], in.OperationID, *in.ExpectedVersion)
 				if err != nil {
 					if errors.Is(err, inventoryledger.ErrVersionConflict) || errors.Is(err, inventoryledger.ErrIdempotencyConflict) {
 						writeJSON(w, 409, map[string]string{"error": err.Error()})
