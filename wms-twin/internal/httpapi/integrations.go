@@ -324,6 +324,14 @@ func (s *Server) eventsV1(w http.ResponseWriter, r *http.Request, rest string) {
 			}
 			writeJSON(w, 200, map[string]any{"ok": true})
 		})(w, r)
+	case r.Method == http.MethodPost && rest == "retry-pending":
+		s.requireWMSToken("events.publish", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
+			if err := s.events.PublishPending(); err != nil {
+				writeJSON(w, 503, map[string]string{"error": err.Error()})
+				return
+			}
+			writeJSON(w, 200, map[string]any{"ok": true})
+		})(w, r)
 	default:
 		writeJSON(w, 404, map[string]string{"error": "not found"})
 	}
