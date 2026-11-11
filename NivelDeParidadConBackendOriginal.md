@@ -324,3 +324,6 @@ La prueba de cancelación RMA comprueba saldo neto cero tras revertir RESTOCK. E
 
 
 RMA solo admite unidades con `QuantityShipped` confirmado. Las cantidades ordenadas, recogidas o empaquetadas no son elegibles por sí solas. Esta regla se prueba con un pedido cuyo estado es SHIPPED pero cuyo detalle solo tiene cantidad packed; el RMA debe rechazarse.
+
+
+Añadí restricciones de unicidad para referencias externas de pago y devolución, y una clave legacy de void ligada a cada generación de shipment. Las pruebas cubren el rechazo de referencias repetidas y la reversión de inventario/reserva tras dos envíos sucesivos de una misma orden.
