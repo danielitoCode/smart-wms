@@ -647,6 +647,27 @@ func (s *Server) rmaRoutes(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, 200, out)
+	case r.Method == http.MethodPost && strings.HasSuffix(path, "/receive-line"):
+		id, parseErr := strconv.ParseInt(strings.TrimSuffix(path, "/receive-line"), 10, 64)
+		var in struct {
+			ItemID int64 `json:"item_id"`
+			Quantity int64 `json:"quantity"`
+			BinID int64 `json:"bin_id"`
+			LotNumber string `json:"lot_number"`
+			Disposition string `json:"disposition"`
+			OperationID string `json:"operation_id"`
+		}
+		if parseErr != nil || decodeBody(r, &in) != nil {
+			writeJSON(w, 400, map[string]string{"error": "invalid RMA receipt"})
+			return
+		}
+		out, err := s.rma.ReceiveLine(id, in.ItemID, in.Quantity, in.BinID, in.LotNumber, in.Disposition, in.OperationID, user.Username)
+		if err != nil {
+			writeJSON(w, 409, map[string]string{"error": err.Error()})
+			return
+		}
+		if s.events != nil { _, _ = s.events.Emit("rma.line.received", map[string]any{"rma_id": out.RMAID, "item_id": in.ItemID, "quantity": in.Quantity, "disposition": in.Disposition}) }
+		writeJSON(w, 200, out)
 	case r.Method == http.MethodPost && strings.HasSuffix(path, "/receive"):
 		id, _ := strconv.ParseInt(strings.TrimSuffix(path, "/receive"), 10, 64)
 		out, err := s.rma.Receive(id, user.Username)
