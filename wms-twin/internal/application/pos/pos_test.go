@@ -75,7 +75,7 @@ func TestRefundRestocksAndReplaysAfterFullRefund(t *testing.T) {
 	f := newPOSFixture(t)
 	so, _, err := f.service.CheckoutTransaction(checkoutInput(f,"checkout-refund",false),"cashier-1")
 	if err != nil { t.Fatal(err) }
-	in := RefundInput{SONumber:so.SONumber,IdempotencyKey:"refund-1",ExternalRefundRef:"gateway-refund-1",CashierID:"cashier-1",PaymentMethod:"cash",TotalCents:210}
+	in := RefundInput{SONumber:so.SONumber,IdempotencyKey:"refund-1",ExternalRefundRef:"gateway-refund-1",CashierID:"cashier-1",Reason:"customer returned complete purchase",PaymentMethod:"cash",TotalCents:210}
 	first, replayed, err := f.service.RefundTransaction(in,"cashier-1")
 	if err != nil { t.Fatal(err) }
 	if replayed || first["fully_refunded"] != true { t.Fatalf("unexpected refund result: %v replayed=%v",first,replayed) }
