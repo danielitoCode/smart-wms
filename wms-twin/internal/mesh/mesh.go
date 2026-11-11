@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/yecharlot/PrismaTec-Core/network"
+	"github.com/libp2p/go-libp2p-kad-dht"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
 
 const (
@@ -42,6 +44,13 @@ type Mesh struct {
 	peers     map[string]Peer
 	seen      map[string]time.Time
 	handlers  map[string]func(GossipEnvelope)
+	dht *dht.IpfsDHT
+	pubsub *pubsub.PubSub
+	topics map[string]*pubsub.Topic
+	subs map[string]*pubsub.Subscription
+	ctx context.Context
+	cancel context.CancelFunc
+	startErr error
 }
 
 func New(selfID string, transport network.Transport) *Mesh {
@@ -49,6 +58,7 @@ func New(selfID string, transport network.Transport) *Mesh {
 		selfID: selfID, transport: transport,
 		peers: make(map[string]Peer), seen: make(map[string]time.Time),
 		handlers: make(map[string]func(GossipEnvelope)),
+		topics: make(map[string]*pubsub.Topic), subs: make(map[string]*pubsub.Subscription),
 	}
 	if transport != nil {
 		transport.OnMessage(m.onMessage)
@@ -90,7 +100,10 @@ func (m *Mesh) handleGossip(env GossipEnvelope) {
 	if h != nil {
 		h(env)
 	}
-	if env.TTL > 1 && m.transport != nil {
+	m.mu.Lock()
+	hasGossipSub := m.pubsub != nil
+	m.mu.Unlock()
+	if env.TTL > 1 && m.transport != nil && !hasGossipSub {
 		env.TTL--
 		payload, _ := json.Marshal(env)
 		_ = m.transport.Broadcast(context.Background(), network.Message{
@@ -102,7 +115,9 @@ func (m *Mesh) handleGossip(env GossipEnvelope) {
 func (m *Mesh) OnTopic(topic string, h func(GossipEnvelope)) {
 	m.mu.Lock()
 	m.handlers[topic] = h
+	ready := m.pubsub != nil
 	m.mu.Unlock()
+	if ready { if err := m.subscribeTopic(topic); err != nil { m.mu.Lock(); m.startErr = err; m.mu.Unlock() } }
 }
 
 func (m *Mesh) Publish(topic string, payload any) error {
@@ -116,9 +131,17 @@ func (m *Mesh) Publish(topic string, payload any) error {
 		Payload: raw, TTL: 3, Origin: m.selfID, SentAt: time.Now().UTC(),
 	}
 	m.handleGossip(env)
-	if m.transport == nil {
-		return nil
+	m.mu.Lock()
+	ps := m.pubsub
+	ctx := m.ctx
+	m.mu.Unlock()
+	if ps != nil {
+		topic, err := m.joinTopic(topic)
+		if err != nil { return err }
+		if ctx == nil { ctx = context.Background() }
+		return topic.Publish(ctx, raw)
 	}
+	if m.transport == nil { return nil }
 	body, _ := json.Marshal(env)
 	return m.transport.Broadcast(context.Background(), network.Message{
 		Type: MsgGossip, From: m.selfID, Payload: body, SentAt: time.Now().UTC(),
