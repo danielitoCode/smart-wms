@@ -12,7 +12,7 @@ export type RequestOptions = {
 
 function readCsrfCookie(): string | null {
 	if (typeof document === 'undefined') return null;
-	const match = document.cookie.match(/(?:^|;\\s*)sentry_csrf=([^;]+)/);
+	const match = document.cookie.match(/(?:^|;\s*)sentry_csrf=([^;]+)/);
 	if (!match) return null;
 	try {
 		return decodeURIComponent(match[1]);
@@ -81,7 +81,7 @@ export class ApiClient {
 			return body as T;
 		} catch (err) {
 			if (err instanceof ApiError) throw err;
-			if (err instanceof DOMException && err.name === 'AbortError') {
+			if (controller.signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) {
 				if (timedOut) throw new ApiError(0, 'Request timed out', 'timeout');
 				throw new ApiError(0, 'Request cancelled', 'cancelled');
 			}
