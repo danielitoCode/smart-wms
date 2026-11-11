@@ -483,7 +483,7 @@ func (s *Server) webhooksV1(w http.ResponseWriter, r *http.Request, rest string)
 				writeJSON(w, 400, map[string]string{"error": err.Error()})
 				return
 			}
-			sub.Secret = ""
+			sub.Secret, sub.SecretCipher = "", ""
 			writeJSON(w, 201, sub)
 		default:
 			writeJSON(w, 405, map[string]string{"error": "method not allowed"})
