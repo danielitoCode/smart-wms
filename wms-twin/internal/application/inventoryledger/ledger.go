@@ -23,6 +23,7 @@ var (
 	ErrInvalidOperationID  = errors.New("operation_id must contain 1-128 ASCII letters, digits, '-' or '_'")
 	ErrIdempotencyConflict = errors.New("operation_id was already used with a different command")
 	ErrCorruptLedger       = errors.New("persisted inventory ledger is invalid")
+	ErrVersionConflict     = errors.New("inventory ledger version conflict")
 )
 
 type Location struct {
@@ -193,6 +194,52 @@ func (l *Ledger) Move(cmd MoveCommand) (Result, error) {
 		st.Balances[sourceKey] = nextSource
 		st.Balances[destinationKey] = nextDestination
 		return []inventory.Balance{nextSource, nextDestination}, nil
+	})
+}
+
+// RestoreBalances replaces the selected warehouse projection in one ledger
+// record write. expectedVersion is an optimistic guard against restoring over
+// inventory changes made after the snapshot was taken. operationID makes the
+// restore replay-safe. warehouseID=0 replaces the complete ledger.
+func (l *Ledger) RestoreBalances(operationID string, expectedVersion uint64, warehouseID int64, balances []inventory.Balance) (Result, error) {
+	if warehouseID < 0 {
+		return Result{}, inventory.ErrInvalidBalance
+	}
+	command := struct {
+		OperationID string `json:"operation_id"`
+		ExpectedVersion uint64 `json:"expected_version"`
+		WarehouseID int64 `json:"warehouse_id"`
+		Balances []inventory.Balance `json:"balances"`
+	}{operationID, expectedVersion, warehouseID, balances}
+	return l.execute(operationID, command, func(st *state) ([]inventory.Balance, error) {
+		if st.Version != expectedVersion {
+			return nil, fmt.Errorf("%w: expected %d, found %d", ErrVersionConflict, expectedVersion, st.Version)
+		}
+		next := make(map[string]inventory.Balance, len(st.Balances)+len(balances))
+		if warehouseID != 0 {
+			for key, value := range st.Balances {
+				if value.WarehouseID != warehouseID {
+					next[key] = value
+				}
+			}
+		}
+		changed := make([]inventory.Balance, 0, len(balances))
+		for _, value := range balances {
+			if err := value.Validate(); err != nil {
+				return nil, err
+			}
+			if warehouseID != 0 && value.WarehouseID != warehouseID {
+				return nil, fmt.Errorf("%w: snapshot contains a balance outside warehouse %d", inventory.ErrInvalidBalance, warehouseID)
+			}
+			key := balanceKey(value.WarehouseID, value.BinID, value.ItemID, value.LotNumber)
+			if _, exists := next[key]; exists {
+				return nil, fmt.Errorf("%w: duplicate snapshot balance", inventory.ErrInvalidBalance)
+			}
+			next[key] = value
+			changed = append(changed, value)
+		}
+		st.Balances = next
+		return changed, nil
 	})
 }
 
