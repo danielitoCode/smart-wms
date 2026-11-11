@@ -17,10 +17,10 @@ No declaro paridad por tener rutas con nombres parecidos. Cada caso debe igualar
 | Identidad nodo/transporte | No aplica | NodeID + PeerID Core | Firma NodeID y peers explícitos probados con LocalTransport; TCP/libp2p multi-proceso pendiente |
 | AIP Core | No aplica | AIP v1 listener independiente | Integrado |
 | CRUD genérico | Rutas SQL específicas | `/api/twin/records/*` | No compatible |
-| Auth | JWT HS256 + estado vivo de usuario | Bearer técnico | No compatible |
-| Cookies/CSRF | `sentry_auth`, `sentry_csrf`, doble envío | No | Pendiente |
-| Roles/permisos | Roles, page permissions, warehouse scopes | No | Pendiente |
-| Warehouses/zones/bins/items | CRUD, validación y relaciones | Sin endpoints compatibles | Pendiente |
+| Auth | JWT HS256 + estado vivo de usuario | JWT HS256 + estado vivo de usuario; Bearer técnico aislado en /api/twin | Parcial; falta diferencial completo |
+| Cookies/CSRF | `sentry_auth`, `sentry_csrf`, doble envío | `sentry_auth`, `sentry_csrf`, CSRF en mutaciones con cookie | Parcial; falta prueba diferencial completa |
+| Roles/permisos | Roles, page permissions, warehouse scopes | ADMIN/page permissions y warehouse scope en auth + catálogo inicial | Parcial; falta aplicar a todos los flujos |
+| Warehouses/zones/bins/items | CRUD, validación y relaciones | CRUD warehouses/zones/bins bajo /api/admin; items pendiente | Parcial |
 | Inventario | Transacciones, locks, reservas y auditoría | Ledger global: adjust/allocate/release/move, idempotencia, append por operación y réplica CID | Parcial de dominio; un primario global, no paridad ni quorum |
 | Receiving/put-away | PO, recepción, cancelación y ubicación | No | Pendiente |
 | Picking/waves | Batch, wave, short pick, cancel | No | Pendiente |

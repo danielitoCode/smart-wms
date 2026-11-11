@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/identity"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
@@ -22,6 +23,7 @@ type Server struct {
 	node             *core.Node
 	store            *corestore.Store
 	ledger           *inventoryledger.Ledger
+	catalog          *catalog.Repository
 	token            string
 	users            *identity.Repository
 	jwtSecret        []byte
@@ -44,8 +46,9 @@ func NewWithIdentity(node *core.Node, store *corestore.Store, token string, user
 	if loginLockout <= 0 {
 		loginLockout = 15 * time.Minute
 	}
+	ledger := inventoryledger.New(store)
 	return &Server{
-		node: node, store: store, ledger: inventoryledger.New(store), token: token,
+		node: node, store: store, ledger: ledger, catalog: catalog.New(store, ledger), token: token,
 		users: users, jwtSecret: append([]byte(nil), jwtSecret...),
 		maxLoginAttempts: maxLoginAttempts, loginLockout: loginLockout,
 		requirePacking: requirePacking,
@@ -55,6 +58,7 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/health", s.health)
 	mux.HandleFunc("/api/auth/", s.authRoute)
+	mux.HandleFunc("/api/admin/", s.RequireAuth(s.adminCatalog))
 	mux.HandleFunc("/api/twin/info", s.authorize(s.info))
 	mux.HandleFunc("/api/twin/records/", s.authorize(s.records))
 	mux.HandleFunc("/api/twin/inventory/", s.authorize(s.inventory))

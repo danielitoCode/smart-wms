@@ -309,3 +309,17 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Auditoría global:** `42899616007` falló en npm-audit admin/mobile y pip-audit Python; no corresponde al workflow WMS twin Go.
 - **Suite general:** `Tests` seguía en curso en el momento de registrar.
 - **Conclusión:** las nuevas rutas de auth y el bootstrap pasan validación Go; la paridad funcional global sigue pendiente.
+
+
+### AUD-0026 — Catálogo inicial de almacenes, zonas y bins
+
+- **Rama:** `feat/wms-prismatec-genesis`.
+- **Archivos nuevos:** `internal/application/catalog/catalog.go`, `internal/httpapi/catalog.go`, tests de catálogo y HTTP.
+- **Archivos conectados:** `internal/httpapi/server.go`.
+- **Detonante:** empezar la paridad funcional por las entidades maestras que condicionan recepción, ubicación, picking e inventario.
+- **Contrato de referencia:** `api/routes/admin/admin_warehouse.py`, `api/schemas/warehouses.py`, `api/schemas/zones.py`, `api/schemas/bins.py`; prefijo registrado `/api/admin`.
+- **Cambio:** CRUD de warehouses, zones y bins; filtros y paginación; relaciones de pertenencia; autorización JWT/page permission/warehouse scope; protección de borrado por dependencias y stock.
+- **Persistencia:** un organismo por entidad y organismo de secuencias para IDs enteros no reutilizables.
+- **Riesgos abiertos:** secuencia y registro son dos commits Core distintos; sin transacción distribuida. La serialización del catálogo es local al proceso. Falta exactitud Pydantic para null/errores, preferred_bins, detalle SKU/nombre, e integración de migraciones/fixtures.
+- **Pruebas añadidas:** ciclo warehouse-zone-bin, duplicados, referencias cruzadas, no reutilización de IDs, borrado con stock, rutas HTTP, login, page permission y warehouse scope.
+- **Validación:** pendiente del CI de este commit; no declaro ejecución local.

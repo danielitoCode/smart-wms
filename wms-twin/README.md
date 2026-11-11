@@ -11,12 +11,12 @@ Servicio Go independiente. No reemplaza ni importa código del backend Flask ori
 - [x] Invariantes puras de balance.
 - [x] Ledger Core-backed para ajuste, reserva, liberación y movimiento.
 - [x] Idempotencia por `operation_id`, reinicio y serialización local cubiertos por tests añadidos.
-- [ ] JWT HS256, cookies, CSRF, refresh/logout, lockout y revocación.
-- [ ] Roles, permisos por página, scopes por almacén y WMS token scopes.
+- [x] JWT HS256, cookies, CSRF, refresh/logout y lockout persistente; revocación individual por jti pendiente.
+- [~] Roles, permisos por página y scopes por almacén en la capa actual; WMS token scopes y cobertura total de rutas pendientes.
 - [ ] DTO/rutas compatibles y pruebas diferenciales.
 - [x] Transferencia firmada de bloques CID + snapshots entre peers explícitos, con ACK y fencing de réplica.
 - [ ] Quorum, autoridad por partición, reconciliación y failover seguro.
-- [ ] Flujos WMS completos.
+- [~] Primer corte de datos maestros (warehouses/zones/bins); demás flujos WMS pendientes.
 
 **NO SUSTITUIBLE.** El ledger es un primer corte de dominio, no un backend equivalente.
 

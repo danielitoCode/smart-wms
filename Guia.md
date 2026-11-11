@@ -9,7 +9,7 @@ Escribo esta guía para que cualquier desarrollador o agente de IA pueda arranca
 - Cada registro genérico WMS tiene su propio organismo `wms.{kind}.{id}`; las versiones son episodios y los datos son bloques CID locales.
 - El primer agregado de inventario persistente permite ajustar, reservar, liberar y mover stock con un solo append del ledger por operación, idempotencia y serialización dentro de un proceso. Cada registro WMS tiene su propio organismo Core; el ledger de inventario es un agregado global separado.
 - El endpoint de inventario es técnico (`/api/twin/inventory/*)); todavía no equivale a las rutas Flask originales.
-- El gemelo **NO ES SUSTITUIBLE**. No implementa todavía login JWT/cookies/CSRF, permisos ni los flujos WMS completos.
+- El gemelo **NO ES SUSTITUIBLE**. Ya implementa una primera capa JWT/cookies/CSRF y rutas maestras de warehouses/zones/bins; siguen pendientes las rutas restantes, la paridad diferencial y la validación operativa multi-nodo.
 - No agrego PostgreSQL, SQLite ni Redis al gemelo. El backend original conserva su infraestructura.
 - No copio ni vendo el código de PrismaTec-Core dentro de este repositorio.
 

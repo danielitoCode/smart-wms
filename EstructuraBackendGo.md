@@ -141,3 +141,17 @@ La importación de identidades ahora es idempotente: omite IDs ya persistidos, n
 La ejecución `42899616129` de WMS twin validation terminó en success sobre `5d8d334bb24dc21bf2609f8c8089092297563de8`. Pasaron guard de alcance/documentación, tidy diff, module verify, gofmt, vet y race tests. El commit de formato quedó en `2720ed7d70fb69e46422c3338dc354f15d30cc3a`.
 
 La auditoría global de dependencias `42899616007` falla por auditorías npm (admin/mobile) y pip (backend Python), separadas del gemelo Go. La suite general del repo estaba aún en curso al documentar.
+
+
+## Fase 03 — paquete de catálogo
+
+Añadí `internal/application/catalog` con repositorio Core-backed para `warehouses`, `zones` y `bins`. Cada entidad se almacena como un organismo independiente mediante `corestore.Store`; el repositorio asigna IDs enteros y conserva una secuencia separada para no reutilizar identificadores eliminados. La secuencia se persiste antes que el registro, por lo que un fallo puede dejar un hueco, pero no una colisión por reutilización.
+
+Las reglas de dominio cubren:
+- Código de warehouse único.
+- Código de zone único dentro del warehouse y tipo permitido: RECEIVING, STORAGE, PICKING, STAGING o SHIPPING.
+- Código de bin único dentro del warehouse, barcode único, tipo permitido: Staging, PickableStaging o Pickable.
+- Relación zone→warehouse y bin→zone/warehouse coherente.
+- Borrado bloqueado por dependencias: zonas/bins/stock.
+
+El repositorio serializa sus operaciones dentro del proceso. Esto no constituye exclusión distribuida ni una transacción atómica multi-organismo. La replicación conserva el comportamiento CoreStore: un fallo de réplica puede informar `local_commit=true`.

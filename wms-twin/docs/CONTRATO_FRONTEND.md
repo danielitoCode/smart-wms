@@ -27,6 +27,10 @@ La conmutación de upstream no demuestra compatibilidad. No dirijo tráfico real
 
 Se añadieron endpoints técnicos para consultar balances y ejecutar adjust/allocate/release/move. Requieren `WMS_TWIN_API_TOKEN` y `operation_id`. No reproducen `/api/transfers/move`, no usan el JWT de usuario y no deben conectarse desde el frontend original.
 
+## Estado de implementación
+
+La autenticación base ya está conectada: JWT HS256 de ocho horas, cookies HttpOnly SameSite Strict, doble envío CSRF, estado activo, invalidación por cambio de contraseña, forced password change, lockout persistente y autorización por rol/página/almacén. La primera porción de rutas de negocio también está portada: warehouses, zones y bins bajo `/api/admin`.
+
 ## Próxima implementación
 
-Portar JWT HS256 de ocho horas, cookies HttpOnly SameSite Strict, doble envío CSRF, estado activo/revocación, forced password change, rate limit y autorización por rol/página/almacén. Luego implementar rutas/DTO y compararlos con fixtures originales.
+Completar catálogo de items, preferred bins y vendors; después purchase orders/receiving/putaway, inventario operativo, picking/packing/shipping, conteos/transferencias, usuarios/tokens, eventos/snapshots, conectores y webhooks. Cada ruta se compara con fixtures del backend original antes de habilitar el frontend. No hay paridad global todavía.

@@ -68,3 +68,19 @@ Este mapa lo elaboré leyendo los decoradores Flask y los prefijos de registro d
 2. Administración requiere autenticación y permisos por página.
 3. Events, snapshot, inbound, dockd y POS usan WMS tokens/scopes específicos; no son JWT de usuario.
 4. Próximo paso: fixtures request/response por endpoint y matriz automatizada de paridad.
+
+
+## Fase 03 — rutas de datos maestros portadas
+
+El backend original registra `admin_bp` en `/api/admin`. En el gemelo implementé la primera porción de ese blueprint:
+
+| Método | Ruta | Gemelo |
+|---|---|---|
+| GET, POST | `/api/admin/warehouses` | Sí |
+| GET, PUT, DELETE | `/api/admin/warehouses/{warehouse_id}` | Sí |
+| GET, POST | `/api/admin/zones` | Sí |
+| PUT, DELETE | `/api/admin/zones/{zone_id}` | Sí |
+| GET, POST | `/api/admin/bins` | Sí |
+| GET, PUT, DELETE | `/api/admin/bins/{bin_id}` | Sí |
+
+Los métodos y DTO principales se contrastaron con `api/routes/admin/admin_warehouse.py` y los schemas. Quedan diferencias declaradas: GET individual de zone no forma parte del contrato original; detalle de bin todavía no enriquece SKU/nombre; reglas de borrado no consideran preferred_bins; validación y null semantics no reproducen Pydantic al 100%.
