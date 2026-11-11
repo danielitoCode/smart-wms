@@ -343,3 +343,19 @@ En las devoluciones POS consolido las líneas repetidas del mismo artículo/ubic
 ### Anulación de despacho POS y reexpedición
 
 Al anular un despacho POS, el gemelo recupera el inventario que se descontó durante la expedición. Si era una orden telefónica, restablece también la reserva que existía antes del despacho; en una venta POS normal no crea una reserva artificial. La operación se identifica por despacho y ubicación, guarda el progreso en el envío y se puede reintentar sin duplicar unidades. Tras la anulación, la orden telefónica vuelve al estado pagado/no expedido y puede despacharse con una nueva clave de idempotencia.
+
+
+## Cierre operativo del gemelo — rama de preparación para pruebas
+
+En este corte cerré varios huecos de idempotencia y recuperación que encontré al revisar el código completo:
+
+- En el void de un envío POS, ahora revierto el inventario que el checkout/dispatch había comprometido. Persisto el estado intermedio y la lista de ubicaciones revertidas; los IDs deterministas hacen que una recuperación después de una caída no duplique stock.
+- No permito anular un pedido telefónico que aún no completó su dispatch, ni anular una venta con devoluciones parciales sin conciliarlas primero.
+- En POS serializo dispatch y consolido las filas repetidas del mismo artículo/bin en un refund para que cada movimiento de inventario tenga un único operation_id.
+- El restore de snapshot crea primero un respaldo y el endpoint devuelve su identificador. El cliente debe guardar `backup_snapshot_id` antes de considerar finalizada la restauración.
+- Amplié el mapping inbound: item incluye UPC/MPN/categoría/descripción/peso/bin por defecto/reorder point/reorder quantity/activo; sales order incluye barcode/cliente/notas y líneas; purchase order incluye barcode/proveedor/fecha/notas y líneas con coste y número. Cuando el recurso ya existe por clave natural, comparo los campos mapeados y no lo doy por recuperado si el payload difiere.
+- Cuando se activa idempotencia inbound, exijo source_system, external_id y external_version. Una misma versión con payload distinto se rechaza; una versión diferente también queda en conflicto hasta que definamos el contrato de supersession del ERP.
+- El worker de webhooks informa fallos de persistencia y ejecución. Los mensajes se entregan con semántica at-least-once; no afirmo exactly-once entre nodos.
+- El arranque ya no trae una clave JWT fija ni credenciales demo implícitas. Exijo JWT_SECRET de al menos 32 caracteres y solo creo operator/admin de demo cuando activo explícitamente `WMS_TWIN_ALLOW_DEMO_BOOTSTRAP=true`.
+
+Para validar esta rama primero ejecutaré CI y la suite Go. Después comenzaré las pruebas reales en un único nodo y con datos aislados. El procesador de pagos externo, la actualización de recursos con external_version más nueva y la coordinación HA del worker siguen siendo integraciones/contratos pendientes; no las disfrazo como terminadas.
