@@ -3,7 +3,7 @@
 	import { createWarehouseDetailState } from '../state/warehouseDetailState.svelte';
 	import type { Bin, BinType, Zone, ZoneType } from '../../domain/entity/Warehouse';
 
-	let { warehouseId, showZones = true, showBins = true, includeBins = true }: { warehouseId: number; showZones?: boolean; showBins?: boolean; includeBins?: boolean } = $props();
+	let { warehouseId, showZones = true, showBins = true, includeBins = true, backHref = '/warehouses' }: { warehouseId: number; showZones?: boolean; showBins?: boolean; includeBins?: boolean; backHref?: string } = $props();
 	// svelte-ignore state_referenced_locally
 	const vm = createWarehouseDetailState(warehouseId, includeBins);
 
@@ -79,7 +79,7 @@
 </script>
 
 <section class="page">
-	<header><p class="back"><a href="/warehouses">← Almacenes</a></p>
+	<header><p class="back"><a href={backHref}>← Volver a datos</a></p>
 		{#if vm.warehouse}<h1>{vm.warehouse.name}</h1><p class="subtitle">{vm.warehouse.code} · {vm.warehouse.active ? 'Activo' : 'Inactivo'}</p>{#if vm.warehouse.address}<p class="subtitle">{vm.warehouse.address}</p>{/if}
 		{:else}<h1>Almacén #{warehouseId}</h1>{/if}
 	</header>

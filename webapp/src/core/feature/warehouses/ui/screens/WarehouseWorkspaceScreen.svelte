@@ -32,7 +32,7 @@
 	{:else if error}<p class="error" role="alert">{error}</p>
 	{:else if selectedId != null}
 		{#key selectedId}
-			<WarehouseDetailScreen warehouseId={selectedId} showZones={mode === 'zones'} showBins={mode === 'bins'} includeBins={mode === 'bins'} />
+			<WarehouseDetailScreen warehouseId={selectedId} showZones={mode === 'zones'} showBins={mode === 'bins'} includeBins={mode === 'bins'} backHref={mode === 'zones' ? '/data/zones' : '/data/bins'} />
 		{/key}
 	{/if}
 </section>
