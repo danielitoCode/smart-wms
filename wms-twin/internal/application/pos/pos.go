@@ -333,6 +333,141 @@ func (s *Service) GetSO(soNumber string) (salesorders.SalesOrder, error) {
 	return salesorders.SalesOrder{}, salesorders.ErrNotFound
 }
 
+type RefundLine struct {
+	ItemID int64 `json:"item_id"`
+	SKU string `json:"sku"`
+	BinID int64 `json:"bin_id"`
+	Quantity int64 `json:"quantity"`
+}
+
+type RefundInput struct {
+	SONumber string `json:"so_number"`
+	IdempotencyKey string `json:"idempotency_key"`
+	ExternalRefundRef string `json:"external_refund_ref"`
+	CashierID string `json:"cashier_id"`
+	PaymentMethod string `json:"payment_method"`
+	TotalCents int64 `json:"total_cents"`
+	Lines []RefundLine `json:"lines,omitempty"`
+}
+
+type RefundRecord struct {
+	ID string `json:"id"`
+	SaleID string `json:"sale_id"`
+	Fingerprint string `json:"fingerprint"`
+	Status string `json:"status"`
+	TotalCents int64 `json:"total_cents"`
+	Lines []SaleLine `json:"lines"`
+	FullyRefunded bool `json:"fully_refunded"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]any, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if strings.TrimSpace(in.SONumber) == "" || strings.TrimSpace(in.IdempotencyKey) == "" || strings.TrimSpace(in.ExternalRefundRef) == "" || in.TotalCents <= 0 {
+		return nil, false, ErrInvalid
+	}
+	so, err := s.GetSO(in.SONumber)
+	if err != nil { return nil, false, err }
+	records, err := s.store.List("wms_pos_sale")
+	if err != nil { return nil, false, err }
+	var sale SaleRecord
+	found := false
+	for _, record := range records {
+		var candidate SaleRecord
+		if json.Unmarshal(record.Data, &candidate) == nil && candidate.SOID == so.SOID {
+			sale, found = candidate, true
+			break
+		}
+	}
+	if !found || (sale.Status != "COMPLETED" && sale.Status != "DISPATCHED") || so.Status != salesorders.StatusShipped {
+		return nil, false, salesorders.ErrNotFound
+	}
+	if time.Since(sale.CreatedAt) > 90*24*time.Hour { return nil, false, fmt.Errorf("refund window expired") }
+	if strings.ToLower(strings.TrimSpace(in.PaymentMethod)) != sale.PaymentMethod {
+		return nil, false, fmt.Errorf("tender mismatch: original sale used %s", sale.PaymentMethod)
+	}
+	fingerprintBytes, err := json.Marshal(in)
+	if err != nil { return nil, false, err }
+	fingerprintSum := sha256.Sum256(fingerprintBytes)
+	fingerprint := hex.EncodeToString(fingerprintSum[:])
+	idSum := sha256.Sum256([]byte(in.IdempotencyKey))
+	refundID := hex.EncodeToString(idSum[:])
+	if record, ok, err := s.store.Get("wms_pos_refund", refundID); err != nil {
+		return nil, false, err
+	} else if ok {
+		var prior RefundRecord
+		if err := json.Unmarshal(record.Data, &prior); err != nil { return nil, false, err }
+		if prior.Fingerprint != fingerprint { return nil, false, fmt.Errorf("refund idempotency key reused with different body") }
+		if prior.Status == "COMPLETED" {
+			return map[string]any{"refund_id":prior.ID,"original_so_number":in.SONumber,"fully_refunded":prior.FullyRefunded,"total_cents":prior.TotalCents,"replayed":true}, true, nil
+		}
+	}
+	original := make(map[string]SaleLine)
+	for _, line := range sale.Lines {
+		key := fmt.Sprintf("%d:%d", line.ItemID, line.BinID)
+		current := original[key]
+		current = line
+		current.Quantity = original[key].Quantity + line.Quantity
+		original[key] = current
+	}
+	already := make(map[string]int64)
+	refundRecords, err := s.store.List("wms_pos_refund")
+	if err != nil { return nil, false, err }
+	for _, record := range refundRecords {
+		var prior RefundRecord
+		if json.Unmarshal(record.Data, &prior) != nil || prior.SaleID != sale.ID || prior.Status != "COMPLETED" { continue }
+		for _, line := range prior.Lines { already[fmt.Sprintf("%d:%d", line.ItemID, line.BinID)] += line.Quantity }
+	}
+	requested := make([]SaleLine, 0)
+	if len(in.Lines) == 0 {
+		for key, line := range original {
+			remaining := line.Quantity - already[key]
+			if remaining > 0 { line.Quantity = remaining; requested = append(requested, line) }
+		}
+	} else {
+		for _, line := range in.Lines {
+			itemID := line.ItemID
+			if itemID <= 0 {
+				for _, originalLine := range sale.Lines { if originalLine.SKU == line.SKU { itemID = originalLine.ItemID; break } }
+			}
+			key := fmt.Sprintf("%d:%d", itemID, line.BinID)
+			base, exists := original[key]
+			if !exists || line.Quantity <= 0 || line.Quantity > base.Quantity-already[key] { return nil, false, fmt.Errorf("refund line is not in the original sale or exceeds remaining quantity") }
+			base.Quantity = line.Quantity
+			requested = append(requested, base)
+		}
+	}
+	if len(requested) == 0 { return nil, false, fmt.Errorf("sale has no refundable quantity remaining") }
+	var alreadyTotal int64
+	for _, value := range already { alreadyTotal += value }
+	var originalTotal int64
+	for _, value := range original { originalTotal += value.Quantity }
+	var requestedTotal int64
+	for _, value := range requested { requestedTotal += value.Quantity }
+	full := alreadyTotal+requestedTotal == originalTotal
+	if in.TotalCents > sale.TotalCents { return nil, false, fmt.Errorf("refund amount exceeds original sale total") }
+	refund := RefundRecord{ID:refundID, SaleID:sale.ID, Fingerprint:fingerprint, Status:"PREPARING", TotalCents:in.TotalCents, Lines:requested, CreatedAt:time.Now().UTC()}
+	data, _ := json.Marshal(refund)
+	if _, err := s.store.Put("wms_pos_refund", refundID, data); err != nil { return nil, false, err }
+	for _, line := range requested {
+		opSum := sha256.Sum256([]byte(in.IdempotencyKey + "|" + fmt.Sprintf("%d:%d:%d", line.WarehouseID, line.BinID, line.ItemID)))
+		opID := "pos-ref-" + hex.EncodeToString(opSum[:16])
+		if _, err := s.ledger.Adjust(inventoryledger.AdjustCommand{OperationID:opID, WarehouseID:line.WarehouseID, BinID:line.BinID, ItemID:line.ItemID, Delta:line.Quantity}); err != nil { return nil, false, err }
+	}
+	refund.Status, refund.FullyRefunded = "COMPLETED", full
+	data, err = json.Marshal(refund)
+	if err != nil { return nil, false, err }
+	if _, err := s.store.Put("wms_pos_refund", refundID, data); err != nil { return nil, false, err }
+	if full {
+		sale.Status = "REFUNDED"
+		data, err = json.Marshal(sale)
+		if err != nil { return nil, false, err }
+		if _, err := s.store.Put("wms_pos_sale", sale.ID, data); err != nil { return nil, false, err }
+	}
+	return map[string]any{"refund_id":refundID,"original_so_number":in.SONumber,"fully_refunded":full,"total_cents":in.TotalCents,"external_refund_ref":in.ExternalRefundRef,"actor":actor,"replayed":false}, false, nil
+}
+
 func (s *Service) Refund(soNumber string, actor string) (map[string]any, error) {
 	if _, err := s.GetSO(soNumber); err != nil {
 		return nil, err
