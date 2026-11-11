@@ -243,6 +243,23 @@ func (l *Ledger) RestoreBalances(operationID string, expectedVersion uint64, war
 	})
 }
 
+// HasOperation reports whether an inventory operation was durably committed.
+// It is used by higher-level sagas to close the crash window between a ledger
+// commit and persisting the saga's progress marker.
+func (l *Ledger) HasOperation(operationID string) (bool, error) {
+	if !validOperationID(operationID) {
+		return false, ErrInvalidOperationID
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	st, err := l.load()
+	if err != nil {
+		return false, err
+	}
+	_, ok := st.Operations[operationID]
+	return ok, nil
+}
+
 func (l *Ledger) List() ([]inventory.Balance, uint64, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
