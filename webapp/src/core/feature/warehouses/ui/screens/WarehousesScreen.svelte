@@ -4,7 +4,7 @@
 	import { authSession } from '../../../../infrastructure/auth/AuthSession';
 	import type { Warehouse } from '../../domain/entity/Warehouse';
 
-	const state = createWarehousesState();
+	const vm = createWarehousesState();
 	let showForm = $state(false);
 	let editing = $state(null as Warehouse | null);
 	let deleteTarget = $state(null as Warehouse | null);
@@ -15,7 +15,7 @@
 		['zones', 'bins'].every(key => authSession.getUser()?.allowedPages.includes(key))
 	);
 
-	onMount(() => { void state.load(); });
+	onMount(() => { void vm.load(); });
 
 	function openCreate() {
 		editing = null;
@@ -29,12 +29,12 @@
 	}
 	async function save() {
 		const ok = editing
-			? await state.update({ id: editing.id, name: form.name, address: form.address || null, active: form.active })
-			: await state.create({ code: form.code, name: form.name, address: form.address || null });
+			? await vm.update({ id: editing.id, name: form.name, address: form.address || null, active: form.active })
+			: await vm.create({ code: form.code, name: form.name, address: form.address || null });
 		if (ok) showForm = false;
 	}
 	async function remove() {
-		if (deleteTarget && await state.remove(deleteTarget.id)) deleteTarget = null;
+		if (deleteTarget && await vm.remove(deleteTarget.id)) deleteTarget = null;
 	}
 </script>
 
@@ -43,16 +43,16 @@
 		<div><h1>Almacenes</h1><p class="subtitle">Maestro de almacenes</p></div>
 		<button class="primary" type="button" onclick={openCreate}>Nuevo almacén</button>
 	</header>
-	{#if state.loading}
+	{#if vm.loading}
 		<p class="status">Cargando almacenes…</p>
-	{:else if state.error && !state.loadedOnce}
-		<p class="error" role="alert">{state.error}</p><button type="button" onclick={() => state.load()}>Reintentar</button>
-	{:else if state.warehouses.length === 0}
+	{:else if vm.error && !vm.loadedOnce}
+		<p class="error" role="alert">{vm.error}</p><button type="button" onclick={() => vm.load()}>Reintentar</button>
+	{:else if vm.warehouses.length === 0}
 		<p class="empty">No hay almacenes registrados.</p>
 	{:else}
 		<div class="table-wrap"><table>
 			<thead><tr><th>Código</th><th>Nombre</th><th>Dirección</th><th>Estado</th><th>Acciones</th></tr></thead>
-			<tbody>{#each state.warehouses as wh (wh.id)}
+			<tbody>{#each vm.warehouses as wh (wh.id)}
 				<tr><td class="mono">{wh.code}</td><td>{wh.name}</td><td>{wh.address ?? '—'}</td>
 					<td><span class:inactive={!wh.active} class="status-pill">{wh.active ? 'Activo' : 'Inactivo'}</span></td>
 					<td class="actions">{#if canOpenLayout}<a href={'/warehouses/' + wh.id}>Zonas y bins</a>{/if}
@@ -62,27 +62,27 @@
 			{/each}</tbody>
 		</table></div>
 	{/if}
-	{#if state.error && state.loadedOnce}<p class="error" role="alert">{state.error}</p>{/if}
+	{#if vm.error && vm.loadedOnce}<p class="error" role="alert">{vm.error}</p>{/if}
 </section>
 
 {#if showForm}
 	<div class="backdrop"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="warehouse-form-title">
 		<h2 id="warehouse-form-title">{editing ? 'Editar almacén' : 'Nuevo almacén'}</h2>
 		<form onsubmit={(e) => { e.preventDefault(); void save(); }}>
-			{#if !editing}<label>Código<input bind:value={form.code} maxlength="32" required disabled={state.mutating} /></label>{/if}
-			<label>Nombre<input bind:value={form.name} maxlength="256" required disabled={state.mutating} /></label>
-			<label>Dirección<input bind:value={form.address} maxlength="512" disabled={state.mutating} /></label>
-			{#if editing}<label class="check"><input type="checkbox" bind:checked={form.active} disabled={state.mutating} /> Activo</label>{/if}
-			{#if state.error}<p class="error" role="alert">{state.error}</p>{/if}
-			<footer><button type="button" class="quiet" onclick={() => showForm = false} disabled={state.mutating}>Cancelar</button><button type="submit" class="primary" disabled={state.mutating}>{state.mutating ? 'Guardando…' : 'Guardar'}</button></footer>
+			{#if !editing}<label>Código<input bind:value={form.code} maxlength="32" required disabled={vm.mutating} /></label>{/if}
+			<label>Nombre<input bind:value={form.name} maxlength="256" required disabled={vm.mutating} /></label>
+			<label>Dirección<input bind:value={form.address} maxlength="512" disabled={vm.mutating} /></label>
+			{#if editing}<label class="check"><input type="checkbox" bind:checked={form.active} disabled={vm.mutating} /> Activo</label>{/if}
+			{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
+			<footer><button type="button" class="quiet" onclick={() => showForm = false} disabled={vm.mutating}>Cancelar</button><button type="submit" class="primary" disabled={vm.mutating}>{vm.mutating ? 'Guardando…' : 'Guardar'}</button></footer>
 		</form>
 	</section></div>
 {/if}
 {#if deleteTarget}
 	<div class="backdrop"><section class="dialog" role="alertdialog" aria-modal="true">
 		<h2>Eliminar almacén</h2><p>¿Eliminar <strong>{deleteTarget.code} — {deleteTarget.name}</strong>? Solo será posible si no tiene inventario, bins ni zonas asociados.</p>
-		{#if state.error}<p class="error" role="alert">{state.error}</p>{/if}
-		<footer><button type="button" class="quiet" onclick={() => deleteTarget = null} disabled={state.mutating}>Cancelar</button><button type="button" class="danger" onclick={remove} disabled={state.mutating}>{state.mutating ? 'Eliminando…' : 'Eliminar'}</button></footer>
+		{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
+		<footer><button type="button" class="quiet" onclick={() => deleteTarget = null} disabled={vm.mutating}>Cancelar</button><button type="button" class="danger" onclick={remove} disabled={vm.mutating}>{vm.mutating ? 'Eliminando…' : 'Eliminar'}</button></footer>
 	</section></div>
 {/if}
 
