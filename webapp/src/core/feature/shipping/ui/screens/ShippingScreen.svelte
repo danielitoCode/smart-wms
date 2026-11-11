@@ -85,7 +85,7 @@
 					oninput={(e) => state.setShipMethod(e.currentTarget.value)}
 					disabled={state.busy} />
 			</label>
-			<button type="submit" class="primary" disabled={state.busy}>Registrar despacho</button>
+			<button type="submit" class="accent" disabled={state.busy}>Registrar despacho</button>
 		</form>
 	{/if}
 </section>

@@ -201,7 +201,7 @@
 					/>
 				</label>
 				<div class="actions">
-					<button type="submit" disabled={state.busy}>Confirmar recogida</button>
+					<button type="submit" class="accent" disabled={state.busy}>Confirmar recogida</button>
 					<button type="button" class="secondary" onclick={() => state.shortPick()} disabled={state.busy}>
 						Indicar faltante (0)
 					</button>

@@ -85,7 +85,7 @@
 			<button type="submit" disabled={state.busy}>Verificar</button>
 		</form>
 
-		<button type="button" class="primary" onclick={() => state.complete()} disabled={state.busy}>
+		<button type="button" class="accent" onclick={() => state.complete()} disabled={state.busy}>
 			Completar empaque
 		</button>
 	{/if}

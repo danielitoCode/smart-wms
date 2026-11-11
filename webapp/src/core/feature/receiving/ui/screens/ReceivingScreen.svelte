@@ -109,7 +109,7 @@
 							</tbody>
 						</table>
 					</div>
-					<button type="submit" class="primary" disabled={state.submitting}>
+					<button type="submit" class="accent" disabled={state.submitting}>
 						{state.submitting ? 'Registrando…' : 'Registrar recepción'}
 					</button>
 				</form>

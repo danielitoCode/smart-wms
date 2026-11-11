@@ -101,7 +101,7 @@
 	{:else}
 		{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
 		{#if showZones}<section class="panel">
-			<div class="section-header"><h2>Zonas</h2><button class="primary" type="button" onclick={openCreateZone}>Nueva zona</button></div>
+			<div class="section-header"><h2>Zonas</h2><button class="quiet" type="button" onclick={openCreateZone}>Nueva zona</button></div>
 			{#if vm.zones.length === 0}<p class="status">Sin zonas.</p>
 			{:else}<div class="table-wrap"><table><thead><tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
 				{#each vm.zones as zone (zone.id)}<tr class:selected={vm.selectedZoneId === zone.id}><td class="mono">{zone.code}</td><td>{zone.name}</td><td>{zoneTypeLabel(zone.zoneType)}</td><td>{zone.active ? 'Activo' : 'Inactivo'}</td>
@@ -110,7 +110,7 @@
 			{#if vm.selectedZoneId != null}<p class="filter-hint">Filtrando por zona #{vm.selectedZoneId} <button class="linkish" type="button" onclick={() => vm.loadBinsForZone(null,1)}>Quitar filtro</button></p>{/if}{/if}
 		</section>{/if}
 		{#if showBins}<section class="panel">
-			<div class="section-header bin-heading"><h2>Ubicaciones</h2><div class="bin-tools"><input aria-label="Buscar ubicaciones" placeholder="Buscar código o código de barras" value={vm.binSearch} oninput={(e) => onSearch(e.currentTarget.value)} /><button class="quiet" type="button" onclick={exportCsv} disabled={exporting || vm.binTotal === 0}>{exporting ? 'Exportando…' : 'Exportar CSV'}</button><button class="primary" type="button" onclick={openCreateBin} disabled={vm.zones.length === 0}>Nueva ubicación</button></div></div>
+			<div class="section-header bin-heading"><h2>Ubicaciones</h2><div class="bin-tools"><input aria-label="Buscar ubicaciones" placeholder="Buscar código o código de barras" value={vm.binSearch} oninput={(e) => onSearch(e.currentTarget.value)} /><button class="quiet" type="button" onclick={exportCsv} disabled={exporting || vm.binTotal === 0}>{exporting ? 'Exportando…' : 'Exportar CSV'}</button><button class="accent" type="button" onclick={openCreateBin disabled={vm.zones.length === 0}>Nueva ubicación</button></div></div>
 			{#if vm.binsLoading}<p class="status">Actualizando ubicaciones…</p>
 			{:else if vm.bins.length === 0}<p class="status">No hay ubicaciones para este filtro.</p>
 			{:else}<div class="table-wrap"><table><thead><tr><th>Código</th><th>Código de barras</th><th>Tipo</th><th>Zona</th><th>Pasillo</th><th>Orden de preparación</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
