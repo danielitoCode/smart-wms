@@ -415,7 +415,7 @@ func (s *Server) webhooksV1(w http.ResponseWriter, r *http.Request, rest string)
 			}
 			sub, err := s.webhooks.Create(in.URL, in.Secret, in.EventTypes)
 			if err != nil {
-				writeJSON(w, 500, map[string]string{"error": err.Error()})
+				writeJSON(w, 400, map[string]string{"error": err.Error()})
 				return
 			}
 			sub.Secret = ""
