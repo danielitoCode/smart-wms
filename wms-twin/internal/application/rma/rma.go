@@ -107,6 +107,7 @@ func (s *Service) Create(soNumber, reason, actor string, backorder bool) (RMA, e
 	if saleID != "" {
 		refundRecords, err := s.store.List("wms_pos_refund")
 		if err != nil { return RMA{}, err }
+		if so.Status == salesorders.StatusPartiallyRefunded && len(refundRecords) == 0 { return RMA{}, fmt.Errorf("partial refund records are missing; cannot determine remaining returnable quantities") }
 		for _, record := range refundRecords {
 			var refund struct {
 				SaleID string `json:"sale_id"`
