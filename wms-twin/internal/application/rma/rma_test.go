@@ -79,3 +79,37 @@ func TestRMAUsesOnlyUnrefundedShippedQuantity(t *testing.T) {
 	if err != nil { t.Fatal(err) }
 	if len(rma.Lines)!=1 || rma.Lines[0].Expected!=1 { t.Fatalf("RMA included already-refunded quantity: %+v",rma.Lines) }
 }
+
+func TestRMACancelReversesRestockedInventoryIdempotently(t *testing.T) {
+	node, err := core.NewNode(core.Config{DataDir:t.TempDir(),Name:"wms-rma-cancel-test"})
+	if err != nil { t.Fatal(err) }
+	store := corestore.New(node.Organisms(),string(node.ID()))
+	ledger := inventoryledger.New(store)
+	cat := catalog.New(store,ledger)
+	warehouse, err := cat.CreateWarehouse(catalog.WarehouseInput{WarehouseCode:"RMA-CANCEL",WarehouseName:"RMA Cancel"})
+	if err != nil { t.Fatal(err) }
+	zone, err := cat.CreateZone(catalog.ZoneInput{WarehouseID:warehouse.WarehouseID,ZoneCode:"RET-C",ZoneName:"Returns",ZoneType:"STORAGE"})
+	if err != nil { t.Fatal(err) }
+	bin, err := cat.CreateBin(catalog.BinInput{ZoneID:zone.ZoneID,WarehouseID:warehouse.WarehouseID,BinCode:"RET-C-01",BinBarcode:"RET-C-01",BinType:"Pickable"})
+	if err != nil { t.Fatal(err) }
+	item, err := cat.CreateItem(catalog.ItemInput{SKU:"RMA-CANCEL-SKU",ItemName:"Cancel returned item"})
+	if err != nil { t.Fatal(err) }
+	sos := salesorders.New(store,cat)
+	so, err := sos.Create(salesorders.CreateInput{SONumber:"SO-RMA-CANCEL",WarehouseID:warehouse.WarehouseID,Lines:[]salesorders.LineInput{{ItemID:item.ItemID,QuantityOrdered:2}}},"tester")
+	if err != nil { t.Fatal(err) }
+	so.Status = salesorders.StatusShipped
+	so.Lines[0].QuantityShipped = 2
+	so.Lines[0].Status = salesorders.LineShipped
+	if err := sos.Save(so); err != nil { t.Fatal(err) }
+	service := New(store,sos,cat,ledger)
+	rma, err := service.Create(so.SONumber,"cancel after receiving","tester",false)
+	if err != nil { t.Fatal(err) }
+	if _, err := service.ReceiveLine(rma.RMAID,item.ItemID,2,bin.BinID,"LOT-C","RESTOCK","rma-cancel-receipt","receiver"); err != nil { t.Fatal(err) }
+	cancelled, err := service.Cancel(rma.RMAID,"supervisor")
+	if err != nil { t.Fatal(err) }
+	if cancelled.Status != "CANCELLED" || !cancelled.Lines[0].Receipts[0].Reversed { t.Fatalf("restock was not marked reversed: %+v",cancelled) }
+	if _, err := service.Cancel(rma.RMAID,"supervisor"); err != nil { t.Fatal(err) }
+	balances, _, err := ledger.List()
+	if err != nil { t.Fatal(err) }
+	if len(balances) != 0 { t.Fatalf("cancelled RMA left stock in inventory: %+v",balances) }
+}
