@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -32,9 +33,9 @@ func MappingSchema() map[string]any {
 		"version":   1,
 		"resources": []string{"sales_orders", "items", "purchase_orders"},
 		"fields": map[string]any{
-			"sales_orders":    []string{"external_id", "external_version", "so_number", "warehouse_id", "warehouse_code", "customer_name", "notes", "lines[item_id|sku,quantity]"},
-			"items":           []string{"external_id", "external_version", "sku", "item_name", "upc", "mpn", "category", "description"},
-			"purchase_orders": []string{"external_id", "external_version", "po_number", "warehouse_id", "warehouse_code", "vendor_name", "expected_date", "notes", "lines[item_id|sku,quantity_ordered]"},
+			"sales_orders":    []string{"external_id", "external_version", "so_number", "so_barcode", "warehouse_id", "warehouse_code", "customer_name", "notes", "lines[item_id|sku,quantity]"},
+			"items":           []string{"external_id", "external_version", "sku", "item_name", "upc", "mpn", "category", "description", "weight_lbs", "default_bin_id", "reorder_point", "reorder_qty", "is_active"},
+			"purchase_orders": []string{"external_id", "external_version", "po_number", "po_barcode", "warehouse_id", "warehouse_code", "vendor_name", "expected_date", "notes", "lines[item_id|sku,quantity_ordered,unit_cost,line_number]"},
 		},
 		"idempotency": map[string]any{"key": "source_system + resource + external_id", "same_version_same_payload": "replay cached result", "same_version_different_payload": "409 conflict", "newer_version": "requires explicit canonical update mapping"},
 		"engine": "PrismaTec-Core",
@@ -63,7 +64,7 @@ func (s *Service) Write(req WriteRequest, actor string) (map[string]any, error) 
 		idemKey := ""
 		fingerprint := ""
 		if sourceSystem != "" || externalID != "" {
-			if sourceSystem == "" || len(sourceSystem) > 128 || strings.TrimSpace(externalID) == "" || len(externalID) > 256 || len(externalVersion) > 128 {
+			if sourceSystem == "" || len(sourceSystem) > 128 || strings.TrimSpace(externalID) == "" || len(externalID) > 256 || (strings.TrimSpace(externalVersion) == "" || len(externalVersion) > 128) {
 				err = fmt.Errorf("source_system and external_id must be supplied together")
 			} else {
 				canonical, marshalErr := json.Marshal(rec)
@@ -115,181 +116,204 @@ func (s *Service) Write(req WriteRequest, actor string) (map[string]any, error) 
 func (s *Service) writeItem(rec map[string]any) (map[string]any, error) {
 	sku, _ := rec["sku"].(string)
 	name, _ := rec["item_name"].(string)
-	if sku == "" || name == "" {
-		return nil, fmt.Errorf("sku and item_name required")
+	if strings.TrimSpace(sku) == "" || strings.TrimSpace(name) == "" { return nil, fmt.Errorf("sku and item_name required") }
+	description := optionalString(rec,"description")
+	upc := optionalString(rec,"upc")
+	mpn := optionalString(rec,"mpn")
+	category := optionalString(rec,"category")
+	var weight *float64
+	if raw, exists := rec["weight_lbs"]; exists {
+		value, ok := floatField(raw); if !ok || value < 0 || value > 99999 { return nil, fmt.Errorf("weight_lbs must be a finite non-negative number") }
+		weight = &value
 	}
-	var upc, mpn, category, description *string
-	if value, ok := rec["upc"].(string); ok && value != "" { upc = &value }
-	if value, ok := rec["mpn"].(string); ok && value != "" { mpn = &value }
-	if value, ok := rec["category"].(string); ok && value != "" { category = &value }
-	if value, ok := rec["description"].(string); ok && value != "" { description = &value }
+	var defaultBin *int64
+	if raw, exists := rec["default_bin_id"]; exists {
+		value, ok := integerField(raw); if !ok || value <= 0 { return nil, fmt.Errorf("default_bin_id must be a positive integer") }
+		defaultBin = &value
+	}
+	var reorderPoint, reorderQty *int64
+	if raw, exists := rec["reorder_point"]; exists {
+		value, ok := integerField(raw); if !ok || value < 0 { return nil, fmt.Errorf("reorder_point must be a non-negative integer") }
+		reorderPoint = &value
+	}
+	if raw, exists := rec["reorder_qty"]; exists {
+		value, ok := integerField(raw); if !ok || value < 0 { return nil, fmt.Errorf("reorder_qty must be a non-negative integer") }
+		reorderQty = &value
+	}
+	var active *bool
+	if raw, exists := rec["is_active"]; exists {
+		value, ok := raw.(bool); if !ok { return nil, fmt.Errorf("is_active must be boolean") }
+		active = &value
+	}
 	items, err := s.cat.ListItems()
 	if err != nil { return nil, err }
+	var itemID int64
 	for _, existing := range items {
 		if existing.SKU == sku {
 			if existing.ItemName != name { return nil, fmt.Errorf("SKU already exists with a different canonical item name") }
-			return map[string]any{"item_id": existing.ItemID, "sku": existing.SKU, "recovered": true}, nil
+			itemID = existing.ItemID
+			break
 		}
 	}
-	item, err := s.cat.CreateItem(catalog.ItemInput{SKU: sku, ItemName: name, UPC: upc, MPN: mpn, Category: category, Description: description})
-	if err != nil {
-		return nil, err
+	if itemID == 0 {
+		item, err := s.cat.CreateItem(catalog.ItemInput{SKU:sku,ItemName:name,Description:description,UPC:upc,MPN:mpn,Category:category,WeightLbs:weight,DefaultBinID:defaultBin})
+		if err != nil { return nil, err }
+		itemID = item.ItemID
 	}
-	return map[string]any{"item_id": item.ItemID, "sku": item.SKU}, nil
+	patch := catalog.ItemPatch{
+		Description:description, UPC:upc, MPN:mpn, Category:category,
+		WeightLbs:weight, DefaultBinID:defaultBin, ReorderPoint:reorderPoint,
+		ReorderQty:reorderQty, IsActive:active,
+	}
+	if description != nil || upc != nil || mpn != nil || category != nil || weight != nil || defaultBin != nil || reorderPoint != nil || reorderQty != nil || active != nil {
+		if _, err := s.cat.UpdateItem(itemID,patch); err != nil { return nil, err }
+	}
+	return map[string]any{"item_id":itemID,"sku":sku},nil
 }
 
 func (s *Service) writeSO(rec map[string]any, actor string) (map[string]any, error) {
 	soNumber, _ := rec["so_number"].(string)
-	if soNumber == "" {
-		if eid, ok := rec["external_id"].(string); ok {
-			soNumber = eid
-		}
-	}
-	if soNumber == "" {
-		return nil, fmt.Errorf("so_number required")
-	}
+	if strings.TrimSpace(soNumber) == "" { soNumber, _ = rec["external_id"].(string) }
+	if strings.TrimSpace(soNumber) == "" { return nil, fmt.Errorf("so_number required") }
 	wid, _ := integerField(rec["warehouse_id"])
 	if wid == 0 {
 		if code, ok := rec["warehouse_code"].(string); ok && strings.TrimSpace(code) != "" {
-			warehouses, err := s.cat.ListWarehouses()
-			if err != nil { return nil, err }
+			warehouses, err := s.cat.ListWarehouses(); if err != nil { return nil, err }
 			for _, warehouse := range warehouses { if warehouse.WarehouseCode == code { wid = warehouse.WarehouseID; break } }
 		}
 	}
 	if wid <= 0 { return nil, fmt.Errorf("warehouse_id or a valid warehouse_code is required") }
-	rawLines, _ := rec["lines"].([]any)
-	lines := make([]salesorders.LineInput, 0)
-	for _, rl := range rawLines {
-		m, ok := rl.(map[string]any)
-		if !ok {
-			continue
-		}
-		itemID, _ := integerField(m["item_id"])
-		if itemID <= 0 {
-			if sku, ok := m["sku"].(string); ok && strings.TrimSpace(sku) != "" {
-				items, err := s.cat.ListItems()
-				if err != nil { return nil, err }
-				for _, item := range items { if item.SKU == sku { itemID = item.ItemID; break } }
-			}
-		}
-		qty := int64(0)
-		switch v := m["quantity"].(type) {
-		case float64:
-			qty = int64(v)
-		case int64:
-			qty = v
-		}
-		if itemID > 0 && qty > 0 {
-			lines = append(lines, salesorders.LineInput{ItemID: itemID, QuantityOrdered: qty})
-		}
+	rawLines, ok := rec["lines"].([]any)
+	if !ok || len(rawLines) == 0 || len(rawLines) > 500 { return nil, fmt.Errorf("sales order requires 1..500 lines") }
+	items, err := s.cat.ListItems(); if err != nil { return nil, err }
+	idBySKU := make(map[string]int64,len(items))
+	for _, item := range items { idBySKU[item.SKU] = item.ItemID }
+	lines := make([]salesorders.LineInput,0,len(rawLines))
+	for i, raw := range rawLines {
+		line, ok := raw.(map[string]any); if !ok { return nil, fmt.Errorf("sales order line %d must be an object",i) }
+		itemID, okID := integerField(line["item_id"])
+		if !okID || itemID <= 0 { if sku, exists := line["sku"].(string); exists { itemID = idBySKU[strings.TrimSpace(sku)] } }
+		quantity, okQty := integerField(line["quantity"])
+		if !okQty { quantity, okQty = integerField(line["quantity_ordered"]) }
+		if itemID <= 0 || !okQty || quantity <= 0 { return nil, fmt.Errorf("sales order line %d requires a known item and positive integer quantity",i) }
+		lines = append(lines,salesorders.LineInput{ItemID:itemID,QuantityOrdered:quantity})
 	}
-	if len(lines) == 0 {
-		return nil, fmt.Errorf("at least one line required")
-	}
-	var customerName *string
-	if value, ok := rec["customer_name"].(string); ok { customerName = &value }
-	var notes *string
-	if value, ok := rec["notes"].(string); ok { notes = &value }
-	existingOrders, err := s.sos.List()
-	if err != nil { return nil, err }
+	barcode := optionalString(rec,"so_barcode")
+	customer := optionalString(rec,"customer_name")
+	notes := optionalString(rec,"notes")
+	expectedBarcode := soNumber; if barcode != nil && *barcode != "" { expectedBarcode = *barcode }
+	existingOrders, err := s.sos.List(); if err != nil { return nil, err }
 	for _, existing := range existingOrders {
 		if existing.SONumber != soNumber { continue }
-		if existing.WarehouseID != wid || len(existing.Lines) != len(lines) { return nil, fmt.Errorf("sales-order number already exists with a different canonical payload") }
-		matches := true
-		for i, line := range lines { if existing.Lines[i].ItemID != line.ItemID || existing.Lines[i].QuantityOrdered != line.QuantityOrdered { matches = false; break } }
-		if !matches { return nil, fmt.Errorf("sales-order number already exists with a different canonical payload") }
-		return map[string]any{"so_id": existing.SOID, "so_number": existing.SONumber, "recovered": true}, nil
+		if existing.WarehouseID != wid || existing.SOBarcode != expectedBarcode || existing.CustomerName != derefString(customer) || existing.Notes != derefString(notes) || len(existing.Lines) != len(lines) {
+			return nil, fmt.Errorf("sales-order number already exists with a different canonical payload")
+		}
+		for i, line := range lines {
+			if existing.Lines[i].ItemID != line.ItemID || existing.Lines[i].QuantityOrdered != line.QuantityOrdered {
+				return nil, fmt.Errorf("sales-order number already exists with a different canonical payload")
+			}
+		}
+		return map[string]any{"so_id":existing.SOID,"so_number":existing.SONumber,"status":existing.Status,"warehouse_id":existing.WarehouseID,"lines":existing.Lines,"recovered":true},nil
 	}
-	so, err := s.sos.Create(salesorders.CreateInput{SONumber: soNumber, WarehouseID: wid, Lines: lines, CustomerName: customerName, Notes: notes}, actor)
-	if err != nil {
-		return nil, err
-	}
-	return map[string]any{"so_id": so.SOID, "so_number": so.SONumber}, nil
+	so, err := s.sos.Create(salesorders.CreateInput{SONumber:soNumber,WarehouseID:wid,Lines:lines,SOBarcode:barcode,CustomerName:customer,Notes:notes},actor)
+	if err != nil { return nil, err }
+	return map[string]any{"so_id":so.SOID,"so_number":so.SONumber,"status":so.Status,"warehouse_id":so.WarehouseID,"lines":so.Lines,"created_by":actor},nil
 }
 
 func (s *Service) writePO(rec map[string]any, actor string) (map[string]any, error) {
-	if s.pos == nil {
-		return nil, fmt.Errorf("purchase-order repository is not configured")
-	}
+	if s.pos == nil { return nil, fmt.Errorf("purchase-order repository is not configured") }
 	poNumber, _ := rec["po_number"].(string)
-	if strings.TrimSpace(poNumber) == "" {
-		return nil, fmt.Errorf("po_number required")
-	}
+	if strings.TrimSpace(poNumber) == "" { return nil, fmt.Errorf("po_number required") }
 	warehouseID, ok := integerField(rec["warehouse_id"])
 	if !ok || warehouseID <= 0 {
 		if code, exists := rec["warehouse_code"].(string); exists && strings.TrimSpace(code) != "" {
-			warehouses, err := s.cat.ListWarehouses()
-			if err != nil { return nil, err }
-			for _, warehouse := range warehouses { if warehouse.WarehouseCode == code { warehouseID = warehouse.WarehouseID; ok = true; break } }
+			warehouses, err := s.cat.ListWarehouses(); if err != nil { return nil, err }
+			for _, warehouse := range warehouses { if warehouse.WarehouseCode == code { warehouseID, ok = warehouse.WarehouseID, true; break } }
 		}
 	}
 	if !ok || warehouseID <= 0 { return nil, fmt.Errorf("warehouse_id or valid warehouse_code required") }
 	rawLines, ok := rec["lines"].([]any)
-	if !ok || len(rawLines) == 0 {
-		return nil, fmt.Errorf("at least one purchase-order line is required")
-	}
-	lines := make([]purchaseorders.LineInput, 0, len(rawLines))
+	if !ok || len(rawLines) == 0 || len(rawLines) > 500 { return nil, fmt.Errorf("purchase order requires 1..500 lines") }
+	items, err := s.cat.ListItems(); if err != nil { return nil, err }
+	idBySKU := make(map[string]int64,len(items)); for _, item := range items { idBySKU[item.SKU] = item.ItemID }
+	lines := make([]purchaseorders.LineInput,0,len(rawLines))
 	for i, raw := range rawLines {
-		line, ok := raw.(map[string]any)
-		if !ok {
-			return nil, fmt.Errorf("line %d must be an object", i)
-		}
+		line, ok := raw.(map[string]any); if !ok { return nil, fmt.Errorf("purchase-order line %d must be an object",i) }
 		itemID, okID := integerField(line["item_id"])
-		if !okID {
-			if sku, exists := line["sku"].(string); exists && strings.TrimSpace(sku) != "" {
-				items, err := s.cat.ListItems()
-				if err != nil { return nil, err }
-				for _, item := range items { if item.SKU == sku { itemID, okID = item.ItemID, true; break } }
-			}
-		}
+		if !okID || itemID <= 0 { if sku, exists := line["sku"].(string); exists { itemID = idBySKU[strings.TrimSpace(sku)] } }
 		quantity, okQty := integerField(line["quantity_ordered"])
-		if !okQty {
-			quantity, okQty = integerField(line["quantity"])
+		if !okQty { quantity, okQty = integerField(line["quantity"]) }
+		if itemID <= 0 || !okQty || quantity <= 0 { return nil, fmt.Errorf("purchase-order line %d requires a known item and positive integer quantity",i) }
+		var unitCost *float64
+		if rawCost, exists := line["unit_cost"]; exists {
+			value, ok := floatField(rawCost); if !ok || value < 0 { return nil, fmt.Errorf("purchase-order line %d has invalid unit_cost",i) }
+			unitCost = &value
 		}
-		if !okID || !okQty || itemID <= 0 || quantity <= 0 {
-			return nil, fmt.Errorf("line %d requires positive item_id and quantity", i)
+		var lineNumber *int
+		if rawNumber, exists := line["line_number"]; exists {
+			value, ok := integerField(rawNumber); if !ok || value < 1 || value > 500 { return nil, fmt.Errorf("purchase-order line %d has invalid line_number",i) }
+			n := int(value); lineNumber = &n
 		}
-		lines = append(lines, purchaseorders.LineInput{ItemID: itemID, QuantityOrdered: quantity})
+		lines = append(lines,purchaseorders.LineInput{ItemID:itemID,QuantityOrdered:quantity,UnitCost:unitCost,LineNumber:lineNumber})
 	}
-	var vendor *string
-	if value, ok := rec["vendor_name"].(string); ok && strings.TrimSpace(value) != "" {
-		vendor = &value
-	}
-	var expected *string
-	if value, ok := rec["expected_date"].(string); ok && value != "" {
-		expected = &value
-	}
-	var notes *string
-	if value, ok := rec["notes"].(string); ok && value != "" {
-		notes = &value
-	}
-	existingOrders, err := s.pos.List()
-	if err != nil { return nil, err }
+	barcode := optionalString(rec,"po_barcode")
+	vendor := optionalString(rec,"vendor_name")
+	expected := optionalString(rec,"expected_date")
+	notes := optionalString(rec,"notes")
+	expectedBarcode := poNumber; if barcode != nil { expectedBarcode = *barcode }
+	existingOrders, err := s.pos.List(); if err != nil { return nil, err }
 	for _, existing := range existingOrders {
 		if existing.PONumber != poNumber { continue }
-		if existing.WarehouseID != warehouseID || len(existing.Lines) != len(lines) { return nil, fmt.Errorf("purchase-order number already exists with a different canonical payload") }
-		matches := true
-		for i, line := range lines { if existing.Lines[i].ItemID != line.ItemID || existing.Lines[i].QuantityOrdered != line.QuantityOrdered { matches = false; break } }
-		if !matches { return nil, fmt.Errorf("purchase-order number already exists with a different canonical payload") }
-		return map[string]any{"po_id": existing.POID, "po_number": existing.PONumber, "status": existing.Status, "warehouse_id": existing.WarehouseID, "lines": existing.Lines, "recovered": true}, nil
+		if existing.WarehouseID != warehouseID || existing.POBarcode != expectedBarcode || !sameOptionalString(existing.VendorName,vendor) || !sameOptionalString(existing.ExpectedDate,expected) || !sameOptionalString(existing.Notes,notes) || len(existing.Lines) != len(lines) {
+			return nil, fmt.Errorf("purchase-order number already exists with a different canonical payload")
+		}
+		for i, line := range lines {
+			if existing.Lines[i].ItemID != line.ItemID || existing.Lines[i].QuantityOrdered != line.QuantityOrdered || !sameOptionalFloat(existing.Lines[i].UnitCost,line.UnitCost) {
+				return nil, fmt.Errorf("purchase-order number already exists with a different canonical payload")
+			}
+			if line.LineNumber != nil && existing.Lines[i].LineNumber != *line.LineNumber { return nil, fmt.Errorf("purchase-order number already exists with a different canonical payload") }
+		}
+		return map[string]any{"po_id":existing.POID,"po_number":existing.PONumber,"status":existing.Status,"warehouse_id":existing.WarehouseID,"lines":existing.Lines,"recovered":true},nil
 	}
-	po, err := s.pos.Create(purchaseorders.CreateInput{
-		PONumber: poNumber, WarehouseID: warehouseID, Lines: lines,
-		VendorName: vendor, ExpectedDate: expected, Notes: notes,
-	}, actor)
-	if err != nil {
-		return nil, err
+	po, err := s.pos.Create(purchaseorders.CreateInput{PONumber:poNumber,WarehouseID:warehouseID,Lines:lines,POBarcode:barcode,VendorName:vendor,ExpectedDate:expected,Notes:notes},actor)
+	if err != nil { return nil, err }
+	return map[string]any{"po_id":po.POID,"po_number":po.PONumber,"status":po.Status,"warehouse_id":po.WarehouseID,"lines":po.Lines,"created_by":actor},nil
+}
+
+func optionalString(record map[string]any, key string) *string {
+	value, exists := record[key]
+	if !exists { return nil }
+	text, ok := value.(string)
+	if !ok { return nil }
+	return &text
+}
+func derefString(value *string) string { if value == nil { return "" }; return *value }
+func sameOptionalString(a,b *string) bool {
+	if a == nil || b == nil { return a == nil && b == nil }
+	return *a == *b
+}
+func sameOptionalFloat(a,b *float64) bool {
+	if a == nil || b == nil { return a == nil && b == nil }
+	return *a == *b
+}
+func floatField(value any) (float64,bool) {
+	var number float64
+	switch v := value.(type) {
+	case float64: number = v
+	case float32: number = float64(v)
+	case int: number = float64(v)
+	case int64: number = float64(v)
+	case json.Number: parsed,err:=v.Float64(); if err!=nil{return 0,false}; number=parsed
+	default: return 0,false
 	}
-	return map[string]any{
-		"po_id": po.POID, "po_number": po.PONumber, "status": po.Status,
-		"warehouse_id": po.WarehouseID, "lines": po.Lines, "created_by": actor,
-	}, nil
+	if math.IsNaN(number) || math.IsInf(number,0) { return 0,false }
+	return number,true
 }
 
 func integerField(value any) (int64, bool) {
 	switch number := value.(type) {
 	case float64:
-		if number != float64(int64(number)) {
+		if math.IsNaN(number) || math.IsInf(number,0) || math.Trunc(number) != number || number > float64(math.MaxInt64) || number < float64(math.MinInt64) {
 			return 0, false
 		}
 		return int64(number), true
