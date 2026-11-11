@@ -209,7 +209,7 @@ Se corrigieron los bloqueos del pipeline de dependencias antes de continuar la m
 - Webapp: añadido `@types/node` para que `translations.test.ts` sea comprobado por TypeScript. Corregido `vite.config.ts` para que Vitest incluya el test de i18n que antes quedaba fuera del patrón `src/test`.
 - Lockfiles de admin, mobile y webapp regenerados con npm y guardados en el commit `06b476a`. La automatización de refresh ejecutó auditorías, check, build y todas las suites antes de guardar los lockfiles.
 
-**Evidencia CI:** [Refresh dependency lockfiles — run 42977481412](https://github.com/danielitoCode/smart-wms/actions/runs/42977481412). Resultado: `svelte-check` 0 errores (7 warnings preexistentes de accesibilidad/CSS), build correcto, 34 archivos de test y 90 tests aprobados; `pip-audit` sin vulnerabilidades conocidas; auditorías npm sin HIGH/CRITICAL no aceptados. Esta ejecución valida el contenido exacto de los lockfiles generados; el siguiente commit debe disparar los workflows ordinarios sobre el nuevo HEAD para comprobar también sus gates estándar.
+**Evidencia CI:** [Refresh dependency lockfiles — run 42977481412](https://github.com/danielitoCode/smart-wms/actions/runs/42977481412). Resultado: `svelte-check` 0 errores (7 warnings preexistentes de accesibilidad/CSS), build correcto, 34 archivos de test y 90 tests aprobados; `pip-audit` sin vulnerabilidades conocidas; auditorías npm sin HIGH/CRITICAL no aceptados. Además, en el commit `140f72a` los workflows ordinarios quedaron aprobados: [Webapp CI](https://github.com/danielitoCode/smart-wms/actions/runs/42977875511), [Dependency Audit](https://github.com/danielitoCode/smart-wms/actions/runs/42977875515), [Lockfile Version Check](https://github.com/danielitoCode/smart-wms/actions/runs/42977875555) y [gitleaks](https://github.com/danielitoCode/smart-wms/actions/runs/42977875440). El workflow general `Tests` seguía ejecutando la suite backend al registrar esta evidencia; su resultado se mantiene separado de los gates específicos de la migración.
 
 #### Evidencia de arquitectura y contratos revisados
 
@@ -814,7 +814,7 @@ Actualizar esta sección al cerrar cada PR/feature. Mantener una única fuente d
 
 | Hito | Estado | PR/commit | Evidencia / notas |
 |---|---|---|---|
-| Fase 0 — Preparación | [~] En curso | `8e63f13` … `4432c84`, `b06b06b`, `faa10f8`, `06b476a` | Auditorías de dependencias, check, build y suites separadas aprobados en run 42977481412. F0.7 verificado; F0.3, F0.5 (tests UI de interacción) y F0.8 (regresión HTTP completa) siguen abiertos. Pendiente CI ordinario sobre el nuevo HEAD. |
+| Fase 0 — Preparación | [~] En curso | `8e63f13` … `4432c84`, `b06b06b`, `faa10f8`, `06b476a` | Auditorías, check, build y suites separadas aprobados en run 42977481412; gates ordinarios del commit 140f72a: Webapp CI, Dependency Audit, Lockfile Version Check y gitleaks en verde. F0.7 verificado; F0.3, F0.5 (tests UI de interacción) y F0.8 (regresión HTTP completa) siguen abiertos. |
 | Fase 1 — Catálogos | [ ] Pendiente | — | — |
 | Fase 2 — Inventario y conteos | [ ] Pendiente | — | — |
 | Fase 3 — Abastecimiento | [ ] Pendiente | — | — |
