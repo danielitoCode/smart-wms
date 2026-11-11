@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiClient } from '../../../core/infrastructure/api/ApiClient';
 
 afterEach(() => {
+	vi.useRealTimers();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 });
@@ -38,5 +39,50 @@ describe('ApiClient browser cookie contract', () => {
 		const [, options] = fetchMock.mock.calls[0];
 		expect(options.credentials).toBe('include');
 		expect(options.headers['X-CSRF-Token']).toBeUndefined();
+	});
+
+	it('keeps the configured timeout active when a caller signal is supplied', async () => {
+		vi.useFakeTimers();
+		vi.stubGlobal('fetch', (_input: RequestInfo | URL, init?: RequestInit) =>
+			new Promise<Response>((_resolve, reject) => {
+				init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+			})
+		);
+		const client = new ApiClient('http://localhost:5000');
+		const caller = new AbortController();
+		const request = client.get('/api/slow', { signal: caller.signal });
+
+		await vi.advanceTimersByTimeAsync(30_000);
+
+		await expect(request).rejects.toMatchObject({ code: 'timeout', status: 0 });
+	});
+
+	it('distinguishes caller cancellation from a timeout', async () => {
+		vi.stubGlobal('fetch', (_input: RequestInfo | URL, init?: RequestInit) =>
+			new Promise<Response>((_resolve, reject) => {
+				init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+			})
+		);
+		const client = new ApiClient('http://localhost:5000');
+		const caller = new AbortController();
+		const request = client.get('/api/slow', { signal: caller.signal });
+
+		caller.abort();
+
+		await expect(request).rejects.toMatchObject({ code: 'cancelled', status: 0 });
+	});
+
+	it('cancels immediately when the caller signal is already aborted', async () => {
+		const fetchMock = vi.fn();
+		vi.stubGlobal('fetch', fetchMock);
+		const client = new ApiClient('http://localhost:5000');
+		const caller = new AbortController();
+		caller.abort();
+
+		await expect(client.get('/api/slow', { signal: caller.signal })).rejects.toMatchObject({
+			code: 'cancelled',
+			status: 0
+		});
+		expect(fetchMock).not.toHaveBeenCalled();
 	});
 });
