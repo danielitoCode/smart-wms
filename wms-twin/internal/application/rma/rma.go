@@ -107,16 +107,19 @@ func (s *Service) Create(soNumber, reason, actor string, backorder bool) (RMA, e
 	if saleID != "" {
 		refundRecords, err := s.store.List("wms_pos_refund")
 		if err != nil { return RMA{}, err }
-		if so.Status == salesorders.StatusPartiallyRefunded && len(refundRecords) == 0 { return RMA{}, fmt.Errorf("partial refund records are missing; cannot determine remaining returnable quantities") }
+		matchedRefundHistory := false
 		for _, record := range refundRecords {
 			var refund struct {
 				SaleID string `json:"sale_id"`
 				Status string `json:"status"`
 				Lines []struct { ItemID int64 `json:"item_id"`; Quantity int64 `json:"quantity"` } `json:"lines"`
 			}
-			if json.Unmarshal(record.Data, &refund) != nil || refund.SaleID != saleID || refund.Status != "COMPLETED" { continue }
+			if json.Unmarshal(record.Data, &refund) != nil || refund.SaleID != saleID { continue }
+			matchedRefundHistory = true
+			if refund.Status != "COMPLETED" { continue }
 			for _, line := range refund.Lines { refundedByItem[line.ItemID] += line.Quantity }
 		}
+		if so.Status == salesorders.StatusPartiallyRefunded && !matchedRefundHistory { return RMA{}, fmt.Errorf("partial refund records are missing; cannot determine remaining returnable quantities") }
 	} else if so.Status == salesorders.StatusPartiallyRefunded {
 		return RMA{}, fmt.Errorf("POS refund ledger is missing; cannot determine remaining returnable quantities")
 	}
