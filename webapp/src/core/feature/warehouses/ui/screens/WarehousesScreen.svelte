@@ -1,13 +1,12 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
-	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
-	const i18n = getContext<I18nState>('i18n');
 	import { getContext, onMount } from 'svelte';
+	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
 	import { createWarehousesState } from '../state/warehousesState.svelte';
 	import { authSession } from '../../../../infrastructure/auth/AuthSession';
 	import type { WarehouseSelectionState } from '../state/warehouseSelectionState.svelte';
 	import type { Warehouse } from '../../domain/entity/Warehouse';
 
+	const i18n = getContext<I18nState>('i18n');
 	const vm = createWarehousesState();
 	const selection = getContext<WarehouseSelectionState>('warehouseSelection');
 	let showForm = $state(false);
