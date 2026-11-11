@@ -315,3 +315,11 @@ En esta fase amplié el endurecimiento inicial para que las operaciones principa
 ### Validación
 
 Añadí pruebas unitarias para checkout/replay, refund/restock/replay, dispatch telefónico, void/replay, RMA restock/disposición, outbox de webhooks, idempotencia inbound, snapshot restore y recepción remota de eventos. La validación definitiva depende de los workflows de GitHub Actions; no marco el corte como validado hasta leer sus resultados.
+
+
+### Ajustes de recuperación y arranque de red
+
+- Snapshot Restore ahora crea y conserva un snapshot de respaldo del estado actual antes de modificar el ledger. El endpoint devuelve `backup_snapshot_id`; el registro de operación conserva ese ID y el resultado para que un retry no cree otro respaldo ni repita el restore.
+- El runtime no continúa silenciosamente si se configuró LibP2P y falla el arranque de Kademlia/GossipSub: `StartBackground` devuelve el error y Runtime.New detiene el nodo.
+- Para activar DHT/GossipSub, el Core debe arrancar con transporte libp2p: `PRISMATEC_TRANSPORT=libp2p` y `PRISMATEC_NETWORK_ADDR` como multiaddr, por ejemplo `/ip4/0.0.0.0/tcp/4001`. Si se usa TCP `host:port` o no hay red configurada, queda el adapter TTL y no se anuncia Kademlia/GossipSub.
+- El worker de eventos reconcilia periódicamente todos los eventos persistidos con el outbox de webhooks usando el timestamp original. Así una caída entre la persistencia del evento y la creación de deliveries no pierde permanentemente la notificación; la creación es idempotente por subscription/event_id.
