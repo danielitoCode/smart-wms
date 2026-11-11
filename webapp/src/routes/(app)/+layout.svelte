@@ -58,7 +58,7 @@
 	}
 	async function bootstrap() {
 		await guard.verify();
-		if (guard.status === 'authenticated') await warehouseSelection.load(guard.user ? {
+		if (guard.status === 'authenticated' && !guard.user?.mustChangePassword) await warehouseSelection.load(guard.user ? {
 			userId: guard.user.userId, username: guard.user.username, fullName: guard.user.fullName,
 			role: guard.user.role, warehouseIds: guard.user.warehouseIds,
 			allowedPages: guard.user.allowedPages, allowedFunctions: guard.user.allowedFunctions, mustChangePassword: guard.user.mustChangePassword
