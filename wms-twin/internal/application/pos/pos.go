@@ -97,6 +97,7 @@ type SaleRecord struct {
 	TotalCents int64 `json:"total_cents"`
 	Tenders []Tender `json:"tenders"`
 	Lines []SaleLine `json:"lines"`
+	AppliedKeys []string `json:"applied_keys,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -225,6 +226,7 @@ func (s *Service) CheckoutTransaction(in CheckoutInput, actor string) (salesorde
 	} else if ok {
 		if err := json.Unmarshal(rec.Data, &sale); err != nil { return salesorders.SalesOrder{}, false, err }
 		if sale.Fingerprint != fingerprint { return salesorders.SalesOrder{}, false, fmt.Errorf("POS idempotency key reused with different body") }
+		if sale.Status == "FAILED" { return salesorders.SalesOrder{}, false, fmt.Errorf("previous POS checkout attempt was compensated and failed; use a new idempotency key") }
 		if sale.Status == "COMPLETED" {
 			so, err := s.sos.Get(sale.SOID)
 			return so, true, err
@@ -266,6 +268,27 @@ func (s *Service) CheckoutTransaction(in CheckoutInput, actor string) (salesorde
 		current.Quantity += line.Quantity
 		aggregated[key] = current
 	}
+	compensate := func() error {
+		for _, appliedKey := range sale.AppliedKeys {
+			line, exists := aggregated[appliedKey]
+			if !exists { return fmt.Errorf("POS saga contains unknown applied location %q", appliedKey) }
+			opSum := sha256.Sum256([]byte(in.IdempotencyKey + "|" + appliedKey))
+			compID := "pos-cmp-" + hex.EncodeToString(opSum[:12])
+			if in.PhoneOrder {
+				if _, e := s.ledger.Release(inventoryledger.QuantityCommand{OperationID:compID, WarehouseID:line.WarehouseID, BinID:line.BinID, ItemID:line.ItemID, Quantity:line.Quantity}); e != nil { return e }
+			} else {
+				if _, e := s.ledger.Adjust(inventoryledger.AdjustCommand{OperationID:compID, WarehouseID:line.WarehouseID, BinID:line.BinID, ItemID:line.ItemID, Delta:line.Quantity}); e != nil { return e }
+			}
+		}
+		sale.Status = "FAILED"
+		data, e := json.Marshal(sale); if e != nil { return e }
+		_, e = s.store.Put("wms_pos_sale", sale.ID, data)
+		return e
+	}
+	if sale.Status == "COMPENSATING" {
+		if err := compensate(); err != nil { return salesorders.SalesOrder{}, false, fmt.Errorf("POS checkout compensation remains pending: %w", err) }
+		return salesorders.SalesOrder{}, false, fmt.Errorf("previous POS checkout attempt was compensated; use a new idempotency key")
+	}
 	for key, line := range aggregated {
 		opSum := sha256.Sum256([]byte(in.IdempotencyKey + "|" + key))
 		opID := "pos-" + hex.EncodeToString(opSum[:16])
@@ -274,7 +297,19 @@ func (s *Service) CheckoutTransaction(in CheckoutInput, actor string) (salesorde
 		} else {
 			_, err = s.ledger.Adjust(inventoryledger.AdjustCommand{OperationID:opID, WarehouseID:line.WarehouseID, BinID:line.BinID, ItemID:line.ItemID, Delta:-line.Quantity})
 		}
+		if err != nil {
+			sale.Status = "COMPENSATING"
+			data, _ := json.Marshal(sale)
+			if _, persistErr := s.store.Put("wms_pos_sale", sale.ID, data); persistErr != nil { return salesorders.SalesOrder{}, false, fmt.Errorf("inventory mutation failed (%v) and compensation marker failed: %w", err, persistErr) }
+			if compensationErr := compensate(); compensationErr != nil { return salesorders.SalesOrder{}, false, fmt.Errorf("inventory mutation failed (%v); compensation pending: %w", err, compensationErr) }
+			return salesorders.SalesOrder{}, false, err
+		}
+		alreadyApplied := false
+		for _, appliedKey := range sale.AppliedKeys { if appliedKey == key { alreadyApplied = true; break } }
+		if !alreadyApplied { sale.AppliedKeys = append(sale.AppliedKeys, key) }
+		data, err := json.Marshal(sale)
 		if err != nil { return salesorders.SalesOrder{}, false, err }
+		if _, err := s.store.Put("wms_pos_sale", sale.ID, data); err != nil { return salesorders.SalesOrder{}, false, err }
 	}
 	if sale.SOID == 0 {
 		number := "POS-" + recordID[:20]
