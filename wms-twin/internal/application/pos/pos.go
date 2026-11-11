@@ -150,8 +150,9 @@ func (s *Service) ValidateCart(warehouseID int64, lines []CartLine) (map[string]
 	items, err := s.catalog.ListItems()
 	if err != nil { return nil, err }
 	idBySKU := make(map[string]int64, len(items))
+	skuByID := make(map[int64]string, len(items))
 	activeByID := make(map[int64]bool, len(items))
-	for _, item := range items { idBySKU[item.SKU] = item.ItemID; activeByID[item.ItemID] = item.IsActive }
+	for _, item := range items { idBySKU[item.SKU] = item.ItemID; skuByID[item.ItemID] = item.SKU; activeByID[item.ItemID] = item.IsActive }
 	balances, _, err := s.ledger.List()
 	if err != nil { return nil, err }
 	available := make(map[string]int64)
@@ -165,7 +166,7 @@ func (s *Service) ValidateCart(warehouseID int64, lines []CartLine) (map[string]
 	for _, line := range lines {
 		itemID := line.ItemID
 		if itemID <= 0 { itemID = idBySKU[strings.TrimSpace(line.SKU)] }
-		if itemID <= 0 || !activeByID[itemID] || line.BinID <= 0 || line.Quantity <= 0 {
+		if itemID <= 0 || !activeByID[itemID] || line.BinID <= 0 || line.Quantity <= 0 || (line.SKU != "" && skuByID[itemID] != line.SKU) {
 			valid = false
 			resolvedLines = append(resolvedLines, resolved{itemID:itemID, sku:line.SKU, binID:line.BinID, quantity:line.Quantity})
 			continue
@@ -205,32 +206,40 @@ func (s *Service) CheckoutTransaction(in CheckoutInput, actor string) (salesorde
 	}
 	method := strings.ToLower(strings.TrimSpace(in.PaymentMethod))
 	if method != "cash" && method != "card" && method != "split" { return salesorders.SalesOrder{}, false, ErrInvalid }
-	if in.SubtotalCents < 0 || in.TaxCents < 0 || in.ShippingCents < 0 || in.TotalCents < 0 || in.TotalCents != in.SubtotalCents+in.TaxCents+in.ShippingCents {
+	if in.SubtotalCents < 0 || in.TaxCents < 0 || in.ShippingCents < 0 || in.TotalCents < 0 || in.SubtotalCents > math.MaxInt64-in.TaxCents || in.SubtotalCents+in.TaxCents > math.MaxInt64-in.ShippingCents || in.TotalCents != in.SubtotalCents+in.TaxCents+in.ShippingCents {
 		return salesorders.SalesOrder{}, false, fmt.Errorf("%w: payment totals do not reconcile", ErrInvalid)
 	}
 	if len(in.Tenders) == 0 || len(in.Tenders) > 8 { return salesorders.SalesOrder{}, false, ErrInvalid }
 	var tenderTotal int64
+	hasCash, hasCard := false, false
 	for _, tender := range in.Tenders {
 		if tender.AmountCents < 0 { return salesorders.SalesOrder{}, false, ErrInvalid }
 		switch tender.Type {
 		case "cash":
-			if tender.AmountTenderedCents-tender.ChangeCents != tender.AmountCents || tender.ChangeCents < 0 { return salesorders.SalesOrder{}, false, ErrInvalid }
+			hasCash = true
+			if tender.AmountTenderedCents < 0 || tender.AmountTenderedCents < tender.ChangeCents || tender.AmountTenderedCents-tender.ChangeCents != tender.AmountCents || tender.ChangeCents < 0 { return salesorders.SalesOrder{}, false, ErrInvalid }
 		case "card":
-			if tender.CardBrand == "" || len(tender.CardLast4) != 4 || tender.AuthCode == "" || tender.ExternalRef == "" { return salesorders.SalesOrder{}, false, ErrInvalid }
+			hasCard = true
+			if tender.CardBrand == "" || len(tender.CardLast4) != 4 || tender.CardLast4 < "0000" || tender.CardLast4 > "9999" || tender.AuthCode == "" || tender.ExternalRef == "" { return salesorders.SalesOrder{}, false, ErrInvalid }
 		default: return salesorders.SalesOrder{}, false, fmt.Errorf("%w: unsupported tender type", ErrInvalid)
 		}
+		if tenderTotal > math.MaxInt64-tender.AmountCents { return salesorders.SalesOrder{}, false, ErrInvalid }
 		tenderTotal += tender.AmountCents
+	}
+	if (method == "cash" && (!hasCash || hasCard)) || (method == "card" && (!hasCard || hasCash)) || (method == "split" && (!hasCash || !hasCard)) {
+		return salesorders.SalesOrder{}, false, fmt.Errorf("%w: tender types do not match payment method", ErrInvalid)
 	}
 	if tenderTotal != in.TotalCents { return salesorders.SalesOrder{}, false, fmt.Errorf("%w: tenders do not equal total", ErrInvalid) }
 	var calculatedSubtotal, calculatedTax int64
 	for _, line := range in.Lines {
-		if line.UnitPriceCents < 0 || line.TaxCents < 0 || line.LineTotalCents < 0 || (line.UnitPriceCents > 0 && line.Quantity > math.MaxInt64/line.UnitPriceCents) {
+		if line.Quantity <= 0 || line.UnitPriceCents < 0 || line.TaxCents < 0 || line.LineTotalCents < 0 || (line.UnitPriceCents > 0 && line.Quantity > math.MaxInt64/line.UnitPriceCents) {
 			return salesorders.SalesOrder{}, false, ErrInvalid
 		}
 		lineSubtotal := line.UnitPriceCents * line.Quantity
 		if calculatedSubtotal > math.MaxInt64-lineSubtotal || calculatedTax > math.MaxInt64-line.TaxCents {
 			return salesorders.SalesOrder{}, false, ErrInvalid
 		}
+		if lineSubtotal > math.MaxInt64-line.TaxCents { return salesorders.SalesOrder{}, false, ErrInvalid }
 		if line.LineTotalCents != lineSubtotal+line.TaxCents { return salesorders.SalesOrder{}, false, fmt.Errorf("%w: line total does not reconcile for SKU %s", ErrInvalid, line.SKU) }
 		calculatedSubtotal += lineSubtotal
 		calculatedTax += line.TaxCents
@@ -272,7 +281,10 @@ func (s *Service) CheckoutTransaction(in CheckoutInput, actor string) (salesorde
 			itemID := line.ItemID
 			if itemID <= 0 { itemID = idBySKU[line.SKU] }
 			if itemID <= 0 || line.BinID <= 0 || line.Quantity <= 0 || line.Quantity > 10000 { return salesorders.SalesOrder{}, false, ErrInvalid }
+			bin, binErr := s.catalog.GetBin(line.BinID)
+			if binErr != nil || bin.WarehouseID != in.WarehouseID || !bin.IsActive || (bin.BinType != "Pickable" && bin.BinType != "PickableStaging") { return salesorders.SalesOrder{}, false, fmt.Errorf("%w: POS bin is inactive, non-pickable or outside the warehouse", ErrInvalid) }
 			sku := skuByID[itemID]
+			if line.SKU != "" && line.SKU != sku { return salesorders.SalesOrder{}, false, fmt.Errorf("%w: item_id and SKU do not identify the same item", ErrInvalid) }
 			if sku == "" { return salesorders.SalesOrder{}, false, ErrInvalid }
 			key := fmt.Sprintf("%d:%d", itemID, line.BinID)
 			requested[key] += line.Quantity
