@@ -533,10 +533,11 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 	if err != nil { return nil, false, err }
 	for _, record := range refundRecords {
 		var prior RefundRecord
-		if json.Unmarshal(record.Data, &prior) != nil || prior.SaleID != sale.ID { continue }
+		if json.Unmarshal(record.Data, &prior) != nil { continue }
 		if prior.ExternalRefundRef == in.ExternalRefundRef && prior.ID != refundID {
 			return nil, false, fmt.Errorf("external refund reference already belongs to another refund")
 		}
+		if prior.SaleID != sale.ID { continue }
 		if prior.Status == "PREPARING" && prior.ID != refundID {
 			return nil, false, fmt.Errorf("another refund transaction is still pending for this sale")
 		}
