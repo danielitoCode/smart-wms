@@ -83,6 +83,8 @@ func (s *Service) List(limit int) ([]Event, error) {
 }
 
 func (s *Service) Ack(eventID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	rec, ok, err := s.store.Get(kind, eventID)
 	if err != nil {
 		return err
