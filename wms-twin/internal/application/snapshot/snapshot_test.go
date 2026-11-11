@@ -25,7 +25,7 @@ func TestCreateAndVerifyInventorySnapshot(t *testing.T) {
 	}
 
 	service := New(store, ledger)
-	created, err := service.CreateInventory(warehouse.WarehouseID)
+	created, err := service.CreateInventory(1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestRestoreSnapshotUsesExpectedVersionAndRestoresExactBalances(t *testing.T
 	if err != nil { t.Fatal(err) }
 	if _, err := ledger.Adjust(inventoryledger.AdjustCommand{OperationID:"seed-restore",WarehouseID:warehouse.WarehouseID,BinID:bin.BinID,ItemID:item.ItemID,Delta:12}); err != nil { t.Fatal(err) }
 	service := New(store,ledger,cat)
-	snap, err := service.CreateInventory(1)
+	snap, err := service.CreateInventory(warehouse.WarehouseID)
 	if err != nil { t.Fatal(err) }
 	if _, err := ledger.Adjust(inventoryledger.AdjustCommand{OperationID:"after-snapshot",WarehouseID:warehouse.WarehouseID,BinID:bin.BinID,ItemID:item.ItemID,Delta:-5}); err != nil { t.Fatal(err) }
 	_, currentVersion, err := ledger.List()
