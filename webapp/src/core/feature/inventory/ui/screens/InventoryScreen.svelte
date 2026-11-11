@@ -19,8 +19,8 @@
 
 <section class="inventory">
 	<header>
-		<h1>{i18n.t(i18n.t('Inventario'))}</h1>
-		<p class="subtitle">{i18n.t(i18n.t('Consulta las existencias por producto, ubicación y lote.'))}</p>
+		<h1>{i18n.t('Inventario')}</h1>
+		<p class="subtitle">{i18n.t('Consulta las existencias por producto, ubicación y lote.')}</p>
 	</header>
 
 	<form class="filters" onsubmit={onFilter}>
@@ -29,7 +29,7 @@
 			<input
 				type="number"
 				min="1"
-				placeholder={i18n.t(i18n.t('Todos'))}
+				placeholder={i18n.t('Todos')}
 				value={state.warehouseId ?? ''}
 				oninput={(e) => {
 					const v = e.currentTarget.value;
@@ -48,21 +48,21 @@
 
 	{#if state.error}
 		<p class="status error" role="alert">{state.error}</p>
-		<button type="button" onclick={() => state.load()}>{i18n.t(i18n.t('Reintentar'))}</button>
+		<button type="button" onclick={() => state.load()}>{i18n.t('Reintentar')}</button>
 	{:else if state.loading && !state.loadedOnce}
 		<p class="status">Cargando inventario…</p>
 	{:else if state.items.length === 0}
-		<p class="status">{i18n.t(i18n.t('Todavía no hay existencias registradas.'))}</p>
+		<p class="status">{i18n.t('Todavía no hay existencias registradas.')}</p>
 	{:else}
 		<div class="table-wrap">
 			<table>
 				<thead>
 					<tr>
-						<th>{i18n.t(i18n.t('SKU'))}</th>
-						<th>{i18n.t(i18n.t('Nombre'))}</th>
-						<th>{i18n.t(i18n.t('Ubicación'))}</th>
-						<th>{i18n.t(i18n.t('Cantidad'))}</th>
-						<th>{i18n.t(i18n.t('Lote'))}</th>
+						<th>{i18n.t('SKU')}</th>
+						<th>{i18n.t('Nombre')}</th>
+						<th>{i18n.t('Ubicación')}</th>
+						<th>{i18n.t('Cantidad')}</th>
+						<th>{i18n.t('Lote')}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -79,7 +79,7 @@
 			</table>
 		</div>
 		{#if state.loading}
-			<p class="status">{i18n.t(i18n.t('Actualizando…'))}</p>
+			<p class="status">{i18n.t('Actualizando…')}</p>
 		{/if}
 	{/if}
 </section>

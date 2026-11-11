@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import type { I18nState } from '../../../../../../lib/i18n/i18n.svelte';
+	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
 	const i18n = getContext<I18nState>('i18n');
 	import { goto } from '$app/navigation';
 	import { createChangePasswordState } from '../state/changePasswordState.svelte';
@@ -17,24 +17,24 @@
 
 <section class="page">
 	<div class="card">
-		{#if forced}<p class="forced-banner" role="alert"><strong>{i18n.t(i18n.t('Configuración inicial:'))}</strong> debes establecer una contraseña nueva antes de continuar.</p>{/if}
-		<p class="eyebrow">{i18n.t(i18n.t('Seguridad de la cuenta'))}</p>
-		<h1>{i18n.t(i18n.t('Cambiar contraseña'))}</h1>
-		<p class="intro">{i18n.t(i18n.t('Actualiza tu contraseña para continuar usando Smart WMS.'))}</p>
+		{#if forced}<p class="forced-banner" role="alert"><strong>{i18n.t('Configuración inicial:')}</strong> debes establecer una contraseña nueva antes de continuar.</p>{/if}
+		<p class="eyebrow">{i18n.t('Seguridad de la cuenta')}</p>
+		<h1>{i18n.t('Cambiar contraseña')}</h1>
+		<p class="intro">{i18n.t('Actualiza tu contraseña para continuar usando Smart WMS.')}</p>
 		<form onsubmit={onSubmit}>
 			<label>
-				<span>{i18n.t(i18n.t('Contraseña actual'))}</span>
+				<span>{i18n.t('Contraseña actual')}</span>
 				<input type="password" autocomplete="current-password" required value={state.currentPassword}
 					oninput={(event) => state.setCurrentPassword(event.currentTarget.value)} disabled={state.submitting} />
 			</label>
 			<label>
-				<span>{i18n.t(i18n.t('Nueva contraseña'))}</span>
+				<span>{i18n.t('Nueva contraseña')}</span>
 				<input type="password" autocomplete="new-password" required value={state.newPassword}
 					oninput={(event) => state.setNewPassword(event.currentTarget.value)} disabled={state.submitting} />
 			</label>
-			<p class="hint">{i18n.t(i18n.t('Mínimo 8 caracteres, al menos una letra y un número. No puede ser «admin».'))}</p>
+			<p class="hint">{i18n.t('Mínimo 8 caracteres, al menos una letra y un número. No puede ser «admin».')}</p>
 			<label>
-				<span>{i18n.t(i18n.t('Confirmar nueva contraseña'))}</span>
+				<span>{i18n.t('Confirmar nueva contraseña')}</span>
 				<input type="password" autocomplete="new-password" required value={state.confirmPassword}
 					oninput={(event) => state.setConfirmPassword(event.currentTarget.value)} disabled={state.submitting} />
 			</label>

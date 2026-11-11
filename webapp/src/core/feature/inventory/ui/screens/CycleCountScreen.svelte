@@ -19,8 +19,8 @@
 
 <section class="page">
 	<header>
-		<h1>{i18n.t(i18n.t('Conteo cíclico'))}</h1>
-		<p class="subtitle">{i18n.t(i18n.t('Cuenta las existencias por ubicación y registra las diferencias encontradas.'))}</p>
+		<h1>{i18n.t('Conteo cíclico')}</h1>
+		<p class="subtitle">{i18n.t('Cuenta las existencias por ubicación y registra las diferencias encontradas.')}</p>
 	</header>
 
 	<form class="panel" onsubmit={onCreate}>
@@ -76,7 +76,7 @@
 	{/if}
 
 	{#if state.loading}
-		<p class="meta">{i18n.t(i18n.t('Cargando detalle…'))}</p>
+		<p class="meta">{i18n.t('Cargando detalle…')}</p>
 	{:else if state.detail}
 		<section class="panel detail">
 			<p class="meta">
@@ -87,9 +87,9 @@
 					<table>
 						<thead>
 							<tr>
-								<th>{i18n.t(i18n.t('SKU'))}</th>
-								<th>{i18n.t(i18n.t('Esperado'))}</th>
-								<th>{i18n.t(i18n.t('Contado'))}</th>
+								<th>{i18n.t('SKU')}</th>
+								<th>{i18n.t('Esperado')}</th>
+								<th>{i18n.t('Contado')}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -113,7 +113,7 @@
 					</table>
 				</div>
 				{#if state.detail.status !== 'COMPLETED'}
-					<button type="submit" class="accent" disabled={state.busy}>{i18n.t(i18n.t('Enviar conteo'))}</button>
+					<button type="submit" class="accent" disabled={state.busy}>{i18n.t('Enviar conteo')}</button>
 				{/if}
 			</form>
 		</section>
