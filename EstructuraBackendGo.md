@@ -269,3 +269,28 @@ El cliente HTTP de webhooks desactiva redirects y resuelve DNS al conectar; ahor
 ### Compensación de despacho POS
 
 `fulfillment.reversePOSDispatch` inspecciona el registro POS vinculado a la SO y revierte solo estados cuyo movimiento está confirmado (`DISPATCHED` o `COMPLETED`). Por cada ubicación ejecuta un ajuste positivo idempotente y persiste `Shipment.VoidReversedKeys`. Para `PhoneOrder=true`, restaura además la asignación previa con un operation_id independiente; para ventas normales no crea asignaciones. Al terminar, devuelve la venta al estado `COMPLETED` y limpia `DispatchKey/DispatchFingerprint` de órdenes telefónicas, permitiendo un nuevo despacho. Un replay del mismo void usa las claves persistidas y no duplica stock.
+
+
+## Cierre transaccional y límites de operación
+
+### POS y fulfillment
+
+`DispatchWithDetails` queda serializado dentro del servicio POS. En refund consolido filas repetidas con la misma clave item/bin antes de calcular importes y ejecutar el movimiento, porque el ledger interpreta el operation_id repetido como replay. El void de fulfillment detecta ventas POS persistidas y compensa el decremento de inventario con una operación determinista por ubicación. La entidad Shipment conserva `VoidReversedKeys`; el estado VOIDING permite retomar el proceso tras una caída. Los pedidos telefónicos solo se pueden revertir después de DISPATCHED; las ventas parcialmente/totalmente reembolsadas requieren conciliación previa.
+
+### Inbound
+
+El esquema de mapeo ahora expone los campos soportados por los agregados. Item: SKU, nombre, descripción, UPC, MPN, categoría, peso, bin por defecto, reorder point/quantity y activo. Sales order: número, barcode, almacén, cliente, notas y líneas. Purchase order: número, barcode, almacén, proveedor, fecha esperada, notas y líneas con coste unitario/número de línea. La recuperación por clave natural compara el header y las líneas mapeadas; un número existente con payload distinto produce conflicto. Para activar idempotencia se exigen source_system, external_id y external_version. La versión externa más nueva aún no se aplica: no tengo un contrato de PATCH/UPSERT, estados permitidos ni política de conflicto por recurso.
+
+### Webhooks, snapshots y eventos
+
+El enqueue local de webhook queda serializado. El worker registra errores de migración, persistencia y entrega. El contrato es at-least-once: si el receptor acepta el HTTP y el proceso cae antes de persistir DELIVERED, puede recibir un retry. No hay lease distribuido entre varios workers; la primera operación real debe usar un único worker activo. Snapshot Restore toma un backup versionado antes de restaurar, aplica expected ledger version y devuelve `backup_snapshot_id` al cliente.
+
+### Mesh
+
+La ruta LibP2PTransport activa Kademlia DHT y GossipSub; el fallback TCP/local sigue siendo peer table + TTL fan-out. El endpoint de estado informa la capa real y los flags `kademlia_ready`/`gossipsub_ready`. Añadí una prueba de integración con dos transportes LibP2P de PrismaTec-Core. La prueba no demuestra todavía bootstrap en Internet, particiones, trust/authorization de peers ni recuperación de providers CID a escala.
+
+### Arranque y secretos
+
+`JWT_SECRET` es obligatorio y debe tener al menos 32 caracteres. El bootstrap de usuarios demo queda detrás de `WMS_TWIN_ALLOW_DEMO_BOOTSTRAP=true`; por defecto necesito importar un archivo de identidades con permisos restrictivos. Webhook secrets se cifran con AES-256-GCM y requieren una clave estable de 32 bytes en `SENTRY_ENCRYPTION_KEY` o `WMS_WEBHOOK_ENCRYPTION_KEY`.
+
+No integro un procesador de pagos en este módulo: los tender/auth references son datos de conciliación que entrega el POS/gateway externo. Tampoco declaro actualización de inbound con versiones externas nuevas ni exactly-once de webhooks entre nodos.
