@@ -13,8 +13,6 @@ export class ChangePasswordUseCase {
 			throw new Error('La nueva contraseña no puede ser "admin"');
 		}
 		if (Array.from(password).length < 8) throw new Error('La nueva contraseña debe tener al menos 8 caracteres');
-		if (!/\p{L}/u.test(password)) throw new Error('La nueva contraseña debe contener al menos una letra');
-		if (!/\p{Nd}/u.test(password)) throw new Error('La nueva contraseña debe contener al menos un número');
 		await this.repository.changePassword(input);
 	}
 }

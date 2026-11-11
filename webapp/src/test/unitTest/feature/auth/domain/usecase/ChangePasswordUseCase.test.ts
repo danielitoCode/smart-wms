@@ -13,14 +13,13 @@ describe('ChangePasswordUseCase', () => {
 		const useCase = new ChangePasswordUseCase(repo);
 		await expect(useCase.execute({ currentPassword: 'old', newPassword: 'admin' })).rejects.toThrow(/admin/);
 		await expect(useCase.execute({ currentPassword: 'old', newPassword: 'short' })).rejects.toThrow(/8 caracteres/);
-		await expect(useCase.execute({ currentPassword: 'old', newPassword: 'onlyletters' })).rejects.toThrow(/número/);
 		expect(repo.changePassword).not.toHaveBeenCalled();
 	});
 
-	it('accepts Unicode letters and decimal digits like the backend policy', async () => {
+	it('delegates character-class policy to the backend without rejecting Unicode passwords', async () => {
 		const repo = repository();
 		await new ChangePasswordUseCase(repo).execute({ currentPassword: 'old', newPassword: 'contraseña１２３' });
-		expect(repo.changePassword).toHaveBeenCalled();
+		expect(repo.changePassword).toHaveBeenCalledWith({ currentPassword: 'old', newPassword: 'contraseña１２３' });
 	});
 
 	it('counts Unicode code points like Python len', async () => {
