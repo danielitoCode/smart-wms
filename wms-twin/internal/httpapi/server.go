@@ -145,11 +145,18 @@ func (s *Server) StartBackground(ctx context.Context) error {
 				select {
 				case <-ctx.Done(): return
 				case <-ticker.C:
-					_ = s.events.PublishPending()
+					if err := s.events.PublishPending(); err != nil {
+						log.Printf("WMS event mesh publisher: %v", err)
+					}
 					if s.webhooks != nil {
-						if pendingEvents, err := s.events.List(0); err == nil {
+						pendingEvents, err := s.events.List(0)
+						if err != nil {
+							log.Printf("WMS webhook event reconciliation: list events: %v", err)
+						} else {
 							for _, event := range pendingEvents {
-								_ = s.webhooks.DeliverEventAt(event.EventID, event.Type, event.Payload, event.CreatedAt)
+								if err := s.webhooks.DeliverEventAt(event.EventID, event.Type, event.Payload, event.CreatedAt); err != nil {
+									log.Printf("WMS webhook event reconciliation %s: %v", event.EventID, err)
+								}
 							}
 						}
 					}
