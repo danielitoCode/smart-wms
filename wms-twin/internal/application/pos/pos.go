@@ -308,10 +308,15 @@ func (s *Service) CheckoutTransaction(in CheckoutInput, actor string) (salesorde
 		aggregated[key] = current
 	}
 	compensate := func() error {
-		for _, appliedKey := range sale.AppliedKeys {
-			line, exists := aggregated[appliedKey]
-			if !exists { return fmt.Errorf("POS saga contains unknown applied location %q", appliedKey) }
-			opSum := sha256.Sum256([]byte(in.IdempotencyKey + "|" + appliedKey))
+		// Inspect the ledger's durable operation journal rather than trusting
+		// AppliedKeys alone. A process can die after the ledger commit but
+		// before the corresponding saga progress write.
+		for key, line := range aggregated {
+			opSum := sha256.Sum256([]byte(in.IdempotencyKey + "|" + key))
+			opID := "pos-" + hex.EncodeToString(opSum[:16])
+			applied, lookupErr := s.ledger.HasOperation(opID)
+			if lookupErr != nil { return lookupErr }
+			if !applied { continue }
 			compID := "pos-cmp-" + hex.EncodeToString(opSum[:12])
 			if in.PhoneOrder {
 				if _, e := s.ledger.Release(inventoryledger.QuantityCommand{OperationID:compID, WarehouseID:line.WarehouseID, BinID:line.BinID, ItemID:line.ItemID, Quantity:line.Quantity}); e != nil { return e }
