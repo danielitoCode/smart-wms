@@ -2,11 +2,11 @@
 	import { onMount } from 'svelte';
 	import { createWarehousesState } from '../state/warehousesState.svelte';
 	import { authSession } from '../../../../infrastructure/auth/AuthSession';
-	import { createWarehouseSelectionState } from '../state/warehouseSelectionState.svelte';
+	import { getWarehouseSelectionState } from '../state/warehouseSelectionState.svelte';
 	import type { Warehouse } from '../../domain/entity/Warehouse';
 
 	const vm = createWarehousesState();
-	const selection = createWarehouseSelectionState();
+	const selection = getWarehouseSelectionState();
 	let showForm = $state(false);
 	let editing = $state(null as Warehouse | null);
 	let deleteTarget = $state(null as Warehouse | null);

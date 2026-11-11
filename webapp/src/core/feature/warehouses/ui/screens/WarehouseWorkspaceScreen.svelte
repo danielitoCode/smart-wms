@@ -1,9 +1,9 @@
 <script lang="ts">
 	import WarehouseDetailScreen from './WarehouseDetailScreen.svelte';
-	import { createWarehouseSelectionState } from '../state/warehouseSelectionState.svelte';
+	import { getWarehouseSelectionState } from '../state/warehouseSelectionState.svelte';
 
 	let { mode }: { mode: 'zones' | 'bins' } = $props();
-	const selection = createWarehouseSelectionState();
+	const selection = getWarehouseSelectionState();
 </script>
 
 <section class="workspace">

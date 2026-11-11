@@ -70,3 +70,9 @@ export function createWarehouseSelectionState() {
 		load, reload, select
 	};
 }
+
+let sharedInstance: ReturnType<typeof createWarehouseSelectionState> | null = null;
+export function getWarehouseSelectionState() {
+	sharedInstance ??= createWarehouseSelectionState();
+	return sharedInstance;
+}
