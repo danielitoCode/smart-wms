@@ -219,12 +219,24 @@ func (s *Service) ProcessPending(ctx context.Context) error {
 		if delivery.NextAttemptAt.After(now) { continue }
 		subRec, ok, err := s.store.Get(kind, delivery.SubscriptionID)
 		if err != nil { failures = append(failures, delivery.ID+": "+err.Error()); continue }
-		if !ok { delivery.Status, delivery.LastError = "DEAD", "subscription no longer exists"; _ = s.persistDelivery(delivery); continue }
+		if !ok {
+			delivery.Status, delivery.LastError = "DEAD", "subscription no longer exists"
+			if persistErr := s.persistDelivery(delivery); persistErr != nil { failures = append(failures, delivery.ID+": persist dead-letter: "+persistErr.Error()) }
+			continue
+		}
 		var sub Subscription
 		if err := json.Unmarshal(subRec.Data, &sub); err != nil { failures = append(failures, delivery.ID+": "+err.Error()); continue }
-		if !sub.Active { delivery.Status, delivery.LastError = "DEAD", "subscription is inactive"; _ = s.persistDelivery(delivery); continue }
+		if !sub.Active {
+			delivery.Status, delivery.LastError = "DEAD", "subscription is inactive"
+			if persistErr := s.persistDelivery(delivery); persistErr != nil { failures = append(failures, delivery.ID+": persist dead-letter: "+persistErr.Error()) }
+			continue
+		}
 		secret, err := decryptSecret(sub.SecretCipher)
-		if err != nil { delivery.Status, delivery.LastError = "DEAD", "webhook secret cannot be decrypted"; _ = s.persistDelivery(delivery); continue }
+		if err != nil {
+			delivery.Status, delivery.LastError = "DEAD", "webhook secret cannot be decrypted"
+			if persistErr := s.persistDelivery(delivery); persistErr != nil { failures = append(failures, delivery.ID+": persist dead-letter: "+persistErr.Error()) }
+			continue
+		}
 		status, sendErr := s.post(ctx, sub, secret, delivery.Body)
 		delivery.Attempts++
 		switch {
@@ -262,7 +274,8 @@ func (s *Service) Run(ctx context.Context, interval time.Duration) {
 	for {
 		select {
 		case <-ctx.Done(): return
-		case <-ticker.C: _ = s.ProcessPending(ctx)
+		case <-ticker.C:
+			if err := s.ProcessPending(ctx); err != nil { log.Printf("WMS webhook outbox worker: %v", err) }
 		}
 	}
 }
