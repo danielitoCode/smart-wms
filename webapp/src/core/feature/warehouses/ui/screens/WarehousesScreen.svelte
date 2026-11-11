@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { getContext } from 'svelte';
+	import type { I18nState } from '../../../../lib/i18n/i18n.svelte';
+	const i18n = getContext<I18nState>('i18n');
 	import { getContext, onMount } from 'svelte';
 	import { createWarehousesState } from '../state/warehousesState.svelte';
 	import { authSession } from '../../../../infrastructure/auth/AuthSession';
@@ -44,24 +47,24 @@
 
 <section class="page">
 	<header class="page-header">
-		<div><h1>Almacenes</h1><p class="subtitle">Gestiona los almacenes y consulta su estructura.</p></div>
-		<button class="accent" type="button" onclick={openCreate}>Nuevo almacén</button>
+		<div><h1>{i18n.t(i18n.t('Almacenes'))}</h1><p class="subtitle">{i18n.t(i18n.t('Gestiona los almacenes y consulta su estructura.'))}</p></div>
+		<button class="accent" type="button" onclick={openCreate}>{i18n.t(i18n.t('Nuevo almacén'))}</button>
 	</header>
 	{#if vm.loading}
-		<p class="status">Cargando almacenes…</p>
+		<p class="status">{i18n.t(i18n.t('Cargando almacenes…'))}</p>
 	{:else if vm.error && !vm.loadedOnce}
-		<p class="error" role="alert">{vm.error}</p><button type="button" onclick={() => vm.load()}>Reintentar</button>
+		<p class="error" role="alert">{vm.error}</p><button type="button" onclick={() => vm.load()}>{i18n.t(i18n.t('Reintentar'))}</button>
 	{:else if vm.warehouses.length === 0}
-		<p class="empty">No hay almacenes registrados.</p>
+		<p class="empty">{i18n.t(i18n.t('No hay almacenes registrados.'))}</p>
 	{:else}
 		<div class="table-wrap"><table>
-			<thead><tr><th>Código</th><th>Nombre</th><th>Dirección</th><th>Estado</th><th>Acciones</th></tr></thead>
+			<thead><tr><th>{i18n.t(i18n.t('Código'))}</th><th>{i18n.t(i18n.t('Nombre'))}</th><th>{i18n.t(i18n.t('Dirección'))}</th><th>{i18n.t(i18n.t('Estado'))}</th><th>{i18n.t(i18n.t('Acciones'))}</th></tr></thead>
 			<tbody>{#each vm.warehouses as wh (wh.id)}
 				<tr><td class="mono">{wh.code}</td><td>{wh.name}</td><td>{wh.address ?? '—'}</td>
-					<td><span class:inactive={!wh.active} class="status-pill">{wh.active ? 'Activo' : 'Inactivo'}</span></td>
-					<td class="actions">{#if canOpenLayout}<a href={'/warehouses/' + wh.id}>Zonas y ubicaciones</a>{/if}
-						<button type="button" class="quiet" onclick={() => openEdit(wh)}>Editar</button>
-						<button type="button" class="danger" onclick={() => deleteTarget = wh}>Eliminar</button></td>
+					<td><span class:inactive={!wh.active} class="status-pill">{wh.active ? i18n.t('Activo') : i18n.t('Inactivo')}</span></td>
+					<td class="actions">{#if canOpenLayout}<a href={'/warehouses/' + wh.id}>{i18n.t(i18n.t('Zonas y ubicaciones'))}</a>{/if}
+						<button type="button" class="quiet" onclick={() => openEdit(wh)}>{i18n.t(i18n.t('Editar'))}</button>
+						<button type="button" class="danger" onclick={() => deleteTarget = wh}>{i18n.t(i18n.t('Eliminar'))}</button></td>
 				</tr>
 			{/each}</tbody>
 		</table></div>
@@ -71,22 +74,22 @@
 
 {#if showForm}
 	<div class="backdrop"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="warehouse-form-title">
-		<h2 id="warehouse-form-title">{editing ? 'Editar almacén' : 'Nuevo almacén'}</h2>
+		<h2 id="warehouse-form-title">{editing ? 'Editar almacén' : i18n.t('Nuevo almacén')}</h2>
 		<form onsubmit={(e) => { e.preventDefault(); void save(); }}>
-			{#if !editing}<label>Código<input bind:value={form.code} maxlength="32" required disabled={vm.mutating} /></label>{/if}
-			<label>Nombre<input bind:value={form.name} maxlength="256" required disabled={vm.mutating} /></label>
-			<label>Dirección<input bind:value={form.address} maxlength="512" disabled={vm.mutating} /></label>
+			{#if !editing}<label>{i18n.t(i18n.t('Código'))}<input bind:value={form.code} maxlength="32" required disabled={vm.mutating} /></label>{/if}
+			<label>{i18n.t(i18n.t('Nombre'))}<input bind:value={form.name} maxlength="256" required disabled={vm.mutating} /></label>
+			<label>{i18n.t(i18n.t('Dirección'))}<input bind:value={form.address} maxlength="512" disabled={vm.mutating} /></label>
 			{#if editing}<label class="check"><input type="checkbox" bind:checked={form.active} disabled={vm.mutating} /> Activo</label>{/if}
 			{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
-			<footer><button type="button" class="quiet" onclick={() => showForm = false} disabled={vm.mutating}>Cancelar</button><button type="submit" class="accent" disabled={vm.mutating}>{vm.mutating ? 'Guardando…' : 'Guardar'}</button></footer>
+			<footer><button type="button" class="quiet" onclick={() => showForm = false} disabled={vm.mutating}>{i18n.t(i18n.t('Cancelar'))}</button><button type="submit" class="accent" disabled={vm.mutating}>{vm.mutating ? i18n.t('Guardando…') : i18n.t('Guardar')}</button></footer>
 		</form>
 	</section></div>
 {/if}
 {#if deleteTarget}
 	<div class="backdrop"><section class="dialog" role="alertdialog" aria-modal="true">
-		<h2>Eliminar almacén</h2><p>¿Eliminar <strong>{deleteTarget.code} — {deleteTarget.name}</strong>? Solo será posible si no tiene inventario, ubicaciones ni zonas asociadas.</p>
+		<h2>{i18n.t(i18n.t('Eliminar almacén'))}</h2><p>¿Eliminar <strong>{deleteTarget.code} — {deleteTarget.name}</strong>? Solo será posible si no tiene inventario, ubicaciones ni zonas asociadas.</p>
 		{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
-		<footer><button type="button" class="quiet" onclick={() => deleteTarget = null} disabled={vm.mutating}>Cancelar</button><button type="button" class="danger" onclick={remove} disabled={vm.mutating}>{vm.mutating ? 'Eliminando…' : 'Eliminar'}</button></footer>
+		<footer><button type="button" class="quiet" onclick={() => deleteTarget = null} disabled={vm.mutating}>{i18n.t(i18n.t('Cancelar'))}</button><button type="button" class="danger" onclick={remove} disabled={vm.mutating}>{vm.mutating ? 'Eliminando…' : i18n.t('Eliminar')}</button></footer>
 	</section></div>
 {/if}
 

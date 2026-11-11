@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
+	import type { I18nState } from '../../../../lib/i18n/i18n.svelte';
+	const i18n = getContext<I18nState>('i18n');
+	import { getContext } from 'svelte';
 	import WarehouseDetailScreen from './WarehouseDetailScreen.svelte';
 	import type { WarehouseSelectionState } from '../state/warehouseSelectionState.svelte';
 
@@ -8,9 +11,9 @@
 </script>
 
 <section class="workspace">
-	<header class="header"><div><p class="eyebrow">Datos maestros</p><h1>{mode === 'zones' ? 'Zonas' : 'Ubicaciones'}</h1></div>
+	<header class="header"><div><p class="eyebrow">{i18n.t(i18n.t('Datos maestros'))}</p><h1>{mode === 'zones' ? i18n.t('Zonas') : i18n.t('Ubicaciones')}</h1></div>
 		{#if selection.canSelect && selection.warehouses.length > 0}
-			<label>Almacén<select value={selection.warehouseId ?? ''} onchange={(e) => selection.select(Number(e.currentTarget.value))}>
+			<label>{i18n.t(i18n.t('Almacén'))}<select value={selection.warehouseId ?? ''} onchange={(e) => selection.select(Number(e.currentTarget.value))}>
 				{#each selection.warehouses as wh}<option value={wh.id}>{wh.code} — {wh.name}</option>{/each}
 			</select></label>
 		{:else if selection.warehouseId != null}

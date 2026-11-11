@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import LocaleSwitcher from '../../../../lib/components/LocaleSwitcher.svelte';
-	import type { I18nState } from '../../../../lib/i18n/i18n.svelte';
+	import LocaleSwitcher from '../../../../../lib/components/LocaleSwitcher.svelte';
+	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
 	const i18n = getContext<I18nState>('i18n');
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
