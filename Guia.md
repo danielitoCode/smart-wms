@@ -237,3 +237,30 @@ Porté el primer agregado operativo: Purchase Orders y sus líneas. El contrato 
 Cada PO es un organismo Core con líneas embebidas; una mutación de línea y el recálculo de estado se guardan en un único append. IDs de PO y líneas usan secuencias Core-backed. Valido warehouse/item, PO number único, item único por PO, cantidades, coste y fechas ISO. Protejo la edición de POs CLOSED/ARCHIVED y no permito borrar una línea que ya tenga recibido.
 
 Límite: esta fase no incluye receipts, recepción física, auditoría WMS equivalente, outbox/eventos, ni un flujo de compensación de inventario. Las líneas aún no tienen historial de receipts; no conecto el frontend. Validación CI pendiente.
+
+
+
+## Fase de endurecimiento operativo — después del commit 18c389e
+
+Abrí la rama `fix/wms-twin-operational-completion` desde el commit `18c389e691d25e8366516835402a6f5efcaf2e1d`. Mantengo los cuatro artefactos existentes en la raíz sin tratarlos como errores y no modifico el backend Flask.
+
+Corregí defectos concretos que impedían confiar en las respuestas del gemelo:
+
+- Sincronicé el test de Purchase Orders con la firma real de `AddLine`.
+- Dockd ahora detiene el envío si el pedido no está en un estado válido o si falla el empaquetado. No informa `SHIP_VOIDED` cuando no existe una transición persistente que lo respalde.
+- Inbound crea Purchase Orders mediante el repositorio persistente real. Ya no devuelve `ACCEPTED_SHADOW`.
+- POS limita availability a un almacén y exige SKU. La validación del carrito considera cantidades acumuladas de líneas repetidas y propaga errores del catálogo.
+- No presento checkout, refund, dispatch ni reference-orders como operaciones POS terminadas: responden como no implementadas hasta disponer del contrato de pago, compromiso de inventario, devolución y auditoría equivalente al original.
+- RMA no se puede completar si no se ha definido y ejecutado la disposición del inventario devuelto.
+- Los snapshots de inventario ahora se guardan como exportaciones versionadas con SHA-256 y lectura con verificación de integridad. No son todavía puntos de restauración transaccional del ledger.
+- Los webhooks exigen HTTPS, secreto de al menos 32 bytes, bloquean destinos privados/loopback/link-local al conectar, fijan la IP resuelta para evitar una segunda resolución DNS y no siguen redirecciones.
+- Los eventos conservan el estado de publicación y permiten reintentar publicaciones mesh pendientes.
+- La auditoría comprueba secuencia, enlaces y hashes históricos antes de cada append. Si detecta corrupción, bloquea nuevas escrituras.
+- La etiqueta del mesh ya no afirma Kademlia/GossipSub: el código actual es una tabla de peers con propagación TTL, no una implementación completa de esos protocolos.
+- Recupero secuencias de RMA y suscripciones webhook desde los registros persistidos para evitar colisiones después de reiniciar.
+
+## Límites que mantengo explícitos
+
+Esta rama todavía no convierte el gemelo en sustituto del original. POS requiere portar el contrato de tender/venta/refund; RMA requiere disposición por línea y destino de stock; Dockd void requiere reversión de fulfillment; webhooks necesitan outbox durable, política de reintentos/DLQ y cifrado de secretos en reposo; snapshots necesitan restauración validada; mesh requiere DHT Kademlia y GossipSub reales o mantener la clasificación experimental. Inbound aún necesita idempotencia y el contrato de mapeo/origen completo.
+
+Añadí pruebas unitarias de rechazo SSRF, checksum de snapshots y manipulación de la cadena de auditoría. No declaro esas pruebas ni el resto de la suite como aprobadas hasta que GitHub Actions ejecute el commit de esta rama. No afirmo que se haya ejecutado gofmt, vet o race tests localmente.
