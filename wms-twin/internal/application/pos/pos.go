@@ -549,6 +549,28 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 			if requestedByLocation[key] > original[key].Quantity-already[key] { return nil, false, fmt.Errorf("repeated refund lines exceed remaining quantity") }
 		}
 	}
+	// Consolidate repeated request lines by item/bin before creating ledger
+	// operations. The operation ID is location-scoped, so applying two lines
+	// separately with that same ID would otherwise replay only the first delta.
+	if len(requested) > 1 {
+		byLocation := make(map[string]SaleLine, len(requested))
+		order := make([]string, 0, len(requested))
+		for _, line := range requested {
+			key := fmt.Sprintf("%d:%d", line.ItemID, line.BinID)
+			current, exists := byLocation[key]
+			if !exists {
+				current = line
+				current.Quantity = 0
+				order = append(order, key)
+			}
+			if current.Quantity > math.MaxInt64-line.Quantity { return nil, false, ErrInvalid }
+			current.Quantity += line.Quantity
+			byLocation[key] = current
+		}
+		consolidated := make([]SaleLine, 0, len(order))
+		for _, key := range order { consolidated = append(consolidated, byLocation[key]) }
+		requested = consolidated
+	}
 	if len(requested) == 0 && in.ShippingRefundCents <= 0 { return nil, false, fmt.Errorf("sale has no refundable quantity or shipping amount remaining") }
 	var alreadyTotal int64
 	for _, value := range already { alreadyTotal += value }
