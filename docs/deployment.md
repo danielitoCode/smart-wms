@@ -91,7 +91,7 @@ If an existing development database has an unknown admin password, reset only
 that account explicitly and force the normal first-login password change:
 
 ```bash
-docker compose exec db psql -U sentry -d sentry -c "CREATE EXTENSION IF NOT EXISTS pgcrypto; UPDATE users SET password_hash = crypt('admin', gen_salt('bf')), must_change_password = TRUE, password_changed_at = NOW() WHERE username = 'admin' RETURNING user_id, username, must_change_password;"
+docker compose exec db psql -U sentry -d sentry -c "CREATE EXTENSION IF NOT EXISTS pgcrypto; UPDATE users SET password_hash = crypt('admin', gen_salt('bf')), must_change_password = TRUE, password_changed_at = NOW() WHERE username = 'admin' RETURNING user_id, username, must_change_password; DELETE FROM login_attempts WHERE key = 'user:admin' OR key LIKE 'ip:%|user:admin';"
 ```
 
 The command must return the admin row. It invalidates previously issued sessions
