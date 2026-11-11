@@ -152,6 +152,20 @@ func (s *Service) Deliver(eventType string, payload any) {
 	_ = s.DeliverEvent(hex.EncodeToString(sum[:]), eventType, payload)
 }
 
+func (s *Service) RetryDeadDelivery(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	record, ok, err := s.store.Get(deliveryKind, id)
+	if err != nil { return err }
+	if !ok { return fmt.Errorf("delivery not found") }
+	var delivery Delivery
+	if err := json.Unmarshal(record.Data, &delivery); err != nil { return err }
+	if delivery.Status != "DEAD" { return fmt.Errorf("only dead-letter deliveries can be manually retried") }
+	delivery.Status, delivery.Attempts, delivery.LastError = "RETRY", 0, ""
+	delivery.NextAttemptAt = time.Now().UTC()
+	return s.persistDelivery(delivery)
+}
+
 func (s *Service) Deliveries(limit int) ([]Delivery, error) {
 	records, err := s.store.List(deliveryKind)
 	if err != nil { return nil, err }
