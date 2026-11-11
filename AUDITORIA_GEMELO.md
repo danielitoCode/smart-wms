@@ -480,3 +480,9 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - Los external_version distintos del ya registrado siguen en conflicto hasta definir la semántica de actualización/cancelación por recurso del ERP. No aplico sobrescrituras de estado de pedidos sin contrato.
 - La integración con un procesador de pagos real no está incluida: POS valida y conserva referencias/tenders del proveedor; el gateway debe autorizar/capturar/reembolsar externamente.
 - Validación CI y ejecución local completa pendientes de resultado; no declaro aprobado lo que no se haya ejecutado.
+
+
+### AUD-0030 — Aserción correcta de saldo tras compensación RMA
+
+- El ledger conserva balances con cantidad cero como historial estructural.
+- Corregí la prueba para verificar OnHand=0 y Allocated=0 en lugar de exigir que desaparezca la fila.
