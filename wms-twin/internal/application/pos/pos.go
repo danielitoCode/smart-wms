@@ -356,6 +356,8 @@ type RefundRecord struct {
 	Fingerprint string `json:"fingerprint"`
 	Status string `json:"status"`
 	TotalCents int64 `json:"total_cents"`
+	ExternalRefundRef string `json:"external_refund_ref"`
+	CashierID string `json:"cashier_id"`
 	Lines []SaleLine `json:"lines"`
 	FullyRefunded bool `json:"fully_refunded"`
 	CreatedAt time.Time `json:"created_at"`
@@ -437,17 +439,29 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 			base.Quantity = line.Quantity
 			requested = append(requested, base)
 		}
+		requestedByLocation := make(map[string]int64)
+		for _, requestedLine := range requested {
+			key := fmt.Sprintf("%d:%d", requestedLine.ItemID, requestedLine.BinID)
+			requestedByLocation[key] += requestedLine.Quantity
+			if requestedByLocation[key] > original[key].Quantity-already[key] { return nil, false, fmt.Errorf("repeated refund lines exceed remaining quantity") }
+		}
 	}
 	if len(requested) == 0 { return nil, false, fmt.Errorf("sale has no refundable quantity remaining") }
 	var alreadyTotal int64
 	for _, value := range already { alreadyTotal += value }
+	var alreadyCents int64
+	for _, record := range refundRecords {
+		var prior RefundRecord
+		if json.Unmarshal(record.Data, &prior) == nil && prior.SaleID == sale.ID && prior.Status == "COMPLETED" { alreadyCents += prior.TotalCents }
+	}
 	var originalTotal int64
 	for _, value := range original { originalTotal += value.Quantity }
 	var requestedTotal int64
 	for _, value := range requested { requestedTotal += value.Quantity }
 	full := alreadyTotal+requestedTotal == originalTotal
-	if in.TotalCents > sale.TotalCents { return nil, false, fmt.Errorf("refund amount exceeds original sale total") }
-	refund := RefundRecord{ID:refundID, SaleID:sale.ID, Fingerprint:fingerprint, Status:"PREPARING", TotalCents:in.TotalCents, Lines:requested, CreatedAt:time.Now().UTC()}
+	if in.TotalCents > sale.TotalCents-alreadyCents { return nil, false, fmt.Errorf("refund amount exceeds remaining sale total") }
+	if full && alreadyCents+in.TotalCents != sale.TotalCents { return nil, false, fmt.Errorf("full quantity refund must reconcile to the remaining sale amount") }
+	refund := RefundRecord{ID:refundID, SaleID:sale.ID, Fingerprint:fingerprint, Status:"PREPARING", TotalCents:in.TotalCents, ExternalRefundRef:in.ExternalRefundRef, CashierID:in.CashierID, Lines:requested, CreatedAt:time.Now().UTC()}
 	data, _ := json.Marshal(refund)
 	if _, err := s.store.Put("wms_pos_refund", refundID, data); err != nil { return nil, false, err }
 	for _, line := range requested {
@@ -464,6 +478,8 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 		data, err = json.Marshal(sale)
 		if err != nil { return nil, false, err }
 		if _, err := s.store.Put("wms_pos_sale", sale.ID, data); err != nil { return nil, false, err }
+		so.Status = "REFUNDED"
+		if err := s.sos.Save(so); err != nil { return nil, false, err }
 	}
 	return map[string]any{"refund_id":refundID,"original_so_number":in.SONumber,"fully_refunded":full,"total_cents":in.TotalCents,"external_refund_ref":in.ExternalRefundRef,"actor":actor,"replayed":false}, false, nil
 }
