@@ -116,6 +116,7 @@ func (s *Service) Create(soNumber, reason, actor string, backorder bool) (RMA, e
 			}
 			if json.Unmarshal(record.Data, &refund) != nil || refund.SaleID != saleID { continue }
 			matchedRefundHistory = true
+			if refund.Status == "PREPARING" { return RMA{}, fmt.Errorf("POS refund is pending; RMA creation must wait for its completion") }
 			if refund.Status != "COMPLETED" { continue }
 			for _, line := range refund.Lines { refundedByItem[line.ItemID] += line.Quantity }
 		}
