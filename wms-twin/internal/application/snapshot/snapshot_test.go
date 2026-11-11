@@ -2,6 +2,7 @@ package snapshot
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
@@ -45,5 +46,30 @@ func TestCreateAndVerifyInventorySnapshot(t *testing.T) {
 	}
 	if _, err := service.Get(loaded.ID); err == nil {
 		t.Fatal("tampered snapshot passed checksum verification")
+	}
+}
+
+func TestRestoreSnapshotUsesExpectedVersionAndRestoresExactBalances(t *testing.T) {
+	node, err := core.NewNode(core.Config{DataDir:t.TempDir(), Name:"wms-snapshot-restore-test"})
+	if err != nil { t.Fatal(err) }
+	store := corestore.New(node.Organisms(), string(node.ID()))
+	ledger := inventoryledger.New(store)
+	if _, err := ledger.Adjust(inventoryledger.AdjustCommand{OperationID:"seed-restore",WarehouseID:1,BinID:2,ItemID:3,Delta:12}); err != nil { t.Fatal(err) }
+	service := New(store,ledger)
+	snap, err := service.CreateInventory(1)
+	if err != nil { t.Fatal(err) }
+	if _, err := ledger.Adjust(inventoryledger.AdjustCommand{OperationID:"after-snapshot",WarehouseID:1,BinID:2,ItemID:3,Delta:-5}); err != nil { t.Fatal(err) }
+	_, currentVersion, err := ledger.List()
+	if err != nil { t.Fatal(err) }
+	result, err := service.Restore(snap.ID,"restore-snapshot-1",currentVersion)
+	if err != nil { t.Fatal(err) }
+	if result.Version != currentVersion+1 { t.Fatalf("unexpected restored ledger version: %+v",result) }
+	balances, _, err := ledger.List()
+	if err != nil { t.Fatal(err) }
+	if len(balances)!=1 || balances[0].OnHand!=12 { t.Fatalf("snapshot did not restore inventory: %+v",balances) }
+	replay, err := service.Restore(snap.ID,"restore-snapshot-1",currentVersion)
+	if err != nil || !replay.Replayed { t.Fatalf("expected restore replay: result=%+v err=%v",replay,err) }
+	if _, err := service.Restore(snap.ID,"restore-snapshot-stale",currentVersion); !errors.Is(err,inventoryledger.ErrVersionConflict) {
+		t.Fatalf("expected stale restore to conflict, got %v",err)
 	}
 }
