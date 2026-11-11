@@ -328,8 +328,14 @@ func (s *Service) reversePOSDispatch(shipment *Shipment, operationID string) err
 			// A phone order reaches this state only after its reservation has
 			// been released and its on-hand stock has been committed.
 		case "COMPLETED":
+			// A completed phone sale with its dispatch key cleared and every
+			// reversal recorded is the durable post-void state. This also
+			// repairs a crash after the sale marker but before shipment finalization.
+			if sale.PhoneOrder {
+				if len(shipment.VoidReversedKeys) > 0 && sale.DispatchKey == "" { return nil }
+				return fmt.Errorf("%w: phone order must complete POS dispatch before shipment void", ErrState)
+			}
 			// Checkout decrements on-hand stock immediately for counter sales.
-			if sale.PhoneOrder { return fmt.Errorf("%w: phone order must complete POS dispatch before shipment void", ErrState) }
 		default:
 			return nil
 		}
