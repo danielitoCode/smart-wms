@@ -294,3 +294,6 @@ La ruta LibP2PTransport activa Kademlia DHT y GossipSub; el fallback TCP/local s
 `JWT_SECRET` es obligatorio y debe tener al menos 32 caracteres. El bootstrap de usuarios demo queda detrás de `WMS_TWIN_ALLOW_DEMO_BOOTSTRAP=true`; por defecto necesito importar un archivo de identidades con permisos restrictivos. Webhook secrets se cifran con AES-256-GCM y requieren una clave estable de 32 bytes en `SENTRY_ENCRYPTION_KEY` o `WMS_WEBHOOK_ENCRYPTION_KEY`.
 
 No integro un procesador de pagos en este módulo: los tender/auth references son datos de conciliación que entrega el POS/gateway externo. Tampoco declaro actualización de inbound con versiones externas nuevas ni exactly-once de webhooks entre nodos.
+
+
+La prueba de compensación RMA contempla que el ledger conserva una fila de balance con cantidades cero para preservar trazabilidad. La condición de éxito es saldo neto OnHand=0 y Allocated=0, no que la consulta devuelva una lista vacía.
