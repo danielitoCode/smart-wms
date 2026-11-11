@@ -107,7 +107,7 @@ func TestPhoneOrderDispatchCommitsReservationAndRecoversReplay(t *testing.T) {
 	balances, _, err := f.ledger.List()
 	if err != nil { t.Fatal(err) }
 	if balances[0].OnHand!=8 || balances[0].Allocated!=0 { t.Fatalf("dispatch did not commit reservation: %+v",balances) }
-	second, err := f.service.DispatchWithDetails(so.SONumber,"UPS","TRACK-1","cashier-1",[]int64{f.warehouseID},false)
+	second, err := f.service.DispatchWithDetails(so.SONumber,"UPS","TRACK-1","cashier-1","dispatch-phone-1",[]int64{f.warehouseID},false)
 	if err != nil { t.Fatal(err) }
 	if second["replayed"] != true { t.Fatalf("expected dispatch replay: %v",second) }
 	balances, _, err = f.ledger.List()

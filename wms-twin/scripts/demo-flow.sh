@@ -6,6 +6,10 @@ USER="${WMS_TWIN_USER:-operator}"
 PASS="${WMS_TWIN_PASS:-Operator123}"
 SUF="$(date +%s | tail -c 6)"
 
+# El twin solo crea operator/Operator123 y admin/Admin1234 si se arrancó con:
+#   export WMS_TWIN_ALLOW_DEMO_BOOTSTRAP=true
+# Sin eso el login falla con Invalid username or password.
+
 echo "== health ($BASE) =="
 if ! curl -sS --max-time 5 "$BASE/api/health" | tee /tmp/wms-health.json; then
   echo "No hay respuesta en $BASE. Arranca el twin primero:" >&2

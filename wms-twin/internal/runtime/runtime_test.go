@@ -32,8 +32,17 @@ func TestRuntimeSeparatesWMSAndAIPHandlers(t *testing.T) {
 	if aipInfo.Code != http.StatusOK {
 		t.Fatalf("AIP info status = %d body=%s", aipInfo.Code, aipInfo.Body.String())
 	}
-	if app.Handler() == app.AIPHandler() {
-		t.Fatal("WMS and AIP handlers must be separate")
+	// Handler values are funcs and cannot be compared with ==.
+	// Prove separation by distinct routes each serves.
+	wmsOnAIP := httptest.NewRecorder()
+	app.AIPHandler().ServeHTTP(wmsOnAIP, httptest.NewRequest(http.MethodGet, "/api/health", nil))
+	if wmsOnAIP.Code == http.StatusOK {
+		t.Fatal("AIP handler must not serve the WMS /api/health route")
+	}
+	aipOnWMS := httptest.NewRecorder()
+	app.Handler().ServeHTTP(aipOnWMS, httptest.NewRequest(http.MethodGet, "/aip/v1/info", nil))
+	if aipOnWMS.Code == http.StatusOK {
+		t.Fatal("WMS handler must not serve the AIP /aip/v1/info route")
 	}
 }
 

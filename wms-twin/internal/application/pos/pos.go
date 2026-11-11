@@ -740,7 +740,7 @@ func (s *Service) DispatchWithDetails(soNumber, carrier, tracking, actor, operat
 		aggregated[key] = current
 	}
 	for key, line := range aggregated {
-		base := sha256.Sum256([]byte(sale.ID + "|dispatch|" + key))
+		base := sha256.Sum256([]byte(sale.ID + "|dispatch|" + operationID + "|" + key))
 		releaseID := "pos-rel-" + hex.EncodeToString(base[:12])
 		commitID := "pos-out-" + hex.EncodeToString(base[:12])
 		if _, err := s.ledger.Release(inventoryledger.QuantityCommand{OperationID:releaseID, WarehouseID:line.WarehouseID, BinID:line.BinID, ItemID:line.ItemID, Quantity:line.Quantity}); err != nil { return nil, err }

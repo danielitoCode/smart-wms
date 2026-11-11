@@ -16,6 +16,7 @@ import (
 	"encoding/hex"
 	"encoding/base64"
 	"io"
+	"log"
 	"os"
 	"sort"
 	"encoding/json"

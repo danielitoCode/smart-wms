@@ -501,3 +501,13 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - POS tampoco permite reutilizar una referencia externa de refund en otra devolución, incluso si corresponde a otra venta.
 - El void legacy deriva su idempotency key del timestamp de la generación de shipment. Un segundo envío del mismo SO recibe otro ID de compensación; los retries de la misma generación siguen siendo idempotentes.
 - Añadí pruebas para duplicidad de referencias de pago/reembolso y para dos generaciones de envío con reversión de stock y reserva.
+
+### AUD-0024 — Cierre de fallos en fix/wms-twin-operational-completion
+
+- **webhooks:** import `log` faltante en el worker del outbox.
+- **POS:** redispatch tras void reutilizaba operation_id de ledger; ahora incluye `operationID` en el hash de release/commit.
+- **POS test:** firma de `DispatchWithDetails` alineada en el replay.
+- **runtime test:** dejó de comparar handlers con `==` (funcs no comparables); comprueba rutas cruzadas.
+- **mesh:** reintento de publish GossipSub entre dos nodos Core.
+- **demo-flow.sh:** mensaje explícito si falta `WMS_TWIN_ALLOW_DEMO_BOOTSTRAP=true`.
+- **Pruebas:** `go test ./... -count=1` en verde.
