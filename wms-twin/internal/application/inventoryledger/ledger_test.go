@@ -167,3 +167,44 @@ func TestIdempotentReplayRetriesPendingReplication(t *testing.T) {
 		t.Fatalf("expected replay to retry replication, result=%+v calls=%d", result, replicator.calls)
 	}
 }
+
+func TestRestoreBalancesRequiresExpectedVersionAndIsIdempotent(t *testing.T) {
+	ledger := newLedger(t, t.TempDir())
+	if _, err := ledger.Adjust(AdjustCommand{OperationID: "seed-restore", WarehouseID: 1, BinID: 10, ItemID: 20, Delta: 8}); err != nil { t.Fatal(err) }
+	before, version, err := ledger.List()
+	if err != nil { t.Fatal(err) }
+	restored, err := ledger.RestoreBalances("restore-1", version, 1, []inventory.Balance{
+		{WarehouseID: 1, BinID: 10, ItemID: 20, OnHand: 3, Allocated: 1},
+	})
+	if err != nil { t.Fatal(err) }
+	if restored.Version != version+1 || len(restored.Balances) != 1 || restored.Balances[0].OnHand != 3 || restored.Balances[0].Allocated != 1 {
+		t.Fatalf("unexpected restore result: %+v", restored)
+	}
+	replay, err := ledger.RestoreBalances("restore-1", version, 1, []inventory.Balance{
+		{WarehouseID: 1, BinID: 10, ItemID: 20, OnHand: 3, Allocated: 1},
+	})
+	if err != nil || !replay.Replayed { t.Fatalf("expected restore replay, result=%+v err=%v", replay, err) }
+	_, current, err := ledger.List()
+	if err != nil { t.Fatal(err) }
+	if _, err := ledger.RestoreBalances("restore-stale", version, 1, before); !errors.Is(err, ErrVersionConflict) {
+		t.Fatalf("expected version conflict, got %v (current=%d)", err, current)
+	}
+}
+
+func TestRestoreBalancesPreservesOtherWarehouses(t *testing.T) {
+	ledger := newLedger(t, t.TempDir())
+	_, err := ledger.Adjust(AdjustCommand{OperationID: "seed-a", WarehouseID: 1, BinID: 10, ItemID: 20, Delta: 8})
+	if err != nil { t.Fatal(err) }
+	_, err = ledger.Adjust(AdjustCommand{OperationID: "seed-b", WarehouseID: 2, BinID: 20, ItemID: 20, Delta: 9})
+	if err != nil { t.Fatal(err) }
+	_, version, err := ledger.List()
+	if err != nil { t.Fatal(err) }
+	_, err = ledger.RestoreBalances("restore-wh-1", version, 1, []inventory.Balance{
+		{WarehouseID: 1, BinID: 10, ItemID: 20, OnHand: 2, Allocated: 0},
+	})
+	if err != nil { t.Fatal(err) }
+	balances, _, err := ledger.List()
+	if err != nil { t.Fatal(err) }
+	if len(balances) != 2 { t.Fatalf("expected two warehouse balances, got %+v", balances) }
+	if balances[0].WarehouseID == 2 && balances[0].OnHand != 9 { t.Fatalf("warehouse 2 was altered: %+v", balances[0]) }
+}
