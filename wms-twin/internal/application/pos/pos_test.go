@@ -2,6 +2,10 @@ package pos
 
 import (
 	"testing"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/fulfillment"
@@ -222,4 +226,32 @@ func TestVoidingPhoneDispatchRestoresOnHandAndReservation(t *testing.T) {
 	balances, _, err = f.ledger.List()
 	if err != nil { t.Fatal(err) }
 	if len(balances)!=1 || balances[0].OnHand!=10 || balances[0].Allocated!=2 { t.Fatalf("void replay changed inventory: %+v",balances) }
+}
+
+func TestCheckoutCompensationFindsLedgerCommitWithoutSagaProgressMarker(t *testing.T) {
+	f := newPOSFixture(t)
+	in := checkoutInput(f,"checkout-crash-window",false)
+	if _, _, err := f.service.CheckoutTransaction(in,"cashier-1"); err != nil { t.Fatal(err) }
+	key := fmt.Sprintf("%d:%d:%d",f.warehouseID,f.binID,f.itemID)
+	opSum := sha256.Sum256([]byte(in.IdempotencyKey+"|"+key))
+	opID := "pos-"+hex.EncodeToString(opSum[:16])
+	applied, err := f.ledger.HasOperation(opID)
+	if err != nil || !applied { t.Fatalf("expected committed ledger operation: applied=%v err=%v",applied,err) }
+	recordIDSum := sha256.Sum256([]byte(in.IdempotencyKey))
+	recordID := hex.EncodeToString(recordIDSum[:])
+	record, ok, err := f.service.store.Get("wms_pos_sale",recordID)
+	if err != nil || !ok { t.Fatalf("sale record missing: %v",err) }
+	var sale SaleRecord
+	if err := json.Unmarshal(record.Data,&sale); err != nil { t.Fatal(err) }
+	// Simulate a crash after ledger commit but before the saga progress marker
+	// is persisted: the durable record says COMPENSATING with no AppliedKeys.
+	sale.Status = "COMPENSATING"
+	sale.AppliedKeys = nil
+	data, err := json.Marshal(sale)
+	if err != nil { t.Fatal(err) }
+	if _, err := f.service.store.Put("wms_pos_sale",recordID,data); err != nil { t.Fatal(err) }
+	if _, _, err := f.service.CheckoutTransaction(in,"cashier-1"); err == nil { t.Fatal("expected compensated checkout to report its failed attempt") }
+	balances, _, err := f.ledger.List()
+	if err != nil { t.Fatal(err) }
+	if len(balances)!=1 || balances[0].OnHand!=10 { t.Fatalf("crash-window compensation did not restore stock: %+v",balances) }
 }
