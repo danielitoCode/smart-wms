@@ -228,3 +228,12 @@ Límites: el detalle de artículo devuelve balances sin `inventory_id` SQL; no h
 ## Validación de Fase 04
 
 El commit de código `c32d3bed1ca754c681e19412d5c6614182ff1729` pasó WMS twin validation `42975654846`: guard de documentación/alcance, module verify, gofmt, vet y tests con `-race`. CI publicó el commit de formato `6b7d821277b29baf1754f3aa2038a1a85bf33a2d`, HEAD de la rama al documentar. La suite general `42975655011` seguía ejecutándose; no la marco como aprobada.
+
+
+## Fase 05 — órdenes de compra
+
+Porté el primer agregado operativo: Purchase Orders y sus líneas. El contrato usa las rutas originales bajo `/api/admin/purchase-orders`: colección GET/POST; detalle GET/PUT; líneas POST/PATCH/DELETE; acciones POST close/reopen. Las colecciones tienen paginación, filtro status/warehouse/q y ocultan ARCHIVED por defecto. El usuario no administrador solo consulta POs de sus almacenes autorizados.
+
+Cada PO es un organismo Core con líneas embebidas; una mutación de línea y el recálculo de estado se guardan en un único append. IDs de PO y líneas usan secuencias Core-backed. Valido warehouse/item, PO number único, item único por PO, cantidades, coste y fechas ISO. Protejo la edición de POs CLOSED/ARCHIVED y no permito borrar una línea que ya tenga recibido.
+
+Límite: esta fase no incluye receipts, recepción física, auditoría WMS equivalente, outbox/eventos, ni un flujo de compensación de inventario. Las líneas aún no tienen historial de receipts; no conecto el frontend. Validación CI pendiente.

@@ -177,3 +177,10 @@ La persistencia de preferred bins en un agregado permite que la reasignación de
 ## Evidencia CI — catálogo extendido
 
 La ejecución `42975654846` de WMS twin validation terminó en success para `c32d3bed1ca754c681e19412d5c6614182ff1729`. Pasaron module verify, gofmt, vet, race tests y guard de documentación/alcance. El formato final quedó en `6b7d821277b29baf1754f3aa2038a1a85bf33a2d`. La suite general del repositorio `42975655011` seguía en curso.
+
+
+## Fase 05 — agregado de compras
+
+Añadí `internal/application/purchaseorders`. Cada PO y sus líneas se persisten en un solo organismo `purchase-orders.{id}`. Reservo IDs en organismos de secuencia separados; una falla puede dejar huecos, pero no reutilizar IDs. El estado de cada línea se deriva de ordered/received; el header se recalcula OPEN/PARTIAL/RECEIVED. CLOSED y ARCHIVED bloquean edición de header/líneas; ARCHIVED solo se permite desde CLOSED. Reopen solo acepta CLOSED.
+
+La capa HTTP conserva el prefijo `/api/admin`, JWT/page permission y warehouse scope. La lectura de detalle enriquece cada línea con el artículo del catálogo.

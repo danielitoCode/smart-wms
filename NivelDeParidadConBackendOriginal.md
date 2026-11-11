@@ -194,3 +194,16 @@ Diferencias pendientes: item detail no reproduce `inventory_id` ni metadatos SQL
 ## Estado actualizado de catálogo
 
 La autenticación y los catálogos warehouses/zones/bins/items/preferred-bins/vendors están conectados bajo `/api/admin`. Las Fases 03 y 04 pasaron WMS twin validation con race tests. No equivale a paridad global: compras, recepción, putaway, inventario SQL-equivalente, picking, packing, shipping, transferencias, conteos, usuarios/admin, integraciones y eventos siguen pendientes.
+
+
+## Fase 05 — paridad de Purchase Orders
+
+| Ruta Flask | Gemelo Go | Estado |
+|---|---|---|
+| GET/POST `/api/admin/purchase-orders` | Igual ruta | Implementado; filtros/paginación |
+| GET/PUT `/api/admin/purchase-orders/{id}` | Igual ruta | Implementado |
+| POST `/{id}/lines` | Igual ruta | Implementado |
+| PATCH/DELETE `/{id}/lines/{line_id}` | Igual ruta | Implementado |
+| POST `/{id}/close` y `/{id}/reopen` | Igual ruta | Implementado |
+
+Aún pendientes: `/{id}/receipts`, unreceive, recepción móvil, cancelación de recepción, auditoría y eventos/outbox. Los DTO/errores no se han comparado automáticamente con fixtures Flask. El agregado PO no debe considerarse equivalente a una transacción SQL multi-tabla: sus líneas están embebidas para hacer cada mutación de PO un append único.

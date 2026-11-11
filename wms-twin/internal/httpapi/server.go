@@ -15,6 +15,7 @@ import (
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/identity"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/purchaseorders"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 	"github.com/yecharlot/PrismaTec-Core/core"
 )
@@ -24,6 +25,7 @@ type Server struct {
 	store            *corestore.Store
 	ledger           *inventoryledger.Ledger
 	catalog          *catalog.Repository
+	purchaseOrders   *purchaseorders.Repository
 	token            string
 	users            *identity.Repository
 	jwtSecret        []byte
@@ -47,8 +49,9 @@ func NewWithIdentity(node *core.Node, store *corestore.Store, token string, user
 		loginLockout = 15 * time.Minute
 	}
 	ledger := inventoryledger.New(store)
+	master := catalog.New(store, ledger)
 	return &Server{
-		node: node, store: store, ledger: ledger, catalog: catalog.New(store, ledger), token: token,
+		node: node, store: store, ledger: ledger, catalog: master, purchaseOrders: purchaseorders.New(store, master), token: token,
 		users: users, jwtSecret: append([]byte(nil), jwtSecret...),
 		maxLoginAttempts: maxLoginAttempts, loginLockout: loginLockout,
 		requirePacking: requirePacking,

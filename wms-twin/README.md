@@ -133,3 +133,8 @@ Las ubicaciones preferidas solo aceptan bins Pickable y mantienen prioridades co
 ## Estado CI de Fase 04
 
 WMS twin validation `42975654846` terminó en success, incluidos vet y tests con detector de carreras. El commit final con formato es `6b7d821277b29baf1754f3aa2038a1a85bf33a2d`. La suite general del repositorio `42975655011` seguía ejecutándose al registrar.
+
+
+## Fase 05 — Purchase Orders disponibles
+
+El gemelo ya expone administración de órdenes de compra y líneas bajo `/api/admin/purchase-orders`, con estado OPEN/PARTIAL/RECEIVED/CLOSED/ARCHIVED, close/reopen, validación de referencias a warehouse/items y autorización por almacén. No incluye todavía recepción, cancelación, receipts ni putaway. Consulta `docs/FASE_05_PURCHASE_ORDERS.md`.

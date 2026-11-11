@@ -39,3 +39,8 @@ Completar catálogo de items, preferred bins y vendors; después purchase orders
 ## Estado de implementación actualizado
 
 La autenticación y el primer catálogo (warehouses/zones/bins) ya no son tareas futuras: ambos están implementados y la Fase 03 pasó CI. La Fase 04 añade items, preferred bins y vendors. El frontend original sigue bloqueado hasta completar los workflows y demostrar paridad con pruebas diferenciales.
+
+
+## Estado actualizado del contrato frontend
+
+El gemelo ya incluye auth, catálogo maestro y administración de Purchase Orders. El frontend sigue bloqueado: receiving, putaway, receipts/unreceive, inventory overview, sales orders y demás operaciones no están todavía portadas. No cambies la base URL del frontend.

@@ -89,3 +89,8 @@ Los métodos y DTO principales se contrastaron con `api/routes/admin/admin_wareh
 ## Fase 04 — rutas adicionales portadas
 
 Añadí las rutas de items, preferred bins y vendors al prefijo `/api/admin`. El contrato de referencia está en `api/routes/admin/admin_items.py`, `api/routes/admin/admin_vendors.py` y sus schemas. Items admite archive toggle; preferred bins permite upsert y reordena prioridades sin empates; vendors usa UUID canónico. Las rutas están cubiertas por JWT y permisos de página, pero aún no hay paridad global ni pruebas diferenciales Flask/Go.
+
+
+## Fase 05 — rutas de Purchase Orders portadas
+
+He portado las rutas administrativas de PO y líneas: GET/POST colección, GET/PUT detalle, POST líneas, PATCH/DELETE línea, POST close/reopen. La implementación actual mantiene líneas dentro del agregado PO Core. Las rutas de receipts/unreceive están en el mapa original, pero todavía no están implementadas en el gemelo.

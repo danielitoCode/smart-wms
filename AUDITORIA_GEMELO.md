@@ -357,3 +357,16 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Commit de formato publicado por CI:** `6b7d821277b29baf1754f3aa2038a1a85bf33a2d`.
 - **Suite general:** `42975655011` seguía en ejecución al registrar.
 - **Conclusión:** catálogo extendido validado en Go; paridad global aún no alcanzada.
+
+
+### AUD-0030 — Primer agregado Purchase Orders
+
+- **Archivos nuevos:** `internal/application/purchaseorders/purchaseorders.go`, tests del agregado y handlers HTTP.
+- **Archivos conectados:** `internal/httpapi/server.go`, `internal/httpapi/catalog.go`.
+- **Detonante:** completar compras antes de recibir mercancía y ubicarla físicamente.
+- **Cambio:** CRUD de cabecera PO, líneas, close/reopen, filtros, paginación, autorización por página y warehouse scope.
+- **Persistencia:** un organismo por PO con líneas embebidas; secuencias Core-backed para PO y PO line.
+- **Invariantes:** warehouse/item existentes, número PO único, item no duplicado en una PO, quantity ordered positiva, coste no negativo, cantidad no inferior a recibida, líneas con recibos no se borran, ARCHIVED solo desde CLOSED.
+- **Riesgos:** receipts/receiving/unreceive no implementados; no audit log WMS ni outbox; no evento de edición; no prueba diferencial; fecha acepta ISO YYYY-MM-DD. El header y líneas son un agregado Core, no tablas independientes.
+- **Pruebas añadidas:** ciclo de vida, duplicados, update de línea, bloqueo CLOSED, reopen y rutas HTTP.
+- **Validación:** pendiente del CI de este commit.
