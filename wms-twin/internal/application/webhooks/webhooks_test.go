@@ -2,6 +2,11 @@ package webhooks
 
 import (
 	"context"
+	"encoding/base64"
+	"os"
+
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
+	"github.com/yecharlot/PrismaTec-Core/core"
 	"strings"
 	"testing"
 )
@@ -33,4 +38,33 @@ func TestSafeDialContextRejectsLoopbackBeforeDial(t *testing.T) {
 	if !strings.Contains(err.Error(), "non-public") {
 		t.Fatalf("unexpected rejection: %v", err)
 	}
+}
+
+func TestWebhookSecretEncryptionAndDurableOutbox(t *testing.T) {
+	old := os.Getenv("SENTRY_ENCRYPTION_KEY")
+	t.Cleanup(func(){ _ = os.Setenv("SENTRY_ENCRYPTION_KEY", old) })
+	_ = os.Setenv("SENTRY_ENCRYPTION_KEY", base64.StdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef")))
+	plain := strings.Repeat("s", 48)
+	encrypted, err := encryptSecret(plain)
+	if err != nil { t.Fatal(err) }
+	if encrypted == plain || strings.Contains(encrypted, plain) { t.Fatal("secret was not encrypted") }
+	decrypted, err := decryptSecret(encrypted)
+	if err != nil || decrypted != plain { t.Fatalf("secret roundtrip failed: %v", err) }
+
+	node, err := core.NewNode(core.Config{DataDir:t.TempDir(), Name:"webhook-outbox-test"})
+	if err != nil { t.Fatal(err) }
+	service := New(corestore.New(node.Organisms(), string(node.ID())))
+	sub, err := service.Create("https://hooks.example.com/wms", plain, []string{"order.shipped"})
+	if err != nil { t.Fatal(err) }
+	if sub.Secret != "" { t.Fatal("plaintext secret leaked from Create response") }
+	if err := service.DeliverEvent("event-1", "order.shipped", map[string]any{"order":"SO-1"}); err != nil { t.Fatal(err) }
+	if err := service.DeliverEvent("event-1", "order.shipped", map[string]any{"order":"SO-1"}); err != nil { t.Fatal(err) }
+	deliveries, err := service.Deliveries(10)
+	if err != nil { t.Fatal(err) }
+	if len(deliveries) != 1 || deliveries[0].Status != "PENDING" || deliveries[0].EventID != "event-1" {
+		t.Fatalf("expected one durable pending delivery, got %+v", deliveries)
+	}
+	stored, ok, err := service.store.Get(kind, sub.ID)
+	if err != nil || !ok { t.Fatalf("subscription not persisted: %v", err) }
+	if strings.Contains(string(stored.Data), plain) { t.Fatal("plaintext secret persisted in Core record") }
 }
