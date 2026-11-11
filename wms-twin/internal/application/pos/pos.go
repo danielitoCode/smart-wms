@@ -105,6 +105,8 @@ type SaleRecord struct {
 	Tenders []Tender `json:"tenders"`
 	Lines []SaleLine `json:"lines"`
 	AppliedKeys []string `json:"applied_keys,omitempty"`
+	DispatchKey string `json:"dispatch_key,omitempty"`
+	DispatchFingerprint string `json:"dispatch_fingerprint,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -566,7 +568,7 @@ func (s *Service) Refund(soNumber string, actor string) (map[string]any, error) 
 	return nil, ErrUnsupported
 }
 
-func (s *Service) DispatchWithDetails(soNumber, carrier, tracking, actor string, allowed []int64, isAdmin bool) (map[string]any, error) {
+func (s *Service) DispatchWithDetails(soNumber, carrier, tracking, actor, operationID string, allowed []int64, isAdmin bool) (map[string]any, error) {
 	if s.fulfill == nil { return nil, ErrUnsupported }
 	so, err := s.GetSO(soNumber)
 	if err != nil { return nil, err }
@@ -584,6 +586,18 @@ func (s *Service) DispatchWithDetails(soNumber, carrier, tracking, actor string,
 	}
 	if sale == nil { return nil, fmt.Errorf("POS sale metadata not found") }
 	if !sale.PhoneOrder { return nil, fmt.Errorf("only phone orders can use POS dispatch") }
+	if strings.TrimSpace(operationID) == "" { return nil, ErrInvalid }
+	fingerprintSum := sha256.Sum256([]byte(soNumber+"|"+carrier+"|"+tracking+"|"+actor))
+	fingerprint := hex.EncodeToString(fingerprintSum[:])
+	if sale.DispatchKey != "" && (sale.DispatchKey != operationID || sale.DispatchFingerprint != fingerprint) {
+		return nil, fmt.Errorf("POS dispatch idempotency key reused with different command")
+	}
+	if sale.DispatchKey == "" {
+		sale.DispatchKey, sale.DispatchFingerprint = operationID, fingerprint
+		data, _ := json.Marshal(sale)
+		if _, err := s.store.Put("wms_pos_sale", sale.ID, data); err != nil { return nil, err }
+	}
+	if sale.Status == "DISPATCHED" && so.Status != salesorders.StatusShipped { return nil, fulfillment.ErrState }
 	if so.Status == salesorders.StatusShipped && (sale.Status == "DISPATCHING" || sale.Status == "DISPATCHED") {
 		shipment, err := s.fulfill.GetShipment(so.SOID)
 		if err != nil { return nil, err }
@@ -596,6 +610,7 @@ func (s *Service) DispatchWithDetails(soNumber, carrier, tracking, actor string,
 		return map[string]any{"so_id":so.SOID,"so_number":so.SONumber,"status":shipment.Status,"carrier":shipment.Carrier,"tracking_number":shipment.TrackingNumber,"shipped_at":shipment.ShippedAt,"actor":actor,"replayed":true}, nil
 	}
 	if sale.Status == "DISPATCHED" { return nil, fulfillment.ErrState }
+	if sale.Status != "COMPLETED" && sale.Status != "DISPATCHING" { return nil, fulfillment.ErrState }
 	aggregated := make(map[string]SaleLine)
 	for _, line := range sale.Lines {
 		key := fmt.Sprintf("%d:%d:%d", line.WarehouseID, line.BinID, line.ItemID)
