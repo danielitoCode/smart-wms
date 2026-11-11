@@ -203,7 +203,7 @@ func (s *Service) CheckoutTransaction(in CheckoutInput, actor string) (salesorde
 	if in.WarehouseID <= 0 || len(in.Lines) == 0 || len(in.Lines) > 200 || strings.TrimSpace(in.IdempotencyKey) == "" || len(in.IdempotencyKey) > 128 {
 		return salesorders.SalesOrder{}, false, ErrInvalid
 	}
-	if strings.TrimSpace(in.ExternalTxnRef) == "" || strings.TrimSpace(in.CashierID) == "" || strings.TrimSpace(in.TerminalID) == "" {
+	if strings.TrimSpace(in.ExternalTxnRef) == "" || len(in.ExternalTxnRef) > 256 || strings.TrimSpace(in.CashierID) == "" || len(in.CashierID) > 128 || strings.TrimSpace(in.TerminalID) == "" || len(in.TerminalID) > 128 || len(in.CustomerName) > 256 || len(in.Notes) > 2000 {
 		return salesorders.SalesOrder{}, false, ErrInvalid
 	}
 	method := strings.ToLower(strings.TrimSpace(in.PaymentMethod))
@@ -222,7 +222,8 @@ func (s *Service) CheckoutTransaction(in CheckoutInput, actor string) (salesorde
 			if tender.AmountTenderedCents < 0 || tender.AmountTenderedCents < tender.ChangeCents || tender.AmountTenderedCents-tender.ChangeCents != tender.AmountCents || tender.ChangeCents < 0 { return salesorders.SalesOrder{}, false, ErrInvalid }
 		case "card":
 			hasCard = true
-			if tender.CardBrand == "" || len(tender.CardLast4) != 4 || tender.CardLast4 < "0000" || tender.CardLast4 > "9999" || tender.AuthCode == "" || tender.ExternalRef == "" { return salesorders.SalesOrder{}, false, ErrInvalid }
+			if tender.CardBrand == "" || len(tender.CardBrand) > 40 || len(tender.CardLast4) != 4 || tender.AuthCode == "" || len(tender.AuthCode) > 128 || tender.ExternalRef == "" || len(tender.ExternalRef) > 256 { return salesorders.SalesOrder{}, false, ErrInvalid }
+			for _, digit := range tender.CardLast4 { if digit < '0' || digit > '9' { return salesorders.SalesOrder{}, false, ErrInvalid } }
 		default: return salesorders.SalesOrder{}, false, fmt.Errorf("%w: unsupported tender type", ErrInvalid)
 		}
 		if tenderTotal > math.MaxInt64-tender.AmountCents { return salesorders.SalesOrder{}, false, ErrInvalid }
@@ -270,7 +271,8 @@ func (s *Service) CheckoutTransaction(in CheckoutInput, actor string) (salesorde
 		if err != nil { return salesorders.SalesOrder{}, false, err }
 		skuByID := make(map[int64]string, len(items))
 		idBySKU := make(map[string]int64, len(items))
-		for _, item := range items { skuByID[item.ItemID] = item.SKU; idBySKU[item.SKU] = item.ItemID }
+		activeByID := make(map[int64]bool, len(items))
+		for _, item := range items { skuByID[item.ItemID] = item.SKU; idBySKU[item.SKU] = item.ItemID; activeByID[item.ItemID] = item.IsActive }
 		balances, _, err := s.ledger.List()
 		if err != nil { return salesorders.SalesOrder{}, false, err }
 		available := make(map[string]int64)
@@ -282,7 +284,7 @@ func (s *Service) CheckoutTransaction(in CheckoutInput, actor string) (salesorde
 		for _, line := range in.Lines {
 			itemID := line.ItemID
 			if itemID <= 0 { itemID = idBySKU[line.SKU] }
-			if itemID <= 0 || line.BinID <= 0 || line.Quantity <= 0 || line.Quantity > 10000 { return salesorders.SalesOrder{}, false, ErrInvalid }
+			if itemID <= 0 || !activeByID[itemID] || line.BinID <= 0 || line.Quantity <= 0 || line.Quantity > 10000 || len(line.SKU) > 128 { return salesorders.SalesOrder{}, false, ErrInvalid }
 			bin, binErr := s.catalog.GetBin(line.BinID)
 			if binErr != nil || bin.WarehouseID != in.WarehouseID || !bin.IsActive || (bin.BinType != "Pickable" && bin.BinType != "PickableStaging") { return salesorders.SalesOrder{}, false, fmt.Errorf("%w: POS bin is inactive, non-pickable or outside the warehouse", ErrInvalid) }
 			sku := skuByID[itemID]
@@ -474,6 +476,15 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 		if err := json.Unmarshal(record.Data, &prior); err != nil { return nil, false, err }
 		if prior.Fingerprint != fingerprint { return nil, false, fmt.Errorf("refund idempotency key reused with different body") }
 		if prior.Status == "COMPLETED" {
+			if prior.FullyRefunded {
+				sale.Status = "REFUNDED"
+				saleData, marshalErr := json.Marshal(sale)
+				if marshalErr != nil { return nil, false, marshalErr }
+				if _, persistErr := s.store.Put("wms_pos_sale", sale.ID, saleData); persistErr != nil { return nil, false, persistErr }
+				so.Status = salesorders.StatusRefunded
+				for i := range so.Lines { so.Lines[i].Status = salesorders.LineRefunded }
+				if saveErr := s.sos.Save(so); saveErr != nil { return nil, false, saveErr }
+			}
 			return map[string]any{"refund_id":prior.ID,"original_so_number":in.SONumber,"fully_refunded":prior.FullyRefunded,"total_cents":prior.TotalCents,"replayed":true}, true, nil
 		}
 	}
@@ -518,7 +529,7 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 			}
 			key := fmt.Sprintf("%d:%d", itemID, line.BinID)
 			base, exists := original[key]
-			if !exists || line.Quantity <= 0 || line.Quantity > base.Quantity-already[key] { return nil, false, fmt.Errorf("refund line is not in the original sale or exceeds remaining quantity") }
+			if !exists || (line.SKU != "" && line.SKU != base.SKU) || line.Quantity <= 0 || line.Quantity > base.Quantity-already[key] { return nil, false, fmt.Errorf("refund line is not in the original sale or exceeds remaining quantity") }
 			base.Quantity = line.Quantity
 			requested = append(requested, base)
 		}
@@ -596,6 +607,8 @@ func (s *Service) DispatchWithDetails(soNumber, carrier, tracking, actor, operat
 	if strings.TrimSpace(operationID) == "" || len(operationID) > 128 { return nil, ErrInvalid }
 	fingerprintSum := sha256.Sum256([]byte(soNumber+"|"+carrier+"|"+tracking+"|"+actor))
 	fingerprint := hex.EncodeToString(fingerprintSum[:])
+	if so.Status != salesorders.StatusShipped && so.Status != salesorders.StatusPicked && so.Status != salesorders.StatusPacked { return nil, fulfillment.ErrState }
+	if so.Status == salesorders.StatusShipped && sale.Status != "DISPATCHING" && sale.Status != "DISPATCHED" { return nil, fulfillment.ErrState }
 	if sale.DispatchKey != "" && (sale.DispatchKey != operationID || sale.DispatchFingerprint != fingerprint) {
 		return nil, fmt.Errorf("POS dispatch idempotency key reused with different command")
 	}
