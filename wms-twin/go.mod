@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/yecharlot/PrismaTec-Core v0.0.0-20260929063220-84e9f40cbcc0
 	github.com/libp2p/go-libp2p-kad-dht v0.30.2
-	github.com/libp2p/go-libp2p-pubsub v0.14.3
+	github.com/libp2p/go-libp2p-pubsub v0.14.2
 	golang.org/x/crypto v0.53.0
 )
 
