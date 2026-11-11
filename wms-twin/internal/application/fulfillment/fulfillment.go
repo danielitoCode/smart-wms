@@ -141,6 +141,23 @@ func (s *Service) Fulfill(in FulfillInput, allowed []int64, isAdmin bool) (Shipm
 	if !isAdmin && !contains(allowed, so.WarehouseID) {
 		return Shipment{}, ErrScope
 	}
+	if s.store != nil {
+		if record, exists, readErr := s.store.Get(shipmentKind, strconv.FormatInt(so.SOID, 10)); readErr != nil {
+			return Shipment{}, readErr
+		} else if exists {
+			var prior Shipment
+			if json.Unmarshal(record.Data, &prior) == nil && (prior.Status == "SHIPPED" || prior.Status == "PREPARING") && so.Status == salesorders.StatusShipped {
+				if strings.TrimSpace(in.Carrier) != prior.Carrier || strings.TrimSpace(in.TrackingNumber) != prior.TrackingNumber { return Shipment{}, ErrState }
+				if prior.Status == "PREPARING" {
+					prior.Status = "SHIPPED"
+					data, _ := json.Marshal(prior)
+					if _, err := s.store.Put(shipmentKind, strconv.FormatInt(so.SOID, 10), data); err != nil { return Shipment{}, err }
+				}
+				prior.Replayed = true
+				return prior, nil
+			}
+		}
+	}
 	if so.Status != salesorders.StatusPacked && so.Status != salesorders.StatusPicked {
 		// allow shipping picked orders if packing skipped by config
 		if so.Status != salesorders.StatusPicked {
