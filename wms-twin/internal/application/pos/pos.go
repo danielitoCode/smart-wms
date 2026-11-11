@@ -425,7 +425,7 @@ type RefundRecord struct {
 func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]any, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if strings.TrimSpace(in.SONumber) == "" || strings.TrimSpace(in.IdempotencyKey) == "" || strings.TrimSpace(in.ExternalRefundRef) == "" || in.TotalCents <= 0 {
+	if strings.TrimSpace(in.SONumber) == "" || strings.TrimSpace(in.IdempotencyKey) == "" || strings.TrimSpace(in.ExternalRefundRef) == "" || strings.TrimSpace(in.CashierID) == "" || in.TotalCents <= 0 {
 		return nil, false, ErrInvalid
 	}
 	so, err := s.GetSO(in.SONumber)
@@ -477,7 +477,11 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 	if err != nil { return nil, false, err }
 	for _, record := range refundRecords {
 		var prior RefundRecord
-		if json.Unmarshal(record.Data, &prior) != nil || prior.SaleID != sale.ID || prior.Status != "COMPLETED" { continue }
+		if json.Unmarshal(record.Data, &prior) != nil || prior.SaleID != sale.ID { continue }
+		if prior.Status == "PREPARING" && prior.ID != refundID {
+			return nil, false, fmt.Errorf("another refund transaction is still pending for this sale")
+		}
+		if prior.Status != "COMPLETED" { continue }
 		for _, line := range prior.Lines { already[fmt.Sprintf("%d:%d", line.ItemID, line.BinID)] += line.Quantity }
 	}
 	requested := make([]SaleLine, 0)
