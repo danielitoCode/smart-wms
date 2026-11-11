@@ -51,10 +51,10 @@ describe('ApiClient browser cookie contract', () => {
 		const client = new ApiClient('http://localhost:5000');
 		const caller = new AbortController();
 		const request = client.get('/api/slow', { signal: caller.signal });
+		const rejection = expect(request).rejects.toMatchObject({ code: 'timeout', status: 0 });
 
 		await vi.advanceTimersByTimeAsync(30_000);
-
-		await expect(request).rejects.toMatchObject({ code: 'timeout', status: 0 });
+		await rejection;
 	});
 
 	it('distinguishes caller cancellation from a timeout', async () => {
