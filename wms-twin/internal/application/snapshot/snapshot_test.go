@@ -61,15 +61,18 @@ func TestRestoreSnapshotUsesExpectedVersionAndRestoresExactBalances(t *testing.T
 	if _, err := ledger.Adjust(inventoryledger.AdjustCommand{OperationID:"after-snapshot",WarehouseID:1,BinID:2,ItemID:3,Delta:-5}); err != nil { t.Fatal(err) }
 	_, currentVersion, err := ledger.List()
 	if err != nil { t.Fatal(err) }
-	result, err := service.Restore(snap.ID,"restore-snapshot-1",currentVersion)
+	result, err := service.RestoreSafely(snap.ID,"restore-snapshot-1",currentVersion)
 	if err != nil { t.Fatal(err) }
-	if result.Version != currentVersion+1 { t.Fatalf("unexpected restored ledger version: %+v",result) }
+	if result.Result.Version != currentVersion+1 { t.Fatalf("unexpected restored ledger version: %+v",result) }
+	if result.BackupSnapshotID == "" { t.Fatal("restore did not create a pre-restore backup snapshot") }
+	backup, err := service.Get(result.BackupSnapshotID)
+	if err != nil || len(backup.Rows) != 1 || backup.Rows[0].OnHand != 7 { t.Fatalf("pre-restore backup is incorrect: backup=%+v err=%v",backup,err) }
 	balances, _, err := ledger.List()
 	if err != nil { t.Fatal(err) }
 	if len(balances)!=1 || balances[0].OnHand!=12 { t.Fatalf("snapshot did not restore inventory: %+v",balances) }
-	replay, err := service.Restore(snap.ID,"restore-snapshot-1",currentVersion)
-	if err != nil || !replay.Replayed { t.Fatalf("expected restore replay: result=%+v err=%v",replay,err) }
-	if _, err := service.Restore(snap.ID,"restore-snapshot-stale",currentVersion); !errors.Is(err,inventoryledger.ErrVersionConflict) {
+	replay, err := service.RestoreSafely(snap.ID,"restore-snapshot-1",currentVersion)
+	if err != nil || !replay.Replayed || replay.BackupSnapshotID != result.BackupSnapshotID { t.Fatalf("expected restore replay: result=%+v err=%v",replay,err) }
+	if _, err := service.RestoreSafely(snap.ID,"restore-snapshot-stale",currentVersion); !errors.Is(err,inventoryledger.ErrVersionConflict) {
 		t.Fatalf("expected stale restore to conflict, got %v",err)
 	}
 }
