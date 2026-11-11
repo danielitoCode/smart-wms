@@ -111,6 +111,7 @@ func (r *Repository) List()([]PurchaseOrder,error){
 	sort.Slice(out,func(i,j int)bool{return out[i].POID>out[j].POID});return out,nil
 }
 func (r *Repository) Get(id int64)(PurchaseOrder,error){r.mu.Lock();defer r.mu.Unlock();return r.getLocked(id)}
+func (r *Repository) Save(po PurchaseOrder) error {r.mu.Lock();defer r.mu.Unlock();return r.persist(po)}
 func (r *Repository) Create(input CreateInput,username string)(PurchaseOrder,error){
 	r.mu.Lock();defer r.mu.Unlock()
 	if strings.TrimSpace(input.PONumber)==""||len(input.PONumber)>128||input.WarehouseID<=0||len(input.Lines)==0||len(input.Lines)>500{return PurchaseOrder{},ErrInvalid}

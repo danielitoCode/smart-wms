@@ -370,3 +370,12 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Riesgos:** receipts/receiving/unreceive no implementados; no audit log WMS ni outbox; no evento de edición; no prueba diferencial; fecha acepta ISO YYYY-MM-DD. El header y líneas son un agregado Core, no tablas independientes.
 - **Pruebas añadidas:** ciclo de vida, duplicados, update de línea, bloqueo CLOSED, reopen y rutas HTTP.
 - **Validación:** pendiente del CI de este commit.
+
+### AUD-0022 — Fases 06–09: receiving, put-away, sales orders, picking, packing, shipping
+
+- **Detonante:** avanzar la paridad operativa para que el frontend pueda, en lab, usar el gemelo sin cambios de contrato.
+- **Cambio:** paquetes `receiving`, `salesorders`, `picking`, `fulfillment`; rutas HTTP `/api/receiving/*`, `/api/putaway/*`, `/api/picking/*`, `/api/packing/*`, `/api/shipping/*` y admin `/api/admin/sales-orders`.
+- **Persistencia:** organismos Core + ledger (adjust/allocate/release/move).
+- **No cubierto:** wave-picking completo, backorders, connectors, webhooks, events outbox, pruebas diferenciales Flask.
+- **Pruebas:** `go test ./internal/httpapi` ok (GOPROXY=proxy.golang.org).
+- **Restricción:** backend Flask y frontends originales intactos.

@@ -22,9 +22,9 @@ No declaro paridad por tener rutas con nombres parecidos. Cada caso debe igualar
 | Roles/permisos | Roles, page permissions, warehouse scopes | ADMIN/page permissions y warehouse scope en auth + catálogo inicial | Parcial; falta aplicar a todos los flujos |
 | Warehouses/zones/bins/items | CRUD, validación y relaciones | CRUD warehouses/zones/bins bajo /api/admin; items pendiente | Parcial |
 | Inventario | Transacciones, locks, reservas y auditoría | Ledger global: adjust/allocate/release/move, idempotencia, append por operación y réplica CID | Parcial de dominio; un primario global, no paridad ni quorum |
-| Receiving/put-away | PO, recepción, cancelación y ubicación | No | Pendiente |
-| Picking/waves | Batch, wave, short pick, cancel | No | Pendiente |
-| Packing/shipping | Verificación y despacho | No | Pendiente |
+| Receiving/put-away | PO, recepción, cancelación y ubicación | Rutas core implementadas | Parcial |
+| Picking/waves | Batch, wave, short pick, cancel | Batch/confirm/short/complete/cancel; wave pendiente | Parcial |
+| Packing/shipping | Verificación y despacho | verify/complete/fulfill básicos | Parcial |
 | Cycle counts/adjustments | Conteo, aprobación y ajustes | No | Pendiente |
 | Transfers | Movimiento y órdenes inter-almacén | Movimiento técnico dentro del ledger | Parcial de dominio; no paridad |
 | Orders/RMA/backorders/POS | Workflows completos | No | Pendiente |
@@ -207,3 +207,8 @@ La autenticación y los catálogos warehouses/zones/bins/items/preferred-bins/ve
 | POST `/{id}/close` y `/{id}/reopen` | Igual ruta | Implementado |
 
 Aún pendientes: `/{id}/receipts`, unreceive, recepción móvil, cancelación de recepción, auditoría y eventos/outbox. Los DTO/errores no se han comparado automáticamente con fixtures Flask. El agregado PO no debe considerarse equivalente a una transacción SQL multi-tabla: sus líneas están embebidas para hacer cada mutación de PO un append único.
+
+
+## Avance fases 06-09
+
+Implementé receiving, put-away, sales orders, picking batch y packing/shipping básicos sobre PrismaTec-Core. Sigo sin declarar el gemelo sustituible ni autorizar el cambio de upstream del frontend en producción.
