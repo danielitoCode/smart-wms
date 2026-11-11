@@ -129,3 +129,22 @@ func TestPartialRefundsCannotExceedOriginalQuantityAndCanFinishSale(t *testing.T
 	overRefund := RefundInput{SONumber:so.SONumber,IdempotencyKey:"refund-partial-3",ExternalRefundRef:"gateway-partial-3",CashierID:"cashier-1",Reason:"attempt duplicate",PaymentMethod:"cash",TotalCents:1,Lines:[]RefundLine{{ItemID:f.itemID,SKU:"POS-SKU-1",BinID:f.binID,Quantity:1}}}
 	if _, _, err := f.service.RefundTransaction(overRefund,"cashier-1"); err == nil { t.Fatal("refund accepted quantity beyond original sale") }
 }
+
+func TestShippingRefundCanCompleteSaleAfterAllItemsReturned(t *testing.T) {
+	f := newPOSFixture(t)
+	in := checkoutInput(f,"checkout-shipping-refund",false)
+	in.ShippingCents = 100
+	in.TotalCents = 310
+	in.Tenders[0].AmountCents = 310
+	in.Tenders[0].AmountTenderedCents = 310
+	so, _, err := f.service.CheckoutTransaction(in,"cashier-1")
+	if err != nil { t.Fatal(err) }
+	merchandise := RefundInput{SONumber:so.SONumber,IdempotencyKey:"refund-merchandise",ExternalRefundRef:"gateway-merchandise",CashierID:"cashier-1",Reason:"merchandise returned",PaymentMethod:"cash",TotalCents:210}
+	first, _, err := f.service.RefundTransaction(merchandise,"cashier-1")
+	if err != nil { t.Fatal(err) }
+	if first["fully_refunded"] == true || first["all_items_returned"] != true { t.Fatalf("expected all items returned but shipping still outstanding: %v",first) }
+	shipping := RefundInput{SONumber:so.SONumber,IdempotencyKey:"refund-shipping",ExternalRefundRef:"gateway-shipping",CashierID:"cashier-1",Reason:"shipping charge refunded",PaymentMethod:"cash",TotalCents:100,ShippingRefundCents:100}
+	second, _, err := f.service.RefundTransaction(shipping,"cashier-1")
+	if err != nil { t.Fatal(err) }
+	if second["fully_refunded"] != true { t.Fatalf("shipping-only refund did not complete financial refund: %v",second) }
+}
