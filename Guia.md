@@ -362,3 +362,8 @@ Para validar esta rama primero ejecutaré CI y la suite Go. Después comenzaré 
 
 
 La prueba de cancelación RMA verifica el saldo neto en cero, no la ausencia física de la fila del balance. El ledger conserva balances históricos con cantidad cero, por lo que la aserción correcta es OnHand=0 y Allocated=0.
+
+
+### Criterio de elegibilidad de RMA
+
+Un RMA solo puede reclamar cantidades con `QuantityShipped` confirmado. No uso `QuantityOrdered`, `QuantityPicked` ni `QuantityPacked` como sustitutos: esos estados no prueban que la mercancía haya salido físicamente del almacén. Si no quedan unidades despachadas y no devueltas, rechazo la creación. Añadí una prueba que cubre el caso de una orden marcada como shipped pero con cantidad solo empaquetada.
