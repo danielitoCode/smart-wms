@@ -20,7 +20,7 @@
 </script>
 
 <section class="data-page">
-	<nav aria-label="Datos maestros">{#each visibleTabs as tab}<a href={tab.href} class:active={isActive(tab.href)} aria-current={isActive(tab.href) ? 'page' : undefined}><AppIcon name={tab.icon} size={17} /><span>{tab.label}</span></a>{/each}</nav>
+	<nav aria-label={i18n.t('Datos maestros')}>{#each visibleTabs as tab}<a href={tab.href} class:active={isActive(tab.href)} aria-current={isActive(tab.href) ? 'page' : undefined}><AppIcon name={tab.icon} size={17} /><span>{tab.label}</span></a>{/each}</nav>
 	{@render children()}
 </section>
 

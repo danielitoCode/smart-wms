@@ -121,7 +121,7 @@
 	</section>
 {:else if guard.status === 'authenticated'}
 	<div class="workspace">
-		<aside class="sidebar" class:open={sidebarOpen} aria-label="Navegación de Abellis">
+		<aside class="sidebar" class:open={sidebarOpen} aria-label={i18n.t('Navegación de Abellis')}>
 			<a class="brand" href="/inventory" aria-label="Abellis WMS, ir al inventario">
 				<img src="/brand/abellis_mark_blanco.svg" width="36" height="36" alt="" />
 				<span class="brand-text"><strong>Abellis</strong><small>Smart WMS</small></span>
@@ -149,10 +149,10 @@
 				<div class="account"><strong>{guard.user?.fullName || guard.user?.username || i18n.t('Usuario')}</strong><span>{guard.user?.role === 'ADMIN' ? i18n.t('Administrador') : i18n.t('Usuario de almacén')}</span></div>
 			</div>
 		</aside>
-		{#if sidebarOpen}<button class="scrim" type="button" aria-label="Cerrar menú" onclick={() => sidebarOpen = false}></button>{/if}
+		{#if sidebarOpen}<button class="scrim" type="button" aria-label={i18n.t('Cerrar menú')} onclick={() => sidebarOpen = false}></button>{/if}
 		<div class="app-main">
 			<header class="topbar">
-				<button class="menu-toggle" type="button" aria-label="Abrir menú" aria-expanded={sidebarOpen} onclick={() => sidebarOpen = !sidebarOpen}><AppIcon name="menu" size={21} /></button>
+				<button class="menu-toggle" type="button" aria-label={i18n.t('Abrir menú')} aria-expanded={sidebarOpen} onclick={() => sidebarOpen = !sidebarOpen}><AppIcon name="menu" size={21} /></button>
 				<div class="page-context"><p>ABELLIS · SMART WMS</p><span>{i18n.t('Operaciones de almacén')}</span></div>
 				<div class="topbar-actions">
 					<LocaleSwitcher />
