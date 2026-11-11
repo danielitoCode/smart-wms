@@ -61,11 +61,14 @@ func (s *Service) Write(req WriteRequest, actor string) (map[string]any, error) 
 		if sourceSystem == "" { sourceSystem, _ = rec["source_system"].(string) }
 		externalID, _ := rec["external_id"].(string)
 		externalVersion, _ := rec["external_version"].(string)
+		sourceSystem = strings.TrimSpace(sourceSystem)
+		externalID = strings.TrimSpace(externalID)
+		externalVersion = strings.TrimSpace(externalVersion)
 		idemKey := ""
 		fingerprint := ""
 		if sourceSystem != "" || externalID != "" {
 			if sourceSystem == "" || len(sourceSystem) > 128 || strings.TrimSpace(externalID) == "" || len(externalID) > 256 || (strings.TrimSpace(externalVersion) == "" || len(externalVersion) > 128) {
-				err = fmt.Errorf("source_system and external_id must be supplied together")
+				err = fmt.Errorf("source_system, external_id and external_version are all required for idempotent inbound writes")
 			} else {
 				canonical, marshalErr := json.Marshal(rec)
 				if marshalErr != nil { err = marshalErr } else {
