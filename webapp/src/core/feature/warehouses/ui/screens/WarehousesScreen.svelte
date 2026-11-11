@@ -87,7 +87,7 @@
 {/if}
 {#if deleteTarget}
 	<div class="backdrop"><section class="dialog" role="alertdialog" aria-modal="true">
-		<h2>{i18n.t('Eliminar almacén')}</h2><p>{i18n.t("¿Eliminar")} <strong>{deleteTarget.code} — {deleteTarget.name}</strong>? Solo será posible si no tiene inventario, ubicaciones ni zonas asociadas.</p>
+		<h2>{i18n.t('Eliminar almacén')}</h2><p>{i18n.t("¿Eliminar")} <strong>{deleteTarget.code} — {deleteTarget.name}</strong>? {i18n.t('Solo será posible si no tiene inventario, ubicaciones ni zonas asociadas.')}</p>
 		{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
 		<footer><button type="button" class="quiet" onclick={() => deleteTarget = null} disabled={vm.mutating}>{i18n.t('Cancelar')}</button><button type="button" class="danger" onclick={remove} disabled={vm.mutating}>{vm.mutating ? 'Eliminando…' : i18n.t('Eliminar')}</button></footer>
 	</section></div>

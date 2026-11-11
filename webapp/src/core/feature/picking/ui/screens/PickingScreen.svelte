@@ -102,8 +102,8 @@
 		</form>
 		{#if state.waveResult}
 			<p class="ok">
-				lote de trabajo #{state.waveResult.batchId} · {state.waveResult.batchStatus}
-				· pedidos: {state.waveResult.totalOrders} · líneas por recoger: {state.waveResult.totalPicks}
+				{i18n.t('Lote de trabajo')} #{state.waveResult.batchId} · {state.waveResult.batchStatus}
+				· {i18n.t('Pedidos')}: {state.waveResult.totalOrders} · {i18n.t('Líneas por recoger')}: {state.waveResult.totalPicks}
 			</p>
 		{/if}
 	</section>
@@ -164,9 +164,9 @@
 
 	{#if state.batch?.active && state.batch.batchId}
 		<p class="meta">
-			Lote de trabajo #{state.batch.batchId}
-			· líneas recogidas: {state.batch.completedPicks}/{state.batch.totalPicks}
-			· pedidos: {state.batch.totalOrders}
+			{i18n.t('Lote de trabajo')} #{state.batch.batchId}
+			· {i18n.t('Líneas recogidas')}: {state.batch.completedPicks}/{state.batch.totalPicks}
+			· {i18n.t('Pedidos')}: {state.batch.totalOrders}
 		</p>
 	{/if}
 

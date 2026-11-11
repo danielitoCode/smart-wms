@@ -68,7 +68,7 @@
 						onclick={() => state.loadDetail(c.countId)}
 						disabled={state.loading || state.busy}
 					>
-						Conteo #{c.countId} · ubicación {c.binCode} · {c.status} · {c.lines} líneas
+						{i18n.t('Conteo')} #{c.countId} · {i18n.t('ubicación')} {c.binCode} · {c.status} · {c.lines} {i18n.t('líneas')}
 					</button>
 				</li>
 			{/each}
@@ -80,7 +80,7 @@
 	{:else if state.detail}
 		<section class="panel detail">
 			<p class="meta">
-				Conteo #{state.detail.countId} · ubicación {state.detail.binCode} · {state.detail.status}
+				{i18n.t('Conteo')} #{state.detail.countId} · {i18n.t('ubicación')} {state.detail.binCode} · {state.detail.status}
 			</p>
 			<form onsubmit={onSubmit}>
 				<div class="table-wrap">
