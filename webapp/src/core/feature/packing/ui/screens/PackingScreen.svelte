@@ -19,14 +19,14 @@
 
 <section class="page">
 	<header>
-		<h1>{i18n.t(i18n.t('Empaque de pedidos'))}</h1>
-		<p class="subtitle">{i18n.t(i18n.t('Comprueba los productos recogidos y completa el empaque del pedido.'))}</p>
+		<h1>{i18n.t('Empaque de pedidos')}</h1>
+		<p class="subtitle">{i18n.t('Comprueba los productos recogidos y completa el empaque del pedido.')}</p>
 	</header>
 
 	<form class="row" onsubmit={onLoad}>
 		<input
 			type="text"
-			placeholder={i18n.t(i18n.t('Número o código de barras del pedido'))}
+			placeholder={i18n.t('Número o código de barras del pedido')}
 			value={state.barcode}
 			oninput={(e) => state.setBarcode(e.currentTarget.value)}
 			disabled={state.loading || state.busy}
@@ -50,10 +50,10 @@
 			<table>
 				<thead>
 					<tr>
-						<th>{i18n.t(i18n.t('SKU'))}</th>
-						<th>{i18n.t(i18n.t('Recogido'))}</th>
-						<th>{i18n.t(i18n.t('Empacado'))}</th>
-						<th>{i18n.t(i18n.t('Verificado'))}</th>
+						<th>{i18n.t('SKU')}</th>
+						<th>{i18n.t('Recogido')}</th>
+						<th>{i18n.t('Empacado')}</th>
+						<th>{i18n.t('Verificado')}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -72,7 +72,7 @@
 		<form class="row" onsubmit={onVerify}>
 			<input
 				type="text"
-				placeholder={i18n.t(i18n.t('Código de barras a verificar'))}
+				placeholder={i18n.t('Código de barras a verificar')}
 				value={state.scannedBarcode}
 				oninput={(e) => state.setScannedBarcode(e.currentTarget.value)}
 				disabled={state.busy}
@@ -85,7 +85,7 @@
 				oninput={(e) => state.setQuantity(Number(e.currentTarget.value))}
 				disabled={state.busy}
 			/>
-			<button type="submit" disabled={state.busy}>{i18n.t(i18n.t('Verificar'))}</button>
+			<button type="submit" disabled={state.busy}>{i18n.t('Verificar')}</button>
 		</form>
 
 		<button type="button" class="accent" onclick={() => state.complete()} disabled={state.busy}>

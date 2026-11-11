@@ -34,8 +34,8 @@
 
 <section class="page">
 	<header>
-		<h1>{i18n.t(i18n.t('Preparación de pedidos'))}</h1>
-		<p class="subtitle">{i18n.t(i18n.t('Valida pedidos de venta, organiza su preparación y registra cada producto recogido.'))}</p>
+		<h1>{i18n.t('Preparación de pedidos')}</h1>
+		<p class="subtitle">{i18n.t('Valida pedidos de venta, organiza su preparación y registra cada producto recogido.')}</p>
 	</header>
 
 	<label class="wh">
@@ -50,12 +50,12 @@
 	</label>
 
 	<section class="panel">
-		<h2>{i18n.t(i18n.t('Validar pedido de venta'))}</h2>
-		<p class="meta">{i18n.t(i18n.t('Comprueba que el pedido esté listo para incluirlo en una preparación.'))}</p>
+		<h2>{i18n.t('Validar pedido de venta')}</h2>
+		<p class="meta">{i18n.t('Comprueba que el pedido esté listo para incluirlo en una preparación.')}</p>
 		<form class="row" onsubmit={onValidate}>
 			<input
 				type="text"
-				placeholder={i18n.t(i18n.t('Código del pedido (ej. SO-2026-001)'))}
+				placeholder={i18n.t('Código del pedido (ej. SO-2026-001)')}
 				value={state.validateBarcode}
 				oninput={(e) => state.setValidateBarcode(e.currentTarget.value)}
 				disabled={state.busy}
@@ -84,13 +84,13 @@
 	</section>
 
 	<section class="panel">
-		<h2>{i18n.t(i18n.t('Crear ola de preparación'))}</h2>
-		<p class="meta">{i18n.t(i18n.t('Agrupa los pedidos validados para organizar su recogida.'))}</p>
+		<h2>{i18n.t('Crear ola de preparación')}</h2>
+		<p class="meta">{i18n.t('Agrupa los pedidos validados para organizar su recogida.')}</p>
 		<form class="row" onsubmit={onWave}>
 			<input
 				type="text"
 				class="grow"
-				placeholder={i18n.t(i18n.t('Identificadores de pedidos (ej. 1, 2, 3)'))}
+				placeholder={i18n.t('Identificadores de pedidos (ej. 1, 2, 3)')}
 				value={state.soIdsInput}
 				oninput={(e) => state.setSoIdsInput(e.currentTarget.value)}
 				disabled={state.busy}
@@ -109,13 +109,13 @@
 	</section>
 
 	<section class="panel">
-		<h2>{i18n.t(i18n.t('Crear lote de trabajo'))}</h2>
-		<p class="meta">{i18n.t(i18n.t('Crea un lote a partir de los números o códigos de los pedidos.'))}</p>
+		<h2>{i18n.t('Crear lote de trabajo')}</h2>
+		<p class="meta">{i18n.t('Crea un lote a partir de los números o códigos de los pedidos.')}</p>
 		<form class="row" onsubmit={onCreateBatch}>
 			<input
 				type="text"
 				class="grow"
-				placeholder={i18n.t(i18n.t('Números o códigos de pedido (ej. SO-001, SO-002)'))}
+				placeholder={i18n.t('Números o códigos de pedido (ej. SO-001, SO-002)')}
 				value={state.batchIdentifiersInput}
 				oninput={(e) => state.setBatchIdentifiersInput(e.currentTarget.value)}
 				disabled={state.busy}
@@ -204,7 +204,7 @@
 					/>
 				</label>
 				<div class="actions">
-					<button type="submit" class="accent" disabled={state.busy}>{i18n.t(i18n.t('Confirmar recogida'))}</button>
+					<button type="submit" class="accent" disabled={state.busy}>{i18n.t('Confirmar recogida')}</button>
 					<button type="button" class="secondary" onclick={() => state.shortPick()} disabled={state.busy}>
 						Indicar faltante (0)
 					</button>
@@ -212,7 +212,7 @@
 			</form>
 		</article>
 	{:else if !state.loading}
-		<p class="status">{i18n.t(i18n.t('No hay productos pendientes de recoger.'))}</p>
+		<p class="status">{i18n.t('No hay productos pendientes de recoger.')}</p>
 	{/if}
 </section>
 

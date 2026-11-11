@@ -54,7 +54,7 @@
 			<div class="table-wrap">
 				<table>
 					<thead>
-						<tr><th>{i18n.t('SKU')}</th><th>{i18n.t('Cantidad')}</th><th>{i18n.t(i18n.t('Nombre'))}</th></tr>
+						<tr><th>{i18n.t('SKU')}</th><th>{i18n.t('Cantidad')}</th><th>{i18n.t('Nombre')}</th></tr>
 					</thead>
 					<tbody>
 						{#each state.detail.lines as line, i (line.sku + '-' + i)}

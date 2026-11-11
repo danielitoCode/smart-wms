@@ -24,14 +24,14 @@
 
 <section class="page">
 	<header>
-		<h1>{i18n.t(i18n.t('Recepción'))}</h1>
-		<p class="subtitle">{i18n.t(i18n.t('Consulta órdenes de compra, registra las cantidades recibidas y gestiona anulaciones.'))}</p>
+		<h1>{i18n.t('Recepción')}</h1>
+		<p class="subtitle">{i18n.t('Consulta órdenes de compra, registra las cantidades recibidas y gestiona anulaciones.')}</p>
 	</header>
 
 	<form class="lookup" onsubmit={onLookup}>
 		<input
 			type="text"
-			placeholder={i18n.t(i18n.t('Número de orden de compra o código de barras'))}
+			placeholder={i18n.t('Número de orden de compra o código de barras')}
 			value={state.barcode}
 			oninput={(e) => state.setBarcode(e.currentTarget.value)}
 			disabled={state.loading || state.submitting || state.cancelling}
@@ -71,19 +71,19 @@
 			</p>
 
 			{#if state.drafts.length === 0}
-				<p class="status">{i18n.t(i18n.t('No quedan líneas pendientes de recibir.'))}</p>
+				<p class="status">{i18n.t('No quedan líneas pendientes de recibir.')}</p>
 			{:else}
 				<form onsubmit={onReceive}>
 					<div class="table-wrap">
 						<table>
 							<thead>
 								<tr>
-									<th>{i18n.t(i18n.t(i18n.t('SKU')))}</th>
-									<th>{i18n.t(i18n.t('Nombre'))}</th>
-									<th>{i18n.t(i18n.t('Pendiente'))}</th>
-									<th>{i18n.t(i18n.t(i18n.t('Cantidad')))}</th>
-									<th>{i18n.t(i18n.t('ID de ubicación'))}</th>
-									<th>{i18n.t(i18n.t('Lote'))}</th>
+									<th>{i18n.t('SKU')}</th>
+									<th>{i18n.t('Nombre')}</th>
+									<th>{i18n.t('Pendiente')}</th>
+									<th>{i18n.t('Cantidad')}</th>
+									<th>{i18n.t('ID de ubicación')}</th>
+									<th>{i18n.t('Lote')}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -98,12 +98,12 @@
 												disabled={state.submitting} />
 										</td>
 										<td>
-											<input type="number" min="1" placeholder={i18n.t(i18n.t('ID de ubicación'))} value={draft.binId}
+											<input type="number" min="1" placeholder={i18n.t('ID de ubicación')} value={draft.binId}
 												oninput={(e) => state.updateDraft(index, { binId: e.currentTarget.value })}
 												disabled={state.submitting} required />
 										</td>
 										<td>
-											<input type="text" placeholder={i18n.t(i18n.t('opcional'))} value={draft.lotNumber}
+											<input type="text" placeholder={i18n.t('opcional')} value={draft.lotNumber}
 												oninput={(e) => state.updateDraft(index, { lotNumber: e.currentTarget.value })}
 												disabled={state.submitting} />
 										</td>
@@ -119,8 +119,8 @@
 			{/if}
 
 			<section class="cancel-panel">
-				<h3>{i18n.t(i18n.t('Anular recepciones'))}</h3>
-				<p class="meta">{i18n.t(i18n.t('Introduce los identificadores de las recepciones separados por comas.'))}</p>
+				<h3>{i18n.t('Anular recepciones')}</h3>
+				<p class="meta">{i18n.t('Introduce los identificadores de las recepciones separados por comas.')}</p>
 				<form class="cancel-form" onsubmit={onCancel}>
 					<input
 						type="text"

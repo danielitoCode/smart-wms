@@ -14,8 +14,8 @@
 
 <section class="page">
 	<header>
-		<h1>{i18n.t(i18n.t('Ubicación de productos'))}</h1>
-		<p class="subtitle">{i18n.t(i18n.t('Traslada los productos recibidos a su ubicación definitiva.'))}</p>
+		<h1>{i18n.t('Ubicación de productos')}</h1>
+		<p class="subtitle">{i18n.t('Traslada los productos recibidos a su ubicación definitiva.')}</p>
 	</header>
 
 	<div class="toolbar">
@@ -44,20 +44,20 @@
 	{/if}
 
 	{#if state.loading && state.items.length === 0}
-		<p class="status">{i18n.t(i18n.t('Cargando…'))}</p>
+		<p class="status">{i18n.t('Cargando…')}</p>
 	{:else if state.items.length === 0}
-		<p class="status">{i18n.t(i18n.t('No hay productos pendientes de ubicación.'))}</p>
+		<p class="status">{i18n.t('No hay productos pendientes de ubicación.')}</p>
 	{:else}
 		<div class="table-wrap">
 			<table>
 				<thead>
 					<tr>
-						<th>{i18n.t(i18n.t(i18n.t('SKU')))}</th>
-						<th>{i18n.t(i18n.t('Nombre'))}</th>
-						<th>{i18n.t(i18n.t(i18n.t('Cantidad')))}</th>
-						<th>{i18n.t(i18n.t('Desde'))}</th>
-						<th>{i18n.t(i18n.t('Lote'))}</th>
-						<th>{i18n.t(i18n.t('ID de ubicación destino'))}</th>
+						<th>{i18n.t('SKU')}</th>
+						<th>{i18n.t('Nombre')}</th>
+						<th>{i18n.t('Cantidad')}</th>
+						<th>{i18n.t('Desde')}</th>
+						<th>{i18n.t('Lote')}</th>
+						<th>{i18n.t('ID de ubicación destino')}</th>
 						<th></th>
 					</tr>
 				</thead>
@@ -74,7 +74,7 @@
 								<input
 									type="number"
 									min="1"
-									placeholder={i18n.t(i18n.t('ID de ubicación'))}
+									placeholder={i18n.t('ID de ubicación')}
 									value={state.toBinByKey[k] ?? ''}
 									oninput={(e) => state.setToBin(item, e.currentTarget.value)}
 									disabled={state.submittingKey === k}
