@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"crypto/subtle"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -127,6 +128,23 @@ func NewWithIdentity(node *core.Node, store *corestore.Store, token string, user
 		requirePacking: requirePacking,
 	}
 }
+// StartBackground starts supervised outbox workers under the runtime context.
+func (s *Server) StartBackground(ctx context.Context) {
+	if s.webhooks != nil { go s.webhooks.Run(ctx, time.Second) }
+	if s.events != nil {
+		go func() {
+			ticker := time.NewTicker(5 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done(): return
+				case <-ticker.C: _ = s.events.PublishPending()
+				}
+			}
+		}()
+	}
+}
+
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/health", s.health)
