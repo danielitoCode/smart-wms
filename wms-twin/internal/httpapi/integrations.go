@@ -267,7 +267,10 @@ func (s *Server) dockdV1(w http.ResponseWriter, r *http.Request, rest string) {
 				if errors.Is(err, fulfillment.ErrScope) { writeJSON(w, 404, map[string]string{"error": "not found"}) } else if errors.Is(err, fulfillment.ErrState) { writeJSON(w, 409, map[string]string{"error": err.Error()}) } else { writeJSON(w, 400, map[string]string{"error": err.Error()}) }
 				return
 			}
-			if replayed, _ := out["replayed"].(bool); !replayed && s.events != nil { _, _ = s.events.Emit("dockd.ship.voided", out) }
+			if replayed, _ := out["replayed"].(bool); !replayed && s.events != nil {
+				ev, _ := s.events.Emit("dockd.ship.voided", out)
+				if s.webhooks != nil && ev.EventID != "" { _ = s.webhooks.DeliverEvent(ev.EventID, "dockd.ship.voided", out) }
+			}
 			if s.wmsAudit != nil { _, _ = s.wmsAudit.Record(rec.TokenID, "dockd.ship.void", parts[1], true, in.Reason, nil) }
 			writeJSON(w, 200, out)
 		})(w, r)
