@@ -154,3 +154,15 @@ Los mensajes deben usar español claro y mantener las unidades, identificadores 
 ## 10. Límites de implementación
 
 Los cambios de identidad y experiencia se limitan a la presentación de la aplicación Svelte en `webapp/`. No se deben modificar backend, API, modelos, DTO, reglas de negocio, contratos, autorización ni persistencia. No se eliminan operaciones existentes ni se simulan capacidades que el backend no ofrece.
+
+## 11. Servicio multilenguaje
+
+- El idioma principal y predeterminado es **italiano** (it).
+- Idiomas disponibles: italiano (it), español (es) e inglés (en).
+- El selector aparece en el inicio de sesión y en la barra superior de la aplicación.
+- La preferencia se guarda en localStorage bajo abellis-locale y se aplica también al atributo lang del documento.
+- La implementación está en src/lib/i18n/: translations.ts contiene el catálogo; i18n.svelte.ts mantiene el estado reactivo; LocaleSwitcher.svelte presenta el selector.
+- Las claves usan el texto español como referencia canónica. Para añadir una etiqueta, incorpora la traducción italiana e inglesa y usa i18n.t('Texto español') en la interfaz.
+- El español conserva el texto de referencia. Si falta una traducción italiana o inglesa, se muestra el texto original para evitar etiquetas vacías.
+- Los identificadores, SKU, códigos de barras, estados técnicos, unidades, datos de productos y valores recibidos del backend no se traducen ni se modifican.
+- No se añade una dependencia externa de internacionalización: el servicio aprovecha Svelte 5 y mantiene un catálogo tipado y testeable.
