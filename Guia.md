@@ -264,3 +264,8 @@ Corregí defectos concretos que impedían confiar en las respuestas del gemelo:
 Esta rama todavía no convierte el gemelo en sustituto del original. POS requiere portar el contrato de tender/venta/refund; RMA requiere disposición por línea y destino de stock; Dockd void requiere reversión de fulfillment; webhooks necesitan outbox durable, política de reintentos/DLQ y cifrado de secretos en reposo; snapshots necesitan restauración validada; mesh requiere DHT Kademlia y GossipSub reales o mantener la clasificación experimental. Inbound aún necesita idempotencia y el contrato de mapeo/origen completo.
 
 Añadí pruebas unitarias de rechazo SSRF, checksum de snapshots y manipulación de la cadena de auditoría. No declaro esas pruebas ni el resto de la suite como aprobadas hasta que GitHub Actions ejecute el commit de esta rama. No afirmo que se haya ejecutado gofmt, vet o race tests localmente.
+
+
+## Ajustes posteriores de validación
+
+Los snapshots usan filas tipadas con enteros para que la verificación SHA-256 no dependa de conversiones float64 al deserializar JSON. Añadí el scope `events.publish` y la ruta `POST /api/v1/events/retry-pending` para que un operador autorizado pueda reintentar publicaciones pendientes. La verificación de auditoría también libera el bloqueo cuando una re-verificación completa confirma que la cadena volvió a ser válida. El CI de la rama sigue siendo la autoridad para validar formato, vet y race tests.
