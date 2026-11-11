@@ -87,7 +87,7 @@ func NewWithIdentity(node *core.Node, store *corestore.Store, token string, user
 	master := catalog.New(store, ledger)
 	poRepo := purchaseorders.New(store, master)
 	sos := salesorders.New(store, master)
-	ful := fulfillment.New(store, sos)
+	ful := fulfillment.New(store, sos, ledger)
 	transport := node.Transport()
 	meshLayer := mesh.New(string(node.ID()), transport)
 	if transport != nil {
