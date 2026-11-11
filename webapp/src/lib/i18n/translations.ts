@@ -61,8 +61,8 @@ const additionalTranslations: Record<Locale, Record<string, string>> = {
 // Spanish is the canonical fallback for untranslated copy; Italian is the default locale.
 export type TranslationCoverage = { locale: Locale; total: number; translated: number; missing: string[]; percentage: number };
 
-export function getTranslationCoverage(locale: Locale): TranslationCoverage {
-	const catalog = new Set([...Object.keys(translations.it), ...Object.keys(additionalTranslations.it)]);
+export function getTranslationCoverage(locale: Locale, sourceKeys: readonly string[] = []): TranslationCoverage {
+	const catalog = new Set([...Object.keys(translations.it), ...Object.keys(additionalTranslations.it), ...sourceKeys]);
 	const dictionary = { ...translations[locale], ...additionalTranslations[locale] };
 	const missing = locale === 'es' ? [] : [...catalog].filter(key => !(key in dictionary) || !dictionary[key]?.trim());
 	const translated = catalog.size - missing.length;
