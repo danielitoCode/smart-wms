@@ -305,6 +305,9 @@ func (s *Service) reversePOSDispatch(shipment *Shipment, operationID string) err
 			ID string `json:"id"`
 			SOID int64 `json:"so_id"`
 			Status string `json:"status"`
+			PhoneOrder bool `json:"phone_order"`
+			DispatchKey string `json:"dispatch_key"`
+			DispatchFingerprint string `json:"dispatch_fingerprint"`
 			Lines []struct {
 				WarehouseID int64 `json:"warehouse_id"`
 				BinID int64 `json:"bin_id"`
@@ -350,21 +353,27 @@ func (s *Service) reversePOSDispatch(shipment *Shipment, operationID string) err
 				OperationID:ledgerOperationID, WarehouseID:line.WarehouseID, BinID:line.BinID,
 				ItemID:line.ItemID, Delta:line.Quantity,
 			}); err != nil { return fmt.Errorf("restore POS on-hand inventory movement %s: %w",key,err) }
-			// POS phone-order checkout reserves stock. Dispatch releases that
-			// allocation before decrementing on-hand. Voiding must restore both
-			// sides of the pre-dispatch state, not merely increase on-hand.
-			allocateSum := sha256.Sum256([]byte("fulfillment-void-pos-allocation|" + operationID + "|" + key))
-			allocateID := "void-pos-alloc-" + hex.EncodeToString(allocateSum[:12])
-			if _, err := s.ledger.Allocate(inventoryledger.QuantityCommand{
-				OperationID:allocateID, WarehouseID:line.WarehouseID, BinID:line.BinID,
-				ItemID:line.ItemID, Quantity:line.Quantity,
-			}); err != nil { return fmt.Errorf("restore POS reservation %s: %w",key,err) }
+			// Phone-order checkout had reserved this quantity before dispatch.
+			// A void must restore that reservation as well as on-hand. A regular
+			// POS sale had no reservation, so allocating it here would overstate
+			// allocated inventory.
+			if sale.PhoneOrder {
+				allocateSum := sha256.Sum256([]byte("fulfillment-void-pos-allocation|" + operationID + "|" + key))
+				allocateID := "void-pos-alloc-" + hex.EncodeToString(allocateSum[:12])
+				if _, err := s.ledger.Allocate(inventoryledger.QuantityCommand{
+					OperationID:allocateID, WarehouseID:line.WarehouseID, BinID:line.BinID,
+					ItemID:line.ItemID, Quantity:line.Quantity,
+				}); err != nil { return fmt.Errorf("restore POS reservation %s: %w",key,err) }
+			}
 			shipment.VoidReversedKeys = append(shipment.VoidReversedKeys,key)
 			data, err := json.Marshal(shipment)
 			if err != nil { return err }
 			if _, err := s.store.Put(shipmentKind,strconv.FormatInt(shipment.SOID,10),data); err != nil { return err }
 		}
-		sale.Status = "VOIDED"
+		// Return the sale to its paid-but-not-dispatched state. A phone order
+		// may now be dispatched again with a fresh idempotency key.
+		sale.Status = "COMPLETED"
+		if sale.PhoneOrder { sale.DispatchKey, sale.DispatchFingerprint = "", "" }
 		data, err := json.Marshal(sale)
 		if err != nil { return err }
 		if _, err := s.store.Put("wms_pos_sale",sale.ID,data); err != nil { return err }
