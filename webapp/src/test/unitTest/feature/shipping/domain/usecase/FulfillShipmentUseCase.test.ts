@@ -33,12 +33,12 @@ describe('FulfillShipmentUseCase', () => {
 
 	it('rejects empty tracking_number', async () => {
 		const repo = { loadOrder: vi.fn(), fulfill: vi.fn() } as ShippingRepository;
-		await expect(
+		expect(() => (
 			new FulfillShipmentUseCase(repo).execute({
 				soId: 1,
 				trackingNumber: ' ',
 				carrier: 'UPS'
 			})
-		).rejects.toThrow(/tracking/);
+		))).toThrow(/tracking/);
 	});
 });

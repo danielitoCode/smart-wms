@@ -34,13 +34,13 @@ describe('SubmitCycleCountUseCase', () => {
 
 	it('rejects negative countedQuantity', async () => {
 		const useCase = new SubmitCycleCountUseCase(createRepo());
-		await expect(
+		expect(() => (
 			useCase.execute(1, [{ countLineId: 1, countedQuantity: -1 }])
-		).rejects.toThrow(/countedQuantity/);
+		))).toThrow(/countedQuantity/);
 	});
 
 	it('rejects empty lines', async () => {
 		const useCase = new SubmitCycleCountUseCase(createRepo());
-		await expect(useCase.execute(1, [])).rejects.toThrow(/lines/);
+		expect(() => (useCase.execute(1, [])))).toThrow(/lines/);
 	});
 });

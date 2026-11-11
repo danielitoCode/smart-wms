@@ -38,11 +38,11 @@ describe('CreateCycleCountUseCase', () => {
 
 	it('rejects invalid warehouseId', async () => {
 		const useCase = new CreateCycleCountUseCase(createRepo());
-		await expect(useCase.execute(0, [1])).rejects.toThrow(/warehouseId/);
+		expect(() => (useCase.execute(0, [1])))).toThrow(/warehouseId/);
 	});
 
 	it('rejects empty binIds', async () => {
 		const useCase = new CreateCycleCountUseCase(createRepo());
-		await expect(useCase.execute(1, [])).rejects.toThrow(/binIds/);
+		expect(() => (useCase.execute(1, [])))).toThrow(/binIds/);
 	});
 });

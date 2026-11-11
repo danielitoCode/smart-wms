@@ -35,6 +35,6 @@ describe('SearchItemsUseCase', () => {
 
 	it('rejects empty query', async () => {
 		const useCase = new SearchItemsUseCase(createRepo());
-		await expect(useCase.execute('   ')).rejects.toThrow(/query/);
+		expect(() => (useCase.execute('   ')))).toThrow(/query/);
 	});
 });
