@@ -71,7 +71,7 @@ func (s *Service) Availability(warehouseID int64, sku string) (map[string]any, e
 }
 
 func (s *Service) ValidateCart(warehouseID int64, lines []CartLine) (map[string]any, error) {
-	if warehouseID == 0 || len(lines) == 0 {
+	if warehouseID <= 0 || len(lines) == 0 {
 		return nil, ErrInvalid
 	}
 	av, err := s.Availability(warehouseID, "")
@@ -83,32 +83,52 @@ func (s *Service) ValidateCart(warehouseID int64, lines []CartLine) (map[string]
 		id := row["item_id"].(int64)
 		availMap[id] = row["available"].(int64)
 	}
-	items, _ := s.catalog.ListItems()
+	items, err := s.catalog.ListItems()
+	if err != nil {
+		return nil, err
+	}
 	skuToID := map[string]int64{}
-	for _, it := range items {
-		skuToID[it.SKU] = it.ItemID
-		if _, ok := availMap[it.ItemID]; !ok {
-			availMap[it.ItemID] = 0
+	for _, item := range items {
+		skuToID[item.SKU] = item.ItemID
+		if _, exists := availMap[item.ItemID]; !exists {
+			availMap[item.ItemID] = 0
 		}
 	}
-	linesOut := make([]map[string]any, 0, len(lines))
-	ok := true
-	for _, ln := range lines {
-		id := ln.ItemID
+	type resolvedLine struct {
+		id int64
+		sku string
+		quantity int64
+	}
+	resolved := make([]resolvedLine, 0, len(lines))
+	requested := make(map[int64]int64)
+	valid := true
+	for _, line := range lines {
+		id := line.ItemID
 		if id == 0 {
-			id = skuToID[ln.SKU]
+			id = skuToID[line.SKU]
 		}
-		have := availMap[id]
-		lineOK := id > 0 && ln.Quantity > 0 && have >= ln.Quantity
+		if id <= 0 || line.Quantity <= 0 {
+			valid = false
+		} else if requested[id] > int64(^uint64(0)>>1)-line.Quantity {
+			valid = false
+		} else {
+			requested[id] += line.Quantity
+		}
+		resolved = append(resolved, resolvedLine{id: id, sku: line.SKU, quantity: line.Quantity})
+	}
+	linesOut := make([]map[string]any, 0, len(resolved))
+	for _, line := range resolved {
+		have := availMap[line.id]
+		lineOK := line.id > 0 && line.quantity > 0 && requested[line.id] <= have
 		if !lineOK {
-			ok = false
+			valid = false
 		}
 		linesOut = append(linesOut, map[string]any{
-			"item_id": id, "sku": ln.SKU, "quantity": ln.Quantity,
-			"available": have, "ok": lineOK,
+			"item_id": line.id, "sku": line.sku, "quantity": line.quantity,
+			"available": have, "requested_total": requested[line.id], "ok": lineOK,
 		})
 	}
-	return map[string]any{"ok": ok, "lines": linesOut}, nil
+	return map[string]any{"ok": valid, "lines": linesOut}, nil
 }
 
 func (s *Service) Checkout(warehouseID int64, lines []CartLine, actor string) (salesorders.SalesOrder, error) {
