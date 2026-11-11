@@ -493,3 +493,11 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - Eliminé el fallback que trataba ordered/picked/packed como cantidades retornables.
 - `rma.Create` usa únicamente `QuantityShipped`, resta POS refunds y reservas de otros RMAs.
 - Añadí una prueba que rechaza un RMA cuando existe cantidad empaquetada pero no cantidad shipped confirmada.
+
+
+### AUD-0030 — Unicidad de referencias externas y void por generación
+
+- POS ya no permite crear una segunda venta con otro idempotency key si reutiliza la misma referencia de transacción del gateway en el mismo terminal.
+- POS tampoco permite reutilizar una referencia externa de refund en otra devolución, incluso si corresponde a otra venta.
+- El void legacy deriva su idempotency key del timestamp de la generación de shipment. Un segundo envío del mismo SO recibe otro ID de compensación; los retries de la misma generación siguen siendo idempotentes.
+- Añadí pruebas para duplicidad de referencias de pago/reembolso y para dos generaciones de envío con reversión de stock y reserva.
