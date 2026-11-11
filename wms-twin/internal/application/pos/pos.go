@@ -484,7 +484,7 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 				sale.Status = "REFUNDED"
 				so.Status = salesorders.StatusRefunded
 				for i := range so.Lines { so.Lines[i].Status = salesorders.LineRefunded }
-			} else if sale.Status == "COMPLETED" {
+			} else if sale.Status == "COMPLETED" || sale.Status == "DISPATCHED" {
 				sale.Status = "PARTIALLY_REFUNDED"
 				so.Status = salesorders.StatusPartiallyRefunded
 			}
