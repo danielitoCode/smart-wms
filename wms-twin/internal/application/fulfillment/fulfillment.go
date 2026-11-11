@@ -194,6 +194,16 @@ func (s *Service) Fulfill(in FulfillInput, allowed []int64, isAdmin bool) (Shipm
 // Void reverses the latest shipment record for an order. The transition is
 // persisted as VOIDING before the order is changed, so a retry can finish a
 // crash-interrupted void without applying the reversal twice.
+func (s *Service) GetShipment(soID int64) (Shipment, error) {
+	if s.store == nil { return Shipment{}, fmt.Errorf("fulfillment store is not configured") }
+	rec, ok, err := s.store.Get(shipmentKind, strconv.FormatInt(soID, 10))
+	if err != nil { return Shipment{}, err }
+	if !ok { return Shipment{}, ErrNotFound }
+	var shipment Shipment
+	if err := json.Unmarshal(rec.Data, &shipment); err != nil { return Shipment{}, err }
+	return shipment, nil
+}
+
 func (s *Service) Void(soID int64, actor, reason string) (Shipment, error) {
 	return s.VoidWithID(soID, actor, reason, fmt.Sprintf("legacy-void-%d", soID))
 }
