@@ -13,7 +13,10 @@ import (
 
 const kind = "wms_rma"
 
-var ErrNotFound = errors.New("rma not found")
+var (
+	ErrNotFound = errors.New("rma not found")
+	ErrRestockRequired = errors.New("RMA cannot complete until returned inventory is dispositioned and restocked")
+)
 
 type RMA struct {
 	RMAID     int64     `json:"rma_id"`
@@ -139,12 +142,9 @@ func (s *Service) Complete(id int64, actor string) (RMA, error) {
 	if r.Status != "OPEN" && r.Status != "RECEIVED" {
 		return RMA{}, fmt.Errorf("rma status %s cannot complete", r.Status)
 	}
-	r.Status = "COMPLETED"
-	r.UpdatedAt = time.Now().UTC()
-	r.Notes = "completed by " + actor + "; restock deferred to inventory adjust"
-	data, _ := json.Marshal(r)
-	_, err = s.store.Put(kind, formatID(r.RMAID), data)
-	return r, err
+	// Completion changes stock. The current request contract does not identify
+	// a destination bin or disposition, so closing here would lose inventory.
+	return RMA{}, ErrRestockRequired
 }
 
 func (s *Service) Cancel(id int64, actor string) (RMA, error) {
