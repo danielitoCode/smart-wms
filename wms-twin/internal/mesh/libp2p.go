@@ -29,6 +29,7 @@ func (m *Mesh) Start(parent context.Context) error {
 	if alreadyStarted { return nil }
 	ctx, cancel := context.WithCancel(parent)
 	host := provider.Host()
+	if host == nil { cancel(); return fmt.Errorf("libp2p transport returned a nil host") }
 	routing, err := dht.New(ctx, host, dht.Mode(dht.ModeServer))
 	if err != nil { cancel(); return fmt.Errorf("start Kademlia DHT: %w", err) }
 	if err := routing.Bootstrap(ctx); err != nil {
