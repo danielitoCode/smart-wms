@@ -8,51 +8,28 @@ import { WarehouseMapper } from '../mapper/WarehouseMapper';
 
 export class WarehouseRepositoryImpl implements WarehouseManagementRepository {
 	constructor(private readonly datasource: WarehouseRemoteDataSource) {}
-
-	async listActive(): Promise<Warehouse[]> {
-		return (await this.datasource.listActive()).map(WarehouseMapper.toWarehouse);
-	}
-	async listAdmin(params?: { page?: number }): Promise<Warehouse[]> {
-		return (await this.datasource.listAdmin(params?.page)).map(WarehouseMapper.toWarehouse);
-	}
-	async getById(id: number): Promise<Warehouse> {
-		return WarehouseMapper.toWarehouse(await this.datasource.getById(id));
-	}
-	async listZones(warehouseId: number): Promise<Zone[]> {
-		return (await this.datasource.listZones(warehouseId)).map(WarehouseMapper.toZone);
-	}
+	async listActive(): Promise<Warehouse[]> { return (await this.datasource.listActive()).map(WarehouseMapper.toWarehouse); }
+	async listAdmin(params?: { page?: number }): Promise<Warehouse[]> { return (await this.datasource.listAdmin(params?.page)).map(WarehouseMapper.toWarehouse); }
+	async getById(id: number): Promise<Warehouse> { return WarehouseMapper.toWarehouse(await this.datasource.getById(id)); }
+	async listZones(warehouseId: number): Promise<Zone[]> { return (await this.datasource.listZones(warehouseId)).map(WarehouseMapper.toZone); }
 	async listBins(params?: { warehouseId?: number; zoneId?: number; page?: number; perPage?: number; q?: string }): Promise<BinPage> {
 		const response = await this.datasource.listBins(params);
-		return {
-			items: (response.bins ?? []).map(WarehouseMapper.toBin),
-			total: response.total ?? 0,
-			page: response.page ?? 1,
-			pages: response.pages ?? 1,
-			perPage: response.per_page ?? 50
-		};
+		return { items: (response.bins ?? []).map(WarehouseMapper.toBin), total: response.total ?? 0, page: response.page ?? 1, pages: response.pages ?? 1, perPage: response.per_page ?? 50 };
 	}
 	async createWarehouse(input: CreateWarehouseInput): Promise<Warehouse> {
-		const row = await this.datasource.createWarehouse({
-			warehouse_code: input.code, warehouse_name: input.name, address: input.address
-		});
-		return WarehouseMapper.toWarehouse(row);
+		return WarehouseMapper.toWarehouse(await this.datasource.createWarehouse({ warehouse_code: input.code, warehouse_name: input.name, address: input.address }));
 	}
 	async updateWarehouse(input: UpdateWarehouseInput): Promise<Warehouse> {
-		const row = await this.datasource.updateWarehouse(input.id, {
+		return WarehouseMapper.toWarehouse(await this.datasource.updateWarehouse(input.id, {
+			...(input.code !== undefined ? { warehouse_code: input.code } : {}),
 			...(input.name !== undefined ? { warehouse_name: input.name } : {}),
 			...(input.address !== undefined ? { address: input.address } : {}),
 			...(input.active !== undefined ? { is_active: input.active } : {})
-		});
-		return WarehouseMapper.toWarehouse(row);
-	}
-	async deleteWarehouse(id: number): Promise<void> {
-		await this.datasource.deleteWarehouse(id);
-	}
-	async createZone(input: CreateZoneInput): Promise<Zone> {
-		return WarehouseMapper.toZone(await this.datasource.createZone({
-			warehouse_id: input.warehouseId, zone_code: input.code,
-			zone_name: input.name, zone_type: input.zoneType
 		}));
+	}
+	async deleteWarehouse(id: number): Promise<void> { await this.datasource.deleteWarehouse(id); }
+	async createZone(input: CreateZoneInput): Promise<Zone> {
+		return WarehouseMapper.toZone(await this.datasource.createZone({ warehouse_id: input.warehouseId, zone_code: input.code, zone_name: input.name, zone_type: input.zoneType }));
 	}
 	async updateZone(input: UpdateZoneInput): Promise<Zone> {
 		return WarehouseMapper.toZone(await this.datasource.updateZone(input.id, {
@@ -62,14 +39,13 @@ export class WarehouseRepositoryImpl implements WarehouseManagementRepository {
 			...(input.active !== undefined ? { is_active: input.active } : {})
 		}));
 	}
-	async deleteZone(id: number): Promise<void> {
-		await this.datasource.deleteZone(id);
-	}
+	async deleteZone(id: number): Promise<void> { await this.datasource.deleteZone(id); }
 	async createBin(input: CreateBinInput): Promise<Bin> {
 		return WarehouseMapper.toBin(await this.datasource.createBin({
 			warehouse_id: input.warehouseId, zone_id: input.zoneId, bin_code: input.code,
 			bin_barcode: input.barcode, bin_type: input.binType, aisle: input.aisle,
-			pick_sequence: input.pickSequence
+			row_num: input.rowNumber, level_num: input.levelNumber, position_num: input.positionNumber,
+			pick_sequence: input.pickSequence, putaway_sequence: input.putawaySequence
 		}));
 	}
 	async updateBin(input: UpdateBinInput): Promise<Bin> {
@@ -79,14 +55,14 @@ export class WarehouseRepositoryImpl implements WarehouseManagementRepository {
 			...(input.barcode !== undefined ? { bin_barcode: input.barcode } : {}),
 			...(input.binType !== undefined ? { bin_type: input.binType } : {}),
 			...(input.aisle !== undefined ? { aisle: input.aisle } : {}),
+			...(input.rowNumber !== undefined ? { row_num: input.rowNumber } : {}),
+			...(input.levelNumber !== undefined ? { level_num: input.levelNumber } : {}),
+			...(input.positionNumber !== undefined ? { position_num: input.positionNumber } : {}),
 			...(input.pickSequence !== undefined ? { pick_sequence: input.pickSequence } : {}),
+			...(input.putawaySequence !== undefined ? { putaway_sequence: input.putawaySequence } : {}),
 			...(input.active !== undefined ? { is_active: input.active } : {})
 		}));
 	}
-	async deleteBin(id: number): Promise<void> {
-		await this.datasource.deleteBin(id);
-	}
-	async getBinById(id: number): Promise<BinDetail> {
-		return WarehouseMapper.toBinDetail(await this.datasource.getBinById(id));
-	}
+	async deleteBin(id: number): Promise<void> { await this.datasource.deleteBin(id); }
+	async getBinById(id: number): Promise<BinDetail> { return WarehouseMapper.toBinDetail(await this.datasource.getBinById(id)); }
 }

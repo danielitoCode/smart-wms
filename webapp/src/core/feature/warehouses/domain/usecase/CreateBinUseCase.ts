@@ -1,6 +1,9 @@
 import type { Bin, BinType, CreateBinInput } from '../entity/Warehouse';
 import type { WarehouseManagementRepository } from '../repository/WarehouseManagementRepository';
 const TYPES: BinType[] = ['Staging', 'PickableStaging', 'Pickable'];
+function validateOptionalNonNegative(value: number | null | undefined, name: string) {
+	if (value != null && (!Number.isInteger(value) || value < 0)) throw new Error(name + ' must be a non-negative integer');
+}
 export class CreateBinUseCase {
 	constructor(private readonly repository: WarehouseManagementRepository) {}
 	async execute(input: CreateBinInput): Promise<Bin> {
@@ -11,8 +14,12 @@ export class CreateBinUseCase {
 		if (!barcode || barcode.length > 128) throw new Error('bin barcode must contain 1 to 128 characters');
 		if (!TYPES.includes(input.binType)) throw new Error('bin type is invalid');
 		if ((input.aisle ?? '').length > 32) throw new Error('aisle cannot exceed 32 characters');
-		const pickSequence = input.pickSequence ?? 0;
-		if (!Number.isInteger(pickSequence) || pickSequence < 0) throw new Error('pickSequence must be a non-negative integer');
-		return this.repository.createBin({ ...input, code, barcode, aisle: input.aisle?.trim() || null, pickSequence });
+		validateOptionalNonNegative(input.rowNumber, 'rowNumber');
+		validateOptionalNonNegative(input.levelNumber, 'levelNumber');
+		validateOptionalNonNegative(input.positionNumber, 'positionNumber');
+		const pickSequence = input.pickSequence ?? 0, putawaySequence = input.putawaySequence ?? 0;
+		validateOptionalNonNegative(pickSequence, 'pickSequence');
+		validateOptionalNonNegative(putawaySequence, 'putawaySequence');
+		return this.repository.createBin({ ...input, code, barcode, aisle: input.aisle?.trim() || null, pickSequence, putawaySequence });
 	}
 }

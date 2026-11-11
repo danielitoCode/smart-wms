@@ -5,11 +5,15 @@ export class UpdateWarehouseUseCase {
 	async execute(input: UpdateWarehouseInput): Promise<Warehouse> {
 		if (!Number.isInteger(input.id) || input.id <= 0) throw new Error('warehouse id must be a positive integer');
 		const update: UpdateWarehouseInput = { id: input.id };
+		if (input.code !== undefined) {
+			const value = input.code.trim();
+			if (!value || value.length > 32) throw new Error('warehouse code must contain 1 to 32 characters');
+			update.code = value;
+		}
 		if (input.name !== undefined) {
-			const name = input.name.trim();
-			if (!name) throw new Error('warehouse name cannot be empty');
-			if (name.length > 256) throw new Error('warehouse name cannot exceed 256 characters');
-			update.name = name;
+			const value = input.name.trim();
+			if (!value || value.length > 256) throw new Error('warehouse name must contain 1 to 256 characters');
+			update.name = value;
 		}
 		if (input.address !== undefined) {
 			if (input.address !== null && input.address.length > 512) throw new Error('warehouse address cannot exceed 512 characters');
