@@ -295,3 +295,6 @@ En el corte más reciente, el snapshot usa filas tipadas para conservar enteros 
 - Snapshot restore crea automáticamente un respaldo previo y devuelve su ID; la repetición del operation_id recupera el mismo resultado y respaldo. Sigue sin ser CAS distribuido.
 - El dispatcher repara el intervalo entre guardar un evento y crear el outbox webhook, sin reproducir eventos anteriores a la fecha de creación de la suscripción.
 - Kademlia/GossipSub se activan solo con `PRISMATEC_TRANSPORT=libp2p` y una multiaddr en `PRISMATEC_NETWORK_ADDR`. Si el mesh libp2p falla, el runtime no inicia parcialmente.
+
+
+El refund parcial ahora reconcilia el valor calculado de las cantidades por línea/bin y admite devolver el envío por separado. RMA descuenta devoluciones POS anteriores y reservas de expedientes RMA no cancelados. Aun así, el flujo financiero externo sigue siendo responsabilidad del procesador de pagos y requiere comparación diferencial con Flask.
