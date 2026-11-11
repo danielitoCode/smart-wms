@@ -2,6 +2,12 @@
 
 Este módulo es un gemelo operativo independiente del backend Flask original. Mantengo Flask y los frontends sin cambios: el gemelo se valida en paralelo y no debe recibir tráfico de producción hasta demostrar paridad funcional, seguridad y recuperación.
 
+## Rama canónica
+
+`feat/wms-prismatec-genesis` concentra el gemelo (incluye el cierre de `fix/wms-twin-operational-completion`).
+
+Simultáneo Flask+gemelo y veredicto de sustitución: `docs/SIMULTANEO_Y_PARIDAD.md`.
+
 ## Estado de esta rama
 
 La rama `fix/wms-twin-operational-completion` concentra el cierre funcional previo a las pruebas reales.

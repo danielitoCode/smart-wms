@@ -1,14 +1,14 @@
 # Nivel de paridad con el backend original
 
-> **Actualización 2026-11-11 (PrismaTec-Core / wms-twin):** el gemelo cubre el **camino operativo núcleo**
-> (auth JWT, catálogo, PO, recepción, putaway, picking/wave, packing, shipping, transfers, cycle-count,
-> lookup, balances, system-info, users). **No es sustituible** todavía respecto a POS, Dockd, events/snapshots,
-> webhooks, inbound ni la suite E2E Flask. Usar `wms-twin/scripts/parity-smoke.sh` y `demo-flow.sh` para
-> demos del equipo. Health puede emitir `service=sentry-wms` con `WMS_TWIN_HEALTH_SERVICE=sentry-wms`.
+> **Rama canónica del gemelo:** `feat/wms-prismatec-genesis` (unificada con el trabajo de `fix/wms-twin-operational-completion`).
+>
+> **Veredicto 2026-11-11:** el gemelo **no es sustituible en producción**. Sí puede **correr en paralelo** al Flask original detrás de un proxy para que el frontend no cambie de código. Detalle: `wms-twin/docs/SIMULTANEO_Y_PARIDAD.md`.
+>
+> Núcleo operativo con tests Go en verde: auth JWT/CSRF, catálogo, PO, recepción, putaway, picking/wave, packing, shipping, transfers, cycle-count, lookup, POS/Dockd/RMA/inbound/events/webhooks/snapshot (con límites documentados). Falta paridad diferencial de DTOs, E2E frontend y varios módulos admin avanzados.
 
 ## Estado global
 
-**NO SUSTITUIBLE.** El backend Flask original permanece intacto y operativo. El gemelo arranca PrismaTec-Core, expone AIP separada, persiste registros por organismo/CID y contiene un ledger técnico de inventario con idempotencia y serialización dentro de una instancia. Todavía no puede atender el frontend original.
+**NO SUSTITUIBLE en producción.** El backend Flask original permanece intacto y operativo. El gemelo arranca PrismaTec-Core, expone AIP separada y cubre el núcleo operativo con tests en verde. Puede atender tráfico de **laboratorio** detrás de un proxy conmutado; no autorizo cortar Flask en producción hasta cumplir el criterio de `wms-twin/docs/SIMULTANEO_Y_PARIDAD.md`.
 
 ## Criterio
 
