@@ -76,7 +76,7 @@
 			};
 			const csv = [columns.join(','), ...rows.map(bin => [bin.code,bin.barcode,bin.zoneName,bin.warehouseId,bin.binType,bin.aisle,bin.pickSequence,bin.putawaySequence,''].map(csvCell).join(','))].join('\r\n');
 			const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-			const link = document.createElement('a'); link.href = url; link.download = 'bins_warehouse' + warehouseId + '_' + new Date().toISOString().slice(0,10) + '.csv'; link.click(); URL.revokeObjectURL(url);
+			const link = document.createElement('a'); link.href = url; link.download = 'bins_warehouse' + warehouseId + '_' + new Date().toISOString().slice(0,10) + '.csv'; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
 		} catch { vm.setError('No se pudo exportar el listado de bins.'); }
 		finally { exporting = false; }
 	}

@@ -34,7 +34,7 @@ export function createWarehouseSelectionState() {
 			if (canSelect) {
 				warehouses = await deps.listAdminWarehouses.execute();
 				const savedExists = savedId != null && warehouses.some(row => row.id === savedId);
-				warehouseId = savedExists ? savedId : warehouses[0]?.id ?? savedId;
+				warehouseId = savedExists ? savedId : warehouses[0]?.id ?? null;
 				if (warehouseId != null) persistId(warehouseId);
 			} else {
 				// Match React WarehouseProvider: users without the warehouses page
