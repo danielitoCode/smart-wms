@@ -16,7 +16,7 @@ export function createWarehousesState() {
 		loading = true;
 		error = null;
 		try {
-			warehouses = await deps.listWarehouses.execute();
+			warehouses = await deps.listAdminWarehouses.execute();
 			loadedOnce = true;
 			return true;
 		} catch (err) {
@@ -27,7 +27,6 @@ export function createWarehousesState() {
 			loading = false;
 		}
 	}
-
 	async function create(input: CreateWarehouseInput) {
 		return mutate(async () => { await deps.createWarehouse.execute(input); });
 	}
@@ -54,11 +53,9 @@ export function createWarehousesState() {
 	}
 
 	return {
-		get warehouses() { return warehouses; },
-		get loading() { return loading; },
-		get mutating() { return mutating; },
-		get error() { return error; },
+		get warehouses() { return warehouses; }, get loading() { return loading; },
+		get mutating() { return mutating; }, get error() { return error; },
 		get loadedOnce() { return loadedOnce; },
-		load, create, update, remove
+		load, create, update, remove, clearError() { error = null; }
 	};
 }

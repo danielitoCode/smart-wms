@@ -3,8 +3,8 @@ import type { WarehouseRepository } from '../repository/WarehouseRepository';
 
 export class ListWarehousesUseCase {
 	constructor(private readonly repository: WarehouseRepository) {}
-	/** Admin master-data list, equivalent to React Data > Warehouses. */
+	/** Active warehouse lookup used by operational selection flows. */
 	execute(): Promise<Warehouse[]> {
-		return this.repository.listAdmin();
+		return this.repository.listActive();
 	}
 }

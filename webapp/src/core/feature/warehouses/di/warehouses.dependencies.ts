@@ -2,6 +2,7 @@ import { apiClient } from '../../../infrastructure/api/ApiClient';
 import { WarehouseRemoteDataSource } from '../data/datasource/WarehouseRemoteDataSource';
 import { WarehouseRepositoryImpl } from '../data/repository/WarehouseRepositoryImpl';
 import { ListWarehousesUseCase } from '../domain/usecase/ListWarehousesUseCase';
+import { ListAdminWarehousesUseCase } from '../domain/usecase/ListAdminWarehousesUseCase';
 import { ListBinsUseCase } from '../domain/usecase/ListBinsUseCase';
 import { ListZonesUseCase } from '../domain/usecase/ListZonesUseCase';
 import { GetWarehouseUseCase } from '../domain/usecase/GetWarehouseUseCase';
@@ -21,6 +22,7 @@ export function createWarehousesDependencies() {
 	const repository = new WarehouseRepositoryImpl(datasource);
 	return {
 		listWarehouses: new ListWarehousesUseCase(repository),
+		listAdminWarehouses: new ListAdminWarehousesUseCase(repository),
 		listBins: new ListBinsUseCase(repository),
 		listZones: new ListZonesUseCase(repository),
 		getWarehouse: new GetWarehouseUseCase(repository),

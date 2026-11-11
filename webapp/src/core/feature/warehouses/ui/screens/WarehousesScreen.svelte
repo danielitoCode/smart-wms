@@ -18,11 +18,13 @@
 	onMount(() => { void vm.load(); });
 
 	function openCreate() {
+		vm.clearError();
 		editing = null;
 		form = { code: '', name: '', address: '', active: true };
 		showForm = true;
 	}
 	function openEdit(warehouse: Warehouse) {
+		vm.clearError();
 		editing = warehouse;
 		form = { code: warehouse.code, name: warehouse.name, address: warehouse.address ?? '', active: warehouse.active };
 		showForm = true;
