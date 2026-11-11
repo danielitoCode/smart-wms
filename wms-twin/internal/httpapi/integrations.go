@@ -164,14 +164,15 @@ func (s *Server) posV1(w http.ResponseWriter, r *http.Request, rest string) {
 				SONumber string `json:"so_number"`
 				Carrier string `json:"carrier"`
 				TrackingNumber string `json:"tracking_number"`
+				IdempotencyKey string `json:"idempotency_key"`
 			}
-			if err := decodeBody(r, &in); err != nil {
-				writeJSON(w, 400, map[string]string{"error": "Invalid request body"})
+			if err := decodeBody(r, &in); err != nil || strings.TrimSpace(in.IdempotencyKey) == "" {
+				writeJSON(w, 400, map[string]string{"error": "so_number, carrier, tracking_number and idempotency_key are required"})
 				return
 			}
 			allowed := []int64{}
 			if rec.WarehouseID != nil { allowed = []int64{*rec.WarehouseID} }
-			out, err := s.pos.DispatchWithDetails(in.SONumber, in.Carrier, in.TrackingNumber, rec.Name, allowed, rec.WarehouseID == nil)
+			out, err := s.pos.DispatchWithDetails(in.SONumber, in.Carrier, in.TrackingNumber, rec.Name, in.IdempotencyKey, allowed, rec.WarehouseID == nil)
 			if err != nil {
 				if errors.Is(err, pos.ErrUnsupported) {
 					writeJSON(w, 501, map[string]string{"error": err.Error()})
