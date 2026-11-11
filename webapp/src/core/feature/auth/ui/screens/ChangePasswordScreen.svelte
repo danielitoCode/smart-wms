@@ -36,7 +36,7 @@
 					oninput={(event) => state.setConfirmPassword(event.currentTarget.value)} disabled={state.submitting} />
 			</label>
 			{#if state.error}<p class="error" role="alert">{state.error}</p>{/if}
-			<button type="submit" class="primary" disabled={state.submitting}>
+			<button type="submit" class="accent" disabled={state.submitting}>
 				{state.submitting ? 'Guardando…' : 'Actualizar contraseña'}
 			</button>
 		</form>

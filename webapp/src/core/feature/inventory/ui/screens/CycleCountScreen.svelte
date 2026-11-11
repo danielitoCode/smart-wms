@@ -42,7 +42,7 @@
 				required
 			/>
 		</label>
-		<button type="submit" disabled={state.busy || !state.binIdsInput.trim()}>
+		<button type="submit" class:accent={!state.detail || state.detail.status === 'COMPLETED'} class:quiet={!!state.detail && state.detail.status !== 'COMPLETED'} disabled={state.busy || !state.binIdsInput.trim()}>
 			Crear conteos
 		</button>
 	</form>
@@ -110,7 +110,7 @@
 					</table>
 				</div>
 				{#if state.detail.status !== 'COMPLETED'}
-					<button type="submit" disabled={state.busy}>Enviar conteo</button>
+					<button type="submit" class="accent" disabled={state.busy}>Enviar conteo</button>
 				{/if}
 			</form>
 		</section>

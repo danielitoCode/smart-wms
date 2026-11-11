@@ -125,7 +125,7 @@
 	<label>Código<input bind:value={zoneForm.code} maxlength="32" required disabled={vm.mutating} /></label><label>Nombre<input bind:value={zoneForm.name} maxlength="128" required disabled={vm.mutating} /></label>
 	<label>Tipo<select bind:value={zoneForm.zoneType} disabled={vm.mutating}>{#each ['RECEIVING','STORAGE','PICKING','STAGING','SHIPPING'] as type}<option value={type}>{zoneTypeLabel(type as ZoneType)}</option>{/each}</select></label>
 	{#if editingZone}<label class="check"><input type="checkbox" bind:checked={zoneForm.active} /> Activa</label>{/if}
-	{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}<footer><button class="quiet" type="button" onclick={() => showZoneForm = false}>Cancelar</button><button class="primary" type="submit" disabled={vm.mutating}>Guardar</button></footer>
+	{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}<footer><button class="quiet" type="button" onclick={() => showZoneForm = false}>Cancelar</button><button class="accent" type="submit" disabled={vm.mutating}>Guardar</button></footer>
 </form></section></div>{/if}
 {#if showBinForm}<div class="backdrop"><section class="dialog" role="dialog" aria-modal="true"><h2>{editingBin ? 'Editar ubicación' : 'Nueva ubicación'}</h2><form onsubmit={saveBin}>
 	<label>Código<input bind:value={binForm.code} maxlength="64" required disabled={vm.mutating} /></label><label>Código de barras<input bind:value={binForm.barcode} maxlength="128" required disabled={vm.mutating} /></label>
