@@ -426,6 +426,7 @@ type RefundInput struct {
 	Reason string `json:"reason"`
 	PaymentMethod string `json:"payment_method"`
 	TotalCents int64 `json:"total_cents"`
+	ShippingRefundCents int64 `json:"shipping_refund_cents,omitempty"`
 	Lines []RefundLine `json:"lines,omitempty"`
 }
 
@@ -435,6 +436,8 @@ type RefundRecord struct {
 	Fingerprint string `json:"fingerprint"`
 	Status string `json:"status"`
 	TotalCents int64 `json:"total_cents"`
+	ShippingRefundCents int64 `json:"shipping_refund_cents"`
+	AllItemsReturned bool `json:"all_items_returned"`
 	ExternalRefundRef string `json:"external_refund_ref"`
 	CashierID string `json:"cashier_id"`
 	Reason string `json:"reason"`
@@ -489,7 +492,7 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 			return map[string]any{"refund_id":prior.ID,"original_so_number":in.SONumber,"fully_refunded":prior.FullyRefunded,"total_cents":prior.TotalCents,"replayed":true}, true, nil
 		}
 	}
-	if !found || (sale.Status != "COMPLETED" && sale.Status != "DISPATCHED") || so.Status != salesorders.StatusShipped {
+	if !found || (sale.Status != "COMPLETED" && sale.Status != "DISPATCHED" && sale.Status != "PARTIALLY_REFUNDED") || (so.Status != salesorders.StatusShipped && so.Status != salesorders.StatusPartiallyRefunded) {
 		return nil, false, salesorders.ErrNotFound
 	}
 	if time.Since(sale.CreatedAt) > 90*24*time.Hour { return nil, false, fmt.Errorf("refund window expired") }
@@ -499,9 +502,11 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 	original := make(map[string]SaleLine)
 	for _, line := range sale.Lines {
 		key := fmt.Sprintf("%d:%d", line.ItemID, line.BinID)
-		current := original[key]
-		current = line
-		current.Quantity = original[key].Quantity + line.Quantity
+		current, exists := original[key]
+		if !exists { current = line }
+		current.Quantity += line.Quantity
+		current.LineTotalCents += line.LineTotalCents
+		current.TaxCents += line.TaxCents
 		original[key] = current
 	}
 	already := make(map[string]int64)
@@ -541,22 +546,42 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 			if requestedByLocation[key] > original[key].Quantity-already[key] { return nil, false, fmt.Errorf("repeated refund lines exceed remaining quantity") }
 		}
 	}
-	if len(requested) == 0 { return nil, false, fmt.Errorf("sale has no refundable quantity remaining") }
+	if len(requested) == 0 && in.ShippingRefundCents <= 0 { return nil, false, fmt.Errorf("sale has no refundable quantity or shipping amount remaining") }
 	var alreadyTotal int64
 	for _, value := range already { alreadyTotal += value }
-	var alreadyCents int64
+	var alreadyCents, alreadyShipping int64
 	for _, record := range refundRecords {
 		var prior RefundRecord
-		if json.Unmarshal(record.Data, &prior) == nil && prior.SaleID == sale.ID && prior.Status == "COMPLETED" { alreadyCents += prior.TotalCents }
+		if json.Unmarshal(record.Data, &prior) == nil && prior.SaleID == sale.ID && prior.Status == "COMPLETED" {
+			alreadyCents += prior.TotalCents
+			alreadyShipping += prior.ShippingRefundCents
+		}
 	}
 	var originalTotal int64
 	for _, value := range original { originalTotal += value.Quantity }
 	var requestedTotal int64
 	for _, value := range requested { requestedTotal += value.Quantity }
-	full := alreadyTotal+requestedTotal == originalTotal
+	allItemsReturned := alreadyTotal+requestedTotal == originalTotal
+	if in.ShippingRefundCents < 0 || in.ShippingRefundCents > sale.ShippingCents-alreadyShipping { return nil, false, fmt.Errorf("shipping refund exceeds the remaining shipping charge") }
+	var expectedLineRefund int64
+	amountAtQuantity := func(total, quantity, sold int64) int64 {
+		if sold <= 0 || quantity <= 0 { return 0 }
+		unit, remainder := total/sold, total%sold
+		return unit*quantity + (remainder*quantity)/sold
+	}
+	for i := range requested {
+		key := fmt.Sprintf("%d:%d", requested[i].ItemID, requested[i].BinID)
+		before := amountAtQuantity(original[key].LineTotalCents, already[key], original[key].Quantity)
+		after := amountAtQuantity(original[key].LineTotalCents, already[key]+requested[i].Quantity, original[key].Quantity)
+		requested[i].LineTotalCents = after-before
+		expectedLineRefund += requested[i].LineTotalCents
+	}
+	if expectedLineRefund > math.MaxInt64-in.ShippingRefundCents || in.TotalCents != expectedLineRefund+in.ShippingRefundCents {
+		return nil, false, fmt.Errorf("refund amount does not reconcile to returned lines and shipping")
+	}
 	if in.TotalCents > sale.TotalCents-alreadyCents { return nil, false, fmt.Errorf("refund amount exceeds remaining sale total") }
-	if full && alreadyCents+in.TotalCents != sale.TotalCents { return nil, false, fmt.Errorf("full quantity refund must reconcile to the remaining sale amount") }
-	refund := RefundRecord{ID:refundID, SaleID:sale.ID, Fingerprint:fingerprint, Status:"PREPARING", TotalCents:in.TotalCents, ExternalRefundRef:in.ExternalRefundRef, CashierID:in.CashierID, Reason:in.Reason, Lines:requested, CreatedAt:time.Now().UTC()}
+	fullyRefunded := allItemsReturned && alreadyCents+in.TotalCents == sale.TotalCents && alreadyShipping+in.ShippingRefundCents == sale.ShippingCents
+	refund := RefundRecord{ID:refundID, SaleID:sale.ID, Fingerprint:fingerprint, Status:"PREPARING", TotalCents:in.TotalCents, ShippingRefundCents:in.ShippingRefundCents, AllItemsReturned:allItemsReturned, ExternalRefundRef:in.ExternalRefundRef, CashierID:in.CashierID, Reason:in.Reason, Lines:requested, CreatedAt:time.Now().UTC()}
 	data, _ := json.Marshal(refund)
 	if _, err := s.store.Put("wms_pos_refund", refundID, data); err != nil { return nil, false, err }
 	for _, line := range requested {
@@ -564,11 +589,11 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 		opID := "pos-ref-" + hex.EncodeToString(opSum[:16])
 		if _, err := s.ledger.Adjust(inventoryledger.AdjustCommand{OperationID:opID, WarehouseID:line.WarehouseID, BinID:line.BinID, ItemID:line.ItemID, Delta:line.Quantity}); err != nil { return nil, false, err }
 	}
-	refund.Status, refund.FullyRefunded = "COMPLETED", full
+	refund.Status, refund.FullyRefunded = "COMPLETED", fullyRefunded
 	data, err = json.Marshal(refund)
 	if err != nil { return nil, false, err }
 	if _, err := s.store.Put("wms_pos_refund", refundID, data); err != nil { return nil, false, err }
-	if full {
+	if fullyRefunded {
 		sale.Status = "REFUNDED"
 		data, err = json.Marshal(sale)
 		if err != nil { return nil, false, err }
