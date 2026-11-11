@@ -32,7 +32,19 @@ type Service struct {
 }
 
 func New(store *corestore.Store, m *mesh.Mesh) *Service {
-	return &Service{store: store, mesh: m}
+	service := &Service{store: store, mesh: m}
+	if m != nil {
+		m.OnTopic("wms.events", func(envelope mesh.GossipEnvelope) {
+			var event Event
+			if err := json.Unmarshal(envelope.Payload, &event); err != nil || event.EventID == "" { return }
+			if _, exists, err := store.Get(kind, event.EventID); err != nil || exists { return }
+			event.Published = true
+			data, err := json.Marshal(event)
+			if err != nil { return }
+			_, _ = store.Put(kind, event.EventID, data)
+		})
+	}
+	return service
 }
 
 func (s *Service) Emit(eventType string, payload map[string]any) (Event, error) {
