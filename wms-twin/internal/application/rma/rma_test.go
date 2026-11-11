@@ -112,5 +112,7 @@ func TestRMACancelReversesRestockedInventoryIdempotently(t *testing.T) {
 	if _, err := service.Create(so.SONumber,"try to return same units again","tester",false); err == nil { t.Fatal("cancelled RMA released units that had already been received") }
 	balances, _, err := ledger.List()
 	if err != nil { t.Fatal(err) }
-	if len(balances) != 0 { t.Fatalf("cancelled RMA left stock in inventory: %+v",balances) }
+	if len(balances) != 1 || balances[0].OnHand != 0 || balances[0].Allocated != 0 {
+		t.Fatalf("cancelled RMA left stock in inventory: %+v", balances)
+	}
 }
