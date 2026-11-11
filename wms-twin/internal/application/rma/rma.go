@@ -133,6 +133,14 @@ func (s *Service) Create(soNumber, reason, actor string, backorder bool) (RMA, e
 	}
 	expectedByItem := make(map[int64]int64)
 	itemOrder := make([]int64,0)
+	reservedByExistingRMA := make(map[int64]int64)
+	existingRecords, err := s.store.List(kind)
+	if err != nil { return RMA{}, err }
+	for _, record := range existingRecords {
+		var existing RMA
+		if json.Unmarshal(record.Data, &existing) != nil || existing.SOID != so.SOID || existing.Status == "CANCELLED" { continue }
+		for _, line := range existing.Lines { reservedByExistingRMA[line.ItemID] += line.Expected }
+	}
 	for _, line := range so.Lines {
 		expected := line.QuantityShipped
 		if expected <= 0 { expected = line.QuantityPacked }
@@ -143,7 +151,7 @@ func (s *Service) Create(soNumber, reason, actor string, backorder bool) (RMA, e
 		expectedByItem[line.ItemID] += expected
 	}
 	for _, itemID := range itemOrder {
-		expected := expectedByItem[itemID] - refundedByItem[itemID]
+		expected := expectedByItem[itemID] - refundedByItem[itemID] - reservedByExistingRMA[itemID]
 		if expected < 0 { return RMA{}, fmt.Errorf("refunded quantity exceeds shipped quantity for item %d",itemID) }
 		if expected > 0 { r.Lines = append(r.Lines, RMALine{ItemID:itemID,Expected:expected,Receipts:[]RMAReceipt{}}) }
 	}
