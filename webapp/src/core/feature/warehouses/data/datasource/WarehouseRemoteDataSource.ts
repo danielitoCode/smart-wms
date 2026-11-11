@@ -1,11 +1,13 @@
 import type { ApiClient } from '../../../../infrastructure/api/ApiClient';
 import type {
-	BinDetailResponseDto, BinDto, BinListResponseDto, CreateBinRequestDto,
-	CreateWarehouseRequestDto, CreateZoneRequestDto, MessageDto,
-	UpdateBinRequestDto, UpdateWarehouseRequestDto, UpdateZoneRequestDto,
+	BinDetailResponseDto, BinDto, BinListResponseDto, MessageDto,
 	WarehouseDetailResponseDto, WarehouseListItemDto, WarehouseListResponseDto,
 	ZoneDto, ZoneListResponseDto
 } from '../dto/WarehouseDto';
+import type {
+	CreateBinRequestDto, CreateWarehouseRequestDto, CreateZoneRequestDto,
+	UpdateBinRequestDto, UpdateWarehouseRequestDto, UpdateZoneRequestDto
+} from '../dto/WarehouseMutationDto';
 
 function asList<T>(
 	body: T[] | { warehouses?: T[]; zones?: T[]; bins?: T[]; items?: T[]; data?: T[] },
@@ -46,33 +48,33 @@ export class WarehouseRemoteDataSource {
 		return this.api.get<BinListResponseDto>('/api/admin/bins' + (qs ? '?' + qs : ''));
 	}
 	createWarehouse(input: CreateWarehouseRequestDto): Promise<WarehouseListItemDto> {
-		return this.api.post('/api/admin/warehouses', input);
+		return this.api.post<WarehouseListItemDto>('/api/admin/warehouses', input);
 	}
 	updateWarehouse(id: number, input: UpdateWarehouseRequestDto): Promise<WarehouseListItemDto> {
-		return this.api.put('/api/admin/warehouses/' + id, input);
+		return this.api.put<WarehouseListItemDto>('/api/admin/warehouses/' + id, input);
 	}
 	deleteWarehouse(id: number): Promise<MessageDto> {
-		return this.api.delete('/api/admin/warehouses/' + id);
+		return this.api.delete<MessageDto>('/api/admin/warehouses/' + id);
 	}
 	createZone(input: CreateZoneRequestDto): Promise<ZoneDto> {
-		return this.api.post('/api/admin/zones', input);
+		return this.api.post<ZoneDto>('/api/admin/zones', input);
 	}
 	updateZone(id: number, input: UpdateZoneRequestDto): Promise<ZoneDto> {
-		return this.api.put('/api/admin/zones/' + id, input);
+		return this.api.put<ZoneDto>('/api/admin/zones/' + id, input);
 	}
 	deleteZone(id: number): Promise<MessageDto> {
-		return this.api.delete('/api/admin/zones/' + id);
+		return this.api.delete<MessageDto>('/api/admin/zones/' + id);
 	}
 	createBin(input: CreateBinRequestDto): Promise<BinDto> {
-		return this.api.post('/api/admin/bins', input);
+		return this.api.post<BinDto>('/api/admin/bins', input);
 	}
 	updateBin(id: number, input: UpdateBinRequestDto): Promise<BinDto> {
-		return this.api.put('/api/admin/bins/' + id, input);
+		return this.api.put<BinDto>('/api/admin/bins/' + id, input);
 	}
 	deleteBin(id: number): Promise<MessageDto> {
-		return this.api.delete('/api/admin/bins/' + id);
+		return this.api.delete<MessageDto>('/api/admin/bins/' + id);
 	}
 	getBinById(id: number): Promise<BinDetailResponseDto> {
-		return this.api.get('/api/admin/bins/' + id);
+		return this.api.get<BinDetailResponseDto>('/api/admin/bins/' + id);
 	}
 }
