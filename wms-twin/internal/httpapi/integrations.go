@@ -76,7 +76,12 @@ func (s *Server) posV1(w http.ResponseWriter, r *http.Request, rest string) {
 			if rec.WarehouseID != nil {
 				wid = *rec.WarehouseID
 			}
-			out, err := s.pos.Availability(wid, r.URL.Query().Get("sku"))
+			sku := strings.TrimSpace(r.URL.Query().Get("sku"))
+			if sku == "" {
+				writeJSON(w, 400, map[string]string{"error": "sku is required"})
+				return
+			}
+			out, err := s.pos.Availability(wid, sku)
 			if err != nil {
 				writeJSON(w, 500, map[string]string{"error": err.Error()})
 				return
