@@ -300,3 +300,8 @@ La prueba de compensación RMA contempla que el ledger conserva una fila de bala
 
 
 La prueba de compensación RMA contempla que el ledger conserva una fila de balance con cantidades cero para preservar trazabilidad. La condición de éxito es saldo neto OnHand=0 y Allocated=0, no que la consulta devuelva una lista vacía.
+
+
+### Fuente de cantidades retornables RMA
+
+`rma.Create` deriva las cantidades elegibles exclusivamente de `SalesOrderLine.QuantityShipped`, luego descuenta cantidades reembolsadas por POS y reservas de otros RMAs. No infiere despacho a partir de ordered/picked/packed. Si el agregado no conserva cantidad shipped positiva, no crea un expediente vacío ni permite devolver unidades que no salieron.
