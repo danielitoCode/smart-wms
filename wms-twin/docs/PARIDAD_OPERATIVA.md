@@ -134,3 +134,53 @@ Inbound amplía los campos mapeados de items, sales orders y purchase orders; co
 Snapshot restore crea un respaldo antes de reemplazar el ledger y devuelve backup_snapshot_id. Webhook outbox procesa retry y DLQ, cifra secretos con AES-GCM y registra fallos del worker; su semántica es at-least-once y se debe operar un solo worker hasta añadir coordinación HA. Kademlia/GossipSub se exponen únicamente cuando el transporte es el LibP2PTransport real de PrismaTec-Core; el estado HTTP diferencia esa ruta del fallback TTL.
 
 Para arrancar exijo JWT_SECRET de al menos 32 caracteres. Los usuarios demo solo se crean con WMS_TWIN_ALLOW_DEMO_BOOTSTRAP=true. Estas pruebas de integración son evidencia local; todavía falta comparación diferencial completa con Flask, procesador de pagos real, versiones inbound nuevas y pruebas de partición/failover.
+
+
+---
+
+## Estado consolidado de cumplimiento — revisión 11-11-2026
+
+Esta sección es la referencia vigente para las capacidades ampliadas en el corte de cierre. Sustituye cualquier estado anterior de esta página que contradiga esta tabla. Distingo implementación del caso de uso, pruebas automatizadas, validación CI y paridad con Flask: son cuatro evidencias diferentes.
+
+| Caso de uso | Estado de implementación | Cobertura automatizada conocida | Cumplimiento operativo/paridad |
+|---|---|---|---|
+| POS checkout | Implementado como saga interna: valida tender y totales, compromete inventario, persiste SO/venta e idempotencia | Pruebas de descuento, replay, recuperación de ventana de fallo y duplicidad | Parcial. No captura dinero en adquirente ni sustituye conciliación financiera |
+| POS refund | Implementado para devolución total/parcial; calcula importes por líneas/bin, repone inventario, concilia envío separado y persiste referencias | Pruebas de refund total/parcial, replay, límites de cantidad, líneas repetidas y envío | Parcial. El proveedor de pagos externo no está integrado; no afirmar reembolso financiero efectivo |
+| POS dispatch | Implementado para phone orders PICKED/PACKED; convierte reserva en salida y persiste shipment | Pruebas de dispatch, replay y void/redispatch | Parcial. Falta contrato diferencial con Flask y pruebas multinodo |
+| Dockd void-ship | Implementado mediante fulfillment, con operación idempotente y reversión de movimientos por ubicación; devuelve estado previo | Pruebas en flujo POS y fulfillment | Parcial. No sustituye recepción física de devoluciones; eso es RMA |
+| RMA create/receive/complete | Expediente persistente; recepción RESTOCK/SCRAP/HOLD; completa solo al recibir cantidades completas y con disposición | Pruebas de recepción, replay, mixed disposition y completion | Parcial. El inventario solo se incrementa en RESTOCK; no existe equivalencia Flask demostrada |
+| RMA cancel | Saga recuperable CANCELLING; compensa cada recibo RESTOCK con operation_id determinista; no revierte SCRAP/HOLD; unidades recibidas siguen consumiendo el cupo retornable | Pruebas de compensación idempotente y rechazo de unidades no despachadas | Parcial. El mutex y el progreso son locales al proceso/CoreStore; no es coordinación multinodo |
+| Webhook outbox | Persistencia de deliveries, worker automático, backoff, DEAD/DLQ, retry manual, HMAC, secretos AES-GCM y validación SSRF al conectar | Tests de creación/entrega/retry/secretos y validación de URL; la suite CI de este corte sigue pendiente | Parcial. Semántica al menos una vez; operar un solo worker mientras no haya lease/claim distribuido |
+| Snapshot create/get | Snapshot persistido, versionado, checksum SHA-256 y detección de alteración | Tests de creación, lectura y manipulación | Implementado en el alcance del ledger WMS |
+| Snapshot restore | Verifica checksum y referencias catálogo, crea backup previo, exige expected ledger version y registra operación idempotente | Tests de restauración y controles de versión según suite del módulo | Parcial. No es CAS distribuido ni restore atómico entre nodos; exige ventana controlada |
+| Inbound items/SO/PO | Mapeo validado y escritura en repositorios reales; clave natural y replay exacto por source_system/resource/external_id/version | Tests de idempotencia y mapeo en suite inbound | Parcial. Una external_version nueva se rechaza como conflicto; no hay UPSERT/version ordering |
+| Mesh Kademlia | DHT real cuando se inicia LibP2PTransport; búsqueda de peers/providers | Test de arranque y funciones de descubrimiento en transporte libp2p | Parcial. No atribuir DHT a transporte TCP ni declarar resiliencia de producción multinodo |
+| Mesh GossipSub | PubSub real cuando se inicia LibP2PTransport; suscripción y publicación por topic | Test de topic local en transporte libp2p | Parcial. Falta prueba de clúster de varios procesos, partición, churn y recuperación |
+| Auditoría WMS | Cadena hash con secuencia y PrevHash; verificación antes de append | Tests de cadena válida, manipulación y bloqueo de append | Parcial. No es inmutabilidad frente a administrador/root ni anclaje externo |
+| Autenticación/autorización | JWT, cookie/CSRF, lockout, permisos y WMS scoped tokens | Tests unitarios y workflows existentes | Parcial. No está demostrado el mismo comportamiento de sesión/roles/scope que Flask en todos los endpoints |
+
+### Correcciones incorporadas en este corte
+
+1. La cancelación RMA revierte inventario RESTOCK ya recibido; la reversión usa un ID determinista y puede reanudarse si el proceso cae.
+2. La cancelación no libera unidades ya recibidas para un segundo RMA, incluso cuando el primer expediente queda CANCELLED.
+3. RMA solo admite QuantityShipped confirmado. Ordered, picked y packed no prueban despacho físico.
+4. La prueba de cancelación verifica saldo neto OnHand=0 y Allocated=0; el ledger conserva filas con cero para mantener trazabilidad.
+5. POS refund consolida cantidades repetidas por item/bin y no permite reembolsar más cantidad o importe que la venta original.
+6. Dockd/fulfillment propaga errores de packing y void no declara éxito sin persistir compensaciones.
+7. Webhook worker persiste retry/DLQ, cifra secretos y fija la conexión a una IP pública validada; el outbox sigue siendo at-least-once.
+8. Inbound repite de forma idempotente la misma versión y payload; una versión nueva se rechaza expresamente hasta definir política de supersession.
+9. Snapshot restore crea backup antes de reemplazar ledger y exige versión esperada; no lo describo como transacción distribuida.
+10. Kademlia/GossipSub se atribuyen solo al transporte libp2p real, no al fallback TCP.
+
+### Casos de uso que siguen fuera de la condición de arranque real
+
+- Captura, void y refund de dinero mediante un adquirente real; conciliación de webhooks del proveedor de pagos.
+- UPSERT de una versión externa nueva para inbound y política de conflictos entre ERP y WMS.
+- Ejecución multinodo con partición, quorum, fencing y recuperación sin doble escritura.
+- Pruebas de Kademlia/GossipSub con varios procesos/hosts y pérdida de peers.
+- Pruebas de restore con interrupción en cada fase y verificación de backup en entorno aislado.
+- Suite diferencial de contratos Flask-Go para cada ruta: request/response, status, errores, roles, warehouse scope y efectos laterales.
+- Paridad global de rutas de administración, receiving/unreceive, putaway, transfer orders, cycle count, conectores, consumer groups, canales y notificaciones.
+- CI verde en el SHA final de esta rama. Los resultados de runs cancelados o en cola no cuentan como aprobación.
+
+**Dictamen:** el WMS Twin tiene una base operativa ampliada y varios flujos transaccionales internos implementados, pero todavía no cumple la condición de sustitución del backend Flask. Se puede iniciar una fase de pruebas controladas en laboratorio una vez que CI termine verde; no se debe enviar tráfico productivo ni procesar pagos reales hasta cerrar los límites enumerados.
