@@ -134,7 +134,30 @@ func New(cfg Config) (*Runtime, error) {
 			return nil, fmt.Errorf("bootstrap Core identities: %w", err)
 		}
 	}
-	apiServer := httpapi.NewWithIdentity(node, store, cfg.APIToken, users, []byte(cfg.JWTSecret), cfg.MaxLoginAttempts, cfg.LoginLockout, cfg.RequirePacking)
+	// Laboratorio: si no hay usuarios, siembra operator/admin para demos del equipo.
+	// No sustituye un import real de producción; solo evita login vacío en local.
+	if list, err := users.List(); err == nil && len(list) == 0 {
+		if _, err := users.CreateWithPassword(identity.User{
+			Username: "operator", FullName: "Demo Operator", Role: "ADMIN", IsActive: true,
+		}, "Operator123"); err != nil {
+			cancel()
+			_ = node.Stop()
+			return nil, fmt.Errorf("seed demo operator: %w", err)
+		}
+		if _, err := users.CreateWithPassword(identity.User{
+			Username: "admin", FullName: "Demo Admin", Role: "ADMIN", IsActive: true,
+		}, "Admin1234"); err != nil {
+			cancel()
+			_ = node.Stop()
+			return nil, fmt.Errorf("seed demo admin: %w", err)
+		}
+	}
+	jwtSecret := strings.TrimSpace(cfg.JWTSecret)
+	if len(jwtSecret) < 32 {
+		// Solo laboratorio: secret determinista documentado (NO usar en producción).
+		jwtSecret = "wms-twin-lab-jwt-secret-min-32-bytes!!"
+	}
+	apiServer := httpapi.NewWithIdentity(node, store, cfg.APIToken, users, []byte(jwtSecret), cfg.MaxLoginAttempts, cfg.LoginLockout, cfg.RequirePacking)
 	aipServer := &aip.Server{Node: node, Addr: cfg.AIPAddr}
 	return &Runtime{node: node, cancel: cancel, handler: apiServer.Handler(), aipHandler: aipServer.Handler()}, nil
 }

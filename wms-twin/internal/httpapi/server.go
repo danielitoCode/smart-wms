@@ -97,7 +97,27 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/twin/info", s.authorize(s.info))
 	mux.HandleFunc("/api/twin/records/", s.authorize(s.records))
 	mux.HandleFunc("/api/twin/inventory/", s.authorize(s.inventory))
-	return mux
+	return withCORS(mux)
+}
+
+// withCORS permite la demo HTML (file:// u otro origen) contra el twin local.
+func withCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			origin = "*"
+		}
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-CSRF-Token, X-Requested-With")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		w.Header().Set("Vary", "Origin")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")

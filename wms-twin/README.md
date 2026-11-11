@@ -60,7 +60,7 @@ La serialización del ledger es por proceso y el agregado es global con un solo 
 - Panel visual: `demo/index.html` (servir con `python3 -m http.server` y API en `:5001`)
 - Script: `scripts/demo-flow.sh`
 - Guía: `docs/DEMO_EQUIPO.md`
-- Runtime propietario: `docs/RUNTIME_PROPIETARIO.md`, `third_party/prismatec/`
+- PrismaTec-Core: `docs/RUNTIME_PROPIETARIO.md`, `third_party/prismatec/`
 
 ## Documentación
 
