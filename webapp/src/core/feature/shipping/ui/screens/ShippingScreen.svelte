@@ -71,19 +71,19 @@
 
 		<form class="fulfill" onsubmit={onFulfill}>
 			<label>
-				Código de seguimiento
+				{i18n.t("Código de seguimiento")}
 				<input type="text" maxlength="255" value={state.trackingNumber}
 					oninput={(e) => state.setTrackingNumber(e.currentTarget.value)}
 					disabled={state.busy} required />
 			</label>
 			<label>
-				Transportista
+				{i18n.t("Transportista")}
 				<input type="text" maxlength="100" value={state.carrier}
 					oninput={(e) => state.setCarrier(e.currentTarget.value)}
 					disabled={state.busy} required />
 			</label>
 			<label>
-				Método de envío (opcional)
+				{i18n.t("Método de envío (opcional)")}
 				<input type="text" value={state.shipMethod}
 					oninput={(e) => state.setShipMethod(e.currentTarget.value)}
 					disabled={state.busy} />

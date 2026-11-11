@@ -39,7 +39,7 @@
 	</header>
 
 	<label class="wh">
-		ID de almacén
+		{i18n.t("ID de almacén")}
 		<input
 			type="number"
 			min="1"
@@ -62,10 +62,10 @@
 				required
 			/>
 			<button type="submit" disabled={state.busy || !state.validateBarcode.trim()}>
-				Validar
+				{i18n.t("Validar")}
 			</button>
 			<button type="button" class="secondary" onclick={() => state.clearValidated()} disabled={state.busy}>
-				Limpiar pedidos
+				{i18n.t("Limpiar pedidos")}
 			</button>
 		</form>
 		{#if state.validateResult}
@@ -97,7 +97,7 @@
 				required
 			/>
 			<button type="submit" disabled={state.busy || !state.soIdsInput.trim()}>
-				Crear ola
+				{i18n.t("Crear ola")}
 			</button>
 		</form>
 		{#if state.waveResult}
@@ -122,7 +122,7 @@
 				required
 			/>
 			<button type="submit" disabled={state.busy || !state.batchIdentifiersInput.trim()}>
-				Crear lote
+				{i18n.t("Crear lote")}
 			</button>
 		</form>
 		{#if state.createBatchResult}
@@ -150,7 +150,7 @@
 		</button>
 		{#if state.batch?.active && state.batch.batchId}
 			<button type="button" class="secondary" onclick={() => state.completeBatch()} disabled={state.busy}>
-				Completar lote
+				{i18n.t("Completar lote")}
 			</button>
 		{/if}
 	</div>
@@ -183,7 +183,7 @@
 
 			<form onsubmit={onConfirm}>
 				<label>
-					Código de barras escaneado
+					{i18n.t("Código de barras escaneado")}
 					<input
 						type="text"
 						value={state.scannedBarcode}
@@ -193,7 +193,7 @@
 					/>
 				</label>
 				<label>
-					Cantidad
+					{i18n.t("Cantidad")}
 					<input
 						type="number"
 						min="1"
@@ -206,7 +206,7 @@
 				<div class="actions">
 					<button type="submit" class="accent" disabled={state.busy}>{i18n.t('Confirmar recogida')}</button>
 					<button type="button" class="secondary" onclick={() => state.shortPick()} disabled={state.busy}>
-						Indicar faltante (0)
+						{i18n.t("Indicar faltante (0)")}
 					</button>
 				</div>
 			</form>

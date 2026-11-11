@@ -89,7 +89,7 @@
 		</form>
 
 		<button type="button" class="accent" onclick={() => state.complete()} disabled={state.busy}>
-			Completar empaque
+			{i18n.t("Completar empaque")}
 		</button>
 	{/if}
 </section>

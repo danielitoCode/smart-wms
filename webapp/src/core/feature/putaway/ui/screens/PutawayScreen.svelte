@@ -20,7 +20,7 @@
 
 	<div class="toolbar">
 		<label>
-			ID de almacén
+			{i18n.t("ID de almacén")}
 			<input
 				type="number"
 				min="1"
