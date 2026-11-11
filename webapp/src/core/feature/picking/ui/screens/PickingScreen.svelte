@@ -79,7 +79,7 @@
 			</p>
 		{/if}
 		{#if state.validatedSoIds.length}
-			<p class="meta">Pedidos validados (ID): {state.validatedSoIds.join(', ')}</p>
+			<p class="meta">{i18n.t('Pedidos validados (ID):')} {state.validatedSoIds.join(', ')}</p>
 		{/if}
 	</section>
 

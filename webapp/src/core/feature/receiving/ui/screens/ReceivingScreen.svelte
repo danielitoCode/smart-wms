@@ -63,7 +63,7 @@
 
 	{#if state.detail}
 		<section class="po">
-			<h2>Orden de compra {state.detail.purchaseOrder.poNumber}</h2>
+			<h2>{i18n.t('Orden de compra')} {state.detail.purchaseOrder.poNumber}</h2>
 			<p class="meta">
 				{state.detail.purchaseOrder.vendorName}
 				· {state.detail.purchaseOrder.status}

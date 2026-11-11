@@ -50,7 +50,7 @@
 		<p class="status error" role="alert">{state.error}</p>
 		<button type="button" onclick={() => state.load()}>{i18n.t('Reintentar')}</button>
 	{:else if state.loading && !state.loadedOnce}
-		<p class="status">Cargando inventario…</p>
+		<p class="status">{i18n.t('Cargando inventario…')}</p>
 	{:else if state.items.length === 0}
 		<p class="status">{i18n.t('Todavía no hay existencias registradas.')}</p>
 	{:else}
