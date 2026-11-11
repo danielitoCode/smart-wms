@@ -167,3 +167,31 @@ func TestRefundConsolidatesRepeatedItemBinLinesBeforeLedgerMutation(t *testing.T
 	if err != nil { t.Fatal(err) }
 	if len(balances)!=1 || balances[0].OnHand!=10 { t.Fatalf("duplicate refund lines did not restore exactly two units: %+v",balances) }
 }
+
+func TestRefundAggregatesRepeatedItemBinLinesIntoOneLedgerMovement(t *testing.T) {
+	f := newPOSFixture(t)
+	in := checkoutInput(f,"checkout-duplicate-refund",false)
+	in.Lines = []CartLine{
+		{SKU:"POS-SKU-1",ItemID:f.itemID,BinID:f.binID,Quantity:1,UnitPriceCents:100,TaxCents:5,LineTotalCents:105},
+		{SKU:"POS-SKU-1",ItemID:f.itemID,BinID:f.binID,Quantity:1,UnitPriceCents:100,TaxCents:5,LineTotalCents:105},
+	}
+	so, _, err := f.service.CheckoutTransaction(in,"cashier-1")
+	if err != nil { t.Fatal(err) }
+	refund := RefundInput{
+		SONumber:so.SONumber,IdempotencyKey:"refund-duplicate-lines",
+		ExternalRefundRef:"gateway-duplicate-lines",CashierID:"cashier-1",
+		Reason:"two repeated cart rows returned",PaymentMethod:"cash",TotalCents:210,
+		Lines:[]RefundLine{
+			{ItemID:f.itemID,SKU:"POS-SKU-1",BinID:f.binID,Quantity:1},
+			{ItemID:f.itemID,SKU:"POS-SKU-1",BinID:f.binID,Quantity:1},
+		},
+	}
+	if _, replayed, err := f.service.RefundTransaction(refund,"cashier-1"); err != nil || replayed {
+		t.Fatalf("refund with repeated lines failed: replayed=%v err=%v",replayed,err)
+	}
+	balances, _, err := f.ledger.List()
+	if err != nil { t.Fatal(err) }
+	if len(balances)!=1 || balances[0].OnHand!=10 {
+		t.Fatalf("refund must restock both units exactly once, got %+v",balances)
+	}
+}
