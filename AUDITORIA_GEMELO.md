@@ -379,3 +379,9 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **No cubierto:** wave-picking completo, backorders, connectors, webhooks, events outbox, pruebas diferenciales Flask.
 - **Pruebas:** `go test ./internal/httpapi` ok (GOPROXY=proxy.golang.org).
 - **Restricción:** backend Flask y frontends originales intactos.
+
+### AUD-0023 — Lookup, transfers, cycle counts, wave, tests de flujo
+
+- **Cambio:** `lookup`, `transfers`, `cyclecounts`; rutas `/api/lookup/*`, `/api/transfers/move`, `/api/inventory/cycle-count/*`, wave-validate/create; tests `ops_flow_test.go`.
+- **Pruebas:** `go test ./internal/httpapi` ok.
+- **Límite:** connectors, dockd, POS, webhooks, backorders y paridad diferencial Flask siguen fuera.

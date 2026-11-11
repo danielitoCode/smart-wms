@@ -150,6 +150,10 @@ func (s *Server) pickingRoute(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, 200, out)
+	case r.Method == http.MethodPost && path == "wave-validate":
+		s.waveValidate(w, r)
+	case r.Method == http.MethodPost && path == "wave-create":
+		s.waveCreate(w, r)
 	case r.Method == http.MethodPost && path == "create-batch":
 		var in struct {
 			SOIdentifiers []string `json:"so_identifiers"`

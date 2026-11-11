@@ -13,13 +13,16 @@ import (
 	"time"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/cyclecounts"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/fulfillment"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/identity"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/fulfillment"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/lookup"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/picking"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/purchaseorders"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/receiving"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/salesorders"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/transfers"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 	"github.com/yecharlot/PrismaTec-Core/core"
 )
@@ -34,6 +37,9 @@ type Server struct {
 	receiving        *receiving.Service
 	picking          *picking.Service
 	fulfillment      *fulfillment.Service
+	lookup           *lookup.Service
+	transfers        *transfers.Service
+	cycleCounts      *cyclecounts.Service
 	token            string
 	users            *identity.Repository
 	jwtSecret        []byte
@@ -63,11 +69,14 @@ func NewWithIdentity(node *core.Node, store *corestore.Store, token string, user
 	return &Server{
 		node: node, store: store, ledger: ledger, catalog: master,
 		purchaseOrders: pos, salesOrders: sos,
-		receiving: receiving.New(store, master, pos, ledger),
-		picking: picking.New(store, master, sos, ledger),
+		receiving:   receiving.New(store, master, pos, ledger),
+		picking:     picking.New(store, master, sos, ledger),
 		fulfillment: fulfillment.New(store, sos),
-		token: token,
-		users: users, jwtSecret: append([]byte(nil), jwtSecret...),
+		lookup:      lookup.New(master, ledger, sos),
+		transfers:   transfers.New(master, ledger),
+		cycleCounts: cyclecounts.New(store, master, ledger),
+		token:       token,
+		users:       users, jwtSecret: append([]byte(nil), jwtSecret...),
 		maxLoginAttempts: maxLoginAttempts, loginLockout: loginLockout,
 		requirePacking: requirePacking,
 	}
@@ -82,6 +91,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/picking/", s.RequireAuth(s.pickingRoute))
 	mux.HandleFunc("/api/packing/", s.RequireAuth(s.packingRoute))
 	mux.HandleFunc("/api/shipping/", s.RequireAuth(s.shippingRoute))
+	mux.HandleFunc("/api/lookup/", s.RequireAuth(s.lookupRoute))
+	mux.HandleFunc("/api/transfers/", s.RequireAuth(s.transfersRoute))
+	mux.HandleFunc("/api/inventory/", s.RequireAuth(s.inventoryRoute))
 	mux.HandleFunc("/api/twin/info", s.authorize(s.info))
 	mux.HandleFunc("/api/twin/records/", s.authorize(s.records))
 	mux.HandleFunc("/api/twin/inventory/", s.authorize(s.inventory))

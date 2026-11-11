@@ -18,7 +18,9 @@ Servicio Go independiente. No reemplaza ni importa código del backend Flask ori
 - [ ] Quorum, autoridad por partición, reconciliación y failover seguro.
 - [~] Primer corte de datos maestros (warehouses/zones/bins); demás flujos WMS pendientes.
 
-**NO SUSTITUIBLE.** El ledger es un primer corte de dominio, no un backend equivalente.
+Rutas operativas ampliadas: lookup, transfers, cycle-count, wave parcial.
+
+**NO SUSTITUIBLE al 100%.** El ledger es un primer corte de dominio, no un backend equivalente.
 
 ## Arranque
 

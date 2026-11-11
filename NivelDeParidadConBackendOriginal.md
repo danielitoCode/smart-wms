@@ -25,8 +25,8 @@ No declaro paridad por tener rutas con nombres parecidos. Cada caso debe igualar
 | Receiving/put-away | PO, recepción, cancelación y ubicación | Rutas core implementadas | Parcial |
 | Picking/waves | Batch, wave, short pick, cancel | Batch/confirm/short/complete/cancel; wave pendiente | Parcial |
 | Packing/shipping | Verificación y despacho | verify/complete/fulfill básicos | Parcial |
-| Cycle counts/adjustments | Conteo, aprobación y ajustes | No | Pendiente |
-| Transfers | Movimiento y órdenes inter-almacén | Movimiento técnico dentro del ledger | Parcial de dominio; no paridad |
+| Cycle counts/adjustments | Conteo, aprobación y ajustes | create/get/submit | Parcial |
+| Transfers | Movimiento y órdenes inter-almacén | POST /api/transfers/move + ledger | Parcial |
 | Orders/RMA/backorders/POS | Workflows completos | No | Pendiente |
 | Events/snapshots | Outbox, consumer groups, ack, cursor | Pulse/AIP no equivalen al contrato WMS | Pendiente |
 | Connectors/webhooks/inbound/Dockd | Scopes, firmas, retry, DLQ | No | Pendiente |
@@ -212,3 +212,8 @@ Aún pendientes: `/{id}/receipts`, unreceive, recepción móvil, cancelación de
 ## Avance fases 06-09
 
 Implementé receiving, put-away, sales orders, picking batch y packing/shipping básicos sobre PrismaTec-Core. Sigo sin declarar el gemelo sustituible ni autorizar el cambio de upstream del frontend en producción.
+
+
+## Corte lookup/transfers/cycle (AUD-0023)
+
+Añadí lookup item/bin/so/search, transfers/move, cycle-count create/get/submit y wave-validate/create. Documenté tests de flujo HTTP. Sigo sin declarar el gemelo como sustituible al 100%.
