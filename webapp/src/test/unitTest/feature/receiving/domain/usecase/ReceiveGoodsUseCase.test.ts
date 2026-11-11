@@ -29,13 +29,13 @@ describe('ReceiveGoodsUseCase', () => {
 
 	it('rejects quantity <= 0', async () => {
 		const useCase = new ReceiveGoodsUseCase(createRepo());
-		expect(() => (
+		expect(() => 
 			useCase.execute(1, [{ itemId: 1, quantity: 0, binId: 1 }])
-		))).toThrow(/quantity/);
+		).toThrow(/quantity/);
 	});
 
 	it('rejects empty items', async () => {
 		const useCase = new ReceiveGoodsUseCase(createRepo());
-		expect(() => (useCase.execute(1, [])))).toThrow(/items/);
+		expect(() => useCase.execute(1, [])).toThrow(/items/);
 	});
 });

@@ -22,6 +22,6 @@ describe('LoadPackingOrderUseCase', () => {
 
 	it('rejects empty barcode', async () => {
 		const repo = { loadOrder: vi.fn(), verify: vi.fn(), complete: vi.fn() } as PackingRepository;
-		expect(() => (new LoadPackingOrderUseCase(repo).execute(' ')))).toThrow(/barcode/);
+		expect(() => new LoadPackingOrderUseCase(repo).execute(' ')).toThrow(/barcode/);
 	});
 });

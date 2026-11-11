@@ -34,6 +34,6 @@ describe('LookupPurchaseOrderUseCase', () => {
 
 	it('rejects empty barcode', async () => {
 		const useCase = new LookupPurchaseOrderUseCase(createRepo());
-		expect(() => (useCase.execute('  ')))).toThrow(/barcode/);
+		expect(() => useCase.execute('  ')).toThrow(/barcode/);
 	});
 });

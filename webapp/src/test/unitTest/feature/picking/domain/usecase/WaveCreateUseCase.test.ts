@@ -34,6 +34,6 @@ describe('WaveCreateUseCase', () => {
 	});
 
 	it('rejects empty so_ids', async () => {
-		expect(() => (new WaveCreateUseCase(createRepo()).execute([], 1)))).toThrow(/so_ids/);
+		expect(() => new WaveCreateUseCase(createRepo()).execute([], 1)).toThrow(/so_ids/);
 	});
 });

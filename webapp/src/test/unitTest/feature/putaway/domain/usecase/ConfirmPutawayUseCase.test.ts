@@ -41,9 +41,9 @@ describe('ConfirmPutawayUseCase', () => {
 			confirm: vi.fn()
 		} as PutawayRepository;
 		const useCase = new ConfirmPutawayUseCase(repo);
-		expect(() => (
+		expect(() => 
 			useCase.execute({ itemId: 1, fromBinId: 1, toBinId: 2, quantity: 0 })
-		))).toThrow(/quantity/);
+		).toThrow(/quantity/);
 	});
 
 	it('rejects same from/to bin', async () => {
@@ -53,8 +53,8 @@ describe('ConfirmPutawayUseCase', () => {
 			confirm: vi.fn()
 		} as PutawayRepository;
 		const useCase = new ConfirmPutawayUseCase(repo);
-		expect(() => (
+		expect(() => 
 			useCase.execute({ itemId: 1, fromBinId: 5, toBinId: 5, quantity: 1 })
-		))).toThrow(/toBinId must differ/);
+		).toThrow(/toBinId must differ/);
 	});
 });

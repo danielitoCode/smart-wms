@@ -6,7 +6,7 @@ describe('ListItemsUseCase', () => {
 	it('rejects invalid page', async () => {
 		const repo = { list: vi.fn(), search: vi.fn() } as unknown as ItemRepository;
 		const uc = new ListItemsUseCase(repo);
-		expect(() => (uc.execute({ page: 0 })))).toThrow(/page/);
+		expect(() => uc.execute({ page: 0 })).toThrow(/page/);
 	});
 
 	it('trims category and q', async () => {

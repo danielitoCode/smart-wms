@@ -38,8 +38,8 @@ describe('ConfirmPickUseCase', () => {
 
 	it('rejects empty barcode', async () => {
 		const useCase = new ConfirmPickUseCase(createRepo());
-		expect(() => (
+		expect(() => 
 			useCase.execute({ pickTaskId: 1, scannedBarcode: '  ', quantityPicked: 1 })
-		))).toThrow(/barcode/);
+		).toThrow(/barcode/);
 	});
 });

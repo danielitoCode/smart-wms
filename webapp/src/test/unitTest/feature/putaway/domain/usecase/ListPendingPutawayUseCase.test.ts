@@ -10,7 +10,7 @@ describe('ListPendingPutawayUseCase', () => {
 			confirm: vi.fn()
 		} as PutawayRepository;
 		const uc = new ListPendingPutawayUseCase(repo);
-		expect(() => (uc.execute(0)))).toThrow(/warehouseId/);
+		expect(() => uc.execute(0)).toThrow(/warehouseId/);
 	});
 
 	it('delegates to repository', async () => {
