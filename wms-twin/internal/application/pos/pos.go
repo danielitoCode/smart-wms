@@ -340,6 +340,21 @@ func (s *Service) Refund(soNumber string, actor string) (map[string]any, error) 
 	return nil, ErrUnsupported
 }
 
+func (s *Service) DispatchWithDetails(soNumber, carrier, tracking, actor string, allowed []int64, isAdmin bool) (map[string]any, error) {
+	if s.fulfill == nil { return nil, ErrUnsupported }
+	so, err := s.GetSO(soNumber)
+	if err != nil { return nil, err }
+	shipment, err := s.fulfill.Fulfill(fulfillment.FulfillInput{
+		SOID:so.SOID, Carrier:carrier, TrackingNumber:tracking, WarehouseID:so.WarehouseID,
+	}, allowed, isAdmin)
+	if err != nil { return nil, err }
+	return map[string]any{
+		"so_id":so.SOID, "so_number":so.SONumber, "status":shipment.Status,
+		"carrier":shipment.Carrier, "tracking_number":shipment.TrackingNumber,
+		"shipped_at":shipment.ShippedAt, "actor":actor,
+	}, nil
+}
+
 func (s *Service) Dispatch(soNumber, actor string) (map[string]any, error) {
 	if _, err := s.GetSO(soNumber); err != nil {
 		return nil, err
