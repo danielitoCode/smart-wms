@@ -1,142 +1,44 @@
 /**
- * Return / RMA domain.
- *
- * A return represents the physical return lifecycle. Monetary refunds are
- * modeled independently in the refunds feature.
+ * RMA projection over a child SalesOrder (order_type='return').
+ * The backend persists the RMA in sales_orders, its line lineage in
+ * original_so_line_id, and inbound goods in item_receipts.
  */
+import type { SalesOrder, SalesOrderLine } from '../../../sales-orders/domain/entity/SalesOrder';
 
-export type ReturnStatus =
-	| 'REQUESTED'
-	| 'AUTHORIZED'
-	| 'IN_TRANSIT'
-	| 'RECEIVED'
-	| 'INSPECTED'
-	| 'CLOSED'
-	| 'REJECTED'
-	| 'CANCELLED'
-	| (string & {});
+export type ReturnStatus = 'OPEN' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'CLOSED';
 
-export type ReturnReason =
-	| 'DAMAGED'
-	| 'DEFECTIVE'
-	| 'WRONG_ITEM'
-	| 'NOT_AS_DESCRIBED'
-	| 'UNWANTED'
-	| 'OTHER'
-	| (string & {});
-
-export type ReturnDisposition =
-	| 'RESTOCK'
-	| 'REPAIR'
-	| 'SCRAP'
-	| 'RETURN_TO_VENDOR'
-	| 'HOLD'
-	| (string & {});
-
-export type ReturnedItemCondition =
-	| 'NEW'
-	| 'OPEN_BOX'
-	| 'USED'
-	| 'DAMAGED'
-	| 'DEFECTIVE'
-	| 'UNKNOWN'
-	| (string & {});
-
-export type ReturnLine = {
-	returnLineId: number;
-	returnId: number;
-	salesOrderLineId: number;
-	itemId: number;
-	quantityRequested: number;
-	quantityAuthorized: number;
-	quantityReceived: number;
-	quantityAccepted: number;
-	quantityRejected: number;
-	reason?: ReturnReason | null;
-	condition?: ReturnedItemCondition | null;
-	disposition?: ReturnDisposition | null;
-	inspectionNotes?: string | null;
-	sku?: string | null;
-	itemName?: string | null;
+export type ReturnLine = SalesOrderLine & {
+	/** Required for a return child line when it can be traced to an original line. */
+	originalSalesOrderLineId?: number | null;
 };
 
-export type Return = {
-	returnId: number;
-	returnNumber: string;
-	status: ReturnStatus;
-	salesOrderId: number;
-	salesOrderNumber?: string | null;
-	customerId?: string | null;
-	customerName?: string | null;
-	warehouseId: number;
-	reason: ReturnReason;
-	reasonNotes?: string | null;
-	requestedBy?: number | null;
-	authorizedBy?: number | null;
-	receivedBy?: number | null;
-	inspectedBy?: number | null;
-	requestedAt?: string | null;
-	authorizedAt?: string | null;
-	receivedAt?: string | null;
-	inspectedAt?: string | null;
-	closedAt?: string | null;
-	notes?: string | null;
+export type Return = Omit<SalesOrder, 'orderType' | 'lines'> & {
+	orderType: 'return';
+	parentSalesOrderId: number;
 	lines: ReturnLine[];
+	/** Soft void from migration 076; voided rows remain auditable. */
+	voidedAt?: string | null;
+	voidedBy?: string | null;
 };
 
 export type CreateReturnLine = {
-	salesOrderLineId: number;
 	itemId: number;
-	quantityRequested: number;
-	reason?: ReturnReason | null;
-	reasonNotes?: string | null;
+	quantity: number;
+	originalSalesOrderLineId?: number | null;
 };
 
+/** Mirrors CreateRmaRequest; the backend creates the child SO and RMA number. */
 export type CreateReturn = {
-	salesOrderId: number;
-	warehouseId: number;
-	reason: ReturnReason;
-	reasonNotes?: string | null;
 	lines: CreateReturnLine[];
-	notes?: string | null;
+	memo?: string | null;
 };
 
-export type AuthorizeReturnLine = {
-	returnLineId: number;
-	quantityAuthorized: number;
-};
-
-export type AuthorizeReturn = {
-	returnId: number;
-	lines: AuthorizeReturnLine[];
-	notes?: string | null;
-};
-
-export type ReceiveReturnLine = {
-	returnLineId: number;
-	quantityReceived: number;
-	condition?: ReturnedItemCondition | null;
-};
-
+/** Mirrors ReceiveRmaRequest and creates an item_receipts row against the RMA SO. */
 export type ReceiveReturn = {
-	returnId: number;
-	lines: ReceiveReturnLine[];
-	receivedAt?: string | null;
+	itemId: number;
+	quantity: number;
+	warehouseId: number;
+	binId: number;
 	notes?: string | null;
-};
-
-export type InspectReturnLine = {
-	returnLineId: number;
-	quantityAccepted: number;
-	quantityRejected: number;
-	disposition: ReturnDisposition;
-	condition?: ReturnedItemCondition | null;
-	inspectionNotes?: string | null;
-};
-
-export type InspectReturn = {
-	returnId: number;
-	lines: InspectReturnLine[];
-	inspectedAt?: string | null;
-	notes?: string | null;
+	idempotencyKey?: string | null;
 };

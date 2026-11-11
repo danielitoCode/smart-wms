@@ -1,70 +1,29 @@
 /**
- * Fraud review domain.
- *
- * A review is a separate assessment record associated with an order. The
- * SalesOrder FRAUD_REVIEW status remains an order lifecycle state and is not
- * duplicated here.
+ * Fraud queue projection over SalesOrder rows with status='FRAUD_REVIEW'.
+ * The backend stores no FraudReview aggregate, risk score, signal list or
+ * reviewer assignment. The supported actions edit SO.memo or move status
+ * from FRAUD_REVIEW to OPEN, both recorded in audit_log.
  */
-
-export type FraudReviewStatus =
-	| 'PENDING'
-	| 'IN_REVIEW'
-	| 'APPROVED'
-	| 'REJECTED'
-	| 'ESCALATED'
-	| 'CLOSED'
-	| (string & {});
-
-export type FraudDecision = 'APPROVE' | 'REJECT' | 'ESCALATE' | 'NO_DECISION' | (string & {});
-
-export type FraudSignal = {
-	code: string;
-	label?: string | null;
-	description?: string | null;
-	severity?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | (string & {});
-	source?: string | null;
-	observedAt?: string | null;
-};
-
 export type FraudReview = {
-	fraudReviewId: number;
 	salesOrderId: number;
-	salesOrderNumber?: string | null;
-	status: FraudReviewStatus;
-	decision?: FraudDecision | null;
-	signals: FraudSignal[];
-	riskScore?: number | null;
-	riskLevel?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | (string & {}) | null;
-	assignedTo?: number | null;
-	reviewedBy?: number | null;
-	reviewNotes?: string | null;
-	decisionReason?: string | null;
-	createdAt?: string | null;
-	updatedAt?: string | null;
-	reviewedAt?: string | null;
-	closedAt?: string | null;
+	salesOrderNumber: string;
+	status: 'FRAUD_REVIEW';
+	orderType: string;
+	orderSource: string | null;
+	orderOrigin: string | null;
+	warehouseId: number;
+	customerName: string | null;
+	customerPhone: string | null;
+	memo: string | null;
+	createdAt: string | null;
 };
 
-export type CreateFraudReview = {
+export type UpdateFraudMemo = {
 	salesOrderId: number;
-	signals?: FraudSignal[];
-	riskScore?: number | null;
-	riskLevel?: string | null;
+	memo: string;
 };
 
-export type UpdateFraudReview = {
-	fraudReviewId: number;
-	status?: FraudReviewStatus;
-	assignedTo?: number | null;
-	signals?: FraudSignal[];
-	riskScore?: number | null;
-	riskLevel?: string | null;
-	reviewNotes?: string | null;
-};
-
-export type DecideFraudReview = {
-	fraudReviewId: number;
-	decision: FraudDecision;
-	decisionReason?: string | null;
-	reviewNotes?: string | null;
+/** The backend accepts this action only while status is FRAUD_REVIEW. */
+export type PushFraudOrderToQueue = {
+	salesOrderId: number;
 };

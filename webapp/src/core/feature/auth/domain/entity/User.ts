@@ -1,8 +1,8 @@
 /**
- * Domain user identity from SentryWMS auth surface.
- * Mirrors fields returned by POST /api/auth/login and GET /api/auth/me.
+ * Domain user identity returned by the authentication endpoints.
+ * Role values match the backend users contract exactly.
  */
-export type UserRole = 'ADMIN' | 'SUPERVISOR' | 'OPERATOR' | string;
+export type UserRole = 'ADMIN' | 'USER';
 
 export type User = {
 	userId: number;

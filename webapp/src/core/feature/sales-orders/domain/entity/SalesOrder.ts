@@ -1,7 +1,8 @@
 /**
- * Sales Order aggregate.
- * Customer and address fields are snapshots on the order so historic orders
- * remain understandable if the canonical customer record changes.
+ * Canonical Sales Order aggregate.
+ * Returns, refunds, backorders, replacements and exchanges are typed child
+ * orders in the same sales_orders aggregate; they are not separate persisted
+ * aggregates.
  */
 
 export type SalesOrderStatus =
@@ -11,7 +12,11 @@ export type SalesOrderStatus =
 	| 'PICKED'
 	| 'PACKED'
 	| 'SHIPPED'
+	| 'REFUNDED'
 	| 'CANCELLED'
+	| 'PARTIALLY_RECEIVED'
+	| 'RECEIVED'
+	| 'CLOSED'
 	| (string & {});
 
 export type SalesOrderType =
@@ -46,7 +51,10 @@ export type SalesOrderLine = {
 	quantityPicked: number;
 	quantityPacked: number;
 	quantityShipped: number;
+	/** Return-SO receipt progress; zero for ordinary sales lines. */
+	quantityReceived: number;
 	status: SalesOrderLineStatus;
+	/** Source line for return, replacement or exchange child orders. */
 	originalSalesOrderLineId?: number | null;
 	sku?: string | null;
 	itemName?: string | null;
@@ -73,6 +81,15 @@ export type SalesOrder = {
 	orderOrigin?: string | null;
 	orderSource?: string | null;
 	memo: string | null;
+	/** Signed monetary total stored on sales_orders (POS refunds are negative). */
+	orderTotal?: number | null;
+	externalTxnRef?: string | null;
+	/** Original sale refund audit/linkage fields. */
+	refundedAt?: string | null;
+	refundSalesOrderId?: number | null;
+	/** RMA soft-void fields; NULL voidedAt means the RMA is active. */
+	voidedAt?: string | null;
+	voidedBy?: string | null;
 	createdAt?: string | null;
 	updatedAt?: string | null;
 	shippedAt?: string | null;

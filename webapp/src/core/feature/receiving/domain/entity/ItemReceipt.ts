@@ -1,16 +1,15 @@
 /**
- * Purchase-order receiving domain.
- *
- * A receipt records physical goods received against a PO line and a bin.
- * Receipt registration is distinct from putaway and from inventory
- * valuation policy: this entity records the receiving fact and traceability.
+ * Receiving record for either a purchase-order receipt or an RMA receipt.
+ * Exactly one source pair is populated: (poId, poLineId) for PO receiving,
+ * or (salesOrderId, salesOrderLineId) for goods returned against an RMA.
  */
-
 export type ItemReceipt = {
 	receiptId: number;
 	externalId: string;
-	poId: number;
-	poLineId: number;
+	poId: number | null;
+	poLineId: number | null;
+	salesOrderId: number | null;
+	salesOrderLineId: number | null;
 	itemId: number;
 	quantityReceived: number;
 	binId: number;
