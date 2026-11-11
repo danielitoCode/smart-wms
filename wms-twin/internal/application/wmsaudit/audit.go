@@ -51,9 +51,7 @@ func (s *Service) Verify() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	err := s.verifyAndRecover()
-	if err != nil {
-		s.verificationErr = err
-	}
+	s.verificationErr = err
 	return err
 }
 
