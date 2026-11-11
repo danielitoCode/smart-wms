@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -130,6 +131,9 @@ func NewWithIdentity(node *core.Node, store *corestore.Store, token string, user
 }
 // StartBackground starts supervised outbox workers under the runtime context.
 func (s *Server) StartBackground(ctx context.Context) {
+	if s.mesh != nil {
+		if err := s.mesh.Start(ctx); err != nil { log.Printf("WMS mesh startup: %v", err) }
+	}
 	if s.webhooks != nil { go s.webhooks.Run(ctx, time.Second) }
 	if s.events != nil {
 		go func() {
