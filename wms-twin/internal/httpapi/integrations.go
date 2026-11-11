@@ -493,12 +493,16 @@ func (s *Server) auditRecent(w http.ResponseWriter, r *http.Request) {
 	if n <= 0 {
 		n = 50
 	}
+	if err := s.wmsAudit.Verify(); err != nil {
+		writeJSON(w, 503, map[string]any{"error": "audit_integrity_unverified", "message": err.Error()})
+		return
+	}
 	list, err := s.wmsAudit.Recent(n)
 	if err != nil {
 		writeJSON(w, 500, map[string]string{"error": err.Error()})
 		return
 	}
-	writeJSON(w, 200, map[string]any{"entries": list, "total": len(list)})
+	writeJSON(w, 200, map[string]any{"entries": list, "total": len(list), "integrity_verified": true})
 }
 
 func (s *Server) meshStatus(w http.ResponseWriter, r *http.Request) {
@@ -516,7 +520,7 @@ func (s *Server) meshStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, 200, map[string]any{
 		"peers": s.mesh.Peers(), "closest": s.mesh.Closest(string(s.node.ID()), 8),
-		"engine": "PrismaTec-Core", "layer": "kademlia+gossip",
+		"engine": "PrismaTec-Core", "layer": "peer-table+ttl-gossip",
 	})
 }
 
