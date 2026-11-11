@@ -1,10 +1,12 @@
+import type { UserRole } from '../../domain/entity/User';
+
 /** DTOs mirror SentryWMS /api/auth JSON (snake_case). */
 
 export type UserDto = {
 	user_id: number;
 	username: string;
 	full_name: string;
-	role: string;
+	role: UserRole;
 	warehouse_id?: number | null;
 	warehouse_ids?: number[];
 	allowed_functions?: string[];

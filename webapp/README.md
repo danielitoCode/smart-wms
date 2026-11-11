@@ -30,12 +30,15 @@ Node 26 cumple y supera el mínimo requerido por SvelteKit 3.
 ```bash
 cd webapp
 
-# Opcional: usar la versión de Node del proyecto
+# El backend corre fuera de Docker en localhost:5000
+# Si necesitas cambiarlo, edita .env y/o VITE_API_BASE_URL
 # nvm use   # o fnm / asdf según tu gestor
 
 npm install
-npm run dev
+npm run dev -- --host 0.0.0.0
 ```
+
+La app consume el backend local con `VITE_API_BASE_URL=http://localhost:5000` y no está acoplada a la red Docker.
 
 ## Scripts
 
