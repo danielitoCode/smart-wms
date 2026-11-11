@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net"
 	"time"
 	"os"
 
@@ -104,5 +105,19 @@ func TestWebhookOutboxRetriesThenDelivers(t *testing.T) {
 	if err != nil { t.Fatal(err) }
 	if len(deliveries)!=1 || deliveries[0].Status!="DELIVERED" || deliveries[0].Attempts!=2 || deliveries[0].DeliveredAt==nil {
 		t.Fatalf("expected delivered outbox record, got %+v",deliveries)
+	}
+}
+
+func TestWebhookEgressRejectsSpecialPurposeAddressRanges(t *testing.T) {
+	for _, address := range []string{
+		"100.64.0.1", "192.0.2.10", "198.18.0.1", "203.0.113.7",
+		"2001:db8::1", "2002::1", "fd00::1", "fe80::1",
+	} {
+		ip := net.ParseIP(address)
+		if isPublicWebhookIP(ip) { t.Errorf("special-purpose address %s was accepted", address) }
+	}
+	for _, address := range []string{"8.8.8.8", "1.1.1.1", "2606:4700:4700::1111"} {
+		ip := net.ParseIP(address)
+		if !isPublicWebhookIP(ip) { t.Errorf("public address %s was rejected", address) }
 	}
 }
