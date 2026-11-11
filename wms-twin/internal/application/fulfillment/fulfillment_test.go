@@ -74,12 +74,23 @@ func TestVoidReversesPOSInventoryExactlyOnce(t *testing.T) {
 	so.Lines[0].Status = salesorders.LinePacked
 	if err := sos.Save(so); err != nil { t.Fatal(err) }
 	service := New(store,sos,ledger)
-	if _, err := service.Fulfill(FulfillInput{SOID:so.SOID,Carrier:"UPS",TrackingNumber:"POS-VOID-TRACK"},[]int64{warehouse.WarehouseID},false); err != nil { t.Fatal(err) }
 	sale := map[string]any{
-		"id":"pos-sale-void", "so_id":so.SOID, "status":"DISPATCHED", "phone_order":true, "dispatch_key":"dispatch-1",
+		"id":"pos-sale-void", "so_id":so.SOID, "status":"COMPLETED", "phone_order":true, "dispatch_key":"dispatch-1",
 		"lines":[]map[string]any{{"warehouse_id":warehouse.WarehouseID,"bin_id":bin.BinID,"item_id":item.ItemID,"quantity":2}},
 	}
 	data, err := json.Marshal(sale)
+	if err != nil { t.Fatal(err) }
+	if _, err := store.Put("wms_pos_sale","pos-sale-void",data); err != nil { t.Fatal(err) }
+	if _, err := service.Fulfill(FulfillInput{SOID:so.SOID,Carrier:"UPS",TrackingNumber:"POS-VOID-TRACK"},[]int64{warehouse.WarehouseID},false); !errors.Is(err,ErrState) {
+		t.Fatalf("Dockd fulfillment bypassed phone POS dispatch: %v",err)
+	}
+	sale["status"] = "DISPATCHING"
+	data, err = json.Marshal(sale)
+	if err != nil { t.Fatal(err) }
+	if _, err := store.Put("wms_pos_sale","pos-sale-void",data); err != nil { t.Fatal(err) }
+	if _, err := service.Fulfill(FulfillInput{SOID:so.SOID,Carrier:"UPS",TrackingNumber:"POS-VOID-TRACK"},[]int64{warehouse.WarehouseID},false); err != nil { t.Fatal(err) }
+	sale["status"] = "DISPATCHED"
+	data, err = json.Marshal(sale)
 	if err != nil { t.Fatal(err) }
 	if _, err := store.Put("wms_pos_sale","pos-sale-void",data); err != nil { t.Fatal(err) }
 	voided, err := service.VoidLegacy(so.SOID,"operator","customer cancelled")
