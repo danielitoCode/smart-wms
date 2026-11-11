@@ -305,3 +305,6 @@ La prueba de compensación RMA contempla que el ledger conserva una fila de bala
 ### Fuente de cantidades retornables RMA
 
 `rma.Create` deriva las cantidades elegibles exclusivamente de `SalesOrderLine.QuantityShipped`, luego descuenta cantidades reembolsadas por POS y reservas de otros RMAs. No infiere despacho a partir de ordered/picked/packed. Si el agregado no conserva cantidad shipped positiva, no crea un expediente vacío ni permite devolver unidades que no salieron.
+
+
+El POS comprueba unicidad de `ExternalTxnRef` por terminal antes de iniciar una nueva saga, además de la idempotencia por `IdempotencyKey`. Refund comprueba unicidad global de `ExternalRefundRef`. El adaptador legacy de Dockd usa `shipment.ShippedAt` para derivar el operation_id, por lo que cada nueva generación de shipment obtiene una clave de compensación distinta mientras los retries de una misma generación reutilizan la anterior.
