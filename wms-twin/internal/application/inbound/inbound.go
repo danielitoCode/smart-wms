@@ -30,7 +30,7 @@ func New(store *corestore.Store, cat *catalog.Repository, sos *salesorders.Repos
 
 func MappingSchema() map[string]any {
 	return map[string]any{
-		"version":   1,
+		"version":   2,
 		"resources": []string{"sales_orders", "items", "purchase_orders"},
 		"fields": map[string]any{
 			"sales_orders":    []string{"external_id", "external_version", "so_number", "so_barcode", "warehouse_id", "warehouse_code", "customer_name", "notes", "lines[item_id|sku,quantity]"},
@@ -114,6 +114,7 @@ func (s *Service) Write(req WriteRequest, actor string) (map[string]any, error) 
 }
 
 func (s *Service) writeItem(rec map[string]any) (map[string]any, error) {
+	if err := validateStringFields(rec,"sku","item_name","description","upc","mpn","category"); err != nil { return nil, err }
 	sku, _ := rec["sku"].(string)
 	name, _ := rec["item_name"].(string)
 	if strings.TrimSpace(sku) == "" || strings.TrimSpace(name) == "" { return nil, fmt.Errorf("sku and item_name required") }
@@ -172,6 +173,7 @@ func (s *Service) writeItem(rec map[string]any) (map[string]any, error) {
 }
 
 func (s *Service) writeSO(rec map[string]any, actor string) (map[string]any, error) {
+	if err := validateStringFields(rec,"so_number","so_barcode","warehouse_code","customer_name","notes"); err != nil { return nil, err }
 	soNumber, _ := rec["so_number"].(string)
 	if strings.TrimSpace(soNumber) == "" { soNumber, _ = rec["external_id"].(string) }
 	if strings.TrimSpace(soNumber) == "" { return nil, fmt.Errorf("so_number required") }
@@ -221,6 +223,7 @@ func (s *Service) writeSO(rec map[string]any, actor string) (map[string]any, err
 }
 
 func (s *Service) writePO(rec map[string]any, actor string) (map[string]any, error) {
+	if err := validateStringFields(rec,"po_number","po_barcode","warehouse_code","vendor_name","expected_date","notes"); err != nil { return nil, err }
 	if s.pos == nil { return nil, fmt.Errorf("purchase-order repository is not configured") }
 	poNumber, _ := rec["po_number"].(string)
 	if strings.TrimSpace(poNumber) == "" { return nil, fmt.Errorf("po_number required") }
@@ -280,6 +283,14 @@ func (s *Service) writePO(rec map[string]any, actor string) (map[string]any, err
 	return map[string]any{"po_id":po.POID,"po_number":po.PONumber,"status":po.Status,"warehouse_id":po.WarehouseID,"lines":po.Lines,"created_by":actor},nil
 }
 
+func validateStringFields(record map[string]any, keys ...string) error {
+	for _, key := range keys {
+		raw, exists := record[key]
+		if !exists { continue }
+		if _, ok := raw.(string); !ok { return fmt.Errorf("%s must be a string",key) }
+	}
+	return nil
+}
 func optionalString(record map[string]any, key string) *string {
 	value, exists := record[key]
 	if !exists { return nil }
@@ -313,7 +324,7 @@ func floatField(value any) (float64,bool) {
 func integerField(value any) (int64, bool) {
 	switch number := value.(type) {
 	case float64:
-		if math.IsNaN(number) || math.IsInf(number,0) || math.Trunc(number) != number || number > float64(math.MaxInt64) || number < float64(math.MinInt64) {
+		if math.IsNaN(number) || math.IsInf(number,0) || math.Trunc(number) != number || number >= float64(math.MaxInt64) || number < float64(math.MinInt64) {
 			return 0, false
 		}
 		return int64(number), true
