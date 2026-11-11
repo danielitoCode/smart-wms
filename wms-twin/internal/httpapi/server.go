@@ -102,7 +102,7 @@ func NewWithIdentity(node *core.Node, store *corestore.Store, token string, user
 	auditSvc := wmsaudit.New(store, node.Audit())
 	ev := events.New(store, meshLayer)
 	wh := webhooks.New(store)
-	posSvc := pos.New(store, master, sos, ledger)
+	posSvc := pos.New(store, master, sos, ledger, ful)
 	return &Server{
 		node: node, store: store, ledger: ledger, catalog: master,
 		purchaseOrders: poRepo, salesOrders: sos,
