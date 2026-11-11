@@ -63,6 +63,8 @@ func TestVoidReversesPOSInventoryExactlyOnce(t *testing.T) {
 	item, err := cat.CreateItem(catalog.ItemInput{SKU:"POS-VOID-SKU",ItemName:"POS void item"})
 	if err != nil { t.Fatal(err) }
 	if _, err := ledger.Adjust(inventoryledger.AdjustCommand{OperationID:"seed-pos-void",WarehouseID:warehouse.WarehouseID,BinID:bin.BinID,ItemID:item.ItemID,Delta:8}); err != nil { t.Fatal(err) }
+	if _, err := ledger.Allocate(inventoryledger.QuantityCommand{OperationID:"seed-pos-allocate",WarehouseID:warehouse.WarehouseID,BinID:bin.BinID,ItemID:item.ItemID,Quantity:2}); err != nil { t.Fatal(err) }
+	if _, err := ledger.Release(inventoryledger.QuantityCommand{OperationID:"seed-pos-release",WarehouseID:warehouse.WarehouseID,BinID:bin.BinID,ItemID:item.ItemID,Quantity:2}); err != nil { t.Fatal(err) }
 	if _, err := ledger.Adjust(inventoryledger.AdjustCommand{OperationID:"seed-pos-dispatch",WarehouseID:warehouse.WarehouseID,BinID:bin.BinID,ItemID:item.ItemID,Delta:-2}); err != nil { t.Fatal(err) }
 	sos := salesorders.New(store,cat)
 	so, err := sos.Create(salesorders.CreateInput{SONumber:"POS-VOID-SO",WarehouseID:warehouse.WarehouseID,Lines:[]salesorders.LineInput{{ItemID:item.ItemID,QuantityOrdered:2}}},"operator")
@@ -74,7 +76,7 @@ func TestVoidReversesPOSInventoryExactlyOnce(t *testing.T) {
 	service := New(store,sos,ledger)
 	if _, err := service.Fulfill(FulfillInput{SOID:so.SOID,Carrier:"UPS",TrackingNumber:"POS-VOID-TRACK"},[]int64{warehouse.WarehouseID},false); err != nil { t.Fatal(err) }
 	sale := map[string]any{
-		"id":"pos-sale-void", "so_id":so.SOID, "status":"DISPATCHED",
+		"id":"pos-sale-void", "so_id":so.SOID, "status":"DISPATCHED", "phone_order":true, "dispatch_key":"dispatch-1",
 		"lines":[]map[string]any{{"warehouse_id":warehouse.WarehouseID,"bin_id":bin.BinID,"item_id":item.ItemID,"quantity":2}},
 	}
 	data, err := json.Marshal(sale)
@@ -85,10 +87,10 @@ func TestVoidReversesPOSInventoryExactlyOnce(t *testing.T) {
 	if voided.Status!="VOIDED" || len(voided.VoidReversedKeys)!=1 { t.Fatalf("POS inventory reversal not recorded: %+v",voided) }
 	balances, _, err := ledger.List()
 	if err != nil { t.Fatal(err) }
-	if len(balances)!=1 || balances[0].OnHand!=8 { t.Fatalf("expected original stock after void, got %+v",balances) }
+	if len(balances)!=1 || balances[0].OnHand!=8 || balances[0].Allocated!=2 { t.Fatalf("expected original on-hand and reservation after void, got %+v",balances) }
 	replayed, err := service.VoidWithID(so.SOID,"operator","customer cancelled","pos-void-operation")
 	if err != nil || !replayed.Replayed { t.Fatalf("void replay failed: result=%+v err=%v",replayed,err) }
 	balances, _, err = ledger.List()
 	if err != nil { t.Fatal(err) }
-	if balances[0].OnHand!=8 { t.Fatalf("void replay duplicated stock reversal: %+v",balances) }
+	if balances[0].OnHand!=8 || balances[0].Allocated!=2 { t.Fatalf("void replay duplicated stock/reservation reversal: %+v",balances) }
 }
