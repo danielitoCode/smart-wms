@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
