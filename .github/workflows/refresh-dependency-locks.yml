@@ -8,6 +8,8 @@ on:
       - "admin/package.json"
       - "mobile/package.json"
       - "webapp/package.json"
+      - "webapp/vite.config.ts"
+      - "webapp/src/lib/i18n/**"
 
 permissions:
   contents: write

@@ -33,7 +33,7 @@ export default defineConfig({
 		}
 	},
 	test: {
-		include: ['src/test/**/*.{test,spec}.{js,ts}'],
+		include: ['src/test/**/*.{test,spec}.{js,ts}', 'src/lib/i18n/**/*.{test,spec}.{js,ts}'],
 		environment: 'node'
 	}
 });
