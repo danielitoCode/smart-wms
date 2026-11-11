@@ -184,3 +184,21 @@ La ejecución `42975654846` de WMS twin validation terminó en success para `c32
 Añadí `internal/application/purchaseorders`. Cada PO y sus líneas se persisten en un solo organismo `purchase-orders.{id}`. Reservo IDs en organismos de secuencia separados; una falla puede dejar huecos, pero no reutilizar IDs. El estado de cada línea se deriva de ordered/received; el header se recalcula OPEN/PARTIAL/RECEIVED. CLOSED y ARCHIVED bloquean edición de header/líneas; ARCHIVED solo se permite desde CLOSED. Reopen solo acepta CLOSED.
 
 La capa HTTP conserva el prefijo `/api/admin`, JWT/page permission y warehouse scope. La lectura de detalle enriquece cada línea con el artículo del catálogo.
+
+
+
+## Endurecimiento de los módulos de integración
+
+En la rama `fix/wms-twin-operational-completion` mantuve la frontera: todo el código nuevo permanece bajo `wms-twin/`; no alteré Flask ni los frontends.
+
+- `application/inbound` recibe el repositorio `purchaseorders.Repository` y crea el agregado PO real con validación de warehouse, artículos, cantidades y duplicados heredada del repositorio.
+- `application/dockd` propaga errores de `CompletePack`; `fulfillment.CompletePack` rechaza líneas que no alcanzan la cantidad ordenada. La anulación no se declara exitosa mientras no exista una operación persistente de reversión.
+- `application/pos` valida availability por warehouse y SKU y acumula cantidades repetidas del mismo artículo en el carrito. Las operaciones que requieren contratos de pago/inventario todavía incompletos fallan explícitamente; no crean una venta ordinaria disfrazada de checkout.
+- `application/rma` mantiene el expediente persistente, pero bloquea el cierre hasta que exista una disposición de inventario identificable.
+- `application/snapshot` persiste exportaciones con ID, versión del ledger, warehouse, filas y SHA-256. `Get` recalcula el checksum. No hay restauración del ledger desde el snapshot.
+- `application/webhooks` usa un transporte HTTPS sin proxy ni redirects y resuelve/verifica el destino al abrir la conexión, conectando directamente a una IP pública comprobada. El secreto sigue persistido en el organismo sin cifrado en reposo; no oculto esa deuda.
+- `application/events` persiste el evento y el estado de publicación, expone `PublishPending` para reintentar publicaciones fallidas. Falta un worker duradero que ejecute esa recuperación automáticamente.
+- `application/wmsaudit` verifica toda la cadena (secuencia continua, PrevHash y SHA-256) antes de cada append y bloquea escrituras si encuentra corrupción.
+- `application/mesh` sigue siendo una tabla de peers y difusión con TTL sobre el transporte Core. No implementa DHT Kademlia ni GossipSub.
+
+Los tests nuevos cubren la validación de URL/SSRF, persistencia e integridad de snapshots y detección de manipulación del audit chain. La evidencia de CI queda pendiente hasta ejecutar Actions sobre esta rama.
