@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -152,4 +151,3 @@ func (m *Mesh) Close() error {
 	return nil
 }
 
-var _ sync.Locker
