@@ -142,8 +142,15 @@ func (s *Service) Create(soNumber, reason, actor string, backorder bool) (RMA, e
 	if err != nil { return RMA{}, err }
 	for _, record := range existingRecords {
 		var existing RMA
-		if json.Unmarshal(record.Data, &existing) != nil || existing.SOID != so.SOID || existing.Status == "CANCELLED" { continue }
-		for _, line := range existing.Lines { reservedByExistingRMA[line.ItemID] += line.Expected }
+		if json.Unmarshal(record.Data, &existing) != nil || existing.SOID != so.SOID { continue }
+		for _, line := range existing.Lines {
+			// An active RMA reserves its full outstanding claim. A cancelled
+			// RMA releases only the quantity never received; already received
+			// units remain consumed even when their disposition was SCRAP/HOLD.
+			reserved := line.Expected
+			if existing.Status == "CANCELLED" { reserved = line.Received }
+			reservedByExistingRMA[line.ItemID] += reserved
+		}
 	}
 	for _, line := range so.Lines {
 		expected := line.QuantityShipped
