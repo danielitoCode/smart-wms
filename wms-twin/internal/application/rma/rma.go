@@ -79,6 +79,7 @@ func New(store *corestore.Store, sos *salesorders.Repository, cat *catalog.Repos
 func (s *Service) Create(soNumber, reason, actor string, backorder bool) (RMA, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if strings.TrimSpace(soNumber) == "" || len(soNumber) > 128 || strings.TrimSpace(reason) == "" || len(reason) > 500 || strings.TrimSpace(actor) == "" || len(actor) > 128 { return RMA{}, fmt.Errorf("sales order, reason and actor are required within length limits") }
 	list, err := s.sos.List()
 	if err != nil {
 		return RMA{}, err
