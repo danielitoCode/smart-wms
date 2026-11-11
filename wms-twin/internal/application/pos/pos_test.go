@@ -148,3 +148,22 @@ func TestShippingRefundCanCompleteSaleAfterAllItemsReturned(t *testing.T) {
 	if err != nil { t.Fatal(err) }
 	if second["fully_refunded"] != true { t.Fatalf("shipping-only refund did not complete financial refund: %v",second) }
 }
+
+func TestRefundConsolidatesRepeatedItemBinLinesBeforeLedgerMutation(t *testing.T) {
+	f := newPOSFixture(t)
+	so, _, err := f.service.CheckoutTransaction(checkoutInput(f,"checkout-duplicate-refund-lines",false),"cashier-1")
+	if err != nil { t.Fatal(err) }
+	in := RefundInput{
+		SONumber:so.SONumber, IdempotencyKey:"refund-duplicate-lines",
+		ExternalRefundRef:"gateway-duplicate-lines", CashierID:"cashier-1",
+		Reason:"return entered as two scan lines", PaymentMethod:"cash", TotalCents:210,
+		Lines:[]RefundLine{
+			{ItemID:f.itemID,SKU:"POS-SKU-1",BinID:f.binID,Quantity:1},
+			{ItemID:f.itemID,SKU:"POS-SKU-1",BinID:f.binID,Quantity:1},
+		},
+	}
+	if _, _, err := f.service.RefundTransaction(in,"cashier-1"); err != nil { t.Fatal(err) }
+	balances, _, err := f.ledger.List()
+	if err != nil { t.Fatal(err) }
+	if len(balances)!=1 || balances[0].OnHand!=10 { t.Fatalf("duplicate refund lines did not restore exactly two units: %+v",balances) }
+}
