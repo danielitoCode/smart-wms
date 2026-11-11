@@ -22,6 +22,9 @@ describe('AccessPolicy', () => {
 		expect(resolveWarehouseSelection({ role: 'USER', allowedPages: [], assignedWarehouseIds: [4, 8], availableWarehouseIds: [], savedId: 99 })).toBe(4);
 		expect(resolveWarehouseSelection({ role: 'USER', allowedPages: [], assignedWarehouseIds: [], availableWarehouseIds: [], savedId: 99 })).toBeNull();
 	});
+	it('falls back to assigned warehouses when the management list cannot load', () => {
+		expect(resolveWarehouseSelection({ role: 'USER', allowedPages: ['warehouses'], assignedWarehouseIds: [4], availableWarehouseIds: [], savedId: 4 })).toBe(4);
+	});
 	it('only permits choosing IDs from the authorized candidate set', () => {
 		const user = { role: 'USER', allowedPages: [], assignedWarehouseIds: [4, 8], availableWarehouseIds: [] };
 		expect(canSelectWarehouse(user, 8)).toBe(true);
