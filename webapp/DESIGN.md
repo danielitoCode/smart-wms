@@ -3,9 +3,9 @@
 **Fuente de identidad:** Manual de Identidad Abellis v1.0 (10/11/2026).  
 **Producto:** Smart WMS.  
 **Ámbito:** interfaz interna de operaciones, control y configuración.  
-**Idioma de esta interfaz:** español.
+**Idiomas de la interfaz:** italiano (predeterminado), español e inglés.
 
-> El manual establece que los materiales de Abellis se publiquen en español e italiano. Esta fase de la interfaz interna sigue tu decisión explícita de usar solo español; no se mezclan etiquetas en italiano ni se cambia el idioma de los datos recibidos del backend.
+La interfaz ofrece selector de idioma persistente por navegador. El italiano es el idioma inicial; cada persona puede cambiar a español o inglés desde el acceso de idioma en la pantalla de inicio de sesión o en la barra superior. Los códigos, estados y valores técnicos del backend no se modifican al cambiar el idioma.
 
 ## 1. Propósito del producto
 

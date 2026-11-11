@@ -15,7 +15,7 @@
 		{ href: '/data/bins', label: i18n.t('Ubicaciones'), icon: 'boxes', keys: ['bins', 'zones'] },
 		{ href: '/data/preferred-bins', label: i18n.t('Ubicaciones preferidas'), icon: 'package-check', keys: ['preferred-bins'] }
 	] as const);
-	const visibleTabs = tabs.filter(tab => admin || tab.keys.every(key => pages.includes(key)));
+	const visibleTabs = $derived(tabs.filter(tab => admin || tab.keys.every(key => pages.includes(key))));
 	function isActive(href: string) { return page.url.pathname === href || page.url.pathname.startsWith(href + '/'); }
 </script>
 
