@@ -89,3 +89,17 @@ El endpoint devuelve `backup_snapshot_id` además del resultado del ledger. El c
 
 
 En refund, `shipping_refund_cents` permite devolver el cargo de envío de forma separada. El `total_cents` debe ser exactamente la suma del importe calculado para las cantidades devueltas y `shipping_refund_cents`. Se pueden devolver primero los artículos y después el envío; la SO queda PARTIALLY_REFUNDED hasta que todo el importe original esté devuelto.
+
+
+### Snapshot restore
+
+`POST /api/v1/snapshots/{id}/restore` exige `operation_id` y `expected_ledger_version`. La respuesta devuelve `ok`, `result`, `backup_snapshot_id` y `replayed`. El cliente debe guardar el backup_snapshot_id como referencia de recuperación antes de continuar con procesos posteriores.
+
+### Inbound mapping v2
+
+El mapping v2 expone:
+- Items: SKU, nombre, descripción, UPC, MPN, categoría, peso, bin por defecto, reorder point, reorder quantity y activo.
+- Sales orders: número, barcode, warehouse ID/código, cliente, notas y líneas item/SKU + quantity.
+- Purchase orders: número, barcode, warehouse ID/código, proveedor, expected date, notas y líneas item/SKU + quantity_ordered + unit_cost + line_number.
+
+Cuando se solicita idempotencia, el origen debe enviar source_system, external_id y external_version. Repetir la misma versión y payload devuelve el resultado original; la misma versión con otro payload o una versión distinta devuelve conflicto. La versión nueva no es un PATCH automático.
