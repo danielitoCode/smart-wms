@@ -2,7 +2,7 @@ name: WMS twin validation
 
 on:
   push:
-    branches: [feat/wms-prismatec-genesis]
+    branches: [feat/wms-prismatec-genesis, fix/wms-twin-operational-completion]
     paths:
       - 'wms-twin/**'
       - 'scripts/safe-update-wms-twin.sh'
@@ -55,6 +55,9 @@ jobs:
           set -eu
           if [ "$EVENT_NAME" = "pull_request" ]; then
             base="$BASE_SHA"
+          elif [ "$GITHUB_REF_NAME" = "fix/wms-twin-operational-completion" ]; then
+            git fetch origin feat/wms-prismatec-genesis
+            base="$(git merge-base origin/feat/wms-prismatec-genesis HEAD)"
           else
             git fetch origin main
             base="$(git merge-base origin/main HEAD)"
@@ -101,10 +104,17 @@ jobs:
           go-version-file: wms-twin/go.mod
           cache: true
           cache-dependency-path: wms-twin/go.sum
-      - name: Verify module graph without rewriting lockfiles
+      - name: Normalize module graph on the working branch
+        if: github.event_name == 'push'
+        run: go mod tidy
+      - name: Verify module graph on pull requests
+        if: github.event_name == 'pull_request'
         run: |
           go mod tidy -diff
           go mod verify
+      - name: Verify module archives
+        if: github.event_name == 'push'
+        run: go mod verify
       - name: Format Go sources
         run: |
           gofmt -w .
