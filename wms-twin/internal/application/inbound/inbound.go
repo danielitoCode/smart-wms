@@ -123,6 +123,14 @@ func (s *Service) writeItem(rec map[string]any) (map[string]any, error) {
 	if value, ok := rec["mpn"].(string); ok && value != "" { mpn = &value }
 	if value, ok := rec["category"].(string); ok && value != "" { category = &value }
 	if value, ok := rec["description"].(string); ok && value != "" { description = &value }
+	items, err := s.cat.ListItems()
+	if err != nil { return nil, err }
+	for _, existing := range items {
+		if existing.SKU == sku {
+			if existing.ItemName != name { return nil, fmt.Errorf("SKU already exists with a different canonical item name") }
+			return map[string]any{"item_id": existing.ItemID, "sku": existing.SKU, "recovered": true}, nil
+		}
+	}
 	item, err := s.cat.CreateItem(catalog.ItemInput{SKU: sku, ItemName: name, UPC: upc, MPN: mpn, Category: category, Description: description})
 	if err != nil {
 		return nil, err
@@ -182,6 +190,16 @@ func (s *Service) writeSO(rec map[string]any, actor string) (map[string]any, err
 	if value, ok := rec["customer_name"].(string); ok { customerName = &value }
 	var notes *string
 	if value, ok := rec["notes"].(string); ok { notes = &value }
+	existingOrders, err := s.sos.List()
+	if err != nil { return nil, err }
+	for _, existing := range existingOrders {
+		if existing.SONumber != soNumber { continue }
+		if existing.WarehouseID != wid || len(existing.Lines) != len(lines) { return nil, fmt.Errorf("sales-order number already exists with a different canonical payload") }
+		matches := true
+		for i, line := range lines { if existing.Lines[i].ItemID != line.ItemID || existing.Lines[i].QuantityOrdered != line.QuantityOrdered { matches = false; break } }
+		if !matches { return nil, fmt.Errorf("sales-order number already exists with a different canonical payload") }
+		return map[string]any{"so_id": existing.SOID, "so_number": existing.SONumber, "recovered": true}, nil
+	}
 	so, err := s.sos.Create(salesorders.CreateInput{SONumber: soNumber, WarehouseID: wid, Lines: lines, CustomerName: customerName, Notes: notes}, actor)
 	if err != nil {
 		return nil, err
@@ -244,6 +262,16 @@ func (s *Service) writePO(rec map[string]any, actor string) (map[string]any, err
 	var notes *string
 	if value, ok := rec["notes"].(string); ok && value != "" {
 		notes = &value
+	}
+	existingOrders, err := s.pos.List()
+	if err != nil { return nil, err }
+	for _, existing := range existingOrders {
+		if existing.PONumber != poNumber { continue }
+		if existing.WarehouseID != warehouseID || len(existing.Lines) != len(lines) { return nil, fmt.Errorf("purchase-order number already exists with a different canonical payload") }
+		matches := true
+		for i, line := range lines { if existing.Lines[i].ItemID != line.ItemID || existing.Lines[i].QuantityOrdered != line.QuantityOrdered { matches = false; break } }
+		if !matches { return nil, fmt.Errorf("purchase-order number already exists with a different canonical payload") }
+		return map[string]any{"po_id": existing.POID, "po_number": existing.PONumber, "status": existing.Status, "warehouse_id": existing.WarehouseID, "lines": existing.Lines, "recovered": true}, nil
 	}
 	po, err := s.pos.Create(purchaseorders.CreateInput{
 		PONumber: poNumber, WarehouseID: warehouseID, Lines: lines,
