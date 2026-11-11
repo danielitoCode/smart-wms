@@ -749,7 +749,7 @@ func (s *Service) DispatchWithDetails(soNumber, carrier, tracking, actor, operat
 	sale.Status = "DISPATCHING"
 	data, _ := json.Marshal(sale)
 	if _, err := s.store.Put("wms_pos_sale", sale.ID, data); err != nil { return nil, err }
-	shipment, err := s.fulfill.Fulfill(fulfillment.FulfillInput{SOID:so.SOID, Carrier:carrier, TrackingNumber:tracking, WarehouseID:so.WarehouseID}, allowed, isAdmin)
+	shipment, err := s.fulfill.Fulfill(fulfillment.FulfillInput{SOID:so.SOID, Carrier:carrier, TrackingNumber:tracking, WarehouseID:so.WarehouseID, POSDispatchKey:operationID}, allowed, isAdmin)
 	if err != nil { return nil, err }
 	sale.Status = "DISPATCHED"
 	data, _ = json.Marshal(sale)
