@@ -26,7 +26,7 @@ func TestPurchaseOrderLifecycleAndLines(t *testing.T){
 	line,status,err=repo.AddLine(po.POID,AddLineInput{ItemID:itemB.ItemID,QuantityOrdered:2});if !errors.Is(err,ErrDuplicate){t.Fatalf("duplicate item line accepted: %#v %s %v",line,status,err)}
 	updated,status,err:=repo.UpdateLine(po.POID,po.Lines[0].POLineID,12);if err!=nil||updated.QuantityOrdered!=12||status!=StatusOpen{t.Fatalf("line update failed: %#v %s %v",updated,status,err)}
 	if _,err:=repo.Close(po.POID);err!=nil{t.Fatal(err)}
-	if _,err:=repo.AddLine(po.POID,AddLineInput{ItemID:itemB.ItemID,QuantityOrdered:2});!errors.Is(err,ErrLocked){t.Fatalf("closed PO accepted new line: %v",err)}
+	if _, _, err:=repo.AddLine(po.POID,AddLineInput{ItemID:itemB.ItemID,QuantityOrdered:2});!errors.Is(err,ErrLocked){t.Fatalf("closed PO accepted new line: %v",err)}
 	if _,err:=repo.Reopen(po.POID);err!=nil{t.Fatal(err)}
 	patch:=Patch{VendorName:stringPointer("Vendor")}
 	updatedPO,err:=repo.Update(po.POID,patch);if err!=nil||updatedPO.VendorName==nil||*updatedPO.VendorName!="Vendor"{t.Fatalf("header update failed: %#v %v",updatedPO,err)}
