@@ -262,6 +262,8 @@ func (s *Server) systemInfo(w http.ResponseWriter, r *http.Request) {
 			"auth", "catalog", "purchase-orders", "sales-orders",
 			"receiving", "putaway", "picking", "wave", "packing", "shipping",
 			"transfers", "cycle-counts", "lookup", "inventory-ledger",
+			"pos", "dockd", "inbound", "events", "snapshot", "webhooks",
+			"rma", "wms-tokens", "mesh", "audit-chain",
 		},
 	})
 }

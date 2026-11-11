@@ -14,16 +14,26 @@ import (
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/cyclecounts"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/dockd"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/events"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/fulfillment"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/identity"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inbound"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/lookup"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/picking"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/pos"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/purchaseorders"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/receiving"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/rma"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/salesorders"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/snapshot"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/transfers"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/webhooks"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/wmsaudit"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/mesh"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/security/wmstoken"
 	"github.com/yecharlot/PrismaTec-Core/core"
 )
 
@@ -40,6 +50,16 @@ type Server struct {
 	lookup           *lookup.Service
 	transfers        *transfers.Service
 	cycleCounts      *cyclecounts.Service
+	pos              *pos.Service
+	dockd            *dockd.Service
+	inbound          *inbound.Service
+	events           *events.Service
+	webhooks         *webhooks.Service
+	snapshot         *snapshot.Service
+	rma              *rma.Service
+	wmsTokens        *wmstoken.Store
+	wmsAudit         *wmsaudit.Service
+	mesh             *mesh.Mesh
 	token            string
 	users            *identity.Repository
 	jwtSecret        []byte
@@ -64,17 +84,43 @@ func NewWithIdentity(node *core.Node, store *corestore.Store, token string, user
 	}
 	ledger := inventoryledger.New(store)
 	master := catalog.New(store, ledger)
-	pos := purchaseorders.New(store, master)
+	poRepo := purchaseorders.New(store, master)
 	sos := salesorders.New(store, master)
+	ful := fulfillment.New(store, sos)
+	transport := node.Transport()
+	meshLayer := mesh.New(string(node.ID()), transport)
+	if transport != nil {
+		for _, p := range transport.Peers() {
+			addr := ""
+			if len(p.Addrs) > 0 {
+				addr = p.Addrs[0]
+			}
+			meshLayer.UpsertPeer(p.NodeID, addr)
+		}
+	}
+	auditSvc := wmsaudit.New(store, node.Audit())
+	ev := events.New(store, meshLayer)
+	wh := webhooks.New(store)
+	posSvc := pos.New(store, master, sos, ledger)
 	return &Server{
 		node: node, store: store, ledger: ledger, catalog: master,
-		purchaseOrders: pos, salesOrders: sos,
-		receiving:   receiving.New(store, master, pos, ledger),
+		purchaseOrders: poRepo, salesOrders: sos,
+		receiving:   receiving.New(store, master, poRepo, ledger),
 		picking:     picking.New(store, master, sos, ledger),
-		fulfillment: fulfillment.New(store, sos),
+		fulfillment: ful,
 		lookup:      lookup.New(master, ledger, sos),
 		transfers:   transfers.New(master, ledger),
 		cycleCounts: cyclecounts.New(store, master, ledger),
+		pos:         posSvc,
+		dockd:       dockd.New(sos, master, ful),
+		inbound:     inbound.New(store, master, sos),
+		events:      ev,
+		webhooks:    wh,
+		snapshot:    snapshot.New(ledger),
+		rma:         rma.New(store, sos),
+		wmsTokens:   wmstoken.NewStore(store),
+		wmsAudit:    auditSvc,
+		mesh:        meshLayer,
 		token:       token,
 		users:       users, jwtSecret: append([]byte(nil), jwtSecret...),
 		maxLoginAttempts: maxLoginAttempts, loginLockout: loginLockout,
@@ -87,7 +133,14 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/auth/", s.authRoute)
 	mux.HandleFunc("/api/admin/system-info", s.RequireAuth(s.systemInfo))
 	mux.HandleFunc("/api/admin/users", s.RequireAuth(s.adminUsers))
+	mux.HandleFunc("/api/admin/wms-tokens", s.RequireAuth(s.adminTokens))
+	mux.HandleFunc("/api/admin/wms-tokens/", s.RequireAuth(s.adminTokenRevoke))
+	mux.HandleFunc("/api/admin/audit", s.RequireAuth(s.auditRecent))
+	mux.HandleFunc("/api/admin/mesh", s.RequireAuth(s.meshStatus))
 	mux.HandleFunc("/api/admin/", s.RequireAuth(s.adminCatalog))
+	mux.HandleFunc("/api/v1/", s.v1Route)
+	mux.HandleFunc("/api/rma", s.RequireAuth(s.rmaRoutes))
+	mux.HandleFunc("/api/rma/", s.RequireAuth(s.rmaRoutes))
 	mux.HandleFunc("/api/receiving/", s.RequireAuth(s.receivingRoute))
 	mux.HandleFunc("/api/putaway/", s.RequireAuth(s.putawayRoute))
 	mux.HandleFunc("/api/picking/", s.RequireAuth(s.pickingRoute))
@@ -111,7 +164,7 @@ func withCORS(next http.Handler) http.Handler {
 		}
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-CSRF-Token, X-Requested-With")
+		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-CSRF-Token, X-Requested-With, X-WMS-Token")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		w.Header().Set("Vary", "Origin")
 		if r.Method == http.MethodOptions {

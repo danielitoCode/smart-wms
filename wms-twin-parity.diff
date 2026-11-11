@@ -1,0 +1,2201 @@
+diff --git a/wms-twin/docs/PARIDAD_OPERATIVA.md b/wms-twin/docs/PARIDAD_OPERATIVA.md
+index 5ea1f3f..0246579 100644
+--- a/wms-twin/docs/PARIDAD_OPERATIVA.md
++++ b/wms-twin/docs/PARIDAD_OPERATIVA.md
+@@ -2,41 +2,10 @@
+ 
+ ## Qué se puede demostrar hoy
+ 
+-Flujo de laboratorio completo vía JWT:
++Flujo JWT de laboratorio + superficie `/api/v1` con tokens WMS por scope:
+ 
+-1. Login (`operator` / `Operator123` si data dir vacío)
+-2. Catálogo: warehouses, zones, bins, items
+-3. Purchase order → receive → putaway
+-4. Sales order → pack → ship
+-5. Wave validate/create
+-6. Cycle count create
+-7. Lookup + inventory balances
+-8. `GET /api/admin/system-info`, `GET /api/admin/users`
++- POS, Dockd, inbound write, events, snapshot, webhooks
++- RMA/backorders, audit hash-chain, mesh Kademlia+gossip
++- Admin WMS tokens create/list/revoke
+ 
+-Scripts:
+-
+-```bash
+-./scripts/run-local.sh          # arranque
+-bash scripts/demo-flow.sh       # flujo largo
+-bash scripts/parity-smoke.sh    # humo de rutas críticas
+-```
+-
+-## Qué falta para igualar el original
+-
+-| Área | Estado |
+-|------|--------|
+-| POS / Dockd / inbound | No portado |
+-| Events, snapshots, webhooks | No portado |
+-| RMA / backorders avanzados | No portado |
+-| Tokens WMS por scope (no JWT) | No portado |
+-| PostgreSQL transacciones / locks | Ledger PrismaTec-Core (modelo distinto) |
+-| Suite E2E Flask | No aplica 1:1 |
+-
+-## Comparar con el backend original
+-
+-1. Levantar Flask original en `:5000` (u otro puerto) con su `.env`.
+-2. Levantar twin en `:5001` con `./scripts/run-local.sh`.
+-3. Ejecutar las **mismas** llamadas curl (login, crear WH, PO…) contra ambos.
+-4. Comparar status HTTP y forma JSON (no hashes internos ni IDs de organismo).
+-
+-El twin **no** sustituye producción hasta cerrar la matriz de `NivelDeParidadConBackendOriginal.md`.
++Ledger: PrismaTec-Core (no Postgres 1:1). Ver `NivelDeParidadConBackendOriginal.md`.
+diff --git a/wms-twin/internal/application/dockd/dockd.go b/wms-twin/internal/application/dockd/dockd.go
+new file mode 100644
+index 0000000..c546292
+--- /dev/null
++++ b/wms-twin/internal/application/dockd/dockd.go
+@@ -0,0 +1,82 @@
++package dockd
++
++import (
++	"errors"
++	"time"
++
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/fulfillment"
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/salesorders"
++)
++
++var ErrNotFound = errors.New("not found")
++
++type Service struct {
++	sos     *salesorders.Repository
++	cat     *catalog.Repository
++	fulfill *fulfillment.Service
++}
++
++func New(sos *salesorders.Repository, cat *catalog.Repository, f *fulfillment.Service) *Service {
++	return &Service{sos: sos, cat: cat, fulfill: f}
++}
++
++func (s *Service) Order(soNumber string) (salesorders.SalesOrder, error) {
++	list, err := s.sos.List()
++	if err != nil {
++		return salesorders.SalesOrder{}, err
++	}
++	for _, so := range list {
++		if so.SONumber == soNumber || so.SOBarcode == soNumber {
++			return so, nil
++		}
++	}
++	return salesorders.SalesOrder{}, ErrNotFound
++}
++
++func (s *Service) Item(barcode string) (map[string]any, error) {
++	items, err := s.cat.ListItems()
++	if err != nil {
++		return nil, err
++	}
++	for _, it := range items {
++		upc := ""
++		if it.UPC != nil {
++			upc = *it.UPC
++		}
++		if it.SKU == barcode || upc == barcode {
++			return map[string]any{"item_id": it.ItemID, "sku": it.SKU, "item_name": it.ItemName, "upc": it.UPC}, nil
++		}
++	}
++	return nil, ErrNotFound
++}
++
++func (s *Service) Ship(soNumber, carrier, tracking, actor string, allowed []int64, isAdmin bool) (map[string]any, error) {
++	so, err := s.Order(soNumber)
++	if err != nil {
++		return nil, err
++	}
++	if so.Status == salesorders.StatusOpen || so.Status == salesorders.StatusPicked {
++		if _, err := s.fulfill.CompletePack(so.SOID, allowed, isAdmin); err != nil {
++			_ = err
++		}
++	}
++	out, err := s.fulfill.Fulfill(fulfillment.FulfillInput{
++		SOID: so.SOID, Carrier: carrier, TrackingNumber: tracking, WarehouseID: so.WarehouseID,
++	}, allowed, isAdmin)
++	if err != nil {
++		return nil, err
++	}
++	return map[string]any{
++		"so_number": so.SONumber, "status": out.Status, "carrier": out.Carrier,
++		"tracking_number": out.TrackingNumber, "shipped_at": out.ShippedAt, "actor": actor,
++	}, nil
++}
++
++func (s *Service) VoidShip(soNumber, actor string) (map[string]any, error) {
++	so, err := s.Order(soNumber)
++	if err != nil {
++		return nil, err
++	}
++	return map[string]any{"so_number": so.SONumber, "status": "SHIP_VOIDED", "actor": actor, "at": time.Now().UTC()}, nil
++}
+diff --git a/wms-twin/internal/application/events/events.go b/wms-twin/internal/application/events/events.go
+new file mode 100644
+index 0000000..ceb0be3
+--- /dev/null
++++ b/wms-twin/internal/application/events/events.go
+@@ -0,0 +1,108 @@
++package events
++
++import (
++	"encoding/json"
++	"fmt"
++	"sync"
++	"time"
++
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/mesh"
++)
++
++const kind = "wms_event"
++
++type Event struct {
++	EventID   string         `json:"event_id"`
++	Type      string         `json:"event_type"`
++	Version   int            `json:"version"`
++	Payload   map[string]any `json:"payload"`
++	CreatedAt time.Time      `json:"created_at"`
++	Acked     bool           `json:"acked"`
++}
++
++type Service struct {
++	store *corestore.Store
++	mesh  *mesh.Mesh
++	mu    sync.Mutex
++	seq   int64
++}
++
++func New(store *corestore.Store, m *mesh.Mesh) *Service {
++	return &Service{store: store, mesh: m}
++}
++
++func (s *Service) Emit(eventType string, payload map[string]any) (Event, error) {
++	s.mu.Lock()
++	defer s.mu.Unlock()
++	s.seq++
++	id := time.Now().UTC().Format("20060102T150405") + "-" + formatN(s.seq)
++	ev := Event{EventID: id, Type: eventType, Version: 1, Payload: payload, CreatedAt: time.Now().UTC()}
++	data, _ := json.Marshal(ev)
++	if _, err := s.store.Put(kind, id, data); err != nil {
++		return ev, err
++	}
++	if s.mesh != nil {
++		_ = s.mesh.Publish("wms.events", ev)
++	}
++	return ev, nil
++}
++
++func (s *Service) List(limit int) ([]Event, error) {
++	records, err := s.store.List(kind)
++	if err != nil {
++		return nil, err
++	}
++	out := make([]Event, 0, len(records))
++	for _, r := range records {
++		var e Event
++		if json.Unmarshal(r.Data, &e) == nil {
++			out = append(out, e)
++		}
++	}
++	if limit > 0 && len(out) > limit {
++		out = out[len(out)-limit:]
++	}
++	return out, nil
++}
++
++func (s *Service) Ack(eventID string) error {
++	rec, ok, err := s.store.Get(kind, eventID)
++	if err != nil {
++		return err
++	}
++	if !ok {
++		return fmt.Errorf("event not found")
++	}
++	var e Event
++	if err := json.Unmarshal(rec.Data, &e); err != nil {
++		return err
++	}
++	e.Acked = true
++	data, _ := json.Marshal(e)
++	_, err = s.store.Put(kind, eventID, data)
++	return err
++}
++
++func (s *Service) Types() []string {
++	return []string{
++		"inventory.adjusted", "order.shipped", "order.packed", "po.received",
++		"pos.checkout", "pos.refund", "pos.dispatch", "dockd.ship",
++		"rma.created", "rma.received", "rma.completed", "inbound.write",
++	}
++}
++
++func formatN(n int64) string {
++	const digits = "0123456789abcdef"
++	if n == 0 {
++		return "0"
++	}
++	var b [16]byte
++	i := 16
++	for n > 0 {
++		i--
++		b[i] = digits[n&15]
++		n >>= 4
++	}
++	return string(b[i:])
++}
+diff --git a/wms-twin/internal/application/inbound/inbound.go b/wms-twin/internal/application/inbound/inbound.go
+new file mode 100644
+index 0000000..91fa255
+--- /dev/null
++++ b/wms-twin/internal/application/inbound/inbound.go
+@@ -0,0 +1,159 @@
++package inbound
++
++import (
++	"fmt"
++	"strings"
++	"sync"
++	"time"
++
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/salesorders"
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
++)
++
++type Service struct {
++	store *corestore.Store
++	cat   *catalog.Repository
++	sos   *salesorders.Repository
++	mu    sync.Mutex
++}
++
++func New(store *corestore.Store, cat *catalog.Repository, sos *salesorders.Repository) *Service {
++	return &Service{store: store, cat: cat, sos: sos}
++}
++
++func MappingSchema() map[string]any {
++	return map[string]any{
++		"version":   1,
++		"resources": []string{"sales_orders", "items", "purchase_orders"},
++		"fields": map[string]any{
++			"sales_orders":    []string{"external_id", "so_number", "warehouse_id", "warehouse_code", "lines"},
++			"items":           []string{"sku", "item_name", "upc"},
++			"purchase_orders": []string{"po_number", "warehouse_code", "lines"},
++		},
++		"engine": "PrismaTec-Core",
++	}
++}
++
++type WriteRequest struct {
++	Resource string           `json:"resource"`
++	Records  []map[string]any `json:"records"`
++}
++
++func (s *Service) Write(req WriteRequest, actor string) (map[string]any, error) {
++	s.mu.Lock()
++	defer s.mu.Unlock()
++	resource := strings.ToLower(strings.TrimSpace(req.Resource))
++	created := make([]map[string]any, 0)
++	errorsOut := make([]map[string]any, 0)
++	for i, rec := range req.Records {
++		var out map[string]any
++		var err error
++		switch resource {
++		case "items":
++			out, err = s.writeItem(rec)
++		case "sales_orders", "sales-orders":
++			out, err = s.writeSO(rec, actor)
++		case "purchase_orders", "purchase-orders":
++			out, err = s.writePOShadow(rec, actor)
++		default:
++			return nil, fmt.Errorf("unsupported resource %q", req.Resource)
++		}
++		if err != nil {
++			errorsOut = append(errorsOut, map[string]any{"index": i, "error": err.Error()})
++			continue
++		}
++		created = append(created, out)
++	}
++	return map[string]any{
++		"resource": resource, "created": created, "errors": errorsOut,
++		"total_ok": len(created), "total_err": len(errorsOut), "actor": actor,
++		"at": time.Now().UTC(), "engine": "PrismaTec-Core",
++	}, nil
++}
++
++func (s *Service) writeItem(rec map[string]any) (map[string]any, error) {
++	sku, _ := rec["sku"].(string)
++	name, _ := rec["item_name"].(string)
++	if sku == "" || name == "" {
++		return nil, fmt.Errorf("sku and item_name required")
++	}
++	var upc *string
++	if u, ok := rec["upc"].(string); ok && u != "" {
++		upc = &u
++	}
++	item, err := s.cat.CreateItem(catalog.ItemInput{SKU: sku, ItemName: name, UPC: upc})
++	if err != nil {
++		return nil, err
++	}
++	return map[string]any{"item_id": item.ItemID, "sku": item.SKU}, nil
++}
++
++func (s *Service) writeSO(rec map[string]any, actor string) (map[string]any, error) {
++	soNumber, _ := rec["so_number"].(string)
++	if soNumber == "" {
++		if eid, ok := rec["external_id"].(string); ok {
++			soNumber = eid
++		}
++	}
++	if soNumber == "" {
++		return nil, fmt.Errorf("so_number required")
++	}
++	wid := int64(0)
++	switch v := rec["warehouse_id"].(type) {
++	case float64:
++		wid = int64(v)
++	case int64:
++		wid = v
++	case int:
++		wid = int64(v)
++	}
++	if wid == 0 {
++		return nil, fmt.Errorf("warehouse_id required")
++	}
++	rawLines, _ := rec["lines"].([]any)
++	lines := make([]salesorders.LineInput, 0)
++	for _, rl := range rawLines {
++		m, ok := rl.(map[string]any)
++		if !ok {
++			continue
++		}
++		itemID := int64(0)
++		switch v := m["item_id"].(type) {
++		case float64:
++			itemID = int64(v)
++		case int64:
++			itemID = v
++		}
++		qty := int64(0)
++		switch v := m["quantity"].(type) {
++		case float64:
++			qty = int64(v)
++		case int64:
++			qty = v
++		}
++		if itemID > 0 && qty > 0 {
++			lines = append(lines, salesorders.LineInput{ItemID: itemID, QuantityOrdered: qty})
++		}
++	}
++	if len(lines) == 0 {
++		return nil, fmt.Errorf("at least one line required")
++	}
++	so, err := s.sos.Create(salesorders.CreateInput{SONumber: soNumber, WarehouseID: wid, Lines: lines}, actor)
++	if err != nil {
++		return nil, err
++	}
++	return map[string]any{"so_id": so.SOID, "so_number": so.SONumber}, nil
++}
++
++func (s *Service) writePOShadow(rec map[string]any, actor string) (map[string]any, error) {
++	poNumber, _ := rec["po_number"].(string)
++	if poNumber == "" {
++		return nil, fmt.Errorf("po_number required")
++	}
++	return map[string]any{
++		"po_number": poNumber, "status": "ACCEPTED_SHADOW",
++		"note": "PO write maps to shadow record; use /api/admin purchase-orders for full PO lifecycle",
++		"actor": actor,
++	}, nil
++}
+diff --git a/wms-twin/internal/application/pos/pos.go b/wms-twin/internal/application/pos/pos.go
+new file mode 100644
+index 0000000..57b19e2
+--- /dev/null
++++ b/wms-twin/internal/application/pos/pos.go
+@@ -0,0 +1,171 @@
++package pos
++
++import (
++	"errors"
++	"fmt"
++	"sync"
++	"time"
++
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/salesorders"
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
++)
++
++var ErrInvalid = errors.New("invalid pos request")
++
++type Service struct {
++	catalog *catalog.Repository
++	sos     *salesorders.Repository
++	ledger  *inventoryledger.Ledger
++	store   *corestore.Store
++	mu      sync.Mutex
++}
++
++func New(store *corestore.Store, cat *catalog.Repository, sos *salesorders.Repository, ledger *inventoryledger.Ledger) *Service {
++	return &Service{store: store, catalog: cat, sos: sos, ledger: ledger}
++}
++
++type CartLine struct {
++	SKU      string `json:"sku"`
++	ItemID   int64  `json:"item_id"`
++	Quantity int64  `json:"quantity"`
++}
++
++func (s *Service) Availability(warehouseID int64, sku string) (map[string]any, error) {
++	items, err := s.catalog.ListItems()
++	if err != nil {
++		return nil, err
++	}
++	balances, _, err := s.ledger.List()
++	if err != nil {
++		return nil, err
++	}
++	byItem := map[int64]int64{}
++	for _, b := range balances {
++		if warehouseID != 0 && b.WarehouseID != warehouseID {
++			continue
++		}
++		byItem[b.ItemID] += b.OnHand - b.Allocated
++	}
++	out := make([]map[string]any, 0)
++	for _, it := range items {
++		if sku != "" && it.SKU != sku {
++			continue
++		}
++		avail := byItem[it.ItemID]
++		if avail < 0 {
++			avail = 0
++		}
++		out = append(out, map[string]any{
++			"item_id": it.ItemID, "sku": it.SKU, "item_name": it.ItemName,
++			"available": avail, "warehouse_id": warehouseID,
++		})
++	}
++	return map[string]any{"items": out, "total": len(out)}, nil
++}
++
++func (s *Service) ValidateCart(warehouseID int64, lines []CartLine) (map[string]any, error) {
++	if warehouseID == 0 || len(lines) == 0 {
++		return nil, ErrInvalid
++	}
++	av, err := s.Availability(warehouseID, "")
++	if err != nil {
++		return nil, err
++	}
++	availMap := map[int64]int64{}
++	for _, row := range av["items"].([]map[string]any) {
++		id := row["item_id"].(int64)
++		availMap[id] = row["available"].(int64)
++	}
++	items, _ := s.catalog.ListItems()
++	skuToID := map[string]int64{}
++	for _, it := range items {
++		skuToID[it.SKU] = it.ItemID
++		if _, ok := availMap[it.ItemID]; !ok {
++			availMap[it.ItemID] = 0
++		}
++	}
++	linesOut := make([]map[string]any, 0, len(lines))
++	ok := true
++	for _, ln := range lines {
++		id := ln.ItemID
++		if id == 0 {
++			id = skuToID[ln.SKU]
++		}
++		have := availMap[id]
++		lineOK := id > 0 && ln.Quantity > 0 && have >= ln.Quantity
++		if !lineOK {
++			ok = false
++		}
++		linesOut = append(linesOut, map[string]any{
++			"item_id": id, "sku": ln.SKU, "quantity": ln.Quantity,
++			"available": have, "ok": lineOK,
++		})
++	}
++	return map[string]any{"ok": ok, "lines": linesOut}, nil
++}
++
++func (s *Service) Checkout(warehouseID int64, lines []CartLine, actor string) (salesorders.SalesOrder, error) {
++	s.mu.Lock()
++	defer s.mu.Unlock()
++	v, err := s.ValidateCart(warehouseID, lines)
++	if err != nil {
++		return salesorders.SalesOrder{}, err
++	}
++	if v["ok"] != true {
++		return salesorders.SalesOrder{}, fmt.Errorf("%w: insufficient stock", ErrInvalid)
++	}
++	items, _ := s.catalog.ListItems()
++	skuToID := map[string]int64{}
++	for _, it := range items {
++		skuToID[it.SKU] = it.ItemID
++	}
++	soLines := make([]salesorders.LineInput, 0, len(lines))
++	for _, ln := range lines {
++		id := ln.ItemID
++		if id == 0 {
++			id = skuToID[ln.SKU]
++		}
++		soLines = append(soLines, salesorders.LineInput{ItemID: id, QuantityOrdered: ln.Quantity})
++	}
++	num := fmt.Sprintf("POS-%d", time.Now().UTC().UnixNano()%1_000_000_000)
++	return s.sos.Create(salesorders.CreateInput{
++		SONumber: num, WarehouseID: warehouseID, Lines: soLines,
++	}, actor)
++}
++
++func (s *Service) GetSO(soNumber string) (salesorders.SalesOrder, error) {
++	list, err := s.sos.List()
++	if err != nil {
++		return salesorders.SalesOrder{}, err
++	}
++	for _, so := range list {
++		if so.SONumber == soNumber || so.SOBarcode == soNumber {
++			return so, nil
++		}
++	}
++	return salesorders.SalesOrder{}, salesorders.ErrNotFound
++}
++
++func (s *Service) Refund(soNumber string, actor string) (map[string]any, error) {
++	so, err := s.GetSO(soNumber)
++	if err != nil {
++		return nil, err
++	}
++	return map[string]any{
++		"so_id": so.SOID, "so_number": so.SONumber, "status": "REFUND_RECORDED",
++		"actor": actor, "at": time.Now().UTC(),
++	}, nil
++}
++
++func (s *Service) Dispatch(soNumber, actor string) (map[string]any, error) {
++	so, err := s.GetSO(soNumber)
++	if err != nil {
++		return nil, err
++	}
++	return map[string]any{
++		"so_id": so.SOID, "so_number": so.SONumber, "status": "DISPATCHED",
++		"actor": actor, "at": time.Now().UTC(),
++	}, nil
++}
+diff --git a/wms-twin/internal/application/rma/rma.go b/wms-twin/internal/application/rma/rma.go
+new file mode 100644
+index 0000000..9fd1617
+--- /dev/null
++++ b/wms-twin/internal/application/rma/rma.go
+@@ -0,0 +1,168 @@
++package rma
++
++import (
++	"encoding/json"
++	"errors"
++	"fmt"
++	"sync"
++	"time"
++
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/salesorders"
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
++)
++
++const kind = "wms_rma"
++
++var ErrNotFound = errors.New("rma not found")
++
++type RMA struct {
++	RMAID     int64     `json:"rma_id"`
++	SOID      int64     `json:"so_id"`
++	SONumber  string    `json:"so_number"`
++	Status    string    `json:"status"`
++	Reason    string    `json:"reason"`
++	CreatedAt time.Time `json:"created_at"`
++	CreatedBy string    `json:"created_by"`
++	Backorder bool      `json:"backorder"`
++	UpdatedAt time.Time `json:"updated_at,omitempty"`
++	Notes     string    `json:"notes,omitempty"`
++}
++
++type Service struct {
++	store *corestore.Store
++	sos   *salesorders.Repository
++	mu    sync.Mutex
++	seq   int64
++}
++
++func New(store *corestore.Store, sos *salesorders.Repository) *Service {
++	return &Service{store: store, sos: sos}
++}
++
++func (s *Service) Create(soNumber, reason, actor string, backorder bool) (RMA, error) {
++	s.mu.Lock()
++	defer s.mu.Unlock()
++	list, err := s.sos.List()
++	if err != nil {
++		return RMA{}, err
++	}
++	var so *salesorders.SalesOrder
++	for i := range list {
++		if list[i].SONumber == soNumber || list[i].SOBarcode == soNumber {
++			so = &list[i]
++			break
++		}
++	}
++	if so == nil {
++		return RMA{}, salesorders.ErrNotFound
++	}
++	s.seq++
++	r := RMA{
++		RMAID: s.seq, SOID: so.SOID, SONumber: so.SONumber,
++		Status: "OPEN", Reason: reason, CreatedAt: time.Now().UTC(),
++		CreatedBy: actor, Backorder: backorder, UpdatedAt: time.Now().UTC(),
++	}
++	data, _ := json.Marshal(r)
++	_, err = s.store.Put(kind, formatID(r.RMAID), data)
++	return r, err
++}
++
++func (s *Service) Get(id int64) (RMA, error) {
++	rec, ok, err := s.store.Get(kind, formatID(id))
++	if err != nil {
++		return RMA{}, err
++	}
++	if !ok {
++		return RMA{}, ErrNotFound
++	}
++	var r RMA
++	if err := json.Unmarshal(rec.Data, &r); err != nil {
++		return RMA{}, err
++	}
++	return r, nil
++}
++
++func (s *Service) List() ([]RMA, error) {
++	records, err := s.store.List(kind)
++	if err != nil {
++		return nil, err
++	}
++	out := make([]RMA, 0, len(records))
++	for _, rec := range records {
++		var r RMA
++		if json.Unmarshal(rec.Data, &r) == nil {
++			out = append(out, r)
++		}
++	}
++	return out, nil
++}
++
++func (s *Service) ListBackorders() ([]RMA, error) {
++	all, err := s.List()
++	if err != nil {
++		return nil, err
++	}
++	out := make([]RMA, 0)
++	for _, r := range all {
++		if r.Backorder && (r.Status == "OPEN" || r.Status == "RECEIVED") {
++			out = append(out, r)
++		}
++	}
++	return out, nil
++}
++
++func (s *Service) Receive(id int64, actor string) (RMA, error) {
++	s.mu.Lock()
++	defer s.mu.Unlock()
++	r, err := s.Get(id)
++	if err != nil {
++		return RMA{}, err
++	}
++	if r.Status != "OPEN" {
++		return RMA{}, fmt.Errorf("rma status %s cannot receive", r.Status)
++	}
++	r.Status = "RECEIVED"
++	r.UpdatedAt = time.Now().UTC()
++	r.Notes = "received by " + actor
++	data, _ := json.Marshal(r)
++	_, err = s.store.Put(kind, formatID(r.RMAID), data)
++	return r, err
++}
++
++func (s *Service) Complete(id int64, actor string) (RMA, error) {
++	s.mu.Lock()
++	defer s.mu.Unlock()
++	r, err := s.Get(id)
++	if err != nil {
++		return RMA{}, err
++	}
++	if r.Status != "OPEN" && r.Status != "RECEIVED" {
++		return RMA{}, fmt.Errorf("rma status %s cannot complete", r.Status)
++	}
++	r.Status = "COMPLETED"
++	r.UpdatedAt = time.Now().UTC()
++	r.Notes = "completed by " + actor + "; restock deferred to inventory adjust"
++	data, _ := json.Marshal(r)
++	_, err = s.store.Put(kind, formatID(r.RMAID), data)
++	return r, err
++}
++
++func (s *Service) Cancel(id int64, actor string) (RMA, error) {
++	s.mu.Lock()
++	defer s.mu.Unlock()
++	r, err := s.Get(id)
++	if err != nil {
++		return RMA{}, err
++	}
++	if r.Status == "COMPLETED" {
++		return RMA{}, fmt.Errorf("cannot cancel completed rma")
++	}
++	r.Status = "CANCELLED"
++	r.UpdatedAt = time.Now().UTC()
++	r.Notes = "cancelled by " + actor
++	data, _ := json.Marshal(r)
++	_, err = s.store.Put(kind, formatID(r.RMAID), data)
++	return r, err
++}
++
++func formatID(id int64) string { return fmt.Sprintf("%d", id) }
+diff --git a/wms-twin/internal/application/snapshot/snapshot.go b/wms-twin/internal/application/snapshot/snapshot.go
+new file mode 100644
+index 0000000..a73296f
+--- /dev/null
++++ b/wms-twin/internal/application/snapshot/snapshot.go
+@@ -0,0 +1,35 @@
++package snapshot
++
++import (
++	"time"
++
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
++)
++
++type Service struct {
++	ledger *inventoryledger.Ledger
++}
++
++func New(ledger *inventoryledger.Ledger) *Service { return &Service{ledger: ledger} }
++
++func (s *Service) Inventory(warehouseID int64) (map[string]any, error) {
++	balances, version, err := s.ledger.List()
++	if err != nil {
++		return nil, err
++	}
++	rows := make([]map[string]any, 0, len(balances))
++	for _, b := range balances {
++		if warehouseID != 0 && b.WarehouseID != warehouseID {
++			continue
++		}
++		rows = append(rows, map[string]any{
++			"warehouse_id": b.WarehouseID, "bin_id": b.BinID, "item_id": b.ItemID,
++			"lot_number": b.LotNumber, "on_hand": b.OnHand, "allocated": b.Allocated,
++			"available": b.OnHand - b.Allocated,
++		})
++	}
++	return map[string]any{
++		"version": version, "generated_at": time.Now().UTC(),
++		"rows": rows, "total": len(rows), "engine": "PrismaTec-Core",
++	}, nil
++}
+diff --git a/wms-twin/internal/application/webhooks/webhooks.go b/wms-twin/internal/application/webhooks/webhooks.go
+new file mode 100644
+index 0000000..9cc3150
+--- /dev/null
++++ b/wms-twin/internal/application/webhooks/webhooks.go
+@@ -0,0 +1,124 @@
++package webhooks
++
++import (
++	"bytes"
++	"crypto/hmac"
++	"crypto/sha256"
++	"encoding/hex"
++	"encoding/json"
++	"net/http"
++	"sync"
++	"time"
++
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
++)
++
++const kind = "wms_webhook"
++
++type Subscription struct {
++	ID         string    `json:"id"`
++	URL        string    `json:"url"`
++	Secret     string    `json:"secret"`
++	EventTypes []string  `json:"event_types"`
++	Active     bool      `json:"active"`
++	CreatedAt  time.Time `json:"created_at"`
++}
++
++type Service struct {
++	store  *corestore.Store
++	client *http.Client
++	mu     sync.Mutex
++	seq    int64
++}
++
++func New(store *corestore.Store) *Service {
++	return &Service{store: store, client: &http.Client{Timeout: 8 * time.Second}}
++}
++
++func (s *Service) Create(url, secret string, types []string) (Subscription, error) {
++	s.mu.Lock()
++	defer s.mu.Unlock()
++	s.seq++
++	id := "wh_" + formatN(s.seq)
++	sub := Subscription{ID: id, URL: url, Secret: secret, EventTypes: types, Active: true, CreatedAt: time.Now().UTC()}
++	data, _ := json.Marshal(sub)
++	_, err := s.store.Put(kind, id, data)
++	return sub, err
++}
++
++func (s *Service) List() ([]Subscription, error) {
++	records, err := s.store.List(kind)
++	if err != nil {
++		return nil, err
++	}
++	out := make([]Subscription, 0, len(records))
++	for _, r := range records {
++		var sub Subscription
++		if json.Unmarshal(r.Data, &sub) == nil {
++			sub.Secret = ""
++			out = append(out, sub)
++		}
++	}
++	return out, nil
++}
++
++func (s *Service) Deliver(eventType string, payload any) {
++	records, err := s.store.List(kind)
++	if err != nil {
++		return
++	}
++	body, _ := json.Marshal(map[string]any{"event_type": eventType, "payload": payload, "ts": time.Now().UTC()})
++	for _, r := range records {
++		var sub Subscription
++		if json.Unmarshal(r.Data, &sub) != nil || !sub.Active {
++			continue
++		}
++		if !matches(sub.EventTypes, eventType) {
++			continue
++		}
++		go s.post(sub, body)
++	}
++}
++
++func (s *Service) post(sub Subscription, body []byte) {
++	req, err := http.NewRequest(http.MethodPost, sub.URL, bytes.NewReader(body))
++	if err != nil {
++		return
++	}
++	mac := hmac.New(sha256.New, []byte(sub.Secret))
++	mac.Write(body)
++	req.Header.Set("Content-Type", "application/json")
++	req.Header.Set("X-WMS-Signature", hex.EncodeToString(mac.Sum(nil)))
++	resp, err := s.client.Do(req)
++	if err != nil {
++		return
++	}
++	_ = resp.Body.Close()
++}
++
++func matches(types []string, eventType string) bool {
++	if len(types) == 0 {
++		return true
++	}
++	for _, t := range types {
++		if t == "*" || t == eventType {
++			return true
++		}
++	}
++	return false
++}
++
++func formatN(n int64) string {
++	const d = "0123456789abcdef"
++	var b [16]byte
++	i := 16
++	for n > 0 {
++		i--
++		b[i] = d[n&15]
++		n >>= 4
++	}
++	if i == 16 {
++		return "0"
++	}
++	return string(b[i:])
++}
+diff --git a/wms-twin/internal/application/wmsaudit/audit.go b/wms-twin/internal/application/wmsaudit/audit.go
+new file mode 100644
+index 0000000..b07133f
+--- /dev/null
++++ b/wms-twin/internal/application/wmsaudit/audit.go
+@@ -0,0 +1,124 @@
++package wmsaudit
++
++import (
++	"crypto/sha256"
++	"encoding/hex"
++	"encoding/json"
++	"sync"
++	"time"
++
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
++	"github.com/yecharlot/PrismaTec-Core/core/audit"
++)
++
++const kind = "wms_audit_chain"
++
++type Entry struct {
++	Seq      int64          `json:"seq"`
++	Time     time.Time      `json:"time"`
++	Actor    string         `json:"actor"`
++	Action   string         `json:"action"`
++	Resource string         `json:"resource,omitempty"`
++	OK       bool           `json:"ok"`
++	Detail   string         `json:"detail,omitempty"`
++	Meta     map[string]any `json:"meta,omitempty"`
++	PrevHash string         `json:"prev_hash"`
++	Hash     string         `json:"hash"`
++}
++
++type Service struct {
++	store *corestore.Store
++	core  *audit.Log
++	mu    sync.Mutex
++	last  string
++	seq   int64
++}
++
++func New(store *corestore.Store, coreLog *audit.Log) *Service {
++	s := &Service{store: store, core: coreLog}
++	s.recoverTip()
++	return s
++}
++
++func (s *Service) recoverTip() {
++	records, err := s.store.List(kind)
++	if err != nil || len(records) == 0 {
++		return
++	}
++	var maxSeq int64
++	var lastHash string
++	for _, r := range records {
++		var e Entry
++		if json.Unmarshal(r.Data, &e) != nil {
++			continue
++		}
++		if e.Seq > maxSeq {
++			maxSeq = e.Seq
++			lastHash = e.Hash
++		}
++	}
++	s.seq = maxSeq
++	s.last = lastHash
++}
++
++func (s *Service) Record(actor, action, resource string, ok bool, detail string, meta map[string]any) (Entry, error) {
++	s.mu.Lock()
++	defer s.mu.Unlock()
++	s.seq++
++	e := Entry{
++		Seq: s.seq, Time: time.Now().UTC(), Actor: actor, Action: action,
++		Resource: resource, OK: ok, Detail: detail, Meta: meta, PrevHash: s.last,
++	}
++	e.Hash = hashEntry(e)
++	s.last = e.Hash
++	data, _ := json.Marshal(e)
++	if _, err := s.store.Put(kind, formatSeq(e.Seq), data); err != nil {
++		return e, err
++	}
++	if s.core != nil {
++		s.core.Record(audit.Event{
++			Type: "wms." + action, Actor: actor, Action: action, OK: ok, Detail: detail, Meta: meta,
++		})
++	}
++	return e, nil
++}
++
++func (s *Service) Recent(n int) ([]Entry, error) {
++	records, err := s.store.List(kind)
++	if err != nil {
++		return nil, err
++	}
++	out := make([]Entry, 0, len(records))
++	for _, r := range records {
++		var e Entry
++		if json.Unmarshal(r.Data, &e) == nil {
++			out = append(out, e)
++		}
++	}
++	for i := 0; i < len(out); i++ {
++		for j := i + 1; j < len(out); j++ {
++			if out[j].Seq < out[i].Seq {
++				out[i], out[j] = out[j], out[i]
++			}
++		}
++	}
++	if n > 0 && len(out) > n {
++		out = out[len(out)-n:]
++	}
++	return out, nil
++}
++
++func hashEntry(e Entry) string {
++	copy := e
++	copy.Hash = ""
++	raw, _ := json.Marshal(copy)
++	sum := sha256.Sum256(raw)
++	return hex.EncodeToString(sum[:])
++}
++
++func formatSeq(seq int64) string {
++	return hex.EncodeToString([]byte{
++		byte(seq >> 56), byte(seq >> 48), byte(seq >> 40), byte(seq >> 32),
++		byte(seq >> 24), byte(seq >> 16), byte(seq >> 8), byte(seq),
++	})
++}
+diff --git a/wms-twin/internal/httpapi/integrations.go b/wms-twin/internal/httpapi/integrations.go
+new file mode 100644
+index 0000000..90f1280
+--- /dev/null
++++ b/wms-twin/internal/httpapi/integrations.go
+@@ -0,0 +1,575 @@
++package httpapi
++
++import (
++	"errors"
++	"fmt"
++	"net/http"
++	"strconv"
++	"strings"
++
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inbound"
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/pos"
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/rma"
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/security/wmstoken"
++)
++
++func extractBearer(r *http.Request) string {
++	h := strings.TrimSpace(r.Header.Get("Authorization"))
++	if strings.HasPrefix(strings.ToLower(h), "bearer ") {
++		return strings.TrimSpace(h[7:])
++	}
++	if t := strings.TrimSpace(r.Header.Get("X-WMS-Token")); t != "" {
++		return t
++	}
++	return ""
++}
++
++func (s *Server) requireWMSToken(scope string, next func(http.ResponseWriter, *http.Request, wmstoken.TokenRecord)) http.HandlerFunc {
++	return func(w http.ResponseWriter, r *http.Request) {
++		if s.wmsTokens == nil {
++			writeJSON(w, 503, map[string]string{"error": "wms tokens not configured"})
++			return
++		}
++		rec, err := s.wmsTokens.Authenticate(extractBearer(r), scope)
++		if err != nil {
++			code, body := wmstoken.FormatAuthError(err)
++			writeJSON(w, code, body)
++			return
++		}
++		if s.wmsAudit != nil {
++			_, _ = s.wmsAudit.Record(rec.TokenID, "wms_token", scope, true, r.Method+" "+r.URL.Path, map[string]any{"token_id": rec.TokenID})
++		}
++		next(w, r, rec)
++	}
++}
++
++func (s *Server) v1Route(w http.ResponseWriter, r *http.Request) {
++	path := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/v1/"), "/")
++	parts := strings.Split(path, "/")
++	if len(parts) == 0 || parts[0] == "" {
++		writeJSON(w, 404, map[string]string{"error": "not found"})
++		return
++	}
++	switch parts[0] {
++	case "pos":
++		s.posV1(w, r, strings.Join(parts[1:], "/"))
++	case "dockd":
++		s.dockdV1(w, r, strings.Join(parts[1:], "/"))
++	case "inbound":
++		s.inboundV1(w, r, strings.Join(parts[1:], "/"))
++	case "events":
++		s.eventsV1(w, r, strings.Join(parts[1:], "/"))
++	case "snapshot":
++		s.snapshotV1(w, r, strings.Join(parts[1:], "/"))
++	case "webhooks":
++		s.webhooksV1(w, r, strings.Join(parts[1:], "/"))
++	default:
++		writeJSON(w, 404, map[string]string{"error": "not found"})
++	}
++}
++
++func (s *Server) posV1(w http.ResponseWriter, r *http.Request, rest string) {
++	switch {
++	case r.Method == http.MethodGet && rest == "availability":
++		s.requireWMSToken("pos.availability", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
++			wid, _ := strconv.ParseInt(r.URL.Query().Get("warehouse_id"), 10, 64)
++			if rec.WarehouseID != nil {
++				wid = *rec.WarehouseID
++			}
++			out, err := s.pos.Availability(wid, r.URL.Query().Get("sku"))
++			if err != nil {
++				writeJSON(w, 500, map[string]string{"error": err.Error()})
++				return
++			}
++			writeJSON(w, 200, out)
++		})(w, r)
++	case r.Method == http.MethodPost && rest == "validate-cart":
++		s.requireWMSToken("pos.validate-cart", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
++			var in struct {
++				WarehouseID int64          `json:"warehouse_id"`
++				Lines       []pos.CartLine `json:"lines"`
++			}
++			if err := decodeBody(r, &in); err != nil {
++				writeJSON(w, 400, map[string]string{"error": "Invalid request body"})
++				return
++			}
++			if rec.WarehouseID != nil {
++				in.WarehouseID = *rec.WarehouseID
++			}
++			out, err := s.pos.ValidateCart(in.WarehouseID, in.Lines)
++			if err != nil {
++				writeJSON(w, 400, map[string]string{"error": err.Error()})
++				return
++			}
++			writeJSON(w, 200, out)
++		})(w, r)
++	case r.Method == http.MethodPost && rest == "checkout":
++		s.requireWMSToken("pos.checkout", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
++			var in struct {
++				WarehouseID int64          `json:"warehouse_id"`
++				Lines       []pos.CartLine `json:"lines"`
++			}
++			if err := decodeBody(r, &in); err != nil {
++				writeJSON(w, 400, map[string]string{"error": "Invalid request body"})
++				return
++			}
++			if rec.WarehouseID != nil {
++				in.WarehouseID = *rec.WarehouseID
++			}
++			so, err := s.pos.Checkout(in.WarehouseID, in.Lines, rec.Name)
++			if err != nil {
++				writeJSON(w, 400, map[string]string{"error": err.Error()})
++				return
++			}
++			if s.events != nil {
++				_, _ = s.events.Emit("pos.checkout", map[string]any{"so_id": so.SOID, "so_number": so.SONumber})
++			}
++			if s.webhooks != nil {
++				s.webhooks.Deliver("pos.checkout", so)
++			}
++			writeJSON(w, 201, so)
++		})(w, r)
++	case r.Method == http.MethodPost && rest == "refund":
++		s.requireWMSToken("pos.refund", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
++			var in struct {
++				SONumber string `json:"so_number"`
++			}
++			if err := decodeBody(r, &in); err != nil {
++				writeJSON(w, 400, map[string]string{"error": "Invalid request body"})
++				return
++			}
++			out, err := s.pos.Refund(in.SONumber, rec.Name)
++			if err != nil {
++				writeJSON(w, 404, map[string]string{"error": err.Error()})
++				return
++			}
++			if s.events != nil {
++				_, _ = s.events.Emit("pos.refund", out)
++			}
++			writeJSON(w, 200, out)
++		})(w, r)
++	case r.Method == http.MethodPost && rest == "dispatch":
++		s.requireWMSToken("pos.dispatch", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
++			var in struct {
++				SONumber string `json:"so_number"`
++			}
++			if err := decodeBody(r, &in); err != nil {
++				writeJSON(w, 400, map[string]string{"error": "Invalid request body"})
++				return
++			}
++			out, err := s.pos.Dispatch(in.SONumber, rec.Name)
++			if err != nil {
++				writeJSON(w, 404, map[string]string{"error": err.Error()})
++				return
++			}
++			if s.events != nil {
++				_, _ = s.events.Emit("pos.dispatch", out)
++			}
++			writeJSON(w, 200, out)
++		})(w, r)
++	case r.Method == http.MethodGet && strings.HasPrefix(rest, "sales-orders/"):
++		s.requireWMSToken("pos.sales-orders", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
++			num := strings.TrimPrefix(rest, "sales-orders/")
++			so, err := s.pos.GetSO(num)
++			if err != nil {
++				writeJSON(w, 404, map[string]string{"error": "not found"})
++				return
++			}
++			writeJSON(w, 200, so)
++		})(w, r)
++	case r.Method == http.MethodPost && rest == "reference-orders":
++		s.requireWMSToken("pos.reference-orders", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
++			writeJSON(w, 200, map[string]any{"orders": []any{}, "note": "reference lookup stub"})
++		})(w, r)
++	default:
++		writeJSON(w, 404, map[string]string{"error": "not found"})
++	}
++}
++
++func (s *Server) dockdV1(w http.ResponseWriter, r *http.Request, rest string) {
++	parts := strings.Split(rest, "/")
++	switch {
++	case r.Method == http.MethodGet && len(parts) == 2 && parts[0] == "orders":
++		s.requireWMSToken("dockd.orders", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
++			so, err := s.dockd.Order(parts[1])
++			if err != nil {
++				writeJSON(w, 404, map[string]string{"error": "not found"})
++				return
++			}
++			writeJSON(w, 200, so)
++		})(w, r)
++	case r.Method == http.MethodGet && len(parts) == 2 && parts[0] == "items":
++		s.requireWMSToken("dockd.items", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
++			out, err := s.dockd.Item(parts[1])
++			if err != nil {
++				writeJSON(w, 404, map[string]string{"error": "not found"})
++				return
++			}
++			writeJSON(w, 200, out)
++		})(w, r)
++	case r.Method == http.MethodPost && len(parts) == 3 && parts[0] == "orders" && parts[2] == "ship":
++		s.requireWMSToken("dockd.ship", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
++			var in struct {
++				Carrier        string `json:"carrier"`
++				TrackingNumber string `json:"tracking_number"`
++			}
++			_ = decodeBody(r, &in)
++			allowed := []int64{}
++			if rec.WarehouseID != nil {
++				allowed = []int64{*rec.WarehouseID}
++			}
++			out, err := s.dockd.Ship(parts[1], in.Carrier, in.TrackingNumber, rec.Name, allowed, rec.WarehouseID == nil)
++			if err != nil {
++				writeJSON(w, 400, map[string]string{"error": err.Error()})
++				return
++			}
++			if s.events != nil {
++				_, _ = s.events.Emit("dockd.ship", out)
++			}
++			if s.webhooks != nil {
++				s.webhooks.Deliver("dockd.ship", out)
++			}
++			writeJSON(w, 200, out)
++		})(w, r)
++	case r.Method == http.MethodPost && len(parts) == 3 && parts[0] == "orders" && parts[2] == "void-ship":
++		s.requireWMSToken("dockd.void-ship", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
++			out, err := s.dockd.VoidShip(parts[1], rec.Name)
++			if err != nil {
++				writeJSON(w, 404, map[string]string{"error": err.Error()})
++				return
++			}
++			writeJSON(w, 200, out)
++		})(w, r)
++	default:
++		writeJSON(w, 404, map[string]string{"error": "not found"})
++	}
++}
++
++func (s *Server) inboundV1(w http.ResponseWriter, r *http.Request, rest string) {
++	if r.Method == http.MethodGet && rest == "mapping-schema" {
++		s.requireWMSToken("inbound.mapping-schema", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
++			writeJSON(w, 200, inbound.MappingSchema())
++		})(w, r)
++		return
++	}
++	if r.Method == http.MethodPost && rest == "write" {
++		s.requireWMSToken("inbound.write", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
++			var req inbound.WriteRequest
++			if err := decodeBody(r, &req); err != nil {
++				writeJSON(w, 400, map[string]string{"error": "Invalid request body"})
++				return
++			}
++			out, err := s.inbound.Write(req, rec.Name)
++			if err != nil {
++				writeJSON(w, 400, map[string]string{"error": err.Error()})
++				return
++			}
++			if s.events != nil {
++				_, _ = s.events.Emit("inbound.write", out)
++			}
++			if s.wmsAudit != nil {
++				_, _ = s.wmsAudit.Record(rec.TokenID, "inbound.write", req.Resource, true, fmt.Sprintf("ok=%v", out["total_ok"]), nil)
++			}
++			writeJSON(w, 200, out)
++		})(w, r)
++		return
++	}
++	writeJSON(w, 404, map[string]string{"error": "not found"})
++}
++
++func (s *Server) eventsV1(w http.ResponseWriter, r *http.Request, rest string) {
++	switch {
++	case r.Method == http.MethodGet && (rest == "" || rest == "/"):
++		s.requireWMSToken("events.read", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
++			list, err := s.events.List(100)
++			if err != nil {
++				writeJSON(w, 500, map[string]string{"error": err.Error()})
++				return
++			}
++			writeJSON(w, 200, map[string]any{"events": list, "total": len(list)})
++		})(w, r)
++	case r.Method == http.MethodGet && rest == "types":
++		s.requireWMSToken("events.read", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
++			writeJSON(w, 200, map[string]any{"types": s.events.Types()})
++		})(w, r)
++	case r.Method == http.MethodPost && rest == "ack":
++		s.requireWMSToken("events.ack", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
++			var in struct {
++				EventID string `json:"event_id"`
++			}
++			if err := decodeBody(r, &in); err != nil || in.EventID == "" {
++				writeJSON(w, 400, map[string]string{"error": "event_id required"})
++				return
++			}
++			if err := s.events.Ack(in.EventID); err != nil {
++				writeJSON(w, 404, map[string]string{"error": err.Error()})
++				return
++			}
++			writeJSON(w, 200, map[string]any{"ok": true})
++		})(w, r)
++	default:
++		writeJSON(w, 404, map[string]string{"error": "not found"})
++	}
++}
++
++func (s *Server) snapshotV1(w http.ResponseWriter, r *http.Request, rest string) {
++	if r.Method == http.MethodGet && rest == "inventory" {
++		s.requireWMSToken("snapshot.inventory", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
++			wid, _ := strconv.ParseInt(r.URL.Query().Get("warehouse_id"), 10, 64)
++			if rec.WarehouseID != nil {
++				wid = *rec.WarehouseID
++			}
++			out, err := s.snapshot.Inventory(wid)
++			if err != nil {
++				writeJSON(w, 500, map[string]string{"error": err.Error()})
++				return
++			}
++			writeJSON(w, 200, out)
++		})(w, r)
++		return
++	}
++	writeJSON(w, 404, map[string]string{"error": "not found"})
++}
++
++func (s *Server) webhooksV1(w http.ResponseWriter, r *http.Request, rest string) {
++	user, ok := s.authenticatedUser(w, r)
++	if !ok {
++		return
++	}
++	if user.Role != "ADMIN" {
++		writeJSON(w, 403, map[string]string{"error": "ADMIN required"})
++		return
++	}
++	if rest == "" || rest == "/" {
++		switch r.Method {
++		case http.MethodGet:
++			list, err := s.webhooks.List()
++			if err != nil {
++				writeJSON(w, 500, map[string]string{"error": err.Error()})
++				return
++			}
++			writeJSON(w, 200, map[string]any{"webhooks": list, "total": len(list)})
++		case http.MethodPost:
++			var in struct {
++				URL        string   `json:"url"`
++				Secret     string   `json:"secret"`
++				EventTypes []string `json:"event_types"`
++			}
++			if err := decodeBody(r, &in); err != nil || in.URL == "" {
++				writeJSON(w, 400, map[string]string{"error": "url required"})
++				return
++			}
++			sub, err := s.webhooks.Create(in.URL, in.Secret, in.EventTypes)
++			if err != nil {
++				writeJSON(w, 500, map[string]string{"error": err.Error()})
++				return
++			}
++			sub.Secret = ""
++			writeJSON(w, 201, sub)
++		default:
++			writeJSON(w, 405, map[string]string{"error": "method not allowed"})
++		}
++		return
++	}
++	writeJSON(w, 404, map[string]string{"error": "not found"})
++}
++
++func (s *Server) adminTokens(w http.ResponseWriter, r *http.Request) {
++	user, ok := s.authenticatedUser(w, r)
++	if !ok {
++		return
++	}
++	if user.Role != "ADMIN" {
++		writeJSON(w, 403, map[string]string{"error": "ADMIN required"})
++		return
++	}
++	switch r.Method {
++	case http.MethodGet:
++		list, err := s.wmsTokens.List()
++		if err != nil {
++			writeJSON(w, 500, map[string]string{"error": err.Error()})
++			return
++		}
++		writeJSON(w, 200, map[string]any{"tokens": list, "known_scopes": wmstoken.KnownScopes})
++	case http.MethodPost:
++		var in struct {
++			Name        string   `json:"name"`
++			Endpoints   []string `json:"endpoints"`
++			WarehouseID *int64   `json:"warehouse_id"`
++		}
++		if err := decodeBody(r, &in); err != nil || strings.TrimSpace(in.Name) == "" {
++			writeJSON(w, 400, map[string]string{"error": "name required"})
++			return
++		}
++		tok, err := s.wmsTokens.Create(in.Name, in.Endpoints, in.WarehouseID)
++		if err != nil {
++			writeJSON(w, 500, map[string]string{"error": err.Error()})
++			return
++		}
++		if s.wmsAudit != nil {
++			_, _ = s.wmsAudit.Record(user.Username, "token.create", tok.TokenID, true, tok.Name, nil)
++		}
++		writeJSON(w, 201, tok)
++	default:
++		writeJSON(w, 405, map[string]string{"error": "method not allowed"})
++	}
++}
++
++func (s *Server) adminTokenRevoke(w http.ResponseWriter, r *http.Request) {
++	user, ok := s.authenticatedUser(w, r)
++	if !ok {
++		return
++	}
++	if user.Role != "ADMIN" {
++		writeJSON(w, 403, map[string]string{"error": "ADMIN required"})
++		return
++	}
++	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
++		writeJSON(w, 405, map[string]string{"error": "method not allowed"})
++		return
++	}
++	id := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/admin/wms-tokens/"), "/")
++	if id == "" {
++		writeJSON(w, 400, map[string]string{"error": "token_id required"})
++		return
++	}
++	if err := s.wmsTokens.Revoke(id); err != nil {
++		writeJSON(w, 404, map[string]string{"error": err.Error()})
++		return
++	}
++	if s.wmsAudit != nil {
++		_, _ = s.wmsAudit.Record(user.Username, "token.revoke", id, true, "revoked", nil)
++	}
++	writeJSON(w, 200, map[string]any{"ok": true, "token_id": id})
++}
++
++func (s *Server) auditRecent(w http.ResponseWriter, r *http.Request) {
++	user, ok := s.authenticatedUser(w, r)
++	if !ok {
++		return
++	}
++	if user.Role != "ADMIN" {
++		writeJSON(w, 403, map[string]string{"error": "ADMIN required"})
++		return
++	}
++	n, _ := strconv.Atoi(r.URL.Query().Get("limit"))
++	if n <= 0 {
++		n = 50
++	}
++	list, err := s.wmsAudit.Recent(n)
++	if err != nil {
++		writeJSON(w, 500, map[string]string{"error": err.Error()})
++		return
++	}
++	writeJSON(w, 200, map[string]any{"entries": list, "total": len(list)})
++}
++
++func (s *Server) meshStatus(w http.ResponseWriter, r *http.Request) {
++	user, ok := s.authenticatedUser(w, r)
++	if !ok {
++		return
++	}
++	if user.Role != "ADMIN" {
++		writeJSON(w, 403, map[string]string{"error": "ADMIN required"})
++		return
++	}
++	if s.mesh == nil {
++		writeJSON(w, 200, map[string]any{"peers": []any{}, "engine": "PrismaTec-Core"})
++		return
++	}
++	writeJSON(w, 200, map[string]any{
++		"peers": s.mesh.Peers(), "closest": s.mesh.Closest(string(s.node.ID()), 8),
++		"engine": "PrismaTec-Core", "layer": "kademlia+gossip",
++	})
++}
++
++func (s *Server) rmaRoutes(w http.ResponseWriter, r *http.Request) {
++	user, ok := s.authenticatedUser(w, r)
++	if !ok {
++		return
++	}
++	path := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/rma/"), "/")
++	switch {
++	case r.Method == http.MethodGet && path == "":
++		list, err := s.rma.List()
++		if err != nil {
++			writeJSON(w, 500, map[string]string{"error": err.Error()})
++			return
++		}
++		writeJSON(w, 200, map[string]any{"rmas": list})
++	case r.Method == http.MethodGet && path == "backorders":
++		list, err := s.rma.ListBackorders()
++		if err != nil {
++			writeJSON(w, 500, map[string]string{"error": err.Error()})
++			return
++		}
++		writeJSON(w, 200, map[string]any{"backorders": list})
++	case r.Method == http.MethodPost && path == "":
++		var in struct {
++			SONumber  string `json:"so_number"`
++			Reason    string `json:"reason"`
++			Backorder bool   `json:"backorder"`
++		}
++		if err := decodeBody(r, &in); err != nil {
++			writeJSON(w, 400, map[string]string{"error": "Invalid request body"})
++			return
++		}
++		out, err := s.rma.Create(in.SONumber, in.Reason, user.Username, in.Backorder)
++		if err != nil {
++			if errors.Is(err, rma.ErrNotFound) || strings.Contains(err.Error(), "not found") {
++				writeJSON(w, 404, map[string]string{"error": err.Error()})
++				return
++			}
++			writeJSON(w, 400, map[string]string{"error": err.Error()})
++			return
++		}
++		if s.events != nil {
++			_, _ = s.events.Emit("rma.created", map[string]any{"rma_id": out.RMAID, "so_number": out.SONumber})
++		}
++		writeJSON(w, 201, out)
++	case r.Method == http.MethodGet && path != "" && !strings.Contains(path, "/"):
++		id, err := strconv.ParseInt(path, 10, 64)
++		if err != nil {
++			writeJSON(w, 400, map[string]string{"error": "invalid rma id"})
++			return
++		}
++		out, err := s.rma.Get(id)
++		if err != nil {
++			writeJSON(w, 404, map[string]string{"error": err.Error()})
++			return
++		}
++		writeJSON(w, 200, out)
++	case r.Method == http.MethodPost && strings.HasSuffix(path, "/receive"):
++		id, _ := strconv.ParseInt(strings.TrimSuffix(path, "/receive"), 10, 64)
++		out, err := s.rma.Receive(id, user.Username)
++		if err != nil {
++			writeJSON(w, 400, map[string]string{"error": err.Error()})
++			return
++		}
++		if s.events != nil {
++			_, _ = s.events.Emit("rma.received", map[string]any{"rma_id": out.RMAID})
++		}
++		writeJSON(w, 200, out)
++	case r.Method == http.MethodPost && strings.HasSuffix(path, "/complete"):
++		id, _ := strconv.ParseInt(strings.TrimSuffix(path, "/complete"), 10, 64)
++		out, err := s.rma.Complete(id, user.Username)
++		if err != nil {
++			writeJSON(w, 400, map[string]string{"error": err.Error()})
++			return
++		}
++		if s.events != nil {
++			_, _ = s.events.Emit("rma.completed", map[string]any{"rma_id": out.RMAID})
++		}
++		writeJSON(w, 200, out)
++	case r.Method == http.MethodPost && strings.HasSuffix(path, "/cancel"):
++		id, _ := strconv.ParseInt(strings.TrimSuffix(path, "/cancel"), 10, 64)
++		out, err := s.rma.Cancel(id, user.Username)
++		if err != nil {
++			writeJSON(w, 400, map[string]string{"error": err.Error()})
++			return
++		}
++		writeJSON(w, 200, out)
++	default:
++		writeJSON(w, 404, map[string]string{"error": "not found"})
++	}
++}
+diff --git a/wms-twin/internal/httpapi/ops_extra.go b/wms-twin/internal/httpapi/ops_extra.go
+index 0f4a09d..650f9dc 100644
+--- a/wms-twin/internal/httpapi/ops_extra.go
++++ b/wms-twin/internal/httpapi/ops_extra.go
+@@ -262,6 +262,8 @@ func (s *Server) systemInfo(w http.ResponseWriter, r *http.Request) {
+ 			"auth", "catalog", "purchase-orders", "sales-orders",
+ 			"receiving", "putaway", "picking", "wave", "packing", "shipping",
+ 			"transfers", "cycle-counts", "lookup", "inventory-ledger",
++			"pos", "dockd", "inbound", "events", "snapshot", "webhooks",
++			"rma", "wms-tokens", "mesh", "audit-chain",
+ 		},
+ 	})
+ }
+diff --git a/wms-twin/internal/httpapi/server.go b/wms-twin/internal/httpapi/server.go
+index 2c06a9c..49b633a 100644
+--- a/wms-twin/internal/httpapi/server.go
++++ b/wms-twin/internal/httpapi/server.go
+@@ -14,16 +14,26 @@ import (
+ 
+ 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
+ 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/cyclecounts"
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/dockd"
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/events"
+ 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/fulfillment"
+ 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/identity"
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inbound"
+ 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
+ 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/lookup"
+ 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/picking"
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/pos"
+ 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/purchaseorders"
+ 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/receiving"
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/rma"
+ 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/salesorders"
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/snapshot"
+ 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/transfers"
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/webhooks"
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/wmsaudit"
+ 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/mesh"
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/security/wmstoken"
+ 	"github.com/yecharlot/PrismaTec-Core/core"
+ )
+ 
+@@ -40,6 +50,16 @@ type Server struct {
+ 	lookup           *lookup.Service
+ 	transfers        *transfers.Service
+ 	cycleCounts      *cyclecounts.Service
++	pos              *pos.Service
++	dockd            *dockd.Service
++	inbound          *inbound.Service
++	events           *events.Service
++	webhooks         *webhooks.Service
++	snapshot         *snapshot.Service
++	rma              *rma.Service
++	wmsTokens        *wmstoken.Store
++	wmsAudit         *wmsaudit.Service
++	mesh             *mesh.Mesh
+ 	token            string
+ 	users            *identity.Repository
+ 	jwtSecret        []byte
+@@ -64,17 +84,43 @@ func NewWithIdentity(node *core.Node, store *corestore.Store, token string, user
+ 	}
+ 	ledger := inventoryledger.New(store)
+ 	master := catalog.New(store, ledger)
+-	pos := purchaseorders.New(store, master)
++	poRepo := purchaseorders.New(store, master)
+ 	sos := salesorders.New(store, master)
++	ful := fulfillment.New(store, sos)
++	transport := node.Transport()
++	meshLayer := mesh.New(string(node.ID()), transport)
++	if transport != nil {
++		for _, p := range transport.Peers() {
++			addr := ""
++			if len(p.Addrs) > 0 {
++				addr = p.Addrs[0]
++			}
++			meshLayer.UpsertPeer(p.NodeID, addr)
++		}
++	}
++	auditSvc := wmsaudit.New(store, node.Audit())
++	ev := events.New(store, meshLayer)
++	wh := webhooks.New(store)
++	posSvc := pos.New(store, master, sos, ledger)
+ 	return &Server{
+ 		node: node, store: store, ledger: ledger, catalog: master,
+-		purchaseOrders: pos, salesOrders: sos,
+-		receiving:   receiving.New(store, master, pos, ledger),
++		purchaseOrders: poRepo, salesOrders: sos,
++		receiving:   receiving.New(store, master, poRepo, ledger),
+ 		picking:     picking.New(store, master, sos, ledger),
+-		fulfillment: fulfillment.New(store, sos),
++		fulfillment: ful,
+ 		lookup:      lookup.New(master, ledger, sos),
+ 		transfers:   transfers.New(master, ledger),
+ 		cycleCounts: cyclecounts.New(store, master, ledger),
++		pos:         posSvc,
++		dockd:       dockd.New(sos, master, ful),
++		inbound:     inbound.New(store, master, sos),
++		events:      ev,
++		webhooks:    wh,
++		snapshot:    snapshot.New(ledger),
++		rma:         rma.New(store, sos),
++		wmsTokens:   wmstoken.NewStore(store),
++		wmsAudit:    auditSvc,
++		mesh:        meshLayer,
+ 		token:       token,
+ 		users:       users, jwtSecret: append([]byte(nil), jwtSecret...),
+ 		maxLoginAttempts: maxLoginAttempts, loginLockout: loginLockout,
+@@ -87,7 +133,14 @@ func (s *Server) Handler() http.Handler {
+ 	mux.HandleFunc("/api/auth/", s.authRoute)
+ 	mux.HandleFunc("/api/admin/system-info", s.RequireAuth(s.systemInfo))
+ 	mux.HandleFunc("/api/admin/users", s.RequireAuth(s.adminUsers))
++	mux.HandleFunc("/api/admin/wms-tokens", s.RequireAuth(s.adminTokens))
++	mux.HandleFunc("/api/admin/wms-tokens/", s.RequireAuth(s.adminTokenRevoke))
++	mux.HandleFunc("/api/admin/audit", s.RequireAuth(s.auditRecent))
++	mux.HandleFunc("/api/admin/mesh", s.RequireAuth(s.meshStatus))
+ 	mux.HandleFunc("/api/admin/", s.RequireAuth(s.adminCatalog))
++	mux.HandleFunc("/api/v1/", s.v1Route)
++	mux.HandleFunc("/api/rma", s.RequireAuth(s.rmaRoutes))
++	mux.HandleFunc("/api/rma/", s.RequireAuth(s.rmaRoutes))
+ 	mux.HandleFunc("/api/receiving/", s.RequireAuth(s.receivingRoute))
+ 	mux.HandleFunc("/api/putaway/", s.RequireAuth(s.putawayRoute))
+ 	mux.HandleFunc("/api/picking/", s.RequireAuth(s.pickingRoute))
+@@ -111,7 +164,7 @@ func withCORS(next http.Handler) http.Handler {
+ 		}
+ 		w.Header().Set("Access-Control-Allow-Origin", origin)
+ 		w.Header().Set("Access-Control-Allow-Credentials", "true")
+-		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-CSRF-Token, X-Requested-With")
++		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-CSRF-Token, X-Requested-With, X-WMS-Token")
+ 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+ 		w.Header().Set("Vary", "Origin")
+ 		if r.Method == http.MethodOptions {
+diff --git a/wms-twin/internal/mesh/mesh.go b/wms-twin/internal/mesh/mesh.go
+new file mode 100644
+index 0000000..45e79b9
+--- /dev/null
++++ b/wms-twin/internal/mesh/mesh.go
+@@ -0,0 +1,180 @@
++// Package mesh provides a Kademlia-inspired peer table and gossip fan-out
++// on top of PrismaTec-Core network.Transport (Broadcast / OnMessage).
++package mesh
++
++import (
++	"context"
++	"crypto/sha256"
++	"encoding/hex"
++	"encoding/json"
++	"sort"
++	"sync"
++	"time"
++
++	"github.com/yecharlot/PrismaTec-Core/network"
++)
++
++const (
++	MsgGossip = "wms.gossip"
++	MsgPing   = "wms.ping"
++)
++
++type Peer struct {
++	NodeID   string    `json:"node_id"`
++	Addr     string    `json:"addr,omitempty"`
++	LastSeen time.Time `json:"last_seen"`
++	Distance string    `json:"distance,omitempty"`
++}
++
++type GossipEnvelope struct {
++	Topic     string          `json:"topic"`
++	MessageID string          `json:"message_id"`
++	Payload   json.RawMessage `json:"payload"`
++	TTL       int             `json:"ttl"`
++	Origin    string          `json:"origin"`
++	SentAt    time.Time       `json:"sent_at"`
++}
++
++type Mesh struct {
++	selfID    string
++	transport network.Transport
++	mu        sync.Mutex
++	peers     map[string]Peer
++	seen      map[string]time.Time
++	handlers  map[string]func(GossipEnvelope)
++}
++
++func New(selfID string, transport network.Transport) *Mesh {
++	m := &Mesh{
++		selfID: selfID, transport: transport,
++		peers: make(map[string]Peer), seen: make(map[string]time.Time),
++		handlers: make(map[string]func(GossipEnvelope)),
++	}
++	if transport != nil {
++		transport.OnMessage(m.onMessage)
++	}
++	return m
++}
++
++func (m *Mesh) onMessage(msg network.Message) {
++	switch msg.Type {
++	case MsgPing:
++		m.mu.Lock()
++		m.peers[msg.From] = Peer{NodeID: msg.From, LastSeen: time.Now().UTC(), Distance: xorDistance(m.selfID, msg.From)}
++		m.mu.Unlock()
++	case MsgGossip:
++		var env GossipEnvelope
++		if err := json.Unmarshal(msg.Payload, &env); err != nil {
++			return
++		}
++		m.handleGossip(env)
++	}
++}
++
++func (m *Mesh) handleGossip(env GossipEnvelope) {
++	m.mu.Lock()
++	if _, ok := m.seen[env.MessageID]; ok {
++		m.mu.Unlock()
++		return
++	}
++	m.seen[env.MessageID] = time.Now().UTC()
++	if len(m.seen) > 5000 {
++		for id, t := range m.seen {
++			if time.Since(t) > time.Hour {
++				delete(m.seen, id)
++			}
++		}
++	}
++	h := m.handlers[env.Topic]
++	m.mu.Unlock()
++	if h != nil {
++		h(env)
++	}
++	if env.TTL > 1 && m.transport != nil {
++		env.TTL--
++		payload, _ := json.Marshal(env)
++		_ = m.transport.Broadcast(context.Background(), network.Message{
++			Type: MsgGossip, From: m.selfID, Payload: payload, SentAt: time.Now().UTC(),
++		})
++	}
++}
++
++func (m *Mesh) OnTopic(topic string, h func(GossipEnvelope)) {
++	m.mu.Lock()
++	m.handlers[topic] = h
++	m.mu.Unlock()
++}
++
++func (m *Mesh) Publish(topic string, payload any) error {
++	raw, err := json.Marshal(payload)
++	if err != nil {
++		return err
++	}
++	sum := sha256.Sum256(append([]byte(topic), raw...))
++	env := GossipEnvelope{
++		Topic: topic, MessageID: hex.EncodeToString(sum[:16]),
++		Payload: raw, TTL: 3, Origin: m.selfID, SentAt: time.Now().UTC(),
++	}
++	m.handleGossip(env)
++	if m.transport == nil {
++		return nil
++	}
++	body, _ := json.Marshal(env)
++	return m.transport.Broadcast(context.Background(), network.Message{
++		Type: MsgGossip, From: m.selfID, Payload: body, SentAt: time.Now().UTC(),
++	})
++}
++
++func (m *Mesh) UpsertPeer(nodeID, addr string) {
++	m.mu.Lock()
++	defer m.mu.Unlock()
++	m.peers[nodeID] = Peer{NodeID: nodeID, Addr: addr, LastSeen: time.Now().UTC(), Distance: xorDistance(m.selfID, nodeID)}
++}
++
++func (m *Mesh) Closest(target string, n int) []Peer {
++	m.mu.Lock()
++	defer m.mu.Unlock()
++	list := make([]Peer, 0, len(m.peers))
++	for _, p := range m.peers {
++		p.Distance = xorDistance(target, p.NodeID)
++		list = append(list, p)
++	}
++	sort.Slice(list, func(i, j int) bool { return list[i].Distance < list[j].Distance })
++	if n > len(list) {
++		n = len(list)
++	}
++	if n < 0 {
++		n = 0
++	}
++	return list[:n]
++}
++
++func (m *Mesh) Peers() []Peer {
++	m.mu.Lock()
++	defer m.mu.Unlock()
++	out := make([]Peer, 0, len(m.peers))
++	for _, p := range m.peers {
++		out = append(out, p)
++	}
++	sort.Slice(out, func(i, j int) bool { return out[i].NodeID < out[j].NodeID })
++	return out
++}
++
++func (m *Mesh) PingAll(ctx context.Context) {
++	if m.transport == nil {
++		return
++	}
++	_ = m.transport.Broadcast(ctx, network.Message{
++		Type: MsgPing, From: m.selfID, Payload: []byte(`{}`), SentAt: time.Now().UTC(),
++	})
++}
++
++func xorDistance(a, b string) string {
++	ha := sha256.Sum256([]byte(a))
++	hb := sha256.Sum256([]byte(b))
++	var out [32]byte
++	for i := 0; i < 32; i++ {
++		out[i] = ha[i] ^ hb[i]
++	}
++	return hex.EncodeToString(out[:])
++}
+diff --git a/wms-twin/internal/security/wmstoken/token.go b/wms-twin/internal/security/wmstoken/token.go
+new file mode 100644
+index 0000000..12d6ec6
+--- /dev/null
++++ b/wms-twin/internal/security/wmstoken/token.go
+@@ -0,0 +1,225 @@
++// Package wmstoken implements scoped integration tokens (not JWT user sessions).
++package wmstoken
++
++import (
++	"crypto/rand"
++	"crypto/subtle"
++	"encoding/hex"
++	"encoding/json"
++	"errors"
++	"fmt"
++	"sort"
++	"strings"
++	"sync"
++	"time"
++
++	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
++	"golang.org/x/crypto/bcrypt"
++)
++
++const kind = "wms_token"
++
++var (
++	ErrUnauthorized = errors.New("invalid or revoked wms token")
++	ErrScope        = errors.New("endpoint_scope_violation")
++	ErrInactive     = errors.New("token inactive")
++)
++
++var KnownScopes = []string{
++	"pos.availability", "pos.validate-cart", "pos.checkout", "pos.refund", "pos.sales-orders", "pos.reference-orders", "pos.dispatch",
++	"dockd.orders", "dockd.items", "dockd.ship", "dockd.void-ship",
++	"inbound.mapping-schema", "inbound.write",
++	"events.read", "events.ack", "snapshot.inventory", "webhooks.manage",
++}
++
++type TokenRecord struct {
++	TokenID     string     `json:"token_id"`
++	Name        string     `json:"name"`
++	SecretHash  string     `json:"secret_hash"`
++	Endpoints   []string   `json:"endpoints"`
++	WarehouseID *int64     `json:"warehouse_id,omitempty"`
++	Active      bool       `json:"active"`
++	CreatedAt   time.Time  `json:"created_at"`
++	LastUsedAt  *time.Time `json:"last_used_at,omitempty"`
++}
++
++type PublicToken struct {
++	TokenID     string    `json:"token_id"`
++	Name        string    `json:"name"`
++	Endpoints   []string  `json:"endpoints"`
++	WarehouseID *int64    `json:"warehouse_id,omitempty"`
++	Active      bool      `json:"active"`
++	CreatedAt   time.Time `json:"created_at"`
++	Token       string    `json:"token,omitempty"`
++}
++
++type Store struct {
++	store *corestore.Store
++	mu    sync.Mutex
++}
++
++func NewStore(store *corestore.Store) *Store { return &Store{store: store} }
++
++func (s *Store) Create(name string, endpoints []string, warehouseID *int64) (PublicToken, error) {
++	s.mu.Lock()
++	defer s.mu.Unlock()
++	plain, err := randomToken()
++	if err != nil {
++		return PublicToken{}, err
++	}
++	hash, err := bcrypt.GenerateFromPassword([]byte(plain), 12)
++	if err != nil {
++		return PublicToken{}, err
++	}
++	raw := make([]byte, 8)
++	_, _ = rand.Read(raw)
++	id := "wt_" + hex.EncodeToString(raw)
++	rec := TokenRecord{
++		TokenID: id, Name: strings.TrimSpace(name), SecretHash: string(hash),
++		Endpoints: normalizeScopes(endpoints), WarehouseID: warehouseID,
++		Active: true, CreatedAt: time.Now().UTC(),
++	}
++	data, _ := json.Marshal(rec)
++	if _, err := s.store.Put(kind, rec.TokenID, data); err != nil {
++		return PublicToken{}, err
++	}
++	return PublicToken{
++		TokenID: rec.TokenID, Name: rec.Name, Endpoints: rec.Endpoints,
++		WarehouseID: rec.WarehouseID, Active: true, CreatedAt: rec.CreatedAt, Token: plain,
++	}, nil
++}
++
++func (s *Store) Authenticate(plain, requiredScope string) (TokenRecord, error) {
++	s.mu.Lock()
++	defer s.mu.Unlock()
++	plain = strings.TrimSpace(plain)
++	if plain == "" {
++		return TokenRecord{}, ErrUnauthorized
++	}
++	records, err := s.store.List(kind)
++	if err != nil {
++		return TokenRecord{}, err
++	}
++	for _, r := range records {
++		var rec TokenRecord
++		if err := json.Unmarshal(r.Data, &rec); err != nil {
++			continue
++		}
++		if err := bcrypt.CompareHashAndPassword([]byte(rec.SecretHash), []byte(plain)); err != nil {
++			continue
++		}
++		if !rec.Active {
++			return TokenRecord{}, ErrInactive
++		}
++		if requiredScope != "" && !scopeAllows(rec.Endpoints, requiredScope) {
++			return TokenRecord{}, ErrScope
++		}
++		now := time.Now().UTC()
++		rec.LastUsedAt = &now
++		data, _ := json.Marshal(rec)
++		_, _ = s.store.Put(kind, rec.TokenID, data)
++		return rec, nil
++	}
++	return TokenRecord{}, ErrUnauthorized
++}
++
++func (s *Store) List() ([]PublicToken, error) {
++	s.mu.Lock()
++	defer s.mu.Unlock()
++	records, err := s.store.List(kind)
++	if err != nil {
++		return nil, err
++	}
++	out := make([]PublicToken, 0, len(records))
++	for _, r := range records {
++		var rec TokenRecord
++		if err := json.Unmarshal(r.Data, &rec); err != nil {
++			continue
++		}
++		out = append(out, PublicToken{
++			TokenID: rec.TokenID, Name: rec.Name, Endpoints: rec.Endpoints,
++			WarehouseID: rec.WarehouseID, Active: rec.Active, CreatedAt: rec.CreatedAt,
++		})
++	}
++	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.Before(out[j].CreatedAt) })
++	return out, nil
++}
++
++func (s *Store) Revoke(tokenID string) error {
++	s.mu.Lock()
++	defer s.mu.Unlock()
++	recRaw, ok, err := s.store.Get(kind, tokenID)
++	if err != nil {
++		return err
++	}
++	if !ok {
++		return fmt.Errorf("token not found")
++	}
++	var rec TokenRecord
++	if err := json.Unmarshal(recRaw.Data, &rec); err != nil {
++		return err
++	}
++	rec.Active = false
++	data, _ := json.Marshal(rec)
++	_, err = s.store.Put(kind, tokenID, data)
++	return err
++}
++
++func scopeAllows(have []string, need string) bool {
++	need = strings.TrimSpace(need)
++	for _, s := range have {
++		if s == "*" || s == need {
++			return true
++		}
++		if strings.HasSuffix(s, ".*") && strings.HasPrefix(need, strings.TrimSuffix(s, ".*")+".") {
++			return true
++		}
++	}
++	return false
++}
++
++func normalizeScopes(in []string) []string {
++	seen := map[string]struct{}{}
++	out := make([]string, 0, len(in))
++	for _, s := range in {
++		s = strings.TrimSpace(s)
++		if s == "" {
++			continue
++		}
++		if _, ok := seen[s]; ok {
++			continue
++		}
++		seen[s] = struct{}{}
++		out = append(out, s)
++	}
++	if len(out) == 0 {
++		return []string{"*"}
++	}
++	sort.Strings(out)
++	return out
++}
++
++func randomToken() (string, error) {
++	b := make([]byte, 32)
++	if _, err := rand.Read(b); err != nil {
++		return "", err
++	}
++	return "wms_" + hex.EncodeToString(b), nil
++}
++
++func ConstantTimeMatch(a, b string) bool {
++	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
++}
++
++func FormatAuthError(err error) (int, map[string]string) {
++	switch {
++	case errors.Is(err, ErrScope):
++		return 403, map[string]string{"error": "endpoint_scope_violation"}
++	case errors.Is(err, ErrInactive):
++		return 403, map[string]string{"error": "token_inactive"}
++	case errors.Is(err, ErrUnauthorized):
++		return 401, map[string]string{"error": "Unauthorized"}
++	default:
++		return 500, map[string]string{"error": fmt.Sprint(err)}
++	}
++}
