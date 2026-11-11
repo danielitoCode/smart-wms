@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inbound"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/fulfillment"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/pos"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/rma"
@@ -251,11 +252,20 @@ func (s *Server) dockdV1(w http.ResponseWriter, r *http.Request, rest string) {
 		})(w, r)
 	case r.Method == http.MethodPost && len(parts) == 3 && parts[0] == "orders" && parts[2] == "void-ship":
 		s.requireWMSToken("dockd.void-ship", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
-			out, err := s.dockd.VoidShip(parts[1], rec.Name)
-			if err != nil {
-				writeJSON(w, 404, map[string]string{"error": err.Error()})
+			var in struct { Reason string `json:"reason"` }
+			if err := decodeBody(r, &in); err != nil {
+				writeJSON(w, 400, map[string]string{"error": "reason is required"})
 				return
 			}
+			allowed := []int64{}
+			if rec.WarehouseID != nil { allowed = []int64{*rec.WarehouseID} }
+			out, err := s.dockd.VoidShipWithReason(parts[1], rec.Name, in.Reason, allowed, rec.WarehouseID == nil)
+			if err != nil {
+				if errors.Is(err, fulfillment.ErrScope) { writeJSON(w, 404, map[string]string{"error": "not found"}) } else if errors.Is(err, fulfillment.ErrState) { writeJSON(w, 409, map[string]string{"error": err.Error()}) } else { writeJSON(w, 400, map[string]string{"error": err.Error()}) }
+				return
+			}
+			if s.events != nil { _, _ = s.events.Emit("dockd.ship.voided", out) }
+			if s.wmsAudit != nil { _, _ = s.wmsAudit.Record(rec.TokenID, "dockd.ship.void", parts[1], true, in.Reason, nil) }
 			writeJSON(w, 200, out)
 		})(w, r)
 	default:
