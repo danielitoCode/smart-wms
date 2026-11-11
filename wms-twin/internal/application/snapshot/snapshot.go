@@ -19,8 +19,18 @@ type InventorySnapshot struct {
 	WarehouseID int64            `json:"warehouse_id,omitempty"`
 	Version     uint64           `json:"ledger_version"`
 	CreatedAt   time.Time        `json:"created_at"`
-	Rows        []map[string]any `json:"rows"`
+	Rows        []InventoryRow `json:"rows"`
 	SHA256      string           `json:"sha256"`
+}
+
+type InventoryRow struct {
+	WarehouseID int64  `json:"warehouse_id"`
+	BinID       int64  `json:"bin_id"`
+	ItemID      int64  `json:"item_id"`
+	LotNumber   string `json:"lot_number,omitempty"`
+	OnHand      int64  `json:"on_hand"`
+	Allocated   int64  `json:"allocated"`
+	Available   int64  `json:"available"`
 }
 
 type Service struct {
@@ -61,17 +71,21 @@ func (s *Service) CreateInventory(warehouseID int64) (InventorySnapshot, error) 
 	if s.store == nil {
 		return InventorySnapshot{}, fmt.Errorf("snapshot store is not configured")
 	}
-	view, err := s.Inventory(warehouseID)
+	balances, version, err := s.ledger.List()
 	if err != nil {
 		return InventorySnapshot{}, err
 	}
-	rows, ok := view["rows"].([]map[string]any)
-	if !ok {
-		return InventorySnapshot{}, fmt.Errorf("inventory snapshot rows have an unexpected type")
-	}
-	version, ok := view["version"].(uint64)
-	if !ok {
-		return InventorySnapshot{}, fmt.Errorf("inventory snapshot version has an unexpected type")
+	rows := make([]InventoryRow, 0, len(balances))
+	for _, balance := range balances {
+		if warehouseID != 0 && balance.WarehouseID != warehouseID {
+			continue
+		}
+		rows = append(rows, InventoryRow{
+			WarehouseID: balance.WarehouseID, BinID: balance.BinID,
+			ItemID: balance.ItemID, LotNumber: balance.LotNumber,
+			OnHand: balance.OnHand, Allocated: balance.Allocated,
+			Available: balance.OnHand - balance.Allocated,
+		})
 	}
 	now := time.Now().UTC()
 	id := strconv.FormatInt(now.UnixNano(), 10)
