@@ -390,3 +390,21 @@ func (s *Service) reversePOSDispatch(shipment *Shipment, operationID string) err
 	}
 	return nil
 }
+
+func (s *Service) VoidLegacy(soID int64, actor, reason string) (Shipment, error) {
+	if s.store == nil { return Shipment{}, fmt.Errorf("fulfillment store is not configured") }
+	key := strconv.FormatInt(soID,10)
+	record, exists, err := s.store.Get(shipmentKind,key)
+	if err != nil { return Shipment{}, err }
+	if !exists { return Shipment{}, ErrNotFound }
+	var shipment Shipment
+	if err := json.Unmarshal(record.Data,&shipment); err != nil { return Shipment{}, err }
+	operationID := shipment.VoidOperationID
+	if operationID == "" {
+		// The shipment timestamp changes on every new fulfillment generation.
+		// This keeps retries of the same legacy request idempotent without
+		// reusing a compensation operation after a later redispatch.
+		operationID = fmt.Sprintf("legacy-void-%d-%d",soID,shipment.ShippedAt.UTC().UnixNano())
+	}
+	return s.VoidWithID(soID,actor,reason,operationID)
+}
