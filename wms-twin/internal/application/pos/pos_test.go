@@ -195,3 +195,31 @@ func TestRefundAggregatesRepeatedItemBinLinesIntoOneLedgerMovement(t *testing.T)
 		t.Fatalf("refund must restock both units exactly once, got %+v",balances)
 	}
 }
+
+func TestVoidingPhoneDispatchRestoresOnHandAndReservation(t *testing.T) {
+	f := newPOSFixture(t)
+	so, _, err := f.service.CheckoutTransaction(checkoutInput(f,"checkout-phone-void",true),"cashier-1")
+	if err != nil { t.Fatal(err) }
+	so.Status = salesorders.StatusPicked
+	for i := range so.Lines {
+		so.Lines[i].QuantityPicked = so.Lines[i].QuantityOrdered
+		so.Lines[i].Status = salesorders.LinePicked
+	}
+	if err := f.sos.Save(so); err != nil { t.Fatal(err) }
+	if _, err := f.service.DispatchWithDetails(so.SONumber,"UPS","TRACK-VOID","cashier-1","dispatch-phone-void",[]int64{f.warehouseID},false); err != nil { t.Fatal(err) }
+	balances, _, err := f.ledger.List()
+	if err != nil { t.Fatal(err) }
+	if len(balances)!=1 || balances[0].OnHand!=8 || balances[0].Allocated!=0 { t.Fatalf("unexpected dispatched balance: %+v",balances) }
+	first, err := f.service.fulfill.VoidWithID(so.SOID,"admin","customer cancelled","void-phone-1")
+	if err != nil { t.Fatal(err) }
+	if first.Status!="VOIDED" { t.Fatalf("shipment was not voided: %+v",first) }
+	balances, _, err = f.ledger.List()
+	if err != nil { t.Fatal(err) }
+	if len(balances)!=1 || balances[0].OnHand!=10 || balances[0].Allocated!=2 { t.Fatalf("void did not restore the pre-dispatch inventory reservation: %+v",balances) }
+	second, err := f.service.fulfill.VoidWithID(so.SOID,"admin","customer cancelled","void-phone-1")
+	if err != nil { t.Fatal(err) }
+	if !second.Replayed { t.Fatalf("expected idempotent void replay: %+v",second) }
+	balances, _, err = f.ledger.List()
+	if err != nil { t.Fatal(err) }
+	if len(balances)!=1 || balances[0].OnHand!=10 || balances[0].Allocated!=2 { t.Fatalf("void replay changed inventory: %+v",balances) }
+}
