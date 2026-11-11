@@ -81,3 +81,8 @@ Para tender cash, enviar amount_cents, amount_tendered_cents y change_cents. Par
 ### Inbound
 
 Cada registro puede incluir `source_system`, `external_id` y `external_version`. La combinación identifica el registro de origen. Repetición idéntica devuelve el resultado anterior; mismo external_version con otro contenido devuelve conflicto. Una versión mayor todavía no aplica update automático.
+
+
+### Snapshot restore — respaldo previo
+
+El endpoint devuelve `backup_snapshot_id` además del resultado del ledger. El cliente debe conservar ese ID para rollback operativo. Repetir el mismo operation_id devuelve el mismo backup y resultado; usarlo con otro snapshot/versión produce conflicto.
