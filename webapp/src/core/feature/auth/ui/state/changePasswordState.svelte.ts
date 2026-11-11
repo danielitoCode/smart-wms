@@ -1,7 +1,24 @@
 import { createAuthDependencies } from '../../di/auth.dependencies';
-import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
+import { ApiError } from '../../../../infrastructure/errors/ApiError';
 
 const deps = createAuthDependencies();
+
+function changePasswordErrorMessage(err: unknown): string {
+	if (err instanceof ApiError) {
+		if (err.isNetwork) return 'No se pudo conectar con el servidor. Comprueba la conexión e inténtalo de nuevo.';
+		if (err.status === 403) return 'La contraseña actual no es correcta o la sesión no tiene autorización.';
+		if (err.status === 400) {
+			const known: Record<string, string> = {
+				"Password cannot be 'admin'": 'La contraseña no puede ser «admin».',
+				'Password must be at least 8 characters': 'La contraseña debe tener al menos 8 caracteres.',
+				'Password must contain at least one letter': 'La contraseña debe contener al menos una letra.',
+				'Password must contain at least one digit': 'La contraseña debe contener al menos un número.'
+			};
+			return known[err.message] ?? 'La nueva contraseña no cumple los requisitos.';
+		}
+	}
+	return err instanceof Error ? err.message : 'No se pudo cambiar la contraseña.';
+}
 
 export function createChangePasswordState() {
 	let currentPassword = $state('');
@@ -20,16 +37,14 @@ export function createChangePasswordState() {
 		submitting = true;
 		try {
 			await deps.changePassword.execute({ currentPassword, newPassword });
-			// The backend invalidates the old JWT after a password change.
-			// Logout clears the cookies where possible and always clears local state.
 			try {
 				await deps.logout.execute();
 			} catch {
-				// The password is already changed; the old token is invalid regardless.
+				// Password change invalidates the old token; local session is cleared in finally.
 			}
 			return true;
 		} catch (err) {
-			error = toUserMessage(err, 'No se pudo cambiar la contraseña');
+			error = changePasswordErrorMessage(err);
 			return false;
 		} finally {
 			submitting = false;

@@ -7,11 +7,6 @@ export type EnsureAuthenticatedResult =
 	| { ok: true; user: User }
 	| { ok: false; reason: 'unauthorized' | 'unavailable'; message: string };
 
-/**
- * The HttpOnly cookie is intentionally not readable by the client.
- * Always validate it against GET /api/auth/me instead of treating local
- * storage or an in-memory flag as proof of authentication.
- */
 export class EnsureAuthenticatedUseCase {
 	constructor(private readonly repository: AuthRepository) {}
 
@@ -20,13 +15,10 @@ export class EnsureAuthenticatedUseCase {
 			const user = await this.repository.getCurrentUser();
 			return { ok: true, user };
 		} catch (err) {
-			if (err instanceof ApiError && err.isUnauthorized) {
+			// A 403 may represent a policy/permission rejection, not a missing session.
+			if (err instanceof ApiError && err.status === 401) {
 				authSession.clear();
-				return {
-					ok: false,
-					reason: 'unauthorized',
-					message: 'Sesión expirada o no válida'
-				};
+				return { ok: false, reason: 'unauthorized', message: 'Sesión expirada o no válida' };
 			}
 			return {
 				ok: false,
@@ -40,8 +32,8 @@ export class EnsureAuthenticatedUseCase {
 		if (err instanceof ApiError) {
 			if (err.code === 'timeout') return 'Tiempo de espera agotado al validar la sesión';
 			if (err.isNetwork) return 'No se pudo contactar al servidor de autenticación';
-			return err.message || 'No se pudo validar la sesión';
+			return 'No se pudo validar la sesión';
 		}
-		return err instanceof Error ? err.message : 'No se pudo validar la sesión';
+		return 'No se pudo validar la sesión';
 	}
 }

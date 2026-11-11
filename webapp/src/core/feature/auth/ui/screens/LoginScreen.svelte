@@ -1,10 +1,24 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { createLoginState } from '../state/loginState.svelte';
+	import { createAuthDependencies } from '../../di/auth.dependencies';
 
 	const state = createLoginState();
+	const auth = createAuthDependencies();
 	const passwordChanged = page.url.searchParams.get('passwordChanged') === '1';
+
+	onMount(() => {
+		void redirectIfAlreadyAuthenticated();
+	});
+
+	async function redirectIfAlreadyAuthenticated() {
+		const result = await auth.ensureAuthenticated.execute();
+		if (result.ok) {
+			await goto(result.user.mustChangePassword ? '/change-password' : '/inventory', { replaceState: true });
+		}
+	}
 
 	async function onSubmit(event: Event) {
 		event.preventDefault();
