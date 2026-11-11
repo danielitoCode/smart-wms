@@ -172,3 +172,8 @@ Extendí `internal/application/catalog`:
 La lista de artículos prioriza el preferred bin con prioridad 1 y cae al `default_bin_id` si no existe. La lista de proveedores admite búsqueda por nombre/contacto/email, estado y paginación.
 
 La persistencia de preferred bins en un agregado permite que la reasignación de prioridad sea un solo append Core. No la confundo con una transacción distribuida; la exclusión sigue siendo local al proceso.
+
+
+## Evidencia CI — catálogo extendido
+
+La ejecución `42975654846` de WMS twin validation terminó en success para `c32d3bed1ca754c681e19412d5c6614182ff1729`. Pasaron module verify, gofmt, vet, race tests y guard de documentación/alcance. El formato final quedó en `6b7d821277b29baf1754f3aa2038a1a85bf33a2d`. La suite general del repositorio `42975655011` seguía en curso.

@@ -189,3 +189,8 @@ La suite general del repositorio `42974487059` seguía ejecutándose. Esto no ca
 | GET/PUT/DELETE `/api/admin/vendors/{canonical_id}` | Igual ruta | Implementado; UUID |
 
 Diferencias pendientes: item detail no reproduce `inventory_id` ni metadatos SQL de inventory; faltan bloqueos de borrado por historial SO/PO; vendor delete no puede comprobar referencias a POs hasta portar compras; null semantics y errores Pydantic no son idénticos. No habilito todavía el frontend.
+
+
+## Estado actualizado de catálogo
+
+La autenticación y los catálogos warehouses/zones/bins/items/preferred-bins/vendors están conectados bajo `/api/admin`. Las Fases 03 y 04 pasaron WMS twin validation con race tests. No equivale a paridad global: compras, recepción, putaway, inventario SQL-equivalente, picking, packing, shipping, transferencias, conteos, usuarios/admin, integraciones y eventos siguen pendientes.

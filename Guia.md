@@ -223,3 +223,8 @@ Estoy ampliando el catálogo con `items`, `preferred-bins` y `vendors`. Los art�
 Porté GET/POST/PUT/DELETE de items, POST `/items/{id}/archive`, GET/POST/PUT/DELETE de preferred bins y GET/POST/GET-by-id/PUT/DELETE de vendors bajo `/api/admin`. Los artículos incluyen búsqueda SKU/nombre/UPC/MPN/barcode aliases, categoría, activo y paginación; el listado calcula la ubicación predeterminada dando prioridad al preferred bin 1. Los preferred bins solo admiten bins `Pickable`.
 
 Límites: el detalle de artículo devuelve balances sin `inventory_id` SQL; no hay historia de PO/SO para aplicar los bloqueos de borrado del original; el borrado de item se bloquea si quedan balances (incluso vacíos) o preferred mappings. Vendors aún no están vinculados a POs porque ese flujo no se ha portado. Las actualizaciones no reproducen completamente los valores JSON null de Pydantic. Validación CI pendiente.
+
+
+## Validación de Fase 04
+
+El commit de código `c32d3bed1ca754c681e19412d5c6614182ff1729` pasó WMS twin validation `42975654846`: guard de documentación/alcance, module verify, gofmt, vet y tests con `-race`. CI publicó el commit de formato `6b7d821277b29baf1754f3aa2038a1a85bf33a2d`, HEAD de la rama al documentar. La suite general `42975655011` seguía ejecutándose; no la marco como aprobada.

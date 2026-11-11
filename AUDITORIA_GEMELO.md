@@ -347,3 +347,13 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Riesgos:** no existe aún historia SO/PO; la eliminación de item protege balances y preferred mappings, pero el contrato de order-history se debe integrar al portar orders. Vendor no tiene aún referencias a PO. Detalle de inventario no tiene inventory_id SQL. Null semantics Pydantic no es exacta.
 - **Pruebas añadidas:** SKU único, preferred-bin Pickable, resecuencia, protección de borrado, archive/restore, ciclo de vendor y rutas HTTP.
 - **Validación:** pendiente del CI; no declaro tests ejecutados localmente.
+
+
+### AUD-0029 — Validación CI de catálogo extendido
+
+- **Commit probado:** `c32d3bed1ca754c681e19412d5c6614182ff1729`.
+- **Ejecución:** WMS twin validation `42975654846`, success.
+- **Controles:** module verify, gofmt, vet, tests con `-race`, guard documental y de alcance.
+- **Commit de formato publicado por CI:** `6b7d821277b29baf1754f3aa2038a1a85bf33a2d`.
+- **Suite general:** `42975655011` seguía en ejecución al registrar.
+- **Conclusión:** catálogo extendido validado en Go; paridad global aún no alcanzada.

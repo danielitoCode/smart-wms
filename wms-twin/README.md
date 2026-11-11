@@ -128,3 +128,8 @@ El gemelo incorpora rutas de catálogo extendido:
 - `/api/admin/vendors` (GET/POST), `/vendors/{canonical_id}` (GET/PUT/DELETE).
 
 Las ubicaciones preferidas solo aceptan bins Pickable y mantienen prioridades contiguas. Los proveedores usan UUID. Consulta `docs/FASE_04_CATALOGO_EXTENDIDO.md`. El gemelo continúa sin ser sustituto: faltan workflows operativos y pruebas diferenciales.
+
+
+## Estado CI de Fase 04
+
+WMS twin validation `42975654846` terminó en success, incluidos vet y tests con detector de carreras. El commit final con formato es `6b7d821277b29baf1754f3aa2038a1a85bf33a2d`. La suite general del repositorio `42975655011` seguía ejecutándose al registrar.

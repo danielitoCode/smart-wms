@@ -57,3 +57,8 @@ Pruebo SKU duplicado, bin Pickable, rechazo de staging, resecuencia 1..K, upsert
 ## Estado
 
 Validación CI pendiente. No habilito el frontend hasta completar los demás workflows y pruebas diferenciales.
+
+
+## Validación de Fase 04
+
+El catálogo extendido pasó WMS twin validation `42975654846`, con module verify, gofmt, vet, tests `-race` y guard documental/alcance. El HEAD final con formato es `6b7d821277b29baf1754f3aa2038a1a85bf33a2d`. La suite general seguía en curso; no la doy por aprobada.
