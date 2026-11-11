@@ -147,6 +147,16 @@ func (s *Service) Fulfill(in FulfillInput, allowed []int64, isAdmin bool) (Shipm
 		return Shipment{}, ErrScope
 	}
 	if s.store != nil {
+		// Phone POS orders must pass through DispatchWithDetails, which commits
+		// the reservation and on-hand movement before entering fulfillment.
+		saleRecords, readErr := s.store.List("wms_pos_sale")
+		if readErr != nil { return Shipment{}, readErr }
+		for _, record := range saleRecords {
+			var sale struct { SOID int64 `json:"so_id"`; PhoneOrder bool `json:"phone_order"`; Status string `json:"status"` }
+			if json.Unmarshal(record.Data,&sale) == nil && sale.SOID == so.SOID && sale.PhoneOrder && sale.Status != "DISPATCHING" {
+				return Shipment{}, fmt.Errorf("%w: phone POS order must use POS dispatch before fulfillment",ErrState)
+			}
+		}
 		if record, exists, readErr := s.store.Get(shipmentKind, strconv.FormatInt(so.SOID, 10)); readErr != nil {
 			return Shipment{}, readErr
 		} else if exists {
