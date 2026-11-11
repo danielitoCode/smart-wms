@@ -132,11 +132,13 @@ func (s *Server) posV1(w http.ResponseWriter, r *http.Request, rest string) {
 				}
 				return
 			}
+			var eventID string
 			if s.events != nil {
-				_, _ = s.events.Emit("pos.checkout", map[string]any{"so_id": so.SOID, "so_number": so.SONumber})
+				ev, _ := s.events.Emit("pos.checkout", map[string]any{"so_id": so.SOID, "so_number": so.SONumber})
+				eventID = ev.EventID
 			}
-			if s.webhooks != nil {
-				s.webhooks.Deliver("pos.checkout", so)
+			if s.webhooks != nil && eventID != "" {
+				_ = s.webhooks.DeliverEvent(eventID, "pos.checkout", so)
 			}
 			writeJSON(w, 201, so)
 		})(w, r)
@@ -242,11 +244,13 @@ func (s *Server) dockdV1(w http.ResponseWriter, r *http.Request, rest string) {
 				writeJSON(w, 400, map[string]string{"error": err.Error()})
 				return
 			}
+			var eventID string
 			if s.events != nil {
-				_, _ = s.events.Emit("dockd.ship", out)
+				ev, _ := s.events.Emit("dockd.ship", out)
+				eventID = ev.EventID
 			}
-			if s.webhooks != nil {
-				s.webhooks.Deliver("dockd.ship", out)
+			if s.webhooks != nil && eventID != "" {
+				_ = s.webhooks.DeliverEvent(eventID, "dockd.ship", out)
 			}
 			writeJSON(w, 200, out)
 		})(w, r)
