@@ -324,9 +324,12 @@ func (s *Service) reversePOSDispatch(shipment *Shipment, operationID string) err
 			return fmt.Errorf("%w: POS sale has refunds; shipment void requires a reconciled refund workflow", ErrState)
 		case "DISPATCHING":
 			return fmt.Errorf("%w: POS dispatch is still in progress", ErrState)
-		case "DISPATCHED", "COMPLETED":
-			// These are the only states in which the POS inventory movement
-			// is known to have completed and can safely be reversed.
+		case "DISPATCHED":
+			// A phone order reaches this state only after its reservation has
+			// been released and its on-hand stock has been committed.
+		case "COMPLETED":
+			// Checkout decrements on-hand stock immediately for counter sales.
+			if sale.PhoneOrder { return fmt.Errorf("%w: phone order must complete POS dispatch before shipment void", ErrState) }
 		default:
 			return nil
 		}
