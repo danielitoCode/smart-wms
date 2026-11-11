@@ -13,10 +13,10 @@ export function requiredPageKeysForPath(pathname: string): string[] {
 	if (pathname === '/items' || pathname.startsWith('/items/')) return ['items'];
 	if (pathname.startsWith('/management/backorders')) return ['backorders'];
 	if (pathname.startsWith('/management/count-approvals')) return ['count-approvals'];
-	if (pathname.startsWith('/management/fraud')) return ['fraud'];
-	if (pathname.startsWith('/management/inter-warehouse-transfers')) return ['inter-warehouse-transfers'];
+	if (pathname.startsWith('/management/fraud')) return ['sales-orders'];
+	if (pathname.startsWith('/management/inter-warehouse-transfers')) return ['transfer-orders'];
 	if (pathname.startsWith('/management/adjustments')) return ['adjustments'];
-	if (pathname.startsWith('/management/pos-activity')) return ['sales-orders'];
+	if (pathname.startsWith('/management/pos-activity')) return ['pos-activity'];
 	if (pathname.startsWith('/management/purchase-orders')) return ['purchase-orders'];
 	if (pathname.startsWith('/management/refunds')) return ['sales-orders'];
 	if (pathname.startsWith('/management/returns')) return ['sales-orders'];
