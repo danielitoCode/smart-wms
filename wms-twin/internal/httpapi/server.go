@@ -117,7 +117,7 @@ func NewWithIdentity(node *core.Node, store *corestore.Store, token string, user
 		events:      ev,
 		webhooks:    wh,
 		snapshot:    snapshot.New(store, ledger),
-		rma:         rma.New(store, sos),
+		rma:         rma.New(store, sos, master, ledger),
 		wmsTokens:   wmstoken.NewStore(store),
 		wmsAudit:    auditSvc,
 		mesh:        meshLayer,
