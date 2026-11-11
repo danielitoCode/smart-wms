@@ -38,7 +38,7 @@ type Service struct {
 
 func New(store *corestore.Store) *Service {
 	transport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
+		Proxy: nil,
 		TLSHandshakeTimeout: 5 * time.Second,
 		ResponseHeaderTimeout: 5 * time.Second,
 		DialContext: safeDialContext,
@@ -127,6 +127,9 @@ func validateSubscription(rawURL, secret string, eventTypes []string) error {
 	}
 	host := strings.TrimSuffix(strings.ToLower(parsed.Hostname()), ".")
 	if host == "localhost" || strings.HasSuffix(host, ".localhost") || strings.HasSuffix(host, ".local") || strings.HasSuffix(host, ".internal") {
+		return fmt.Errorf("webhook URL host is not publicly routable")
+	}
+	if ip := net.ParseIP(host); ip != nil && (ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsUnspecified() || ip.IsMulticast()) {
 		return fmt.Errorf("webhook URL host is not publicly routable")
 	}
 	if len(secret) < 32 || len(secret) > 4096 {
