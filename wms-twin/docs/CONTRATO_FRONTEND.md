@@ -34,3 +34,8 @@ La autenticación base ya está conectada: JWT HS256 de ocho horas, cookies Http
 ## Próxima implementación
 
 Completar catálogo de items, preferred bins y vendors; después purchase orders/receiving/putaway, inventario operativo, picking/packing/shipping, conteos/transferencias, usuarios/tokens, eventos/snapshots, conectores y webhooks. Cada ruta se compara con fixtures del backend original antes de habilitar el frontend. No hay paridad global todavía.
+
+
+## Estado de implementación actualizado
+
+La autenticación y el primer catálogo (warehouses/zones/bins) ya no son tareas futuras: ambos están implementados y la Fase 03 pasó CI. La Fase 04 añade items, preferred bins y vendors. El frontend original sigue bloqueado hasta completar los workflows y demostrar paridad con pruebas diferenciales.

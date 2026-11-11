@@ -20,7 +20,7 @@ func (s *Server) adminCatalog(w http.ResponseWriter, r *http.Request) {
 	}
 	path := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/admin/"), "/")
 	parts := strings.Split(path, "/")
-	if len(parts) == 0 || (parts[0] != "warehouses" && parts[0] != "zones" && parts[0] != "bins") {
+	if len(parts) == 0 || (parts[0] != "warehouses" && parts[0] != "zones" && parts[0] != "bins" && parts[0] != "items" && parts[0] != "preferred-bins" && parts[0] != "vendors") {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "Not found"})
 		return
 	}
@@ -36,6 +36,12 @@ func (s *Server) adminCatalog(w http.ResponseWriter, r *http.Request) {
 		s.zoneRoutes(w, r, user, parts[1:])
 	case "bins":
 		s.binRoutes(w, r, user, parts[1:])
+	case "items":
+		s.itemRoutes(w, r, parts[1:])
+	case "preferred-bins":
+		s.preferredBinRoutes(w, r, parts[1:])
+	case "vendors":
+		s.vendorRoutes(w, r, parts[1:])
 	}
 }
 

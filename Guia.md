@@ -214,3 +214,12 @@ La ejecución general `Dependency Audit` `42899616007` sigue fallando en npm-aud
 ## Validación de Fase 03
 
 El commit de código `bb645444a830cee3b244a3f9d576b4d2b9e3433c` pasó WMS twin validation `42974486856`: guard de documentación/alcance, module verify, gofmt, vet y tests con `-race`. El workflow publicó el commit de formato `ccf1934b2640feb45df852d515316be73d408de1`, que es el HEAD actual de la rama al documentar. La suite general del repositorio `42974487059` seguía ejecutándose; no la marco como aprobada.
+
+
+## Fase 04 — artículos, ubicaciones preferidas y proveedores
+
+Estoy ampliando el catálogo con `items`, `preferred-bins` y `vendors`. Los artículos tienen IDs enteros reservados en el organismo de secuencias; los proveedores usan UUID canónico y UUID externo. Las ubicaciones preferidas se almacenan como un agregado único Core-backed, para que la reasignación de prioridades de un artículo quede en un solo append y mantenga la jerarquía 1..K sin empates.
+
+Porté GET/POST/PUT/DELETE de items, POST `/items/{id}/archive`, GET/POST/PUT/DELETE de preferred bins y GET/POST/GET-by-id/PUT/DELETE de vendors bajo `/api/admin`. Los artículos incluyen búsqueda SKU/nombre/UPC/MPN/barcode aliases, categoría, activo y paginación; el listado calcula la ubicación predeterminada dando prioridad al preferred bin 1. Los preferred bins solo admiten bins `Pickable`.
+
+Límites: el detalle de artículo devuelve balances sin `inventory_id` SQL; no hay historia de PO/SO para aplicar los bloqueos de borrado del original; el borrado de item se bloquea si quedan balances (incluso vacíos) o preferred mappings. Vendors aún no están vinculados a POs porque ese flujo no se ha portado. Las actualizaciones no reproducen completamente los valores JSON null de Pydantic. Validación CI pendiente.

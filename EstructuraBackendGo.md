@@ -160,3 +160,15 @@ El repositorio serializa sus operaciones dentro del proceso. Esto no constituye 
 ## Evidencia de validación de Fase 03
 
 La ejecución WMS twin validation `42974486856` terminó en success para `bb645444a830cee3b244a3f9d576b4d2b9e3433c`. Pasaron guard documental/de alcance, module verify, gofmt, vet y race tests. CI publicó formato en `ccf1934b2640feb45df852d515316be73d408de1`. La suite general `42974487059` seguía en curso.
+
+
+## Fase 04 — catálogo extendido
+
+Extendí `internal/application/catalog`:
+- `Item`: SKU/UPC únicos, atributos, estado, ubicación predeterminada, búsqueda y secuencia entera.
+- `PreferredBin`: agregado único `preferred-bins/global`, upsert por item+bin, solo bin Pickable y resecuencia contigua 1..K sin empates.
+- `Vendor`: UUID canónico/externo, contactos, direcciones, datos fiscales, términos de pago y estado activo.
+
+La lista de artículos prioriza el preferred bin con prioridad 1 y cae al `default_bin_id` si no existe. La lista de proveedores admite búsqueda por nombre/contacto/email, estado y paginación.
+
+La persistencia de preferred bins en un agregado permite que la reasignación de prioridad sea un solo append Core. No la confundo con una transacción distribuida; la exclusión sigue siendo local al proceso.

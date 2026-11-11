@@ -625,6 +625,15 @@ func (r *Repository) DeleteBin(id int64) error {
 			}
 		}
 	}
+	preferred, err := r.loadPreferredLocked()
+	if err != nil {
+		return err
+	}
+	for _, mapping := range preferred.Rows {
+		if mapping.BinID == id {
+			return fmt.Errorf("%w: bin has preferred-bin mappings", ErrDependency)
+		}
+	}
 	return r.store.Delete(binKind, strconv.FormatInt(id, 10))
 }
 

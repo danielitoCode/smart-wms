@@ -85,3 +85,8 @@ El endpoint técnico `/api/twin/records/*` no es el contrato de negocio. El fron
 El corte de warehouses/zones/bins pasó WMS twin validation `42974486856`, incluidos gofmt, vet, tests con race detector y guard de documentación/alcance. El código inicial se corrigió tras un fallo de vet por variables sombreadas. El HEAD con formato es `ccf1934b2640feb45df852d515316be73d408de1`.
 
 La suite general del repositorio seguía en ejecución. El frontend original debe continuar conectado al backend Flask hasta completar las demás rutas y las pruebas diferenciales.
+
+
+## Actualización posterior — catálogo extendido
+
+La Fase 04 ya incorpora preferred bins, por lo que el borrado de bins también comprueba las asignaciones preferidas. El borrado de items se protege ante balances y preferred mappings. Las diferencias históricas SO/PO y los IDs SQL de inventario siguen pendientes porque los módulos de órdenes y el modelo SQL original no existen en el gemelo.

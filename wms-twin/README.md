@@ -118,3 +118,13 @@ El corte `5d8d334bb24dc21bf2609f8c8089092297563de8` pasó WMS twin validation `4
 WMS twin validation `42974486856` terminó correctamente. Pasaron guard de alcance y documentación, verificación del módulo, gofmt, vet y tests con detector de carreras. El commit final de formato es `ccf1934b2640feb45df852d515316be73d408de1`.
 
 La suite general de pruebas del repositorio aún estaba ejecutándose al registrar esta actualización. Esta validación no autoriza cambiar el frontend ni declara el gemelo completo.
+
+
+## Fase 04 — artículos, ubicaciones preferidas y proveedores
+
+El gemelo incorpora rutas de catálogo extendido:
+- `/api/admin/items` (GET/POST), `/items/{id}` (GET/PUT/DELETE), `/items/{id}/archive` (POST).
+- `/api/admin/preferred-bins` (GET/POST), `/preferred-bins/{id}` (PUT/DELETE).
+- `/api/admin/vendors` (GET/POST), `/vendors/{canonical_id}` (GET/PUT/DELETE).
+
+Las ubicaciones preferidas solo aceptan bins Pickable y mantienen prioridades contiguas. Los proveedores usan UUID. Consulta `docs/FASE_04_CATALOGO_EXTENDIDO.md`. El gemelo continúa sin ser sustituto: faltan workflows operativos y pruebas diferenciales.

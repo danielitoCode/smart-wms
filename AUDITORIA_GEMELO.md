@@ -336,3 +336,14 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Corrección:** variables temporales y asignación explícita a los filtros externos.
 - **CI:** WMS twin validation `42974486856` success; module verify, gofmt, vet, race tests y guard documental/alcance aprobados.
 - **Suite general:** `42974487059` seguía en curso al registrar.
+
+
+### AUD-0028 — Catálogo de artículos, ubicaciones preferidas y proveedores
+
+- **Archivos:** `internal/application/catalog/catalog_extra.go`, `internal/httpapi/catalog_extra.go`, tests de catálogo y HTTP; actualización de `catalog.go` y `httpapi/catalog.go`.
+- **Detonante:** completar entidades maestras necesarias para inventario, putaway y compras.
+- **Cambio:** CRUD de artículos/proveedores, archive toggle, filtros y paginación; preferred bins con upsert, restricción Pickable y resecuencia estricta 1..K.
+- **Persistencia:** artículos en organismos individuales; proveedores en organismos UUID; preferred bins en un agregado Core único para una mutación de prioridad atómica dentro de ese organismo.
+- **Riesgos:** no existe aún historia SO/PO; la eliminación de item protege balances y preferred mappings, pero el contrato de order-history se debe integrar al portar orders. Vendor no tiene aún referencias a PO. Detalle de inventario no tiene inventory_id SQL. Null semantics Pydantic no es exacta.
+- **Pruebas añadidas:** SKU único, preferred-bin Pickable, resecuencia, protección de borrado, archive/restore, ciclo de vendor y rutas HTTP.
+- **Validación:** pendiente del CI; no declaro tests ejecutados localmente.

@@ -84,3 +84,8 @@ El backend original registra `admin_bp` en `/api/admin`. En el gemelo implement�
 | GET, PUT, DELETE | `/api/admin/bins/{bin_id}` | Sí |
 
 Los métodos y DTO principales se contrastaron con `api/routes/admin/admin_warehouse.py` y los schemas. Quedan diferencias declaradas: GET individual de zone no forma parte del contrato original; detalle de bin todavía no enriquece SKU/nombre; reglas de borrado no consideran preferred_bins; validación y null semantics no reproducen Pydantic al 100%.
+
+
+## Fase 04 — rutas adicionales portadas
+
+Añadí las rutas de items, preferred bins y vendors al prefijo `/api/admin`. El contrato de referencia está en `api/routes/admin/admin_items.py`, `api/routes/admin/admin_vendors.py` y sus schemas. Items admite archive toggle; preferred bins permite upsert y reordena prioridades sin empates; vendors usa UUID canónico. Las rutas están cubiertas por JWT y permisos de página, pero aún no hay paridad global ni pruebas diferenciales Flask/Go.

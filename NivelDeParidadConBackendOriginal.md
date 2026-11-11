@@ -174,3 +174,18 @@ El commit probado es `5d8d334bb24dc21bf2609f8c8089092297563de8`; el formato fina
 La primera validación encontró dos errores de compilación por sombreado de variables al leer filtros de bins. Los corregí en `bb645444a830cee3b244a3f9d576b4d2b9e3433c`. El WMS twin validation `42974486856` aprobó el código, incluidos `go vet` y tests `-race`. El commit de formato resultante es `ccf1934b2640feb45df852d515316be73d408de1`.
 
 La suite general del repositorio `42974487059` seguía ejecutándose. Esto no cambia la conclusión: datos maestros iniciales implementados, gemelo global todavía no sustituible.
+
+
+## Fase 04 — estado de paridad de catálogo
+
+| Contrato Flask | Gemelo Go | Estado |
+|---|---|---|
+| GET/POST `/api/admin/items` | Igual ruta | Implementado; búsqueda, filtros, paginación |
+| GET/PUT/DELETE `/api/admin/items/{id}` | Igual ruta | Implementado; detalle de inventario parcial |
+| POST `/api/admin/items/{id}/archive` | Igual ruta | Implementado; toggle activo |
+| GET/POST `/api/admin/preferred-bins` | Igual ruta | Implementado; filtro por item/bin/q |
+| PUT/DELETE `/api/admin/preferred-bins/{id}` | Igual ruta | Implementado; resecuencia 1..K |
+| GET/POST `/api/admin/vendors` | Igual ruta | Implementado; paginación/búsqueda/activo |
+| GET/PUT/DELETE `/api/admin/vendors/{canonical_id}` | Igual ruta | Implementado; UUID |
+
+Diferencias pendientes: item detail no reproduce `inventory_id` ni metadatos SQL de inventory; faltan bloqueos de borrado por historial SO/PO; vendor delete no puede comprobar referencias a POs hasta portar compras; null semantics y errores Pydantic no son idénticos. No habilito todavía el frontend.
