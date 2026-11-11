@@ -3,6 +3,10 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import AppIcon from '../../lib/components/AppIcon.svelte';
+	import LocaleSwitcher from '../../lib/components/LocaleSwitcher.svelte';
+	import { getContext } from 'svelte';
+	import type { I18nState } from '../../lib/i18n/i18n.svelte';
+	const i18n = getContext<I18nState>('i18n');
 	import { createAuthGuardState } from '../../core/feature/auth/ui/state/authGuardState.svelte';
 	import { createWarehouseSelectionState } from '../../core/feature/warehouses/ui/state/warehouseSelectionState.svelte';
 
@@ -15,21 +19,21 @@
 	type IconName = 'inbox' | 'map-pin' | 'clipboard-list' | 'package-check' | 'truck' | 'boxes' | 'scan' | 'package' | 'warehouse' | 'database';
 	type NavItem = { href: string; label: string; icon: IconName; pageKey?: string };
 	const navGroups: { label: string; items: NavItem[] }[] = [
-		{ label: 'Operaciones', items: [
-			{ href: '/receiving', label: 'Recepción', icon: 'inbox', pageKey: 'receiving' },
-			{ href: '/putaway', label: 'Ubicación', icon: 'map-pin', pageKey: 'putaway' },
-			{ href: '/picking', label: 'Preparación', icon: 'clipboard-list' },
-			{ href: '/packing', label: 'Empaque', icon: 'package-check' },
-			{ href: '/shipping', label: 'Despacho', icon: 'truck' }
+		{ label: i18n.t('Operaciones'), items: [
+			{ href: '/receiving', label: i18n.t('Recepción'), icon: 'inbox', pageKey: 'receiving' },
+			{ href: '/putaway', label: i18n.t('Ubicación'), icon: 'map-pin', pageKey: 'putaway' },
+			{ href: '/picking', label: i18n.t('Preparación'), icon: 'clipboard-list' },
+			{ href: '/packing', label: i18n.t('Empaque'), icon: 'package-check' },
+			{ href: '/shipping', label: i18n.t('Despacho'), icon: 'truck' }
 		]},
-		{ label: 'Control', items: [
-			{ href: '/inventory', label: 'Inventario', icon: 'boxes', pageKey: 'inventory' },
-			{ href: '/cycle-count', label: 'Conteo cíclico', icon: 'scan', pageKey: 'cycle-counts' }
+		{ label: i18n.t('Control'), items: [
+			{ href: '/inventory', label: i18n.t('Inventario'), icon: 'boxes', pageKey: 'inventory' },
+			{ href: '/cycle-count', label: i18n.t('Conteo cíclico'), icon: 'scan', pageKey: 'cycle-counts' }
 		]},
-		{ label: 'Catálogos', items: [
-			{ href: '/items', label: 'Productos', icon: 'package', pageKey: 'items' },
-			{ href: '/warehouses', label: 'Almacenes', icon: 'warehouse', pageKey: 'warehouses' },
-			{ href: '/data', label: 'Datos maestros', icon: 'database' }
+		{ label: i18n.t('Catálogos'), items: [
+			{ href: '/items', label: i18n.t('Productos'), icon: 'package', pageKey: 'items' },
+			{ href: '/warehouses', label: i18n.t('Almacenes'), icon: 'warehouse', pageKey: 'warehouses' },
+			{ href: '/data', label: i18n.t('Datos maestros'), icon: 'database' }
 		]}
 	];
 
@@ -102,18 +106,18 @@
 </script>
 
 {#if guard.status === 'checking'}
-	<p class="boot" role="status">Validando sesión…</p>
+	<p class="boot" role="status">{i18n.t('Validando sesión…')}</p>
 {:else if guard.status === 'error'}
 	<section class="boot panel" role="alert">
-		<p class="title">No se pudo conectar con el servidor</p>
+		<p class="title">{i18n.t('No se pudo conectar con el servidor')}</p>
 		{#if guard.message}<p class="detail">{guard.message}</p>{/if}
-		<div class="actions"><button type="button" class="primary" onclick={retry}>Reintentar</button><button type="button" onclick={logout}>Cerrar sesión</button></div>
+		<div class="actions"><button type="button" class="primary" onclick={retry}>{i18n.t('Reintentar')}</button><button type="button" onclick={logout}>{i18n.t('Cerrar sesión')}</button></div>
 	</section>
 {:else if guard.status === 'authenticated' && !hasRouteAccess}
 	<section class="boot panel" role="alert">
-		<p class="title">Acceso no autorizado</p>
-		<p class="detail">Tu cuenta no tiene permiso para abrir este módulo.</p>
-		<button type="button" class="primary" onclick={() => goto('/inventory')}>Ir al inventario</button>
+		<p class="title">{i18n.t('Acceso no autorizado')}</p>
+		<p class="detail">{i18n.t('Tu cuenta no tiene permiso para abrir este módulo.')}</p>
+		<button type="button" class="primary" onclick={() => goto('/inventory')}>{i18n.t('Ir al inventario')}</button>
 	</section>
 {:else if guard.status === 'authenticated'}
 	<div class="workspace">
@@ -142,31 +146,32 @@
 			{/if}
 			<div class="sidebar-footer">
 				<div class="avatar"><AppIcon name="user" size={18} /></div>
-				<div class="account"><strong>{guard.user?.fullName || guard.user?.username || 'Usuario'}</strong><span>{guard.user?.role === 'ADMIN' ? 'Administrador' : 'Usuario de almacén'}</span></div>
+				<div class="account"><strong>{guard.user?.fullName || guard.user?.username || i18n.t('Usuario')}</strong><span>{guard.user?.role === 'ADMIN' ? i18n.t('Administrador') : i18n.t('Usuario de almacén')}</span></div>
 			</div>
 		</aside>
 		{#if sidebarOpen}<button class="scrim" type="button" aria-label="Cerrar menú" onclick={() => sidebarOpen = false}></button>{/if}
 		<div class="app-main">
 			<header class="topbar">
 				<button class="menu-toggle" type="button" aria-label="Abrir menú" aria-expanded={sidebarOpen} onclick={() => sidebarOpen = !sidebarOpen}><AppIcon name="menu" size={21} /></button>
-				<div class="page-context"><p>ABELLIS · SMART WMS</p><span>Operaciones de almacén</span></div>
+				<div class="page-context"><p>ABELLIS · SMART WMS</p><span>{i18n.t('Operaciones de almacén')}</span></div>
 				<div class="topbar-actions">
+					<LocaleSwitcher />
 					{#if warehouseSelection.canSelect && warehouseSelection.warehouses.length > 0}
-						<label class="warehouse-picker"><span>Almacén activo</span>
-							<select aria-label="Almacén activo" value={warehouseSelection.warehouseId ?? ''} onchange={(e) => warehouseSelection.select(Number(e.currentTarget.value))}>
+						<label class="warehouse-picker"><span>{i18n.t('Almacén activo')}</span>
+							<select aria-label={i18n.t('Almacén activo')} value={warehouseSelection.warehouseId ?? ''} onchange={(e) => warehouseSelection.select(Number(e.currentTarget.value))}>
 								{#each warehouseSelection.warehouses as wh}<option value={wh.id}>{wh.code} — {wh.name}</option>{/each}
 							</select>
 						</label>
 					{/if}
-					{#if !guard.user?.mustChangePassword}<a class="account-action" href="/change-password" aria-label="Cambiar contraseña" title="Cambiar contraseña"><AppIcon name="lock" size={17} /><span>Contraseña</span></a>{/if}
-					<button class="logout" type="button" onclick={logout}><AppIcon name="logout" size={17} /><span>Salir</span></button>
+					{#if !guard.user?.mustChangePassword}<a class="account-action" href="/change-password" aria-label={i18n.t('Cambiar contraseña')} title={i18n.t('Cambiar contraseña')}><AppIcon name="lock" size={17} /><span>{i18n.t('Contraseña')}</span></a>{/if}
+					<button class="logout" type="button" onclick={logout}><AppIcon name="logout" size={17} /><span>{i18n.t('Salir')}</span></button>
 				</div>
 			</header>
 			<main class="content">{@render children()}</main>
 		</div>
 	</div>
 {:else}
-	<p class="boot">Redirigiendo…</p>
+	<p class="boot">{i18n.t('Redirigiendo…')}</p>
 {/if}
 
 <style>

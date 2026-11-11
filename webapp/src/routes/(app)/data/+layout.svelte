@@ -1,16 +1,19 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import AppIcon from '../../../lib/components/AppIcon.svelte';
+	import { getContext } from 'svelte';
+	import type { I18nState } from '../../../lib/i18n/i18n.svelte';
+	const i18n = getContext<I18nState>('i18n');
 	import { authSession } from '../../../core/infrastructure/auth/AuthSession';
 	let { children } = $props();
 	const user = authSession.getUser();
 	const admin = user?.role === 'ADMIN';
 	const pages = user?.allowedPages ?? [];
 	const tabs = [
-		{ href: '/data/warehouses', label: 'Almacenes', icon: 'warehouse', keys: ['warehouses'] },
-		{ href: '/data/zones', label: 'Zonas', icon: 'map-pin', keys: ['zones'] },
-		{ href: '/data/bins', label: 'Ubicaciones', icon: 'boxes', keys: ['bins', 'zones'] },
-		{ href: '/data/preferred-bins', label: 'Ubicaciones preferidas', icon: 'package-check', keys: ['preferred-bins'] }
+		{ href: '/data/warehouses', label: i18n.t('Almacenes'), icon: 'warehouse', keys: ['warehouses'] },
+		{ href: '/data/zones', label: i18n.t('Zonas'), icon: 'map-pin', keys: ['zones'] },
+		{ href: '/data/bins', label: i18n.t('Ubicaciones'), icon: 'boxes', keys: ['bins', 'zones'] },
+		{ href: '/data/preferred-bins', label: i18n.t('Ubicaciones preferidas'), icon: 'package-check', keys: ['preferred-bins'] }
 	] as const;
 	const visibleTabs = tabs.filter(tab => admin || tab.keys.every(key => pages.includes(key)));
 	function isActive(href: string) { return page.url.pathname === href || page.url.pathname.startsWith(href + '/'); }
