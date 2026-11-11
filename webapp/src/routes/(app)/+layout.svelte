@@ -1,13 +1,14 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, setContext } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { createAuthGuardState } from '../../core/feature/auth/ui/state/authGuardState.svelte';
-	import { getWarehouseSelectionState } from '../../core/feature/warehouses/ui/state/warehouseSelectionState.svelte';
+	import { createWarehouseSelectionState } from '../../core/feature/warehouses/ui/state/warehouseSelectionState.svelte';
 
 	let { children } = $props();
 	const guard = createAuthGuardState();
-	const warehouseSelection = getWarehouseSelectionState();
+	const warehouseSelection = createWarehouseSelectionState();
+	setContext('warehouseSelection', warehouseSelection);
 	const nav = [
 		{ href: '/inventory', label: 'Inventario', pageKey: 'inventory' },
 		{ href: '/cycle-count', label: 'Cycle count', pageKey: 'cycle-counts' },

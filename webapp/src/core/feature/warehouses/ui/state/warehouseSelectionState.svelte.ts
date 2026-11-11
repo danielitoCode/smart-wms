@@ -71,8 +71,4 @@ export function createWarehouseSelectionState() {
 	};
 }
 
-let sharedInstance: ReturnType<typeof createWarehouseSelectionState> | null = null;
-export function getWarehouseSelectionState() {
-	sharedInstance ??= createWarehouseSelectionState();
-	return sharedInstance;
-}
+export type WarehouseSelectionState = ReturnType<typeof createWarehouseSelectionState>;

@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { getContext, onMount } from 'svelte';
 	import { createWarehousesState } from '../state/warehousesState.svelte';
 	import { authSession } from '../../../../infrastructure/auth/AuthSession';
-	import { getWarehouseSelectionState } from '../state/warehouseSelectionState.svelte';
+	import type { WarehouseSelectionState } from '../state/warehouseSelectionState.svelte';
 	import type { Warehouse } from '../../domain/entity/Warehouse';
 
 	const vm = createWarehousesState();
-	const selection = getWarehouseSelectionState();
+	const selection = getContext<WarehouseSelectionState>('warehouseSelection');
 	let showForm = $state(false);
 	let editing = $state(null as Warehouse | null);
 	let deleteTarget = $state(null as Warehouse | null);

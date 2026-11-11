@@ -1,9 +1,10 @@
 <script lang="ts">
+	import { getContext } from 'svelte';
 	import WarehouseDetailScreen from './WarehouseDetailScreen.svelte';
-	import { getWarehouseSelectionState } from '../state/warehouseSelectionState.svelte';
+	import type { WarehouseSelectionState } from '../state/warehouseSelectionState.svelte';
 
 	let { mode }: { mode: 'zones' | 'bins' } = $props();
-	const selection = getWarehouseSelectionState();
+	const selection = getContext<WarehouseSelectionState>('warehouseSelection');
 </script>
 
 <section class="workspace">
