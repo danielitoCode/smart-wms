@@ -123,3 +123,14 @@ Snapshot Restore realiza primero un respaldo persistente del estado actual y dev
 
 
 El refund calcula el importe proporcional por artículo/bin usando el valor de línea original y las cantidades ya devueltas; `shipping_refund_cents` permite devolver el envío en una operación separada. El estado PARTIALLY_REFUNDED permite completar la devolución financiera en varias operaciones. RMA descuenta las cantidades ya devueltas por POS y las reservadas por RMAs activos/completados, evitando volver a recibir dos veces la misma unidad.
+
+
+## Cierre de huecos operativos y alcance de pruebas
+
+POS refund consolida líneas repetidas por item/bin antes de ejecutar un único movimiento idempotente. POS dispatch se serializa localmente. Al anular un shipment que corresponde a una venta POS ya completada, fulfillment revierte los movimientos de inventario por ubicación, persiste cada compensación y permite reanudar VOIDING tras una caída. No admite void de phone order antes de DISPATCHED ni de una venta con refund parcial/total pendiente de conciliación.
+
+Inbound amplía los campos mapeados de items, sales orders y purchase orders; compara cabeceras y líneas al recuperar por clave natural y requiere external_version al activar idempotencia. No actualiza automáticamente una entidad por una versión externa más nueva: se devuelve conflicto hasta definir el contrato canónico del ERP.
+
+Snapshot restore crea un respaldo antes de reemplazar el ledger y devuelve backup_snapshot_id. Webhook outbox procesa retry y DLQ, cifra secretos con AES-GCM y registra fallos del worker; su semántica es at-least-once y se debe operar un solo worker hasta añadir coordinación HA. Kademlia/GossipSub se exponen únicamente cuando el transporte es el LibP2PTransport real de PrismaTec-Core; el estado HTTP diferencia esa ruta del fallback TTL.
+
+Para arrancar exijo JWT_SECRET de al menos 32 caracteres. Los usuarios demo solo se crean con WMS_TWIN_ALLOW_DEMO_BOOTSTRAP=true. Estas pruebas de integración son evidencia local; todavía falta comparación diferencial completa con Flask, procesador de pagos real, versiones inbound nuevas y pruebas de partición/failover.
