@@ -323,3 +323,8 @@ Añadí pruebas unitarias para checkout/replay, refund/restock/replay, dispatch 
 - El runtime no continúa silenciosamente si se configuró LibP2P y falla el arranque de Kademlia/GossipSub: `StartBackground` devuelve el error y Runtime.New detiene el nodo.
 - Para activar DHT/GossipSub, el Core debe arrancar con transporte libp2p: `PRISMATEC_TRANSPORT=libp2p` y `PRISMATEC_NETWORK_ADDR` como multiaddr, por ejemplo `/ip4/0.0.0.0/tcp/4001`. Si se usa TCP `host:port` o no hay red configurada, queda el adapter TTL y no se anuncia Kademlia/GossipSub.
 - El worker de eventos reconcilia periódicamente todos los eventos persistidos con el outbox de webhooks usando el timestamp original. Así una caída entre la persistencia del evento y la creación de deliveries no pierde permanentemente la notificación; la creación es idempotente por subscription/event_id.
+
+
+### Conciliación de devoluciones y RMA
+
+El refund parcial ya no acepta un importe arbitrario: calcula el importe por cantidad a partir del total de línea original y el acumulado ya devuelto. El envío se devuelve por separado mediante `shipping_refund_cents`; la SO permanece PARTIALLY_REFUNDED hasta que artículos y cargos queden conciliados. RMA descuenta cantidades ya devueltas por POS y las cantidades comprometidas por RMAs anteriores que no estén cancelados. Así no puedo abrir dos expedientes que reclamen las mismas unidades.
