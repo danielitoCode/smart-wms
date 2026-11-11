@@ -11,13 +11,13 @@
 
 <section class="page">
 	<header>
-		<h1>Putaway</h1>
-		<p class="subtitle">Mover stock de staging a ubicación definitiva</p>
+		<h1>Ubicación de productos</h1>
+		<p class="subtitle">Traslada los productos recibidos a su ubicación definitiva.</p>
 	</header>
 
 	<div class="toolbar">
 		<label>
-			Warehouse ID
+			ID de almacén
 			<input
 				type="number"
 				min="1"
@@ -36,14 +36,14 @@
 	{#if state.lastResult}
 		<p class="status ok" role="status">
 			{state.lastResult.message}: {state.lastResult.item}
-			{state.lastResult.fromBin} → {state.lastResult.toBin} (qty {state.lastResult.quantity})
+			{state.lastResult.fromBin} → {state.lastResult.toBin} · cantidad: {state.lastResult.quantity}
 		</p>
 	{/if}
 
 	{#if state.loading && state.items.length === 0}
 		<p class="status">Cargando…</p>
 	{:else if state.items.length === 0}
-		<p class="status">No hay ítems pendientes de putaway.</p>
+		<p class="status">No hay productos pendientes de ubicación.</p>
 	{:else}
 		<div class="table-wrap">
 			<table>
@@ -51,10 +51,10 @@
 					<tr>
 						<th>SKU</th>
 						<th>Nombre</th>
-						<th>Qty</th>
+						<th>Cantidad</th>
 						<th>Desde</th>
 						<th>Lote</th>
-						<th>A bin_id</th>
+						<th>ID de ubicación destino</th>
 						<th></th>
 					</tr>
 				</thead>
@@ -71,7 +71,7 @@
 								<input
 									type="number"
 									min="1"
-									placeholder="to_bin_id"
+									placeholder="ID de ubicación"
 									value={state.toBinByKey[k] ?? ''}
 									oninput={(e) => state.setToBin(item, e.currentTarget.value)}
 									disabled={state.submittingKey === k}

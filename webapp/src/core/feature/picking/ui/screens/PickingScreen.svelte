@@ -31,12 +31,12 @@
 
 <section class="page">
 	<header>
-		<h1>Picking</h1>
-		<p class="subtitle">Validar SO, create-batch / wave-create y ejecución de batch</p>
+		<h1>Preparación de pedidos</h1>
+		<p class="subtitle">Valida pedidos de venta, organiza su preparación y registra cada producto recogido.</p>
 	</header>
 
 	<label class="wh">
-		Warehouse ID
+		ID de almacén
 		<input
 			type="number"
 			min="1"
@@ -47,12 +47,12 @@
 	</label>
 
 	<section class="panel">
-		<h2>Wave validate</h2>
-		<p class="meta">POST /api/picking/wave-validate — so_barcode + warehouse_id</p>
+		<h2>Validar pedido de venta</h2>
+		<p class="meta">Comprueba que el pedido esté listo para incluirlo en una preparación.</p>
 		<form class="row" onsubmit={onValidate}>
 			<input
 				type="text"
-				placeholder="SO barcode (ej. SO-2026-001)"
+				placeholder="Código del pedido (ej. SO-2026-001)"
 				value={state.validateBarcode}
 				oninput={(e) => state.setValidateBarcode(e.currentTarget.value)}
 				disabled={state.busy}
@@ -62,7 +62,7 @@
 				Validar
 			</button>
 			<button type="button" class="secondary" onclick={() => state.clearValidated()} disabled={state.busy}>
-				Limpiar lista
+				Limpiar pedidos
 			</button>
 		</form>
 		{#if state.validateResult}
@@ -76,64 +76,64 @@
 			</p>
 		{/if}
 		{#if state.validatedSoIds.length}
-			<p class="meta">SO IDs validados: {state.validatedSoIds.join(', ')}</p>
+			<p class="meta">Pedidos validados (ID): {state.validatedSoIds.join(', ')}</p>
 		{/if}
 	</section>
 
 	<section class="panel">
-		<h2>Crear wave</h2>
-		<p class="meta">POST /api/picking/wave-create — so_ids + warehouse_id</p>
+		<h2>Crear ola de preparación</h2>
+		<p class="meta">Agrupa los pedidos validados para organizar su recogida.</p>
 		<form class="row" onsubmit={onWave}>
 			<input
 				type="text"
 				class="grow"
-				placeholder="SO IDs (ej. 1, 2, 3)"
+				placeholder="Identificadores de pedidos (ej. 1, 2, 3)"
 				value={state.soIdsInput}
 				oninput={(e) => state.setSoIdsInput(e.currentTarget.value)}
 				disabled={state.busy}
 				required
 			/>
 			<button type="submit" disabled={state.busy || !state.soIdsInput.trim()}>
-				Crear wave
+				Crear ola
 			</button>
 		</form>
 		{#if state.waveResult}
 			<p class="ok">
-				batch #{state.waveResult.batchId} · {state.waveResult.batchStatus}
-				· orders {state.waveResult.totalOrders} · picks {state.waveResult.totalPicks}
+				lote de trabajo #{state.waveResult.batchId} · {state.waveResult.batchStatus}
+				· pedidos: {state.waveResult.totalOrders} · líneas por recoger: {state.waveResult.totalPicks}
 			</p>
 		{/if}
 	</section>
 
 	<section class="panel">
-		<h2>Create batch</h2>
-		<p class="meta">POST /api/picking/create-batch — so_identifiers + warehouse_id</p>
+		<h2>Crear lote de trabajo</h2>
+		<p class="meta">Crea un lote a partir de los números o códigos de los pedidos.</p>
 		<form class="row" onsubmit={onCreateBatch}>
 			<input
 				type="text"
 				class="grow"
-				placeholder="SO numbers / barcodes (ej. SO-001, SO-002)"
+				placeholder="Números o códigos de pedido (ej. SO-001, SO-002)"
 				value={state.batchIdentifiersInput}
 				oninput={(e) => state.setBatchIdentifiersInput(e.currentTarget.value)}
 				disabled={state.busy}
 				required
 			/>
 			<button type="submit" disabled={state.busy || !state.batchIdentifiersInput.trim()}>
-				Crear batch
+				Crear lote
 			</button>
 		</form>
 		{#if state.createBatchResult}
 			<p class="ok">
 				{state.createBatchResult.batchNumber} (#{state.createBatchResult.batchId})
-				· orders {state.createBatchResult.totalOrders}
-				· tasks {state.createBatchResult.totalItems}
+				· pedidos: {state.createBatchResult.totalOrders}
+				· tareas: {state.createBatchResult.totalItems}
 			</p>
 			{#if state.createBatchResult.orders.length}
 				<ul class="totes">
 					{#each state.createBatchResult.orders as o, i (o.soNumber ?? i)}
 						<li>
 							{o.soNumber ?? o.soId}
-							{#if o.toteNumber} · tote {o.toteNumber}{/if}
+							{#if o.toteNumber} · contenedor {o.toteNumber}{/if}
 						</li>
 					{/each}
 				</ul>
@@ -143,11 +143,11 @@
 
 	<div class="toolbar">
 		<button type="button" onclick={() => state.refresh()} disabled={state.loading || state.busy}>
-			{state.loading ? 'Cargando…' : 'Actualizar batch'}
+			{state.loading ? 'Cargando…' : 'Actualizar lote'}
 		</button>
 		{#if state.batch?.active && state.batch.batchId}
 			<button type="button" class="secondary" onclick={() => state.completeBatch()} disabled={state.busy}>
-				Completar batch
+				Completar lote
 			</button>
 		{/if}
 	</div>
@@ -161,9 +161,9 @@
 
 	{#if state.batch?.active && state.batch.batchId}
 		<p class="meta">
-			Batch #{state.batch.batchId}
-			· picks {state.batch.completedPicks}/{state.batch.totalPicks}
-			· orders {state.batch.totalOrders}
+			Lote de trabajo #{state.batch.batchId}
+			· líneas recogidas: {state.batch.completedPicks}/{state.batch.totalPicks}
+			· pedidos: {state.batch.totalOrders}
 		</p>
 	{/if}
 
@@ -173,14 +173,14 @@
 			<p class="meta">
 				{state.task.itemName}
 				{#if state.task.binCode}
-					· bin {state.task.binCode}
+					· ubicación: {state.task.binCode}
 				{/if}
-				· qty {state.task.quantityToPick}
+				· cantidad: {state.task.quantityToPick}
 			</p>
 
 			<form onsubmit={onConfirm}>
 				<label>
-					Barcode escaneado
+					Código de barras escaneado
 					<input
 						type="text"
 						value={state.scannedBarcode}
@@ -201,15 +201,15 @@
 					/>
 				</label>
 				<div class="actions">
-					<button type="submit" disabled={state.busy}>Confirmar pick</button>
+					<button type="submit" disabled={state.busy}>Confirmar recogida</button>
 					<button type="button" class="secondary" onclick={() => state.shortPick()} disabled={state.busy}>
-						Short (0)
+						Indicar faltante (0)
 					</button>
 				</div>
 			</form>
 		</article>
 	{:else if !state.loading}
-		<p class="status">No hay tarea pendiente.</p>
+		<p class="status">No hay productos pendientes de recoger.</p>
 	{/if}
 </section>
 

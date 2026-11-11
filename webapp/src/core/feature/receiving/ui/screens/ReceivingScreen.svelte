@@ -22,13 +22,13 @@
 <section class="page">
 	<header>
 		<h1>Recepción</h1>
-		<p class="subtitle">Lookup de PO, registro y cancelación de recibos</p>
+		<p class="subtitle">Consulta órdenes de compra, registra las cantidades recibidas y gestiona anulaciones.</p>
 	</header>
 
 	<form class="lookup" onsubmit={onLookup}>
 		<input
 			type="text"
-			placeholder="PO number o barcode"
+			placeholder="Número de orden de compra o código de barras"
 			value={state.barcode}
 			oninput={(e) => state.setBarcode(e.currentTarget.value)}
 			disabled={state.loading || state.submitting || state.cancelling}
@@ -46,25 +46,25 @@
 		<p class="status ok" role="status">
 			{state.lastResult.message}
 			{#if state.lastResult.receiptIds.length}
-				· receipts: {state.lastResult.receiptIds.join(', ')}
+				· recepciones: {state.lastResult.receiptIds.join(', ')}
 			{/if}
-			· PO {state.lastResult.poStatus}
+			· estado de la orden: {state.lastResult.poStatus}
 		</p>
 	{/if}
 
 	{#if state.lastCancel}
 		<p class="status ok" role="status">
-			{state.lastCancel.message} · reversed: {state.lastCancel.reversed}
+			{state.lastCancel.message} · recepciones anuladas: {state.lastCancel.reversed}
 		</p>
 	{/if}
 
 	{#if state.detail}
 		<section class="po">
-			<h2>{state.detail.purchaseOrder.poNumber}</h2>
+			<h2>Orden de compra {state.detail.purchaseOrder.poNumber}</h2>
 			<p class="meta">
 				{state.detail.purchaseOrder.vendorName}
 				· {state.detail.purchaseOrder.status}
-				· WH #{state.detail.purchaseOrder.warehouseId}
+				· Almacén #{state.detail.purchaseOrder.warehouseId}
 			</p>
 
 			{#if state.drafts.length === 0}
@@ -79,7 +79,7 @@
 									<th>Nombre</th>
 									<th>Pendiente</th>
 									<th>Cantidad</th>
-									<th>Bin ID</th>
+									<th>ID de ubicación</th>
 									<th>Lote</th>
 								</tr>
 							</thead>
@@ -95,7 +95,7 @@
 												disabled={state.submitting} />
 										</td>
 										<td>
-											<input type="number" min="1" placeholder="bin_id" value={draft.binId}
+											<input type="number" min="1" placeholder="ID de ubicación" value={draft.binId}
 												oninput={(e) => state.updateDraft(index, { binId: e.currentTarget.value })}
 												disabled={state.submitting} required />
 										</td>
@@ -116,8 +116,8 @@
 			{/if}
 
 			<section class="cancel-panel">
-				<h3>Cancelar recibos</h3>
-				<p class="meta">IDs separados por coma (del último receive o conocidos).</p>
+				<h3>Anular recepciones</h3>
+				<p class="meta">Introduce los identificadores de las recepciones separados por comas.</p>
 				<form class="cancel-form" onsubmit={onCancel}>
 					<input
 						type="text"
@@ -127,7 +127,7 @@
 						disabled={state.cancelling}
 					/>
 					<button type="submit" class="danger" disabled={state.cancelling || !state.receiptIdsInput.trim()}>
-						{state.cancelling ? 'Cancelando…' : 'Cancelar recibos'}
+						{state.cancelling ? 'Anulando…' : 'Anular recepciones'}
 					</button>
 				</form>
 			</section>

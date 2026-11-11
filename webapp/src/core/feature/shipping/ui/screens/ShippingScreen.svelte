@@ -16,14 +16,14 @@
 
 <section class="page">
 	<header>
-		<h1>Shipping</h1>
-		<p class="subtitle">Cargar SO y registrar fulfillment</p>
+		<h1>Despacho de pedidos</h1>
+		<p class="subtitle">Consulta el pedido y registra su salida con los datos de transporte.</p>
 	</header>
 
 	<form class="row" onsubmit={onLoad}>
 		<input
 			type="text"
-			placeholder="SO number o barcode"
+			placeholder="Número o código de barras del pedido"
 			value={state.barcode}
 			oninput={(e) => state.setBarcode(e.currentTarget.value)}
 			disabled={state.loading || state.busy}
@@ -37,14 +37,14 @@
 	{#if state.lastResult}
 		<p class="ok" role="status">
 			{state.lastResult.message} · {state.lastResult.carrier}
-			{state.lastResult.trackingNumber} · fulfillment #{state.lastResult.fulfillmentId}
+			{state.lastResult.trackingNumber} · despacho #{state.lastResult.fulfillmentId}
 		</p>
 	{/if}
 
 	{#if state.detail}
 		<p class="meta">
 			{state.detail.salesOrder.soNumber} · {state.detail.salesOrder.status}
-			· lines {state.detail.totalLines} · items {state.detail.totalItems}
+			· líneas: {state.detail.totalLines} · unidades: {state.detail.totalItems}
 		</p>
 
 		{#if state.detail.lines.length}
@@ -68,24 +68,24 @@
 
 		<form class="fulfill" onsubmit={onFulfill}>
 			<label>
-				Tracking
+				Código de seguimiento
 				<input type="text" maxlength="255" value={state.trackingNumber}
-					oninput={(e) => state.setTrackingNumber(e.currentTarget.value)}
+					oninput={(e) => state.setCódigo de seguimientoNumber(e.currentTarget.value)}
 					disabled={state.busy} required />
 			</label>
 			<label>
-				Carrier
+				Transportista
 				<input type="text" maxlength="100" value={state.carrier}
-					oninput={(e) => state.setCarrier(e.currentTarget.value)}
+					oninput={(e) => state.setTransportista(e.currentTarget.value)}
 					disabled={state.busy} required />
 			</label>
 			<label>
-				Ship method (opcional)
+				Método de envío (opcional)
 				<input type="text" value={state.shipMethod}
 					oninput={(e) => state.setShipMethod(e.currentTarget.value)}
 					disabled={state.busy} />
 			</label>
-			<button type="submit" disabled={state.busy}>Fulfill</button>
+			<button type="submit" class="primary" disabled={state.busy}>Registrar despacho</button>
 		</form>
 	{/if}
 </section>

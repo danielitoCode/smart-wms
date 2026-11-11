@@ -16,14 +16,14 @@
 
 <section class="page">
 	<header>
-		<h1>Packing</h1>
-		<p class="subtitle">Verificar y cerrar pedidos en estado PICKED</p>
+		<h1>Empaque de pedidos</h1>
+		<p class="subtitle">Comprueba los productos recogidos y completa el empaque del pedido.</p>
 	</header>
 
 	<form class="row" onsubmit={onLoad}>
 		<input
 			type="text"
-			placeholder="SO number o barcode"
+			placeholder="Número o código de barras del pedido"
 			value={state.barcode}
 			oninput={(e) => state.setBarcode(e.currentTarget.value)}
 			disabled={state.loading || state.busy}
@@ -39,7 +39,7 @@
 	{#if state.detail}
 		<p class="meta">
 			{state.detail.salesOrder.soNumber} · {state.detail.salesOrder.status}
-			· verificado {state.detail.itemsVerified}/{state.detail.totalItems}
+			· unidades verificadas: {state.detail.itemsVerified}/{state.detail.totalItems}
 			· peso {state.detail.calculatedWeightLbs} lb
 		</p>
 
@@ -48,9 +48,9 @@
 				<thead>
 					<tr>
 						<th>SKU</th>
-						<th>Picked</th>
-						<th>Packed</th>
-						<th>OK</th>
+						<th>Recogido</th>
+						<th>Empacado</th>
+						<th>Verificado</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -69,7 +69,7 @@
 		<form class="row" onsubmit={onVerify}>
 			<input
 				type="text"
-				placeholder="Barcode a verificar"
+				placeholder="Código de barras a verificar"
 				value={state.scannedBarcode}
 				oninput={(e) => state.setScannedBarcode(e.currentTarget.value)}
 				disabled={state.busy}
@@ -86,7 +86,7 @@
 		</form>
 
 		<button type="button" class="primary" onclick={() => state.complete()} disabled={state.busy}>
-			Completar packing
+			Completar empaque
 		</button>
 	{/if}
 </section>
