@@ -408,3 +408,19 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Cambio:** filas de snapshot tipadas para evitar coerción numérica durante verificación SHA-256; scope `events.publish` y endpoint `POST /api/v1/events/retry-pending`; `Verify` de auditoría limpia el latch cuando una re-verificación completa tiene éxito.
 - **Riesgo:** el retry de eventos es invocable por operador y no reemplaza un worker supervisado; no afirmo entrega exactamente-una-vez.
 - **Validación:** pendiente del resultado de GitHub Actions.
+
+
+### AUD-0026 — Cierre funcional de POS, fulfillment, RMA, webhook outbox, snapshots, inbound y mesh
+
+- **POS checkout:** checkout persistente con conciliación de subtotal/tax/shipping/total/tenders, bins activos del warehouse, descuento de stock o reserva para phone order, operation IDs estables, saga PREPARING/COMPENSATING/FAILED/COMPLETED y replay por idempotency key.
+- **POS refund:** refund parcial/total con tender original, límite temporal, cantidad acumulada por item/bin, monto acumulado, external refund reference y restock idempotente. El pago externo no se ejecuta desde este servicio.
+- **POS dispatch:** libera la reserva y descuenta inventario al despachar phone order; persiste dispatch key/fingerprint y recupera shipment completado tras reinicio.
+- **Dockd void:** shipment persistido, VOIDING recuperable, reversión a PreShipStatus y QuantityShipped=0; clave de operación, fingerprint, reason y actor.
+- **RMA:** recepción por línea, disposición RESTOCK/SCRAP/HOLD, bin de destino validado y restock idempotente. Complete bloquea cantidades no recibidas/dispuestas.
+- **Webhook outbox:** delivery por suscripción/event_id, estados PENDING/RETRY/DELIVERED/DEAD, backoff, máximo de intentos, consulta de DLQ y retry manual. Secretos nuevos AES-256-GCM y migración de legacy; la clave es `SENTRY_ENCRYPTION_KEY` o `WMS_WEBHOOK_ENCRYPTION_KEY` base64 de 32 bytes.
+- **Snapshot restore:** verificación checksum, expected ledger version, restore de warehouse/global en una escritura del organismo e idempotencia por operation_id.
+- **Inbound:** idempotencia source_system/resource/external_id, fingerprint, external_version, recovery por clave natural, warehouse_code y SKU mapping. No se implementa UPSERT para external_version más nueva; se rechaza con conflicto.
+- **Mesh:** Kademlia DHT y GossipSub reales cuando el transporte Core es LibP2PTransport; el fallback TCP/local continúa siendo TTL fan-out y no se etiqueta como DHT.
+- **Tests añadidos:** POS checkout/refund/dispatch; fulfillment void; RMA restock; webhook secret encryption/outbox retry; inbound idempotency; snapshot restore; persistencia de eventos remotos.
+- **Alcance:** no alteré Flask, frontends ni los cuatro artefactos existentes en la raíz.
+- **Validación:** los workflows de esta rama se lanzaron, pero siguen pendientes de resultado. No declaro la suite aprobada hasta leer los logs y corregir cualquier error que aparezca.
