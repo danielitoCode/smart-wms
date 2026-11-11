@@ -2,7 +2,6 @@ package pos
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
