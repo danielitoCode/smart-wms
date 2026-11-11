@@ -191,17 +191,17 @@
 	.account strong { max-width:168px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#fff; font-size:.82rem; font-weight:600; }
 	.account span { color:rgba(224,235,247,.62); font-size:.72rem; }
 	.app-main { min-width:0; display:flex; flex-direction:column; }
-	.topbar { position:sticky; top:0; z-index:20; min-height:82px; display:flex; align-items:center; gap:16px; padding:14px clamp(18px,2.5vw,34px); background:rgba(255,255,255,.94); border-bottom:1px solid var(--line); backdrop-filter:blur(8px); }
+	.topbar { position:sticky; top:0; z-index:20; min-height:82px; display:flex; align-items:center; gap:16px; padding:14px clamp(18px,2.5vw,34px); background:var(--surface); border-bottom:1px solid var(--line); }
 	.page-context { min-width:0; }
 	.page-context p { margin:0 0 3px; color:var(--slate); font:600 .63rem var(--disp); letter-spacing:.16em; }
-	.page-context span { color:var(--navy-deep); font:600 .86rem var(--body); }
+	.page-context span { color:var(--ink); font:600 .86rem var(--body); }
 	.topbar-actions { display:flex; align-items:center; gap:12px; margin-left:auto; }
 	.warehouse-picker { display:flex; flex-direction:column; gap:3px; min-width:180px; color:var(--slate); font-size:.68rem; font-weight:600; }
-	.warehouse-picker select { width:100%; min-height:38px; padding:6px 30px 6px 10px; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--ink); font:500 .82rem var(--body); }
+	.warehouse-picker select { width:100%; min-height:38px; padding:6px 30px 6px 10px; border:1px solid var(--line); border-radius:10px; background:var(--surface); color:var(--ink); font:500 .82rem var(--body); }
 	.account-action,.logout { min-height:40px; display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:8px 11px; border:1px solid var(--line); border-radius:10px; background:transparent; color:var(--navy); text-decoration:none; font:600 .78rem var(--body); cursor:pointer; }
 	.account-action:hover,.logout:hover { background:var(--surface-2); border-color:var(--lightblue); }
 	.logout { color:var(--slate); }
-	.menu-toggle { display:none; width:42px; min-width:42px; height:42px; place-items:center; padding:0; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--navy); }
+	.menu-toggle { display:none; width:42px; min-width:42px; height:42px; place-items:center; padding:0; border:1px solid var(--line); border-radius:10px; background:var(--surface); color:var(--navy); }
 	.content { flex:1; min-width:0; padding:26px clamp(18px,2.5vw,34px) 42px; animation:fade-in 160ms ease-out; }
 	.scrim { display:none; }
 	.boot { padding:3rem 1.25rem; text-align:center; color:var(--slate); animation:fade-in 160ms ease-out; }

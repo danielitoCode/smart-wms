@@ -2,11 +2,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
 
 *,*::before,*::after { box-sizing:border-box; }
-html { min-width:320px; color-scheme:light; scroll-behavior:smooth; }
+html { min-width:320px; scroll-behavior:smooth; }
 body { margin:0; min-width:320px; min-height:100vh; font-family:var(--body); font-size:16px; line-height:1.6; color:var(--ink); background:var(--bg); -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
 h1,h2,h3,h4 { font-family:var(--disp); font-weight:600; letter-spacing:-.02em; color:var(--ink); line-height:1.2; text-wrap:balance; }
 p { margin-top:0; }
-a { color:var(--navy); }
+a { color:var(--link,var(--navy)); }
 button,input,select,textarea { font:inherit; }
 button { cursor:pointer; }
 button:disabled { cursor:not-allowed; opacity:.58; }
@@ -16,7 +16,7 @@ button:disabled { cursor:not-allowed; opacity:.58; }
 /* Base de las pantallas operativas. */
 body .workspace .content .page,body .workspace .content .inventory { width:100%; max-width:1180px; margin:0 auto; padding:0; font-family:var(--body); }
 body .workspace .content .page > header,body .workspace .content .inventory > header { margin:0 0 24px; }
-body .workspace .content .page h1,body .workspace .content .inventory h1 { margin:0 0 5px; font:600 clamp(1.65rem,2.4vw,2rem)/1.15 var(--disp); letter-spacing:-.025em; color:var(--navy-deep); }
+body .workspace .content .page h1,body .workspace .content .inventory h1 { margin:0 0 5px; font:600 clamp(1.65rem,2.4vw,2rem)/1.15 var(--disp); letter-spacing:-.025em; color:var(--ink); }
 body .workspace .content .page h2,body .workspace .content .page h3,body .workspace .content .inventory h2 { font-family:var(--disp); color:var(--navy-deep); }
 body .workspace .content .subtitle,body .workspace .content .meta { margin:0; color:var(--slate); font-size:.9rem; line-height:1.5; }
 

@@ -51,7 +51,7 @@
 			<div class="table-wrap">
 				<table>
 					<thead>
-						<tr><th>SKU</th><th>Qty</th><th>Nombre</th></tr>
+						<tr><th>SKU</th><th>Cantidad</th><th>Nombre</th></tr>
 					</thead>
 					<tbody>
 						{#each state.detail.lines as line, i (line.sku + '-' + i)}
