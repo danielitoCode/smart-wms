@@ -206,7 +206,6 @@ func (s *Service) ProcessPending(ctx context.Context) error {
 	records, err := s.store.List(deliveryKind)
 	if err != nil { return err }
 	now := time.Now().UTC()
-	var failures []string
 	for _, record := range records {
 		var delivery Delivery
 		if err := json.Unmarshal(record.Data, &delivery); err != nil { failures = append(failures, record.ID+": "+err.Error()); continue }
