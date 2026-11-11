@@ -153,10 +153,9 @@ func (s *Service) Create(soNumber, reason, actor string, backorder bool) (RMA, e
 		}
 	}
 	for _, line := range so.Lines {
+		// Only quantities whose shipment was committed can be returned.
+		// Ordered, picked or packed quantities do not prove physical dispatch.
 		expected := line.QuantityShipped
-		if expected <= 0 { expected = line.QuantityPacked }
-		if expected <= 0 { expected = line.QuantityPicked }
-		if expected <= 0 { expected = line.QuantityOrdered }
 		if expected <= 0 { continue }
 		if _, exists := expectedByItem[line.ItemID]; !exists { itemOrder = append(itemOrder,line.ItemID) }
 		expectedByItem[line.ItemID] += expected
