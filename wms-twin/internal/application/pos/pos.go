@@ -121,6 +121,7 @@ func (s *Service) Availability(warehouseID int64, sku string) (map[string]any, e
 	}
 	out := make([]map[string]any, 0)
 	for _, it := range items {
+		if !it.IsActive { continue }
 		if sku != "" && it.SKU != sku {
 			continue
 		}
@@ -137,64 +138,49 @@ func (s *Service) Availability(warehouseID int64, sku string) (map[string]any, e
 }
 
 func (s *Service) ValidateCart(warehouseID int64, lines []CartLine) (map[string]any, error) {
-	if warehouseID <= 0 || len(lines) == 0 {
-		return nil, ErrInvalid
-	}
-	av, err := s.Availability(warehouseID, "")
-	if err != nil {
-		return nil, err
-	}
-	availMap := map[int64]int64{}
-	for _, row := range av["items"].([]map[string]any) {
-		id := row["item_id"].(int64)
-		availMap[id] = row["available"].(int64)
-	}
+	if warehouseID <= 0 || len(lines) == 0 || len(lines) > 200 { return nil, ErrInvalid }
 	items, err := s.catalog.ListItems()
-	if err != nil {
-		return nil, err
+	if err != nil { return nil, err }
+	idBySKU := make(map[string]int64, len(items))
+	activeByID := make(map[int64]bool, len(items))
+	for _, item := range items { idBySKU[item.SKU] = item.ItemID; activeByID[item.ItemID] = item.IsActive }
+	balances, _, err := s.ledger.List()
+	if err != nil { return nil, err }
+	available := make(map[string]int64)
+	for _, balance := range balances {
+		if balance.WarehouseID == warehouseID { available[fmt.Sprintf("%d:%d", balance.ItemID, balance.BinID)] += balance.Available() }
 	}
-	skuToID := map[string]int64{}
-	for _, item := range items {
-		skuToID[item.SKU] = item.ItemID
-		if _, exists := availMap[item.ItemID]; !exists {
-			availMap[item.ItemID] = 0
-		}
-	}
-	type resolvedLine struct {
-		id int64
-		sku string
-		quantity int64
-	}
-	resolved := make([]resolvedLine, 0, len(lines))
-	requested := make(map[int64]int64)
+	type resolved struct { itemID int64; sku string; binID int64; quantity int64 }
+	resolvedLines := make([]resolved, 0, len(lines))
+	requested := make(map[string]int64)
 	valid := true
 	for _, line := range lines {
-		id := line.ItemID
-		if id == 0 {
-			id = skuToID[line.SKU]
-		}
-		if id <= 0 || line.Quantity <= 0 {
+		itemID := line.ItemID
+		if itemID <= 0 { itemID = idBySKU[strings.TrimSpace(line.SKU)] }
+		if itemID <= 0 || !activeByID[itemID] || line.BinID <= 0 || line.Quantity <= 0 {
 			valid = false
-		} else if requested[id] > int64(^uint64(0)>>1)-line.Quantity {
-			valid = false
-		} else {
-			requested[id] += line.Quantity
+			resolvedLines = append(resolvedLines, resolved{itemID:itemID, sku:line.SKU, binID:line.BinID, quantity:line.Quantity})
+			continue
 		}
-		resolved = append(resolved, resolvedLine{id: id, sku: line.SKU, quantity: line.Quantity})
+		bin, err := s.catalog.GetBin(line.BinID)
+		if err != nil || bin.WarehouseID != warehouseID || !bin.IsActive {
+			valid = false
+		}
+		key := fmt.Sprintf("%d:%d", itemID, line.BinID)
+		if requested[key] > int64(^uint64(0)>>1)-line.Quantity { valid = false } else { requested[key] += line.Quantity }
+		sku := line.SKU
+		if sku == "" { for _, item := range items { if item.ItemID == itemID { sku = item.SKU; break } } }
+		resolvedLines = append(resolvedLines, resolved{itemID:itemID, sku:sku, binID:line.BinID, quantity:line.Quantity})
 	}
-	linesOut := make([]map[string]any, 0, len(resolved))
-	for _, line := range resolved {
-		have := availMap[line.id]
-		lineOK := line.id > 0 && line.quantity > 0 && requested[line.id] <= have
-		if !lineOK {
-			valid = false
-		}
-		linesOut = append(linesOut, map[string]any{
-			"item_id": line.id, "sku": line.sku, "quantity": line.quantity,
-			"available": have, "requested_total": requested[line.id], "ok": lineOK,
-		})
+	out := make([]map[string]any, 0, len(resolvedLines))
+	for _, line := range resolvedLines {
+		key := fmt.Sprintf("%d:%d", line.itemID, line.binID)
+		have := available[key]
+		ok := line.itemID > 0 && line.quantity > 0 && requested[key] <= have
+		if !ok { valid = false }
+		out = append(out, map[string]any{"item_id":line.itemID,"sku":line.sku,"bin_id":line.binID,"quantity":line.quantity,"available":have,"requested_total":requested[key],"ok":ok})
 	}
-	return map[string]any{"ok": valid, "lines": linesOut}, nil
+	return map[string]any{"ok":valid,"lines":out}, nil
 }
 
 // CheckoutTransaction runs an idempotent POS saga. Each inventory movement is
