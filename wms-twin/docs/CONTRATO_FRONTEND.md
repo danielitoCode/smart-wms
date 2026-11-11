@@ -93,7 +93,7 @@ En refund, `shipping_refund_cents` permite devolver el cargo de envío de forma 
 
 ### Snapshot restore
 
-`POST /api/v1/snapshots/{id}/restore` exige `operation_id` y `expected_ledger_version`. La respuesta devuelve `ok`, `result`, `backup_snapshot_id` y `replayed`. El cliente debe guardar el backup_snapshot_id como referencia de recuperación antes de continuar con procesos posteriores.
+`POST /api/v1/snapshot/snapshots/{id}/restore` exige `operation_id` y `expected_ledger_version`. La respuesta devuelve `ok`, `result`, `backup_snapshot_id` y `replayed`. El cliente debe guardar el backup_snapshot_id como referencia de recuperación antes de continuar con procesos posteriores.
 
 ### Inbound mapping v2
 
