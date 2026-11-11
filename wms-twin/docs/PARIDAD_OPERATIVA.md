@@ -115,3 +115,8 @@ Configuro `SENTRY_ENCRYPTION_KEY` o `WMS_WEBHOOK_ENCRYPTION_KEY` como base64 de 
 - La restauración de snapshots requiere una ventana operativa controlada y respaldo externo; expected_ledger_version no es compare-and-swap distribuido.
 - La idempotencia inbound cubre repetición exacta y recuperación por claves naturales; no acepta todavía una external_version nueva como UPSERT.
 - Kademlia/GossipSub solo está activo sobre LibP2PTransport; no atribuyo esas garantías al adapter TCP.
+
+
+## Recuperación y red
+
+Snapshot Restore realiza primero un respaldo persistente del estado actual y devuelve `backup_snapshot_id`. La operación queda registrada por operation_id y se puede reintentar sin crear otro backup. El runtime exige que Kademlia/GossipSub arranquen cuando Core expone LibP2PTransport. Para activarlo se configura `PRISMATEC_TRANSPORT=libp2p` y `PRISMATEC_NETWORK_ADDR` como multiaddr; con TCP el fallback sigue siendo TTL fan-out. El dispatcher de eventos recorre el log persistido y repara la creación de deliveries webhook con el timestamp original.
