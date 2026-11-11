@@ -2,9 +2,11 @@
 	import { onMount } from 'svelte';
 	import { createWarehousesState } from '../state/warehousesState.svelte';
 	import { authSession } from '../../../../infrastructure/auth/AuthSession';
+	import { createWarehouseSelectionState } from '../state/warehouseSelectionState.svelte';
 	import type { Warehouse } from '../../domain/entity/Warehouse';
 
 	const vm = createWarehousesState();
+	const selection = createWarehouseSelectionState();
 	let showForm = $state(false);
 	let editing = $state(null as Warehouse | null);
 	let deleteTarget = $state(null as Warehouse | null);
@@ -33,10 +35,10 @@
 		const ok = editing
 			? await vm.update({ id: editing.id, name: form.name, address: form.address || null, active: form.active })
 			: await vm.create({ code: form.code, name: form.name, address: form.address || null });
-		if (ok) showForm = false;
+		if (ok) { showForm = false; await selection.reload(authSession.getUser()); }
 	}
 	async function remove() {
-		if (deleteTarget && await vm.remove(deleteTarget.id)) deleteTarget = null;
+		if (deleteTarget && await vm.remove(deleteTarget.id)) { deleteTarget = null; await selection.reload(authSession.getUser()); }
 	}
 </script>
 
