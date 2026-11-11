@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yecharlot/PrismaTec-Core/network"
 	"github.com/libp2p/go-libp2p-kad-dht"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/yecharlot/PrismaTec-Core/network"
 )
 
 const (
@@ -44,13 +44,13 @@ type Mesh struct {
 	peers     map[string]Peer
 	seen      map[string]time.Time
 	handlers  map[string]func(GossipEnvelope)
-	dht *dht.IpfsDHT
-	pubsub *pubsub.PubSub
-	topics map[string]*pubsub.Topic
-	subs map[string]*pubsub.Subscription
-	ctx context.Context
-	cancel context.CancelFunc
-	startErr error
+	dht       *dht.IpfsDHT
+	pubsub    *pubsub.PubSub
+	topics    map[string]*pubsub.Topic
+	subs      map[string]*pubsub.Subscription
+	ctx       context.Context
+	cancel    context.CancelFunc
+	startErr  error
 }
 
 func New(selfID string, transport network.Transport) *Mesh {
@@ -58,7 +58,7 @@ func New(selfID string, transport network.Transport) *Mesh {
 		selfID: selfID, transport: transport,
 		peers: make(map[string]Peer), seen: make(map[string]time.Time),
 		handlers: make(map[string]func(GossipEnvelope)),
-		topics: make(map[string]*pubsub.Topic), subs: make(map[string]*pubsub.Subscription),
+		topics:   make(map[string]*pubsub.Topic), subs: make(map[string]*pubsub.Subscription),
 	}
 	if transport != nil {
 		transport.OnMessage(m.onMessage)
@@ -117,7 +117,13 @@ func (m *Mesh) OnTopic(topic string, h func(GossipEnvelope)) {
 	m.handlers[topic] = h
 	ready := m.pubsub != nil
 	m.mu.Unlock()
-	if ready { if err := m.subscribeTopic(topic); err != nil { m.mu.Lock(); m.startErr = err; m.mu.Unlock() } }
+	if ready {
+		if err := m.subscribeTopic(topic); err != nil {
+			m.mu.Lock()
+			m.startErr = err
+			m.mu.Unlock()
+		}
+	}
 }
 
 func (m *Mesh) Publish(topic string, payload any) error {
@@ -138,11 +144,17 @@ func (m *Mesh) Publish(topic string, payload any) error {
 	m.mu.Unlock()
 	if ps != nil {
 		pubTopic, err := m.joinTopic(topic)
-		if err != nil { return err }
-		if ctx == nil { ctx = context.Background() }
+		if err != nil {
+			return err
+		}
+		if ctx == nil {
+			ctx = context.Background()
+		}
 		return pubTopic.Publish(ctx, body)
 	}
-	if m.transport == nil { return nil }
+	if m.transport == nil {
+		return nil
+	}
 	return m.transport.Broadcast(context.Background(), network.Message{
 		Type: MsgGossip, From: m.selfID, Payload: body, SentAt: time.Now().UTC(),
 	})

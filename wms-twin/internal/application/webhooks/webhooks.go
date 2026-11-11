@@ -2,25 +2,25 @@ package webhooks
 
 import (
 	"bytes"
+	"context"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/rand"
-	"context"
-	"fmt"
-	"net"
-	"net/url"
-	"strings"
-	"strconv"
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
-	"encoding/hex"
 	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
 	"io"
 	"log"
+	"net"
+	"net/http"
+	"net/url"
 	"os"
 	"sort"
-	"encoding/json"
-	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,27 +32,27 @@ const deliveryKind = "wms_webhook_delivery"
 const maxDeliveryAttempts = 12
 
 type Subscription struct {
-	ID string `json:"id"`
-	URL string `json:"url"`
-	Secret string `json:"secret,omitempty"`
-	SecretCipher string `json:"secret_cipher,omitempty"`
-	EventTypes []string `json:"event_types"`
-	Active bool `json:"active"`
-	CreatedAt time.Time `json:"created_at"`
+	ID           string    `json:"id"`
+	URL          string    `json:"url"`
+	Secret       string    `json:"secret,omitempty"`
+	SecretCipher string    `json:"secret_cipher,omitempty"`
+	EventTypes   []string  `json:"event_types"`
+	Active       bool      `json:"active"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 type Delivery struct {
-	ID string `json:"id"`
-	EventID string `json:"event_id"`
-	SubscriptionID string `json:"subscription_id"`
-	EventType string `json:"event_type"`
-	Body json.RawMessage `json:"body"`
-	Status string `json:"status"`
-	Attempts int `json:"attempts"`
-	NextAttemptAt time.Time `json:"next_attempt_at"`
-	LastError string `json:"last_error,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
-	DeliveredAt *time.Time `json:"delivered_at,omitempty"`
+	ID             string          `json:"id"`
+	EventID        string          `json:"event_id"`
+	SubscriptionID string          `json:"subscription_id"`
+	EventType      string          `json:"event_type"`
+	Body           json.RawMessage `json:"body"`
+	Status         string          `json:"status"`
+	Attempts       int             `json:"attempts"`
+	NextAttemptAt  time.Time       `json:"next_attempt_at"`
+	LastError      string          `json:"last_error,omitempty"`
+	CreatedAt      time.Time       `json:"created_at"`
+	DeliveredAt    *time.Time      `json:"delivered_at,omitempty"`
 }
 
 type Service struct {
@@ -64,16 +64,16 @@ type Service struct {
 
 func New(store *corestore.Store) *Service {
 	transport := &http.Transport{
-		Proxy: nil,
-		TLSHandshakeTimeout: 5 * time.Second,
+		Proxy:                 nil,
+		TLSHandshakeTimeout:   5 * time.Second,
 		ResponseHeaderTimeout: 5 * time.Second,
-		DialContext: safeDialContext,
+		DialContext:           safeDialContext,
 	}
 	service := &Service{
 		store: store,
 		client: &http.Client{
 			Transport: transport,
-			Timeout: 8 * time.Second,
+			Timeout:   8 * time.Second,
 			CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 				return http.ErrUseLastResponse
 			},
@@ -90,27 +90,39 @@ func New(store *corestore.Store) *Service {
 }
 
 func (s *Service) Create(rawURL, secret string, types []string) (Subscription, error) {
-	if err := validateSubscription(rawURL, secret, types); err != nil { return Subscription{}, err }
+	if err := validateSubscription(rawURL, secret, types); err != nil {
+		return Subscription{}, err
+	}
 	encrypted, err := encryptSecret(secret)
-	if err != nil { return Subscription{}, err }
+	if err != nil {
+		return Subscription{}, err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.seq++
 	id := "wh_" + formatN(s.seq)
-	sub := Subscription{ID:id, URL:rawURL, SecretCipher:encrypted, EventTypes:append([]string(nil), types...), Active:true, CreatedAt:time.Now().UTC()}
+	sub := Subscription{ID: id, URL: rawURL, SecretCipher: encrypted, EventTypes: append([]string(nil), types...), Active: true, CreatedAt: time.Now().UTC()}
 	data, err := json.Marshal(sub)
-	if err != nil { return Subscription{}, err }
-	if _, err := s.store.Put(kind, id, data); err != nil { return Subscription{}, err }
+	if err != nil {
+		return Subscription{}, err
+	}
+	if _, err := s.store.Put(kind, id, data); err != nil {
+		return Subscription{}, err
+	}
 	return sub, nil
 }
 
 func (s *Service) List() ([]Subscription, error) {
 	records, err := s.store.List(kind)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	out := make([]Subscription, 0, len(records))
 	for _, record := range records {
 		var sub Subscription
-		if err := json.Unmarshal(record.Data, &sub); err != nil { return nil, err }
+		if err := json.Unmarshal(record.Data, &sub); err != nil {
+			return nil, err
+		}
 		sub.Secret, sub.SecretCipher = "", ""
 		out = append(out, sub)
 	}
@@ -127,27 +139,47 @@ func (s *Service) DeliverEvent(eventID, eventType string, payload any) error {
 func (s *Service) DeliverEventAt(eventID, eventType string, payload any, occurredAt time.Time) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if strings.TrimSpace(eventID) == "" || len(eventID) > 256 || strings.TrimSpace(eventType) == "" || len(eventType) > 128 { return fmt.Errorf("event id and type are required and must be within length limits") }
-	if occurredAt.IsZero() { occurredAt = time.Now().UTC() }
-	body, err := json.Marshal(map[string]any{"event_id":eventID,"event_type":eventType,"payload":payload,"occurred_at":occurredAt.UTC()})
-	if err != nil { return err }
+	if strings.TrimSpace(eventID) == "" || len(eventID) > 256 || strings.TrimSpace(eventType) == "" || len(eventType) > 128 {
+		return fmt.Errorf("event id and type are required and must be within length limits")
+	}
+	if occurredAt.IsZero() {
+		occurredAt = time.Now().UTC()
+	}
+	body, err := json.Marshal(map[string]any{"event_id": eventID, "event_type": eventType, "payload": payload, "occurred_at": occurredAt.UTC()})
+	if err != nil {
+		return err
+	}
 	records, err := s.store.List(kind)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	for _, record := range records {
 		var sub Subscription
-		if err := json.Unmarshal(record.Data, &sub); err != nil { return err }
-		if !sub.Active || !matches(sub.EventTypes, eventType) || (!sub.CreatedAt.IsZero() && sub.CreatedAt.After(occurredAt)) { continue }
+		if err := json.Unmarshal(record.Data, &sub); err != nil {
+			return err
+		}
+		if !sub.Active || !matches(sub.EventTypes, eventType) || (!sub.CreatedAt.IsZero() && sub.CreatedAt.After(occurredAt)) {
+			continue
+		}
 		idHash := sha256.Sum256([]byte(sub.ID + ":" + eventID))
 		id := hex.EncodeToString(idHash[:])
-		if _, found, err := s.store.Get(deliveryKind, id); err != nil { return err } else if found { continue }
+		if _, found, err := s.store.Get(deliveryKind, id); err != nil {
+			return err
+		} else if found {
+			continue
+		}
 		delivery := Delivery{
-			ID:id, EventID:eventID, SubscriptionID:sub.ID, EventType:eventType,
-			Body:json.RawMessage(body), Status:"PENDING", NextAttemptAt:time.Now().UTC(),
-			CreatedAt:time.Now().UTC(),
+			ID: id, EventID: eventID, SubscriptionID: sub.ID, EventType: eventType,
+			Body: json.RawMessage(body), Status: "PENDING", NextAttemptAt: time.Now().UTC(),
+			CreatedAt: time.Now().UTC(),
 		}
 		data, err := json.Marshal(delivery)
-		if err != nil { return err }
-		if _, err := s.store.Put(deliveryKind, id, data); err != nil { return err }
+		if err != nil {
+			return err
+		}
+		if _, err := s.store.Put(deliveryKind, id, data); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -164,11 +196,19 @@ func (s *Service) RetryDeadDelivery(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	record, ok, err := s.store.Get(deliveryKind, id)
-	if err != nil { return err }
-	if !ok { return fmt.Errorf("delivery not found") }
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("delivery not found")
+	}
 	var delivery Delivery
-	if err := json.Unmarshal(record.Data, &delivery); err != nil { return err }
-	if delivery.Status != "DEAD" { return fmt.Errorf("only dead-letter deliveries can be manually retried") }
+	if err := json.Unmarshal(record.Data, &delivery); err != nil {
+		return err
+	}
+	if delivery.Status != "DEAD" {
+		return fmt.Errorf("only dead-letter deliveries can be manually retried")
+	}
 	delivery.Status, delivery.Attempts, delivery.LastError = "RETRY", 0, ""
 	delivery.NextAttemptAt = time.Now().UTC()
 	return s.persistDelivery(delivery)
@@ -176,15 +216,21 @@ func (s *Service) RetryDeadDelivery(id string) error {
 
 func (s *Service) Deliveries(limit int) ([]Delivery, error) {
 	records, err := s.store.List(deliveryKind)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	out := make([]Delivery, 0, len(records))
 	for _, record := range records {
 		var delivery Delivery
-		if err := json.Unmarshal(record.Data, &delivery); err != nil { return nil, err }
+		if err := json.Unmarshal(record.Data, &delivery); err != nil {
+			return nil, err
+		}
 		out = append(out, delivery)
 	}
-	sort.Slice(out, func(i,j int) bool { return out[i].CreatedAt.After(out[j].CreatedAt) })
-	if limit > 0 && len(out) > limit { out = out[:limit] }
+	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.After(out[j].CreatedAt) })
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
 	return out, nil
 }
 
@@ -197,100 +243,162 @@ func (s *Service) ProcessPending(ctx context.Context) error {
 	// Migrate legacy plaintext subscription secrets before processing any
 	// delivery. New records are encrypted at creation time.
 	subscriptions, err := s.store.List(kind)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	var failures []string
 	for _, record := range subscriptions {
 		var sub Subscription
-		if err := json.Unmarshal(record.Data, &sub); err != nil { failures = append(failures, record.ID+": "+err.Error()); continue }
+		if err := json.Unmarshal(record.Data, &sub); err != nil {
+			failures = append(failures, record.ID+": "+err.Error())
+			continue
+		}
 		if sub.SecretCipher == "" && sub.Secret != "" {
 			encrypted, err := encryptSecret(sub.Secret)
-			if err != nil { failures = append(failures, record.ID+": secret migration: "+err.Error()); continue }
+			if err != nil {
+				failures = append(failures, record.ID+": secret migration: "+err.Error())
+				continue
+			}
 			sub.SecretCipher, sub.Secret = encrypted, ""
 			data, err := json.Marshal(sub)
-			if err == nil { _, err = s.store.Put(kind, sub.ID, data) }
-			if err != nil { failures = append(failures, record.ID+": secret migration persist: "+err.Error()) }
+			if err == nil {
+				_, err = s.store.Put(kind, sub.ID, data)
+			}
+			if err != nil {
+				failures = append(failures, record.ID+": secret migration persist: "+err.Error())
+			}
 		}
 	}
-	if len(failures) > 0 { return fmt.Errorf("webhook secret migration blocked dispatch: %s", strings.Join(failures, "; ")) }
+	if len(failures) > 0 {
+		return fmt.Errorf("webhook secret migration blocked dispatch: %s", strings.Join(failures, "; "))
+	}
 	records, err := s.store.List(deliveryKind)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	now := time.Now().UTC()
 	for _, record := range records {
 		var delivery Delivery
-		if err := json.Unmarshal(record.Data, &delivery); err != nil { failures = append(failures, record.ID+": "+err.Error()); continue }
-		if delivery.Status != "PENDING" && delivery.Status != "RETRY" { continue }
-		if delivery.NextAttemptAt.After(now) { continue }
+		if err := json.Unmarshal(record.Data, &delivery); err != nil {
+			failures = append(failures, record.ID+": "+err.Error())
+			continue
+		}
+		if delivery.Status != "PENDING" && delivery.Status != "RETRY" {
+			continue
+		}
+		if delivery.NextAttemptAt.After(now) {
+			continue
+		}
 		subRec, ok, err := s.store.Get(kind, delivery.SubscriptionID)
-		if err != nil { failures = append(failures, delivery.ID+": "+err.Error()); continue }
+		if err != nil {
+			failures = append(failures, delivery.ID+": "+err.Error())
+			continue
+		}
 		if !ok {
 			delivery.Status, delivery.LastError = "DEAD", "subscription no longer exists"
-			if persistErr := s.persistDelivery(delivery); persistErr != nil { failures = append(failures, delivery.ID+": persist dead-letter: "+persistErr.Error()) }
+			if persistErr := s.persistDelivery(delivery); persistErr != nil {
+				failures = append(failures, delivery.ID+": persist dead-letter: "+persistErr.Error())
+			}
 			continue
 		}
 		var sub Subscription
-		if err := json.Unmarshal(subRec.Data, &sub); err != nil { failures = append(failures, delivery.ID+": "+err.Error()); continue }
+		if err := json.Unmarshal(subRec.Data, &sub); err != nil {
+			failures = append(failures, delivery.ID+": "+err.Error())
+			continue
+		}
 		if !sub.Active {
 			delivery.Status, delivery.LastError = "DEAD", "subscription is inactive"
-			if persistErr := s.persistDelivery(delivery); persistErr != nil { failures = append(failures, delivery.ID+": persist dead-letter: "+persistErr.Error()) }
+			if persistErr := s.persistDelivery(delivery); persistErr != nil {
+				failures = append(failures, delivery.ID+": persist dead-letter: "+persistErr.Error())
+			}
 			continue
 		}
 		secret, err := decryptSecret(sub.SecretCipher)
 		if err != nil {
 			delivery.Status, delivery.LastError = "DEAD", "webhook secret cannot be decrypted"
-			if persistErr := s.persistDelivery(delivery); persistErr != nil { failures = append(failures, delivery.ID+": persist dead-letter: "+persistErr.Error()) }
+			if persistErr := s.persistDelivery(delivery); persistErr != nil {
+				failures = append(failures, delivery.ID+": persist dead-letter: "+persistErr.Error())
+			}
 			continue
 		}
 		status, sendErr := s.post(ctx, sub, secret, delivery.Body)
 		delivery.Attempts++
 		switch {
 		case sendErr == nil && status >= 200 && status < 300:
-			delivery.Status = "DELIVERED"; delivery.LastError = ""
-			delivered := time.Now().UTC(); delivery.DeliveredAt = &delivered
+			delivery.Status = "DELIVERED"
+			delivery.LastError = ""
+			delivered := time.Now().UTC()
+			delivery.DeliveredAt = &delivered
 		case sendErr == nil && ((status >= 400 && status < 500 && status != http.StatusTooManyRequests) || (status >= 300 && status < 400)):
-			delivery.Status = "DEAD"; delivery.LastError = fmt.Sprintf("permanent webhook response: HTTP %d", status)
+			delivery.Status = "DEAD"
+			delivery.LastError = fmt.Sprintf("permanent webhook response: HTTP %d", status)
 		default:
-			if sendErr != nil { delivery.LastError = sendErr.Error() } else { delivery.LastError = fmt.Sprintf("webhook response: HTTP %d", status) }
-			if delivery.Attempts >= maxDeliveryAttempts { delivery.Status = "DEAD" } else {
+			if sendErr != nil {
+				delivery.LastError = sendErr.Error()
+			} else {
+				delivery.LastError = fmt.Sprintf("webhook response: HTTP %d", status)
+			}
+			if delivery.Attempts >= maxDeliveryAttempts {
+				delivery.Status = "DEAD"
+			} else {
 				delivery.Status = "RETRY"
 				delay := time.Second * time.Duration(1<<minInt(delivery.Attempts, 12))
-				if delay > time.Hour { delay = time.Hour }
+				if delay > time.Hour {
+					delay = time.Hour
+				}
 				delivery.NextAttemptAt = time.Now().UTC().Add(delay)
 			}
 		}
-		if err := s.persistDelivery(delivery); err != nil { failures = append(failures, delivery.ID+": persist: "+err.Error()) }
+		if err := s.persistDelivery(delivery); err != nil {
+			failures = append(failures, delivery.ID+": persist: "+err.Error())
+		}
 	}
-	if len(failures) > 0 { return fmt.Errorf("webhook outbox pass had errors: %s", strings.Join(failures, "; ")) }
+	if len(failures) > 0 {
+		return fmt.Errorf("webhook outbox pass had errors: %s", strings.Join(failures, "; "))
+	}
 	return nil
 }
 
 func (s *Service) persistDelivery(delivery Delivery) error {
 	data, err := json.Marshal(delivery)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	_, err = s.store.Put(deliveryKind, delivery.ID, data)
 	return err
 }
 
 func (s *Service) Run(ctx context.Context, interval time.Duration) {
-	if interval <= 0 { interval = time.Second }
+	if interval <= 0 {
+		interval = time.Second
+	}
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
 		select {
-		case <-ctx.Done(): return
+		case <-ctx.Done():
+			return
 		case <-ticker.C:
-			if err := s.ProcessPending(ctx); err != nil { log.Printf("WMS webhook outbox worker: %v", err) }
+			if err := s.ProcessPending(ctx); err != nil {
+				log.Printf("WMS webhook outbox worker: %v", err)
+			}
 		}
 	}
 }
 
 func (s *Service) post(ctx context.Context, sub Subscription, secret string, body []byte) (int, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, sub.URL, bytes.NewReader(body))
-	if err != nil { return 0, err }
-	mac := hmac.New(sha256.New, []byte(secret)); mac.Write(body)
+	if err != nil {
+		return 0, err
+	}
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write(body)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-WMS-Signature", hex.EncodeToString(mac.Sum(nil)))
 	resp, err := s.client.Do(req)
-	if err != nil { return 0, err }
+	if err != nil {
+		return 0, err
+	}
 	defer resp.Body.Close()
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
 	return resp.StatusCode, nil
@@ -298,39 +406,80 @@ func (s *Service) post(ctx context.Context, sub Subscription, secret string, bod
 
 func encryptSecret(secret string) (string, error) {
 	key, err := webhookEncryptionKey()
-	if err != nil { return "", err }
-	block, err := aes.NewCipher(key); if err != nil { return "", err }
-	gcm, err := cipher.NewGCM(block); if err != nil { return "", err }
+	if err != nil {
+		return "", err
+	}
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
 	nonce := make([]byte, gcm.NonceSize())
-	if _, err := rand.Read(nonce); err != nil { return "", err }
+	if _, err := rand.Read(nonce); err != nil {
+		return "", err
+	}
 	sealed := gcm.Seal(nonce, nonce, []byte(secret), []byte("smart-wms-webhook-secret:v1"))
 	return base64.RawStdEncoding.EncodeToString(sealed), nil
 }
 
 func decryptSecret(encoded string) (string, error) {
-	key, err := webhookEncryptionKey(); if err != nil { return "", err }
-	sealed, err := base64.RawStdEncoding.DecodeString(encoded); if err != nil { return "", err }
-	block, err := aes.NewCipher(key); if err != nil { return "", err }
-	gcm, err := cipher.NewGCM(block); if err != nil { return "", err }
-	if len(sealed) < gcm.NonceSize()+gcm.Overhead() { return "", fmt.Errorf("encrypted webhook secret is truncated") }
+	key, err := webhookEncryptionKey()
+	if err != nil {
+		return "", err
+	}
+	sealed, err := base64.RawStdEncoding.DecodeString(encoded)
+	if err != nil {
+		return "", err
+	}
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+	if len(sealed) < gcm.NonceSize()+gcm.Overhead() {
+		return "", fmt.Errorf("encrypted webhook secret is truncated")
+	}
 	nonce, ciphertext := sealed[:gcm.NonceSize()], sealed[gcm.NonceSize():]
 	plain, err := gcm.Open(nil, nonce, ciphertext, []byte("smart-wms-webhook-secret:v1"))
-	if err != nil { return "", fmt.Errorf("decrypt webhook secret: %w", err) }
+	if err != nil {
+		return "", fmt.Errorf("decrypt webhook secret: %w", err)
+	}
 	return string(plain), nil
 }
 
 func webhookEncryptionKey() ([]byte, error) {
 	raw := strings.TrimSpace(os.Getenv("SENTRY_ENCRYPTION_KEY"))
-	if raw == "" { raw = strings.TrimSpace(os.Getenv("WMS_WEBHOOK_ENCRYPTION_KEY")) }
-	if raw == "" { return nil, fmt.Errorf("SENTRY_ENCRYPTION_KEY or WMS_WEBHOOK_ENCRYPTION_KEY is required to encrypt webhook secrets") }
+	if raw == "" {
+		raw = strings.TrimSpace(os.Getenv("WMS_WEBHOOK_ENCRYPTION_KEY"))
+	}
+	if raw == "" {
+		return nil, fmt.Errorf("SENTRY_ENCRYPTION_KEY or WMS_WEBHOOK_ENCRYPTION_KEY is required to encrypt webhook secrets")
+	}
 	key, err := base64.StdEncoding.DecodeString(raw)
-	if err != nil { key, err = base64.RawStdEncoding.DecodeString(raw) }
-	if err != nil { key, err = base64.RawURLEncoding.DecodeString(raw) }
-	if err != nil || len(key) != 32 { return nil, fmt.Errorf("webhook encryption key must be base64-encoded 32 bytes") }
+	if err != nil {
+		key, err = base64.RawStdEncoding.DecodeString(raw)
+	}
+	if err != nil {
+		key, err = base64.RawURLEncoding.DecodeString(raw)
+	}
+	if err != nil || len(key) != 32 {
+		return nil, fmt.Errorf("webhook encryption key must be base64-encoded 32 bytes")
+	}
 	return key, nil
 }
 
-func minInt(a,b int) int { if a < b { return a }; return b }
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
 
 func validateSubscription(rawURL, secret string, eventTypes []string) error {
 	parsed, err := url.ParseRequestURI(strings.TrimSpace(rawURL))
@@ -373,7 +522,9 @@ func isPublicWebhookIP(ip net.IP) bool {
 	}
 	for _, block := range blocked {
 		_, network, err := net.ParseCIDR(block)
-		if err == nil && network.Contains(ip) { return false }
+		if err == nil && network.Contains(ip) {
+			return false
+		}
 	}
 	return true
 }

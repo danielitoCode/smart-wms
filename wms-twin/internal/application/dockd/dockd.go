@@ -83,7 +83,9 @@ func (s *Service) VoidShip(soNumber, actor string) (map[string]any, error) {
 
 func (s *Service) VoidShipWithReason(soNumber, actor, reason, operationID string, allowed []int64, isAdmin bool) (map[string]any, error) {
 	so, err := s.Order(soNumber)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	if !isAdmin && !containsWarehouse(allowed, so.WarehouseID) {
 		return nil, fulfillment.ErrScope
 	}
@@ -92,11 +94,13 @@ func (s *Service) VoidShipWithReason(soNumber, actor, reason, operationID string
 	}
 	var shipment fulfillment.Shipment
 	if strings.TrimSpace(operationID) == "" {
-		shipment, err = s.fulfill.VoidLegacy(so.SOID,actor,reason)
+		shipment, err = s.fulfill.VoidLegacy(so.SOID, actor, reason)
 	} else {
-		shipment, err = s.fulfill.VoidWithID(so.SOID,actor,reason,operationID)
+		shipment, err = s.fulfill.VoidWithID(so.SOID, actor, reason, operationID)
 	}
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	return map[string]any{
 		"so_number": so.SONumber, "status": shipment.PreShipStatus,
 		"voided_at": shipment.VoidedAt, "voided_by": shipment.VoidedBy,
@@ -105,6 +109,10 @@ func (s *Service) VoidShipWithReason(soNumber, actor, reason, operationID string
 }
 
 func containsWarehouse(allowed []int64, id int64) bool {
-	for _, value := range allowed { if value == id { return true } }
+	for _, value := range allowed {
+		if value == id {
+			return true
+		}
+	}
 	return false
 }

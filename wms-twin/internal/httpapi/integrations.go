@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inbound"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/fulfillment"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inbound"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/pos"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/rma"
@@ -79,7 +79,7 @@ func (s *Server) dashboardV1(w http.ResponseWriter, r *http.Request, rest string
 		items, _ := s.catalog.ListItems()
 		writeJSON(w, 200, map[string]any{
 			"productivity": map[string]any{"warehouses": len(wh), "items": len(items), "picks": 0, "ships": 0},
-			"engine": "PrismaTec-Core",
+			"engine":       "PrismaTec-Core",
 		})
 	case r.Method == http.MethodGet && rest == "preferences":
 		writeJSON(w, 200, map[string]any{"preferences": map[string]any{}})
@@ -141,11 +141,16 @@ func (s *Server) posV1(w http.ResponseWriter, r *http.Request, rest string) {
 				writeJSON(w, 400, map[string]string{"error": "Invalid request body"})
 				return
 			}
-			if rec.WarehouseID != nil { in.WarehouseID = *rec.WarehouseID }
+			if rec.WarehouseID != nil {
+				in.WarehouseID = *rec.WarehouseID
+			}
 			so, replayed, err := s.pos.CheckoutTransaction(in, rec.Name)
 			if err != nil {
-				if errors.Is(err, pos.ErrUnsupported) { writeJSON(w, 501, map[string]string{"error": err.Error()})
-				} else { writeJSON(w, 409, map[string]string{"error": err.Error()}) }
+				if errors.Is(err, pos.ErrUnsupported) {
+					writeJSON(w, 501, map[string]string{"error": err.Error()})
+				} else {
+					writeJSON(w, 409, map[string]string{"error": err.Error()})
+				}
 				return
 			}
 			var eventID string
@@ -153,8 +158,12 @@ func (s *Server) posV1(w http.ResponseWriter, r *http.Request, rest string) {
 				ev, _ := s.events.Emit("pos.checkout", map[string]any{"so_id": so.SOID, "so_number": so.SONumber})
 				eventID = ev.EventID
 			}
-			if !replayed && s.webhooks != nil && eventID != "" { _ = s.webhooks.DeliverEvent(eventID, "pos.checkout", so) }
-			if replayed { w.Header().Set("X-Idempotent-Replay", "true") }
+			if !replayed && s.webhooks != nil && eventID != "" {
+				_ = s.webhooks.DeliverEvent(eventID, "pos.checkout", so)
+			}
+			if replayed {
+				w.Header().Set("X-Idempotent-Replay", "true")
+			}
 			writeJSON(w, 201, so)
 		})(w, r)
 	case r.Method == http.MethodPost && rest == "refund":
@@ -169,7 +178,9 @@ func (s *Server) posV1(w http.ResponseWriter, r *http.Request, rest string) {
 				writeJSON(w, 404, map[string]string{"error": "original POS sale not found"})
 				return
 			}
-			if in.CashierID == "" { in.CashierID = rec.Name }
+			if in.CashierID == "" {
+				in.CashierID = rec.Name
+			}
 			out, replayed, err := s.pos.RefundTransaction(in, rec.Name)
 			if err != nil {
 				writeJSON(w, 409, map[string]string{"error": err.Error()})
@@ -177,16 +188,20 @@ func (s *Server) posV1(w http.ResponseWriter, r *http.Request, rest string) {
 			}
 			if !replayed && s.events != nil {
 				ev, _ := s.events.Emit("pos.refund", out)
-				if s.webhooks != nil && ev.EventID != "" { _ = s.webhooks.DeliverEvent(ev.EventID, "pos.refund", out) }
+				if s.webhooks != nil && ev.EventID != "" {
+					_ = s.webhooks.DeliverEvent(ev.EventID, "pos.refund", out)
+				}
 			}
-			if replayed { w.Header().Set("X-Idempotent-Replay", "true") }
+			if replayed {
+				w.Header().Set("X-Idempotent-Replay", "true")
+			}
 			writeJSON(w, 200, out)
 		})(w, r)
 	case r.Method == http.MethodPost && rest == "dispatch":
 		s.requireWMSToken("pos.dispatch", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
 			var in struct {
-				SONumber string `json:"so_number"`
-				Carrier string `json:"carrier"`
+				SONumber       string `json:"so_number"`
+				Carrier        string `json:"carrier"`
 				TrackingNumber string `json:"tracking_number"`
 				IdempotencyKey string `json:"idempotency_key"`
 			}
@@ -195,7 +210,9 @@ func (s *Server) posV1(w http.ResponseWriter, r *http.Request, rest string) {
 				return
 			}
 			allowed := []int64{}
-			if rec.WarehouseID != nil { allowed = []int64{*rec.WarehouseID} }
+			if rec.WarehouseID != nil {
+				allowed = []int64{*rec.WarehouseID}
+			}
 			out, err := s.pos.DispatchWithDetails(in.SONumber, in.Carrier, in.TrackingNumber, rec.Name, in.IdempotencyKey, allowed, rec.WarehouseID == nil)
 			if err != nil {
 				if errors.Is(err, pos.ErrUnsupported) {
@@ -207,7 +224,9 @@ func (s *Server) posV1(w http.ResponseWriter, r *http.Request, rest string) {
 			}
 			if replayed, _ := out["replayed"].(bool); !replayed && s.events != nil {
 				ev, _ := s.events.Emit("pos.dispatch", out)
-				if s.webhooks != nil && ev.EventID != "" { _ = s.webhooks.DeliverEvent(ev.EventID, "pos.dispatch", out) }
+				if s.webhooks != nil && ev.EventID != "" {
+					_ = s.webhooks.DeliverEvent(ev.EventID, "pos.dispatch", out)
+				}
 			}
 			writeJSON(w, 200, out)
 		})(w, r)
@@ -279,23 +298,38 @@ func (s *Server) dockdV1(w http.ResponseWriter, r *http.Request, rest string) {
 		})(w, r)
 	case r.Method == http.MethodPost && len(parts) == 3 && parts[0] == "orders" && parts[2] == "void-ship":
 		s.requireWMSToken("dockd.void-ship", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
-			var in struct { Reason string `json:"reason"`; IdempotencyKey string `json:"idempotency_key"` }
+			var in struct {
+				Reason         string `json:"reason"`
+				IdempotencyKey string `json:"idempotency_key"`
+			}
 			if err := decodeBody(r, &in); err != nil || strings.TrimSpace(in.Reason) == "" || strings.TrimSpace(in.IdempotencyKey) == "" {
 				writeJSON(w, 400, map[string]string{"error": "reason and idempotency_key are required"})
 				return
 			}
 			allowed := []int64{}
-			if rec.WarehouseID != nil { allowed = []int64{*rec.WarehouseID} }
+			if rec.WarehouseID != nil {
+				allowed = []int64{*rec.WarehouseID}
+			}
 			out, err := s.dockd.VoidShipWithReason(parts[1], rec.Name, in.Reason, in.IdempotencyKey, allowed, rec.WarehouseID == nil)
 			if err != nil {
-				if errors.Is(err, fulfillment.ErrScope) { writeJSON(w, 404, map[string]string{"error": "not found"}) } else if errors.Is(err, fulfillment.ErrState) { writeJSON(w, 409, map[string]string{"error": err.Error()}) } else { writeJSON(w, 400, map[string]string{"error": err.Error()}) }
+				if errors.Is(err, fulfillment.ErrScope) {
+					writeJSON(w, 404, map[string]string{"error": "not found"})
+				} else if errors.Is(err, fulfillment.ErrState) {
+					writeJSON(w, 409, map[string]string{"error": err.Error()})
+				} else {
+					writeJSON(w, 400, map[string]string{"error": err.Error()})
+				}
 				return
 			}
 			if replayed, _ := out["replayed"].(bool); !replayed && s.events != nil {
 				ev, _ := s.events.Emit("dockd.ship.voided", out)
-				if s.webhooks != nil && ev.EventID != "" { _ = s.webhooks.DeliverEvent(ev.EventID, "dockd.ship.voided", out) }
+				if s.webhooks != nil && ev.EventID != "" {
+					_ = s.webhooks.DeliverEvent(ev.EventID, "dockd.ship.voided", out)
+				}
 			}
-			if s.wmsAudit != nil { _, _ = s.wmsAudit.Record(rec.TokenID, "dockd.ship.void", parts[1], true, in.Reason, nil) }
+			if s.wmsAudit != nil {
+				_, _ = s.wmsAudit.Record(rec.TokenID, "dockd.ship.void", parts[1], true, in.Reason, nil)
+			}
 			writeJSON(w, 200, out)
 		})(w, r)
 	default:
@@ -428,7 +462,7 @@ func (s *Server) snapshotV1(w http.ResponseWriter, r *http.Request, rest string)
 		if len(parts) == 2 && parts[1] == "restore" && r.Method == http.MethodPost {
 			s.requireWMSToken("snapshot.restore", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
 				var in struct {
-					OperationID string `json:"operation_id"`
+					OperationID     string  `json:"operation_id"`
 					ExpectedVersion *uint64 `json:"expected_ledger_version"`
 				}
 				if err := decodeBody(r, &in); err != nil || strings.TrimSpace(in.OperationID) == "" || in.ExpectedVersion == nil {
@@ -460,7 +494,7 @@ func (s *Server) snapshotV1(w http.ResponseWriter, r *http.Request, rest string)
 				writeJSON(w, 200, map[string]any{
 					"ok": true, "result": result.Result,
 					"backup_snapshot_id": result.BackupSnapshotID,
-					"replayed": result.Replayed,
+					"replayed":           result.Replayed,
 				})
 			})(w, r)
 			return
@@ -480,14 +514,23 @@ func (s *Server) webhooksV1(w http.ResponseWriter, r *http.Request, rest string)
 	}
 	if rest == "deliveries" && r.Method == http.MethodGet {
 		list, err := s.webhooks.Deliveries(500)
-		if err != nil { writeJSON(w, 500, map[string]string{"error": err.Error()}); return }
+		if err != nil {
+			writeJSON(w, 500, map[string]string{"error": err.Error()})
+			return
+		}
 		writeJSON(w, 200, map[string]any{"deliveries": list, "total": len(list)})
 		return
 	}
 	if strings.HasPrefix(rest, "deliveries/") && strings.HasSuffix(rest, "/retry") && r.Method == http.MethodPost {
 		id := strings.TrimSuffix(strings.TrimPrefix(rest, "deliveries/"), "/retry")
-		if id == "" || strings.Contains(id, "/") { writeJSON(w, 400, map[string]string{"error": "invalid delivery id"}); return }
-		if err := s.webhooks.RetryDeadDelivery(id); err != nil { writeJSON(w, 409, map[string]string{"error": err.Error()}); return }
+		if id == "" || strings.Contains(id, "/") {
+			writeJSON(w, 400, map[string]string{"error": "invalid delivery id"})
+			return
+		}
+		if err := s.webhooks.RetryDeadDelivery(id); err != nil {
+			writeJSON(w, 409, map[string]string{"error": err.Error()})
+			return
+		}
 		writeJSON(w, 200, map[string]any{"ok": true, "delivery_id": id, "status": "RETRY"})
 		return
 	}
@@ -634,7 +677,9 @@ func (s *Server) meshStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	kademliaReady, gossipSubReady := s.mesh.KademliaReady(), s.mesh.GossipSubReady()
 	layer := "peer-table+ttl-fanout"
-	if kademliaReady && gossipSubReady { layer = "libp2p-kademlia+gossipsub" }
+	if kademliaReady && gossipSubReady {
+		layer = "libp2p-kademlia+gossipsub"
+	}
 	writeJSON(w, 200, map[string]any{
 		"peers": s.mesh.Peers(), "closest": s.mesh.Closest(string(s.node.ID()), 8),
 		"engine": "PrismaTec-Core", "layer": layer,
@@ -701,10 +746,10 @@ func (s *Server) rmaRoutes(w http.ResponseWriter, r *http.Request) {
 	case r.Method == http.MethodPost && strings.HasSuffix(path, "/receive-line"):
 		id, parseErr := strconv.ParseInt(strings.TrimSuffix(path, "/receive-line"), 10, 64)
 		var in struct {
-			ItemID int64 `json:"item_id"`
-			Quantity int64 `json:"quantity"`
-			BinID int64 `json:"bin_id"`
-			LotNumber string `json:"lot_number"`
+			ItemID      int64  `json:"item_id"`
+			Quantity    int64  `json:"quantity"`
+			BinID       int64  `json:"bin_id"`
+			LotNumber   string `json:"lot_number"`
 			Disposition string `json:"disposition"`
 			OperationID string `json:"operation_id"`
 		}
@@ -717,7 +762,9 @@ func (s *Server) rmaRoutes(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, 409, map[string]string{"error": err.Error()})
 			return
 		}
-		if s.events != nil { _, _ = s.events.Emit("rma.line.received", map[string]any{"rma_id": out.RMAID, "item_id": in.ItemID, "quantity": in.Quantity, "disposition": in.Disposition}) }
+		if s.events != nil {
+			_, _ = s.events.Emit("rma.line.received", map[string]any{"rma_id": out.RMAID, "item_id": in.ItemID, "quantity": in.Quantity, "disposition": in.Disposition})
+		}
 		writeJSON(w, 200, out)
 	case r.Method == http.MethodPost && strings.HasSuffix(path, "/receive"):
 		id, _ := strconv.ParseInt(strings.TrimSuffix(path, "/receive"), 10, 64)

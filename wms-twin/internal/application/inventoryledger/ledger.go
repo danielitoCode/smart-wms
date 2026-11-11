@@ -206,10 +206,10 @@ func (l *Ledger) RestoreBalances(operationID string, expectedVersion uint64, war
 		return Result{}, inventory.ErrInvalidBalance
 	}
 	command := struct {
-		OperationID string `json:"operation_id"`
-		ExpectedVersion uint64 `json:"expected_version"`
-		WarehouseID int64 `json:"warehouse_id"`
-		Balances []inventory.Balance `json:"balances"`
+		OperationID     string              `json:"operation_id"`
+		ExpectedVersion uint64              `json:"expected_version"`
+		WarehouseID     int64               `json:"warehouse_id"`
+		Balances        []inventory.Balance `json:"balances"`
 	}{operationID, expectedVersion, warehouseID, balances}
 	return l.execute(operationID, command, func(st *state) ([]inventory.Balance, error) {
 		if st.Version != expectedVersion {

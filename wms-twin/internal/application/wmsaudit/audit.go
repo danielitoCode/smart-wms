@@ -29,11 +29,11 @@ type Entry struct {
 }
 
 type Service struct {
-	store *corestore.Store
-	core  *audit.Log
-	mu    sync.Mutex
-	last  string
-	seq   int64
+	store           *corestore.Store
+	core            *audit.Log
+	mu              sync.Mutex
+	last            string
+	seq             int64
 	verificationErr error
 }
 

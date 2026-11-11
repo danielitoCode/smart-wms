@@ -25,9 +25,9 @@ var (
 )
 
 const (
-	batchKind = "pick-batches"
-	taskKind  = "pick-tasks"
-	seqKind   = "pick-sequences"
+	batchKind        = "pick-batches"
+	taskKind         = "pick-tasks"
+	seqKind          = "pick-sequences"
 	StatusOpen       = "OPEN"
 	StatusInProgress = "IN_PROGRESS"
 	StatusComplete   = "COMPLETE"

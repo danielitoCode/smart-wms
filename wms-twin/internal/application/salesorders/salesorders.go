@@ -21,45 +21,45 @@ var (
 )
 
 const (
-	soKind    = "sales-orders"
-	soSeqKind = "sales-order-sequences"
-	StatusOpen     = "OPEN"
-	StatusPicked   = "PICKED"
-	StatusPacked   = "PACKED"
-	StatusShipped  = "SHIPPED"
-	StatusRefunded = "REFUNDED"
+	soKind                  = "sales-orders"
+	soSeqKind               = "sales-order-sequences"
+	StatusOpen              = "OPEN"
+	StatusPicked            = "PICKED"
+	StatusPacked            = "PACKED"
+	StatusShipped           = "SHIPPED"
+	StatusRefunded          = "REFUNDED"
 	StatusPartiallyRefunded = "PARTIALLY_REFUNDED"
-	StatusClosed   = "CLOSED"
-	LineOpen       = "OPEN"
-	LinePicked     = "PICKED"
-	LinePacked     = "PACKED"
-	LineShipped    = "SHIPPED"
-	LineRefunded   = "REFUNDED"
+	StatusClosed            = "CLOSED"
+	LineOpen                = "OPEN"
+	LinePicked              = "PICKED"
+	LinePacked              = "PACKED"
+	LineShipped             = "SHIPPED"
+	LineRefunded            = "REFUNDED"
 )
 
 type Line struct {
-	SOLineID         int64 `json:"so_line_id"`
-	LineNumber       int   `json:"line_number"`
-	ItemID           int64 `json:"item_id"`
-	QuantityOrdered  int64 `json:"quantity_ordered"`
-	QuantityAllocated int64 `json:"quantity_allocated"`
-	QuantityPicked   int64 `json:"quantity_picked"`
-	QuantityPacked   int64 `json:"quantity_packed"`
-	QuantityShipped  int64 `json:"quantity_shipped"`
-	Status           string `json:"status"`
+	SOLineID          int64  `json:"so_line_id"`
+	LineNumber        int    `json:"line_number"`
+	ItemID            int64  `json:"item_id"`
+	QuantityOrdered   int64  `json:"quantity_ordered"`
+	QuantityAllocated int64  `json:"quantity_allocated"`
+	QuantityPicked    int64  `json:"quantity_picked"`
+	QuantityPacked    int64  `json:"quantity_packed"`
+	QuantityShipped   int64  `json:"quantity_shipped"`
+	Status            string `json:"status"`
 }
 
 type SalesOrder struct {
-	SOID        int64     `json:"so_id"`
-	SONumber    string    `json:"so_number"`
-	SOBarcode   string    `json:"so_barcode"`
-	WarehouseID int64     `json:"warehouse_id"`
-	Status      string    `json:"status"`
-	CustomerName string   `json:"customer_name,omitempty"`
-	Notes       string    `json:"notes,omitempty"`
-	CreatedAt   time.Time `json:"created_at"`
-	CreatedBy   string    `json:"created_by"`
-	Lines       []Line    `json:"lines"`
+	SOID         int64     `json:"so_id"`
+	SONumber     string    `json:"so_number"`
+	SOBarcode    string    `json:"so_barcode"`
+	WarehouseID  int64     `json:"warehouse_id"`
+	Status       string    `json:"status"`
+	CustomerName string    `json:"customer_name,omitempty"`
+	Notes        string    `json:"notes,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+	CreatedBy    string    `json:"created_by"`
+	Lines        []Line    `json:"lines"`
 }
 
 type LineInput struct {

@@ -1,8 +1,8 @@
 package httpapi
 
 import (
-	"crypto/subtle"
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -132,19 +132,25 @@ func NewWithIdentity(node *core.Node, store *corestore.Store, token string, user
 		requirePacking: requirePacking,
 	}
 }
+
 // StartBackground starts supervised outbox workers under the runtime context.
 func (s *Server) StartBackground(ctx context.Context) error {
 	if s.mesh != nil {
-		if err := s.mesh.Start(ctx); err != nil { return fmt.Errorf("start WMS mesh: %w", err) }
+		if err := s.mesh.Start(ctx); err != nil {
+			return fmt.Errorf("start WMS mesh: %w", err)
+		}
 	}
-	if s.webhooks != nil { go s.webhooks.Run(ctx, time.Second) }
+	if s.webhooks != nil {
+		go s.webhooks.Run(ctx, time.Second)
+	}
 	if s.events != nil {
 		go func() {
 			ticker := time.NewTicker(5 * time.Second)
 			defer ticker.Stop()
 			for {
 				select {
-				case <-ctx.Done(): return
+				case <-ctx.Done():
+					return
 				case <-ticker.C:
 					if err := s.events.PublishPending(); err != nil {
 						log.Printf("WMS event mesh publisher: %v", err)

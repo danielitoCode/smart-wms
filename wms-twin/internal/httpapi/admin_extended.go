@@ -544,7 +544,6 @@ func stringifyID(v any) string {
 	}
 }
 
-
 func (s *Server) warehousesPublic(w http.ResponseWriter, r *http.Request) {
 	path := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/warehouses/"), "/")
 	if path == "list" && r.Method == http.MethodGet {

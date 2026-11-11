@@ -3,9 +3,9 @@ package events
 import (
 	"encoding/json"
 	"fmt"
-	"sync"
-	"strings"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
@@ -25,19 +25,21 @@ type Event struct {
 }
 
 type Service struct {
-	store *corestore.Store
-	mesh  *mesh.Mesh
-	mu    sync.Mutex
-	seq   int64
+	store          *corestore.Store
+	mesh           *mesh.Mesh
+	mu             sync.Mutex
+	seq            int64
 	remoteHandlers []func(Event)
 }
 
 func New(store *corestore.Store, m *mesh.Mesh) *Service {
-	service := &Service{store:store, mesh:m}
+	service := &Service{store: store, mesh: m}
 	if m != nil {
 		m.OnTopic("wms.events", func(envelope mesh.GossipEnvelope) {
 			var event Event
-			if err := json.Unmarshal(envelope.Payload, &event); err != nil || event.EventID == "" { return }
+			if err := json.Unmarshal(envelope.Payload, &event); err != nil || event.EventID == "" {
+				return
+			}
 			service.acceptRemote(event)
 		})
 	}
@@ -45,23 +47,38 @@ func New(store *corestore.Store, m *mesh.Mesh) *Service {
 }
 
 func (s *Service) OnRemote(handler func(Event)) {
-	if handler == nil { return }
+	if handler == nil {
+		return
+	}
 	s.mu.Lock()
 	s.remoteHandlers = append(s.remoteHandlers, handler)
 	s.mu.Unlock()
 }
 
 func (s *Service) acceptRemote(event Event) {
-	if _, exists, err := s.store.Get(kind, event.EventID); err != nil || exists { return }
+	if _, exists, err := s.store.Get(kind, event.EventID); err != nil || exists {
+		return
+	}
 	s.mu.Lock()
-	if _, exists, err := s.store.Get(kind, event.EventID); err != nil || exists { s.mu.Unlock(); return }
+	if _, exists, err := s.store.Get(kind, event.EventID); err != nil || exists {
+		s.mu.Unlock()
+		return
+	}
 	event.Published = true
 	data, err := json.Marshal(event)
-	if err != nil { s.mu.Unlock(); return }
-	if _, err := s.store.Put(kind, event.EventID, data); err != nil { s.mu.Unlock(); return }
+	if err != nil {
+		s.mu.Unlock()
+		return
+	}
+	if _, err := s.store.Put(kind, event.EventID, data); err != nil {
+		s.mu.Unlock()
+		return
+	}
 	handlers := append([]func(Event){}, s.remoteHandlers...)
 	s.mu.Unlock()
-	for _, handler := range handlers { handler(event) }
+	for _, handler := range handlers {
+		handler(event)
+	}
 }
 
 func (s *Service) Emit(eventType string, payload map[string]any) (Event, error) {
@@ -130,7 +147,6 @@ func (s *Service) Ack(eventID string) error {
 	_, err = s.store.Put(kind, eventID, data)
 	return err
 }
-
 
 // PublishPending retries durable events whose mesh publication did not
 // complete. It is safe to call repeatedly because message IDs are stable.
