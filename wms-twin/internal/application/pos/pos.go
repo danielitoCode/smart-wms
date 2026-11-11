@@ -351,6 +351,10 @@ func (s *Service) CheckoutTransaction(in CheckoutInput, actor string) (salesorde
 	if sale.SOID == 0 {
 		number := "POS-" + recordID[:20]
 		if existing, findErr := s.sos.FindByBarcode(number); findErr == nil {
+			if existing.WarehouseID != in.WarehouseID || len(existing.Lines) != len(sale.Lines) { return salesorders.SalesOrder{}, false, fmt.Errorf("deterministic POS order number is occupied by a different order") }
+			for i, line := range sale.Lines {
+				if existing.Lines[i].ItemID != line.ItemID || existing.Lines[i].QuantityOrdered != line.Quantity { return salesorders.SalesOrder{}, false, fmt.Errorf("deterministic POS order number is occupied by a different order") }
+			}
 			sale.SOID, sale.SONumber = existing.SOID, existing.SONumber
 		} else {
 			lines := make([]salesorders.LineInput, 0, len(sale.Lines))
@@ -607,7 +611,7 @@ func (s *Service) DispatchWithDetails(soNumber, carrier, tracking, actor, operat
 	if so.Status == salesorders.StatusShipped && (sale.Status == "DISPATCHING" || sale.Status == "DISPATCHED") {
 		shipment, err := s.fulfill.GetShipment(so.SOID)
 		if err != nil { return nil, err }
-		if shipment.Status != "SHIPPED" { return nil, fulfillment.ErrState }
+		if shipment.Status != "SHIPPED" || strings.TrimSpace(carrier) != shipment.Carrier || strings.TrimSpace(tracking) != shipment.TrackingNumber { return nil, fulfillment.ErrState }
 		if sale.Status != "DISPATCHED" {
 			sale.Status = "DISPATCHED"
 			data, _ := json.Marshal(sale)
