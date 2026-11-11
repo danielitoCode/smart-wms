@@ -3,6 +3,7 @@ package dockd
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/fulfillment"
@@ -77,9 +78,28 @@ func (s *Service) Ship(soNumber, carrier, tracking, actor string, allowed []int6
 }
 
 func (s *Service) VoidShip(soNumber, actor string) (map[string]any, error) {
+	return s.VoidShipWithReason(soNumber, actor, "operator requested void", nil, true)
+}
+
+func (s *Service) VoidShipWithReason(soNumber, actor, reason string, allowed []int64, isAdmin bool) (map[string]any, error) {
 	so, err := s.Order(soNumber)
-	if err != nil {
-		return nil, err
+	if err != nil { return nil, err }
+	if !isAdmin && !containsWarehouse(allowed, so.WarehouseID) {
+		return nil, fulfillment.ErrScope
 	}
-	return nil, fmt.Errorf("ship void is not supported by the current sales-order contract for %s; no state was changed", so.SONumber)
+	if strings.TrimSpace(reason) == "" || len(reason) > 500 {
+		return nil, fulfillment.ErrInvalid
+	}
+	shipment, err := s.fulfill.Void(so.SOID, actor, reason)
+	if err != nil { return nil, err }
+	return map[string]any{
+		"so_number": so.SONumber, "status": shipment.PreShipStatus,
+		"voided_at": shipment.VoidedAt, "voided_by": shipment.VoidedBy,
+		"void_reason": shipment.VoidReason, "tracking_number": shipment.TrackingNumber,
+	}, nil
+}
+
+func containsWarehouse(allowed []int64, id int64) bool {
+	for _, value := range allowed { if value == id { return true } }
+	return false
 }
