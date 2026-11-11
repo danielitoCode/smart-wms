@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/salesorders"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 )
 
@@ -25,13 +26,16 @@ var (
 type Service struct {
 	store *corestore.Store
 	sos *salesorders.Repository
+	ledger *inventoryledger.Ledger
 	mu  sync.Mutex
 }
 
 const shipmentKind = "wms_fulfillment"
 
-func New(store *corestore.Store, sos *salesorders.Repository) *Service {
-	return &Service{store: store, sos: sos}
+func New(store *corestore.Store, sos *salesorders.Repository, ledgers ...*inventoryledger.Ledger) *Service {
+	service := &Service{store: store, sos: sos}
+	if len(ledgers) > 0 { service.ledger = ledgers[0] }
+	return service
 }
 
 func contains(ids []int64, id int64) bool {
@@ -129,6 +133,7 @@ type Shipment struct {
 	VoidOperationID string `json:"void_operation_id,omitempty"`
 	VoidFingerprint string `json:"void_fingerprint,omitempty"`
 	Replayed bool `json:"replayed,omitempty"`
+	VoidReversedKeys []string `json:"void_reversed_keys,omitempty"`
 }
 
 func (s *Service) Fulfill(in FulfillInput, allowed []int64, isAdmin bool) (Shipment, error) {
@@ -239,7 +244,14 @@ func (s *Service) VoidWithID(soID int64, actor, reason, operationID string) (Shi
 	fingerprintBytes := sha256.Sum256([]byte(fmt.Sprintf("%d|%s|%s", soID, actor, reason)))
 	fingerprint := hex.EncodeToString(fingerprintBytes[:])
 	if shipment.Status == "VOIDED" {
-		if shipment.VoidOperationID == operationID && shipment.VoidFingerprint == fingerprint { shipment.Replayed = true; return shipment, nil }
+		if shipment.VoidOperationID == operationID && shipment.VoidFingerprint == fingerprint {
+			// Complete a sale marker if the process stopped after persisting the
+			// shipment's terminal state. Reversed ledger operation IDs prevent
+			// any stock movement from being applied twice.
+			if err := s.reversePOSDispatch(&shipment, operationID); err != nil { return Shipment{}, err }
+			shipment.Replayed = true
+			return shipment, nil
+		}
 		return Shipment{}, fmt.Errorf("%w: shipment already voided by a different operation", ErrState)
 	}
 	if shipment.Status == "VOIDING" && (shipment.VoidOperationID != operationID || shipment.VoidFingerprint != fingerprint) {
@@ -250,11 +262,15 @@ func (s *Service) VoidWithID(soID int64, actor, reason, operationID string) (Shi
 	so, err := s.sos.Get(soID)
 	if err != nil { return Shipment{}, ErrNotFound }
 	if shipment.PreShipStatus == "" { shipment.PreShipStatus = salesorders.StatusPicked }
+	if so.Status != salesorders.StatusShipped && so.Status != shipment.PreShipStatus {
+		return Shipment{}, fmt.Errorf("%w: order is %s, expected SHIPPED or %s", ErrState, so.Status, shipment.PreShipStatus)
+	}
 	if shipment.Status != "VOIDING" {
 		shipment.Status = "VOIDING"
 		data, _ := json.Marshal(shipment)
 		if _, err := s.store.Put(shipmentKind, key, data); err != nil { return Shipment{}, err }
 	}
+	if err := s.reversePOSDispatch(&shipment, operationID); err != nil { return Shipment{}, err }
 	if so.Status == salesorders.StatusShipped {
 		// A corrective admin shipment can have SHIPPED as its pre-ship
 		// status. In that case the original order/line shipment data belongs
@@ -272,8 +288,6 @@ func (s *Service) VoidWithID(soID int64, actor, reason, operationID string) (Shi
 			}
 			if err := s.sos.Save(so); err != nil { return Shipment{}, err }
 		}
-	} else if so.Status != shipment.PreShipStatus {
-		return Shipment{}, fmt.Errorf("%w: order is %s, expected SHIPPED or %s", ErrState, so.Status, shipment.PreShipStatus)
 	}
 	now := time.Now().UTC()
 	shipment.Status, shipment.VoidedAt, shipment.VoidedBy, shipment.VoidReason = "VOIDED", &now, actor, strings.TrimSpace(reason)
@@ -281,4 +295,71 @@ func (s *Service) VoidWithID(soID int64, actor, reason, operationID string) (Shi
 	if err != nil { return Shipment{}, err }
 	if _, err := s.store.Put(shipmentKind, key, data); err != nil { return Shipment{}, err }
 	return shipment, nil
+}
+
+func (s *Service) reversePOSDispatch(shipment *Shipment, operationID string) error {
+	records, err := s.store.List("wms_pos_sale")
+	if err != nil { return err }
+	for _, record := range records {
+		var sale struct {
+			ID string `json:"id"`
+			SOID int64 `json:"so_id"`
+			Status string `json:"status"`
+			Lines []struct {
+				WarehouseID int64 `json:"warehouse_id"`
+				BinID int64 `json:"bin_id"`
+				ItemID int64 `json:"item_id"`
+				Quantity int64 `json:"quantity"`
+			} `json:"lines"`
+		}
+		if err := json.Unmarshal(record.Data, &sale); err != nil { continue }
+		if sale.SOID != shipment.SOID { continue }
+		switch sale.Status {
+		case "VOIDED":
+			return nil
+		case "PARTIALLY_REFUNDED", "REFUNDED":
+			return fmt.Errorf("%w: POS sale has refunds; shipment void requires a reconciled refund workflow", ErrState)
+		case "DISPATCHING":
+			return fmt.Errorf("%w: POS dispatch is still in progress", ErrState)
+		case "DISPATCHED", "COMPLETED":
+			// These are the only states in which the POS inventory movement
+			// is known to have completed and can safely be reversed.
+		default:
+			return nil
+		}
+		if s.ledger == nil { return fmt.Errorf("POS shipment void requires an inventory ledger") }
+		aggregated := make(map[string]struct{ WarehouseID, BinID, ItemID, Quantity int64 })
+		order := make([]string, 0)
+		for _, line := range sale.Lines {
+			if line.WarehouseID <= 0 || line.BinID <= 0 || line.ItemID <= 0 || line.Quantity <= 0 { return fmt.Errorf("POS sale contains invalid inventory movement") }
+			key := fmt.Sprintf("%d:%d:%d", line.WarehouseID, line.BinID, line.ItemID)
+			current, exists := aggregated[key]
+			if !exists { current.WarehouseID, current.BinID, current.ItemID = line.WarehouseID, line.BinID, line.ItemID; order = append(order,key) }
+			if current.Quantity > int64(^uint64(0)>>1)-line.Quantity { return fmt.Errorf("POS sale quantity overflow") }
+			current.Quantity += line.Quantity
+			aggregated[key] = current
+		}
+		reversed := make(map[string]bool,len(shipment.VoidReversedKeys))
+		for _, key := range shipment.VoidReversedKeys { reversed[key] = true }
+		for _, key := range order {
+			if reversed[key] { continue }
+			line := aggregated[key]
+			sum := sha256.Sum256([]byte("fulfillment-void-pos|" + operationID + "|" + key))
+			ledgerOperationID := "void-pos-" + hex.EncodeToString(sum[:16])
+			if _, err := s.ledger.Adjust(inventoryledger.AdjustCommand{
+				OperationID:ledgerOperationID, WarehouseID:line.WarehouseID, BinID:line.BinID,
+				ItemID:line.ItemID, Delta:line.Quantity,
+			}); err != nil { return fmt.Errorf("reverse POS inventory movement %s: %w",key,err) }
+			shipment.VoidReversedKeys = append(shipment.VoidReversedKeys,key)
+			data, err := json.Marshal(shipment)
+			if err != nil { return err }
+			if _, err := s.store.Put(shipmentKind,strconv.FormatInt(shipment.SOID,10),data); err != nil { return err }
+		}
+		sale.Status = "VOIDED"
+		data, err := json.Marshal(sale)
+		if err != nil { return err }
+		if _, err := s.store.Put("wms_pos_sale",sale.ID,data); err != nil { return err }
+		return nil
+	}
+	return nil
 }
