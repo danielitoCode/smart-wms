@@ -68,12 +68,12 @@
 		exporting = true;
 		try {
 			const rows = await vm.exportAllBins();
-			const columns = ['bin_code','bin_barcode','bin_type','zone_name','aisle','pick_sequence','is_active'];
+			const columns = ['bin_code','bin_barcode','zone','warehouse_id','bin_type','aisle','pick_sequence','putaway_sequence','description'];
 			const csvCell = (value: unknown) => '"' + String(value ?? '').replace(/"/g, '""') + '"';
-			const csv = [columns.join(','), ...rows.map(bin => [bin.code,bin.barcode,bin.binType,bin.zoneName,bin.aisle,bin.pickSequence,bin.active].map(csvCell).join(','))].join('\r\n');
+			const csv = [columns.join(','), ...rows.map(bin => [bin.code,bin.barcode,bin.zoneName,bin.warehouseId,bin.binType,bin.aisle,bin.pickSequence,bin.putawaySequence,''].map(csvCell).join(','))].join('\r\n');
 			const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-			const link = document.createElement('a'); link.href = url; link.download = 'bins.csv'; link.click(); URL.revokeObjectURL(url);
-		} catch { vm.clearError(); }
+			const link = document.createElement('a'); link.href = url; link.download = 'bins_warehouse' + warehouseId + '_' + new Date().toISOString().slice(0,10) + '.csv'; link.click(); URL.revokeObjectURL(url);
+		} catch { vm.setError('No se pudo exportar el listado de bins.'); }
 		finally { exporting = false; }
 	}
 </script>

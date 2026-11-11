@@ -146,7 +146,7 @@ export function createWarehouseDetailState(warehouseId: number) {
 				warehouseId,
 				...(selectedZoneId != null ? { zoneId: selectedZoneId } : {}),
 				page,
-				perPage: 1000,
+				perPage: 50,
 				...(binSearch.trim() ? { q: binSearch.trim() } : {})
 			});
 			all.push(...result.items);
@@ -176,7 +176,7 @@ export function createWarehouseDetailState(warehouseId: number) {
 		get binPerPage() { return binPerPage; }, get binSearch() { return binSearch; },
 		get selectedZoneId() { return selectedZoneId; }, get selectedBinDetail() { return selectedBinDetail; },
 		get loading() { return loading; }, get binsLoading() { return binsLoading; },
-		get mutating() { return mutating; }, get error() { return error; },
+		get mutating() { return mutating; }, get error() { return error; }, setError(message: string) { error = message; },
 		clearError() { error = null; }, closeBinDetail() { selectedBinDetail = null; },
 		load, loadBinsForZone, searchBins, createZone, updateZone, removeZone,
 		createBin, updateBin, removeBin, viewBin, exportAllBins
