@@ -51,11 +51,14 @@
 </section>
 
 <style>
+	@keyframes page-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
 	.page {
-		font-family: system-ui, -apple-system, sans-serif;
+		font-family: var(--body);
 		max-width: 48rem;
 		margin: 2rem auto;
 		padding: 0 1.25rem;
+		animation: page-in 180ms ease-out;
 	}
 	header {
 		margin-bottom: 1.5rem;
@@ -66,17 +69,17 @@
 	}
 	.subtitle {
 		margin: 0;
-		color: #64748b;
+		color: var(--slate);
 	}
 	.status {
-		color: #475569;
+		color: var(--slate);
 	}
 	.status.error {
-		color: #b91c1c;
+		color: var(--danger);
 	}
 	.table-wrap {
 		overflow-x: auto;
-		border: 1px solid #e2e8f0;
+		border: 1px solid var(--line);
 		border-radius: 8px;
 		background: #fff;
 	}
@@ -89,21 +92,21 @@
 	td {
 		text-align: left;
 		padding: 0.65rem 0.85rem;
-		border-bottom: 1px solid #e2e8f0;
+		border-bottom: 1px solid var(--line);
 	}
 	th {
-		background: #f8fafc;
+		background: #f7fafc;
 		font-weight: 600;
 	}
 	a {
-		color: #0369a1;
+		color: var(--navy);
 		text-decoration: none;
 	}
 	button {
 		margin-top: 0.75rem;
 		padding: 0.4rem 0.9rem;
 		border-radius: 6px;
-		border: 1px solid #cbd5e1;
+		border: 1px solid var(--line);
 		background: #fff;
 		cursor: pointer;
 	}

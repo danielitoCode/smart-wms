@@ -1,1 +1,193 @@
-@import '../app.css';
+@import './tokens.css';
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	color-scheme: light;
+}
+
+body {
+	margin: 0;
+	min-height: 100vh;
+	font-family: var(--body);
+	font-size: 15px;
+	line-height: 1.5;
+	color: var(--ink);
+	background: var(--bg);
+	-webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+	font-family: var(--disp);
+	font-weight: 600;
+	letter-spacing: -0.02em;
+	color: var(--ink);
+	line-height: 1.25;
+}
+
+a {
+	color: var(--navy);
+}
+
+button,
+input,
+select,
+textarea {
+	font: inherit;
+}
+
+.page {
+	max-width: 56rem;
+	margin: 0 auto;
+	padding: 1.5rem 1.25rem 2.5rem;
+	animation: page-in 180ms ease-out;
+}
+
+.page header {
+	margin-bottom: 1.25rem;
+}
+
+.page h1 {
+	margin: 0 0 0.2rem;
+	font-size: 1.5rem;
+}
+
+.page .subtitle {
+	margin: 0;
+	color: var(--slate);
+	font-size: 0.9rem;
+}
+
+.status {
+	color: var(--slate);
+}
+
+.status.error,
+.error,
+[role='alert'].error {
+	color: var(--danger);
+}
+
+.table-wrap {
+	overflow-x: auto;
+	border: 1px solid var(--line);
+	border-radius: var(--radius-card);
+	background: var(--card);
+	box-shadow: var(--shadow-1);
+}
+
+table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.9rem;
+}
+
+th,
+td {
+	text-align: left;
+	padding: 0.65rem 0.85rem;
+	border-bottom: 1px solid var(--line);
+}
+
+th {
+	font-family: var(--disp);
+	font-weight: 600;
+	font-size: 0.78rem;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--slate);
+	background: #f7fafc;
+}
+
+tr:last-child td {
+	border-bottom: none;
+}
+
+input,
+select,
+textarea {
+	padding: 0.55rem 0.75rem;
+	border: 1px solid var(--line);
+	border-radius: var(--radius-field);
+	background: var(--card);
+	color: var(--ink);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+	outline: none;
+	border-color: var(--navy);
+	box-shadow: var(--focus);
+}
+
+button {
+	padding: 0.5rem 0.95rem;
+	border-radius: var(--radius-btn);
+	border: 1px solid var(--line);
+	background: var(--card);
+	color: var(--ink);
+	cursor: pointer;
+	font-weight: 500;
+	transition: background 120ms ease, border-color 120ms ease, opacity 120ms ease;
+}
+
+button:hover:not(:disabled) {
+	background: #f7fafc;
+	border-color: var(--lightblue);
+}
+
+button:disabled {
+	opacity: 0.55;
+	cursor: not-allowed;
+}
+
+button.primary {
+	background: var(--navy);
+	border-color: var(--navy);
+	color: #fff;
+}
+
+button.primary:hover:not(:disabled) {
+	background: var(--navy-2);
+	border-color: var(--navy-2);
+}
+
+button.accent {
+	background: var(--gold);
+	border-color: var(--gold);
+	color: var(--navy-deep);
+	font-weight: 600;
+}
+
+button.accent:hover:not(:disabled) {
+	filter: brightness(0.97);
+}
+
+@keyframes page-in {
+	from {
+		opacity: 0;
+		transform: translateY(6px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@keyframes fade-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
