@@ -37,3 +37,37 @@ func TestLibP2PTransportStartsKademliaAndGossipSub(t *testing.T) {
 	}
 	if err := service.Close(); err != nil { t.Fatal(err) }
 }
+
+func TestCoreLibP2PTransportsExchangeGossipSubAcrossTwoNodes(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(),25*time.Second)
+	defer cancel()
+	a, err := network.NewLibP2PTransport(ctx,"wms-mesh-a","/ip4/127.0.0.1/tcp/0",nil)
+	if err != nil { t.Fatal(err) }
+	b, err := network.NewLibP2PTransport(ctx,"wms-mesh-b","/ip4/127.0.0.1/tcp/0",nil)
+	if err != nil { _ = a.Close(); t.Fatal(err) }
+	if err := a.Listen(ctx); err != nil { t.Fatal(err) }
+	if err := b.Listen(ctx); err != nil { _ = a.Close(); t.Fatal(err) }
+	defer a.Close()
+	defer b.Close()
+	if len(a.ListenAddrs())==0 || len(b.ListenAddrs())==0 { t.Fatal("libp2p transports did not expose listen multiaddrs") }
+	if err := a.AddPeer("wms-mesh-b",b.ListenAddrs()[0]); err != nil { t.Fatal(err) }
+	if err := b.AddPeer("wms-mesh-a",a.ListenAddrs()[0]); err != nil { t.Fatal(err) }
+	meshA := New("wms-mesh-a",a)
+	meshB := New("wms-mesh-b",b)
+	received := make(chan GossipEnvelope,1)
+	meshB.OnTopic("wms.integration",func(envelope GossipEnvelope){ received <- envelope })
+	if err := meshA.Start(ctx); err != nil { t.Fatal(err) }
+	if err := meshB.Start(ctx); err != nil { t.Fatal(err) }
+	if !meshA.KademliaReady() || !meshA.GossipSubReady() || !meshB.KademliaReady() || !meshB.GossipSubReady() {
+		t.Fatal("both PrismaTec-Core libp2p transports must activate Kademlia and GossipSub")
+	}
+	if err := meshA.Publish("wms.integration",map[string]any{"probe":"two-node"}); err != nil { t.Fatal(err) }
+	select {
+	case envelope := <-received:
+		if envelope.Topic!="wms.integration" || envelope.Origin!="wms-mesh-a" { t.Fatalf("unexpected remote envelope: %+v",envelope) }
+	case <-ctx.Done():
+		t.Fatal("GossipSub message was not delivered to the second Core libp2p node")
+	}
+	_ = meshA.Close()
+	_ = meshB.Close()
+}
