@@ -46,6 +46,8 @@ func TestRMAReceiptDispositionRestocksIdempotentlyAndCompletes(t *testing.T) {
 	completed, err := service.Complete(rma.RMAID,"supervisor")
 	if err != nil { t.Fatal(err) }
 	if completed.Status != "COMPLETED" || completed.Lines[0].Disposition != "MIXED" { t.Fatalf("unexpected completed RMA: %+v",completed) }
+	replayAfterCompletion, err := service.ReceiveLine(rma.RMAID,item.ItemID,2,bin.BinID,"LOT-1","RESTOCK","rma-receipt-1","receiver")
+	if err != nil || replayAfterCompletion.Status != "COMPLETED" { t.Fatalf("completed RMA receipt replay failed: %+v err=%v",replayAfterCompletion,err) }
 	balances, _, err := ledger.List()
 	if err != nil { t.Fatal(err) }
 	if len(balances)!=1 || balances[0].OnHand!=2 { t.Fatalf("RMA restock did not apply exactly once: %+v",balances) }
