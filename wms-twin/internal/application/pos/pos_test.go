@@ -97,7 +97,7 @@ func TestPhoneOrderDispatchCommitsReservationAndRecoversReplay(t *testing.T) {
 	so.Status = salesorders.StatusPicked
 	for i := range so.Lines { so.Lines[i].QuantityPicked = so.Lines[i].QuantityOrdered; so.Lines[i].Status = salesorders.LinePicked }
 	if err := f.sos.Save(so); err != nil { t.Fatal(err) }
-	first, err := f.service.DispatchWithDetails(so.SONumber,"UPS","TRACK-1","cashier-1",[]int64{f.warehouseID},false)
+	first, err := f.service.DispatchWithDetails(so.SONumber,"UPS","TRACK-1","cashier-1","dispatch-phone-1",[]int64{f.warehouseID},false)
 	if err != nil { t.Fatal(err) }
 	if first["status"] != "SHIPPED" { t.Fatalf("unexpected dispatch result: %v",first) }
 	balances, _, err := f.ledger.List()
