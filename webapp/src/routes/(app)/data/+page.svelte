@@ -9,7 +9,7 @@
 		const target = admin ? '/data/warehouses'
 			: pages.includes('warehouses') ? '/data/warehouses'
 			: pages.includes('zones') ? '/data/zones'
-			: pages.includes('bins') ? '/data/bins'
+			: (pages.includes('bins') && pages.includes('zones')) ? '/data/bins'
 			: pages.includes('preferred-bins') ? '/data/preferred-bins'
 			: '/inventory';
 		void goto(target, { replaceState: true });

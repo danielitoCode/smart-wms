@@ -49,7 +49,11 @@
 	}
 	function canSeeNavItem(item: (typeof nav)[number]): boolean {
 		if ('pageKey' in item) return canAccessPages([item.pageKey]);
-		if (item.href === '/data') return ['warehouses','zones','bins','preferred-bins'].some(key => canAccessPages([key]));
+		if (item.href === '/data') {
+			return guard.user?.role === 'ADMIN' ||
+				canAccessPages(['warehouses']) || canAccessPages(['zones']) ||
+				canAccessPages(['bins','zones']) || canAccessPages(['preferred-bins']);
+		}
 		return true;
 	}
 	async function bootstrap() {
