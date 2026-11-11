@@ -321,15 +321,44 @@ func (s *Server) eventsV1(w http.ResponseWriter, r *http.Request, rest string) {
 }
 
 func (s *Server) snapshotV1(w http.ResponseWriter, r *http.Request, rest string) {
-	if r.Method == http.MethodGet && rest == "inventory" {
+	if (r.Method == http.MethodGet || r.Method == http.MethodPost) && rest == "inventory" {
 		s.requireWMSToken("snapshot.inventory", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
 			wid, _ := strconv.ParseInt(r.URL.Query().Get("warehouse_id"), 10, 64)
 			if rec.WarehouseID != nil {
 				wid = *rec.WarehouseID
 			}
+			if r.Method == http.MethodPost {
+				out, err := s.snapshot.CreateInventory(wid)
+				if err != nil {
+					writeJSON(w, 500, map[string]string{"error": err.Error()})
+					return
+				}
+				writeJSON(w, 201, out)
+				return
+			}
 			out, err := s.snapshot.Inventory(wid)
 			if err != nil {
 				writeJSON(w, 500, map[string]string{"error": err.Error()})
+				return
+			}
+			writeJSON(w, 200, out)
+		})(w, r)
+		return
+	}
+	if r.Method == http.MethodGet && strings.HasPrefix(rest, "snapshots/") {
+		s.requireWMSToken("snapshot.inventory", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
+			id := strings.TrimPrefix(rest, "snapshots/")
+			if id == "" || strings.Contains(id, "/") {
+				writeJSON(w, 400, map[string]string{"error": "invalid snapshot id"})
+				return
+			}
+			out, err := s.snapshot.Get(id)
+			if err != nil {
+				writeJSON(w, 404, map[string]string{"error": err.Error()})
+				return
+			}
+			if rec.WarehouseID != nil && out.WarehouseID != 0 && out.WarehouseID != *rec.WarehouseID {
+				writeJSON(w, 404, map[string]string{"error": "snapshot not found"})
 				return
 			}
 			writeJSON(w, 200, out)
