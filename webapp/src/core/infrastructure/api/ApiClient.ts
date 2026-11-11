@@ -13,7 +13,12 @@ export type RequestOptions = {
 function readCsrfCookie(): string | null {
 	if (typeof document === 'undefined') return null;
 	const match = document.cookie.match(/(?:^|;\s*)sentry_csrf=([^;]+)/);
-	return match ? decodeURIComponent(match[1]) : null;
+	if (!match) return null;
+	try {
+		return decodeURIComponent(match[1]);
+	} catch {
+		return match[1];
+	}
 }
 
 /**
@@ -41,7 +46,7 @@ export class ApiClient {
 		const signal = options.signal ?? controller.signal;
 
 		try {
-			const response = await fetch(\`\${this.baseUrl}\${path}\`, {
+			const response = await fetch(this.baseUrl + path, {
 				method,
 				headers,
 				body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
@@ -72,19 +77,19 @@ export class ApiClient {
 		}
 	}
 
-	get<T>(path: string, options?: Omit<RequestOptions, 'method' | 'body'>) {
+	get<T>(path: string, options?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
 		return this.request<T>(path, { ...options, method: 'GET' });
 	}
 
-	post<T>(path: string, body?: unknown, options?: Omit<RequestOptions, 'method' | 'body'>) {
+	post<T>(path: string, body?: unknown, options?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
 		return this.request<T>(path, { ...options, method: 'POST', body });
 	}
 
-	put<T>(path: string, body?: unknown, options?: Omit<RequestOptions, 'method' | 'body'>) {
+	put<T>(path: string, body?: unknown, options?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
 		return this.request<T>(path, { ...options, method: 'PUT', body });
 	}
 
-	delete<T>(path: string, options?: Omit<RequestOptions, 'method' | 'body'>) {
+	delete<T>(path: string, options?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
 		return this.request<T>(path, { ...options, method: 'DELETE' });
 	}
 }
