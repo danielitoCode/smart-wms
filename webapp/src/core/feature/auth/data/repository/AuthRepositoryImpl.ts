@@ -8,7 +8,8 @@ export class AuthRepositoryImpl implements AuthRepository {
 	constructor(private readonly datasource: AuthRemoteDataSource) {}
 
 	async login(credentials: Credentials): Promise<LoginResult> {
-		const user = AuthMapper.toUser(await this.datasource.login(credentials.username, credentials.password).then(r => r.user));
+		const response = await this.datasource.login(credentials.username, credentials.password);
+		const user = AuthMapper.toUser(response.user);
 		this.storeSessionUser(user);
 		return { user };
 	}
