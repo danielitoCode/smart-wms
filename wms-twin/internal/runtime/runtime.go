@@ -158,7 +158,11 @@ func New(cfg Config) (*Runtime, error) {
 		jwtSecret = "wms-twin-lab-jwt-secret-min-32-bytes!!"
 	}
 	apiServer := httpapi.NewWithIdentity(node, store, cfg.APIToken, users, []byte(jwtSecret), cfg.MaxLoginAttempts, cfg.LoginLockout, cfg.RequirePacking)
-	apiServer.StartBackground(ctx)
+	if err := apiServer.StartBackground(ctx); err != nil {
+		cancel()
+		_ = node.Stop()
+		return nil, fmt.Errorf("start WMS background services: %w", err)
+	}
 	aipServer := &aip.Server{Node: node, Addr: cfg.AIPAddr}
 	return &Runtime{node: node, cancel: cancel, handler: apiServer.Handler(), aipHandler: aipServer.Handler()}, nil
 }
