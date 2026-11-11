@@ -29,7 +29,7 @@ var KnownScopes = []string{
 	"pos.availability", "pos.validate-cart", "pos.checkout", "pos.refund", "pos.sales-orders", "pos.reference-orders", "pos.dispatch",
 	"dockd.orders", "dockd.items", "dockd.ship", "dockd.void-ship",
 	"inbound.mapping-schema", "inbound.write",
-	"events.read", "events.ack", "snapshot.inventory", "webhooks.manage",
+	"events.read", "events.ack", "events.publish", "snapshot.inventory", "webhooks.manage",
 }
 
 type TokenRecord struct {
