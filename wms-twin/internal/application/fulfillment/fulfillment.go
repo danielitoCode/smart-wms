@@ -2,6 +2,8 @@ package fulfillment
 
 import (
 	"errors"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -124,6 +126,9 @@ type Shipment struct {
 	VoidedAt       *time.Time `json:"voided_at,omitempty"`
 	VoidedBy       string     `json:"voided_by,omitempty"`
 	VoidReason     string     `json:"void_reason,omitempty"`
+	VoidOperationID string `json:"void_operation_id,omitempty"`
+	VoidFingerprint string `json:"void_fingerprint,omitempty"`
+	Replayed bool `json:"replayed,omitempty"`
 }
 
 func (s *Service) Fulfill(in FulfillInput, allowed []int64, isAdmin bool) (Shipment, error) {
@@ -190,19 +195,31 @@ func (s *Service) Fulfill(in FulfillInput, allowed []int64, isAdmin bool) (Shipm
 // persisted as VOIDING before the order is changed, so a retry can finish a
 // crash-interrupted void without applying the reversal twice.
 func (s *Service) Void(soID int64, actor, reason string) (Shipment, error) {
+	return s.VoidWithID(soID, actor, reason, fmt.Sprintf("legacy-void-%d", soID))
+}
+
+func (s *Service) VoidWithID(soID int64, actor, reason, operationID string) (Shipment, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.store == nil { return Shipment{}, fmt.Errorf("fulfillment store is not configured") }
+	if strings.TrimSpace(operationID) == "" || strings.TrimSpace(actor) == "" || strings.TrimSpace(reason) == "" { return Shipment{}, ErrInvalid }
 	key := strconv.FormatInt(soID, 10)
 	rec, ok, err := s.store.Get(shipmentKind, key)
 	if err != nil { return Shipment{}, err }
 	if !ok { return Shipment{}, ErrNotFound }
 	var shipment Shipment
 	if err := json.Unmarshal(rec.Data, &shipment); err != nil { return Shipment{}, err }
-	if shipment.Status == "VOIDED" { return shipment, nil }
-	if shipment.Status != "SHIPPED" && shipment.Status != "VOIDING" {
-		return Shipment{}, ErrState
+	fingerprintBytes := sha256.Sum256([]byte(fmt.Sprintf("%d|%s|%s", soID, actor, reason)))
+	fingerprint := hex.EncodeToString(fingerprintBytes[:])
+	if shipment.Status == "VOIDED" {
+		if shipment.VoidOperationID == operationID && shipment.VoidFingerprint == fingerprint { shipment.Replayed = true; return shipment, nil }
+		return Shipment{}, fmt.Errorf("%w: shipment already voided by a different operation", ErrState)
 	}
+	if shipment.Status == "VOIDING" && (shipment.VoidOperationID != operationID || shipment.VoidFingerprint != fingerprint) {
+		return Shipment{}, fmt.Errorf("%w: another void operation is in progress", ErrState)
+	}
+	if shipment.Status != "SHIPPED" && shipment.Status != "VOIDING" { return Shipment{}, ErrState }
+	shipment.VoidOperationID, shipment.VoidFingerprint = operationID, fingerprint
 	so, err := s.sos.Get(soID)
 	if err != nil { return Shipment{}, ErrNotFound }
 	if shipment.PreShipStatus == "" { shipment.PreShipStatus = salesorders.StatusPicked }
