@@ -145,6 +145,13 @@ func (s *Service) Fulfill(in FulfillInput, allowed []int64, isAdmin bool) (Shipm
 	if strings.TrimSpace(in.Carrier) == "" || strings.TrimSpace(in.TrackingNumber) == "" {
 		return Shipment{}, ErrInvalid
 	}
+	if len(so.Lines) == 0 { return Shipment{}, ErrState }
+	for i := range so.Lines {
+		line := &so.Lines[i]
+		qty := line.QuantityPacked
+		if qty == 0 { qty = line.QuantityPicked }
+		if qty < line.QuantityOrdered { return Shipment{}, ErrState }
+	}
 	now := time.Now().UTC()
 	shipment := Shipment{
 		SOID: so.SOID, Carrier: strings.TrimSpace(in.Carrier),
@@ -163,7 +170,6 @@ func (s *Service) Fulfill(in FulfillInput, allowed []int64, isAdmin bool) (Shipm
 		line := &so.Lines[i]
 		qty := line.QuantityPacked
 		if qty == 0 { qty = line.QuantityPicked }
-		if qty < line.QuantityOrdered { return Shipment{}, ErrState }
 		line.QuantityShipped = qty
 		line.Status = salesorders.LineShipped
 	}
