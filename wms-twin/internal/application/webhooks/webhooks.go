@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/url"
 	"strings"
+	"strconv"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -43,7 +44,7 @@ func New(store *corestore.Store) *Service {
 		ResponseHeaderTimeout: 5 * time.Second,
 		DialContext: safeDialContext,
 	}
-	return &Service{
+	service := &Service{
 		store: store,
 		client: &http.Client{
 			Transport: transport,
@@ -53,6 +54,14 @@ func New(store *corestore.Store) *Service {
 			},
 		},
 	}
+	if records, err := store.List(kind); err == nil {
+		for _, record := range records {
+			if id, err := strconv.ParseInt(strings.TrimPrefix(record.ID, "wh_"), 16, 64); err == nil && id > service.seq {
+				service.seq = id
+			}
+		}
+	}
+	return service
 }
 
 func (s *Service) Create(url, secret string, types []string) (Subscription, error) {
