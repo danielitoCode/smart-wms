@@ -325,7 +325,7 @@ func validateSubscription(rawURL, secret string, eventTypes []string) error {
 	if host == "localhost" || strings.HasSuffix(host, ".localhost") || strings.HasSuffix(host, ".local") || strings.HasSuffix(host, ".internal") {
 		return fmt.Errorf("webhook URL host is not publicly routable")
 	}
-	if ip := net.ParseIP(host); ip != nil && (ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsUnspecified() || ip.IsMulticast()) {
+	if ip := net.ParseIP(host); ip != nil && !isPublicWebhookIP(ip) {
 		return fmt.Errorf("webhook URL host is not publicly routable")
 	}
 	if len(secret) < 32 || len(secret) > 4096 {
@@ -340,6 +340,26 @@ func validateSubscription(rawURL, secret string, eventTypes []string) error {
 		}
 	}
 	return nil
+}
+
+// isPublicWebhookIP rejects private, local, link-local, multicast and
+// special-purpose address ranges, including CGNAT and documentation blocks.
+// Checking only RFC1918/loopback is insufficient for an internet egress policy.
+func isPublicWebhookIP(ip net.IP) bool {
+	if ip == nil || !ip.IsGlobalUnicast() || ip.IsPrivate() || ip.IsLoopback() ||
+		ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() || ip.IsMulticast() {
+		return false
+	}
+	blocked := []string{
+		"0.0.0.0/8", "100.64.0.0/10", "192.0.0.0/24", "192.0.2.0/24",
+		"198.18.0.0/15", "198.51.100.0/24", "203.0.113.0/24", "240.0.0.0/4",
+		"2001:db8::/32", "2001::/23", "2002::/16",
+	}
+	for _, block := range blocked {
+		_, network, err := net.ParseCIDR(block)
+		if err == nil && network.Contains(ip) { return false }
+	}
+	return true
 }
 
 // safeDialContext resolves at connection time, rejects every non-public
@@ -366,7 +386,7 @@ func safeDialContext(ctx context.Context, networkName, address string) (net.Conn
 		return nil, fmt.Errorf("webhook host resolved to no addresses")
 	}
 	for _, ip := range ips {
-		if ip == nil || ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() || ip.IsMulticast() {
+		if !isPublicWebhookIP(ip) {
 			return nil, fmt.Errorf("webhook host resolves to a non-public address")
 		}
 	}
