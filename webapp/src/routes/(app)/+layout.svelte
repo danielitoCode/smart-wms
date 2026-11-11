@@ -18,7 +18,7 @@
 
 	type IconName = 'inbox' | 'map-pin' | 'clipboard-list' | 'package-check' | 'truck' | 'boxes' | 'scan' | 'package' | 'warehouse' | 'database';
 	type NavItem = { href: string; label: string; icon: IconName; pageKey?: string };
-	const navGroups: { label: string; items: NavItem[] }[] = [
+	const navGroups: { label: string; items: NavItem[] }[] = $derived([
 		{ label: i18n.t('Operaciones'), items: [
 			{ href: '/receiving', label: i18n.t('Recepción'), icon: 'inbox', pageKey: 'receiving' },
 			{ href: '/putaway', label: i18n.t('Ubicación'), icon: 'map-pin', pageKey: 'putaway' },
@@ -35,7 +35,7 @@
 			{ href: '/warehouses', label: i18n.t('Almacenes'), icon: 'warehouse', pageKey: 'warehouses' },
 			{ href: '/data', label: i18n.t('Datos maestros'), icon: 'database' }
 		]}
-	];
+	]);
 
 	onMount(() => { void bootstrap(); });
 

@@ -9,12 +9,12 @@
 	const user = authSession.getUser();
 	const admin = user?.role === 'ADMIN';
 	const pages = user?.allowedPages ?? [];
-	const tabs = [
+	const tabs = $derived([
 		{ href: '/data/warehouses', label: i18n.t('Almacenes'), icon: 'warehouse', keys: ['warehouses'] },
 		{ href: '/data/zones', label: i18n.t('Zonas'), icon: 'map-pin', keys: ['zones'] },
 		{ href: '/data/bins', label: i18n.t('Ubicaciones'), icon: 'boxes', keys: ['bins', 'zones'] },
 		{ href: '/data/preferred-bins', label: i18n.t('Ubicaciones preferidas'), icon: 'package-check', keys: ['preferred-bins'] }
-	] as const;
+	] as const);
 	const visibleTabs = tabs.filter(tab => admin || tab.keys.every(key => pages.includes(key)));
 	function isActive(href: string) { return page.url.pathname === href || page.url.pathname.startsWith(href + '/'); }
 </script>
