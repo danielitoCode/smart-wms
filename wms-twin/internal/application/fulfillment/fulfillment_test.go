@@ -88,7 +88,10 @@ func TestVoidReversesPOSInventoryExactlyOnce(t *testing.T) {
 	data, err = json.Marshal(sale)
 	if err != nil { t.Fatal(err) }
 	if _, err := store.Put("wms_pos_sale","pos-sale-void",data); err != nil { t.Fatal(err) }
-	if _, err := service.Fulfill(FulfillInput{SOID:so.SOID,Carrier:"UPS",TrackingNumber:"POS-VOID-TRACK"},[]int64{warehouse.WarehouseID},false); err != nil { t.Fatal(err) }
+	if _, err := service.Fulfill(FulfillInput{SOID:so.SOID,Carrier:"UPS",TrackingNumber:"POS-VOID-TRACK"},[]int64{warehouse.WarehouseID},false); !errors.Is(err,ErrState) {
+		t.Fatalf("phone POS order was fulfilled without its dispatch key: %v",err)
+	}
+	if _, err := service.Fulfill(FulfillInput{SOID:so.SOID,Carrier:"UPS",TrackingNumber:"POS-VOID-TRACK",POSDispatchKey:"dispatch-1"},[]int64{warehouse.WarehouseID},false); err != nil { t.Fatal(err) }
 	sale["status"] = "DISPATCHED"
 	data, err = json.Marshal(sale)
 	if err != nil { t.Fatal(err) }
