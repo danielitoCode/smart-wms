@@ -7,12 +7,14 @@ export class ChangePasswordUseCase {
 	async execute(input: ChangePasswordInput): Promise<void> {
 		if (!input.currentPassword) throw new Error('La contraseña actual es obligatoria');
 		const password = input.newPassword ?? '';
-		if (password.length < 8) throw new Error('La nueva contraseña debe tener al menos 8 caracteres');
-		if (!/[A-Za-z]/.test(password)) throw new Error('La nueva contraseña debe contener al menos una letra');
-		if (!/[0-9]/.test(password)) throw new Error('La nueva contraseña debe contener al menos un número');
+		// Keep the backend validation order: the literal "admin" is rejected
+		// before the minimum-length rule so both layers return the same reason.
 		if (password.trim().toLowerCase() === 'admin') {
 			throw new Error('La nueva contraseña no puede ser "admin"');
 		}
+		if (password.length < 8) throw new Error('La nueva contraseña debe tener al menos 8 caracteres');
+		if (!/[A-Za-z]/.test(password)) throw new Error('La nueva contraseña debe contener al menos una letra');
+		if (!/[0-9]/.test(password)) throw new Error('La nueva contraseña debe contener al menos un número');
 		await this.repository.changePassword(input);
 	}
 }
