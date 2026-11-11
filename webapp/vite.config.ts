@@ -1,31 +1,39 @@
 import adapter from '@sveltejs/adapter-auto';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vitest/config';
-import { loadEnv } from 'vite';
 
-export default defineConfig(({ mode }) => {
-	const env = loadEnv(mode, '.', '');
-	return {
-		plugins: [
-			sveltekit({
-				compilerOptions: {
-					runes: ({ filename }) =>
-						filename.split(/[/\\\\]/).includes('node_modules') ? undefined : true
-				},
-				adapter: adapter()
-			})
-		],
-		server: {
-			proxy: {
-				'/api': {
-					target: env.VITE_API_PROXY_TARGET || 'http://localhost:5000',
-					changeOrigin: true
-				}
+export default defineConfig({
+	plugins: [
+		sveltekit({
+			compilerOptions: {
+				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
+				runes: ({ filename }) =>
+					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
+			},
+			adapter: adapter()
+		})
+	],
+	server: {
+		port: 5173,
+		proxy: {
+			// Same-origin /api in dev → avoids CORS against Flask on :5000
+			'/api': {
+				target: 'http://127.0.0.1:5000',
+				changeOrigin: true
 			}
-		},
-		test: {
-			include: ['src/test/**/*.{test,spec}.{js,ts}'],
-			environment: 'node'
 		}
-	};
+	},
+	preview: {
+		port: 4173,
+		proxy: {
+			'/api': {
+				target: 'http://127.0.0.1:5000',
+				changeOrigin: true
+			}
+		}
+	},
+	test: {
+		include: ['src/test/**/*.{test,spec}.{js,ts}'],
+		environment: 'node'
+	}
 });
