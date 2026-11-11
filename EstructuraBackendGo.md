@@ -254,3 +254,8 @@ El dispatcher de eventos recorre los eventos persistidos y llama `DeliverEventAt
 
 
 Refund calcula el importe proporcional acumulado de cada ubicación artículo/bin y permite `ShippingRefundCents` separado. El estado PARTIALLY_REFUNDED se conserva hasta que cantidades y monto original estén completamente conciliados. RMA.Create lee `wms_pos_sale`/`wms_pos_refund` y RMAs existentes para calcular solo las cantidades todavía retornables; bloquea creación si hay una refund saga pendiente o falta historial necesario.
+
+
+### Saga de cancelación RMA
+
+`rma.Cancel` ya no cambia directamente el estado a CANCELLED. Persiste CANCELLING, recorre recibos RESTOCK no revertidos y ejecuta `inventoryledger.Adjust` con delta negativo y operation_id determinista derivado del operation_id del recibo. Después de cada ajuste marca `Reversed` en el recibo y persiste el RMA. Un retry repite el mismo operation_id del ledger, por lo que una caída entre el ajuste y el marcador no duplica la reversión. Solo al completar todas las compensaciones cambia a CANCELLED. Si no hay stock disponible para retirar, queda CANCELLING y se informa el error.
