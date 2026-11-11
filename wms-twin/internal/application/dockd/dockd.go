@@ -2,7 +2,7 @@ package dockd
 
 import (
 	"errors"
-	"time"
+	"fmt"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/fulfillment"
@@ -56,9 +56,12 @@ func (s *Service) Ship(soNumber, carrier, tracking, actor string, allowed []int6
 	if err != nil {
 		return nil, err
 	}
-	if so.Status == salesorders.StatusOpen || so.Status == salesorders.StatusPicked {
+	if so.Status == salesorders.StatusOpen {
+		return nil, fmt.Errorf("%w: order must be picked before shipping", fulfillment.ErrState)
+	}
+	if so.Status == salesorders.StatusPicked {
 		if _, err := s.fulfill.CompletePack(so.SOID, allowed, isAdmin); err != nil {
-			_ = err
+			return nil, fmt.Errorf("complete packing before shipping: %w", err)
 		}
 	}
 	out, err := s.fulfill.Fulfill(fulfillment.FulfillInput{
@@ -78,5 +81,5 @@ func (s *Service) VoidShip(soNumber, actor string) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return map[string]any{"so_number": so.SONumber, "status": "SHIP_VOIDED", "actor": actor, "at": time.Now().UTC()}, nil
+	return nil, fmt.Errorf("ship void is not supported by the current sales-order contract for %s; no state was changed", so.SONumber)
 }
