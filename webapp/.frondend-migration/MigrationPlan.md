@@ -268,9 +268,9 @@ Completar una fila por operación significativa; no basta con una fila por panta
 
 - [x] F0-A. Confirmar CI verde después de corregir las aserciones síncronas y añadir pruebas de timeout/cancelación. **CI:** [Webapp CI — commit `46c0f48`](https://github.com/danielitoCode/smart-wms/actions/runs/42974442039).
 - [~] F0-B. Crear suites ejecutables independientes para dominio, aplicación, infraestructura, UI e integración. **Implementado:** scripts separados y CI por suite; pendiente confirmar todos los jobs verdes.
-- [~] F0-C. Medir cobertura de claves por locale y cerrar brechas de italiano/inglés. **Implementado:** completadas las tres claves detectadas en el catálogo; test escanea llamadas literales `t(...)` del código fuente. Pendiente confirmar que no existan claves fuera de catálogo.
+- [~] F0-C. Medir cobertura de claves por locale y cerrar brechas de italiano/inglés. **Implementado:** completadas las tres claves detectadas en el catálogo; test escanea llamadas literales `t(...)` del código fuente. El test estático ahora analiza las llamadas literales en `src`; CI del candidato `4432c84` pendiente de ejecutar para confirmar 100%.
 - [~] F0-D. Completar inventario de endpoints Flask por feature. **Avance:** F1.1 Items tiene identificadas rutas, métodos, parámetros, esquemas Pydantic, respuestas, permisos y restricciones de borrado; faltan sus pruebas de contrato y el resto de features.
-- [~] F0-E. Crear y ejecutar matriz de regresión de sesión, permisos y ámbito de almacén. **Implementado:** matriz P-01…P-16 y pruebas de política; pendiente regresión HTTP con usuarios y almacenes de prueba.
+- [~] F0-E. Crear y ejecutar matriz de regresión de sesión, permisos y ámbito de almacén. **Implementado:** matriz P-01…P-16 y pruebas de política; pendiente regresión HTTP con usuarios y almacenes de prueba; la política UI y selección segura sí tienen pruebas unitarias.
 - [x] F0-F. Registrar comandos y evidencias de CI por commit y dejar el checklist listo para el primer módulo.
 
 ### Fase 1 — Catálogos maestros y estructura del almacén
@@ -802,7 +802,7 @@ Actualizar esta sección al cerrar cada PR/feature. Mantener una única fuente d
 
 | Hito | Estado | PR/commit | Evidencia / notas |
 |---|---|---|---|
-| Fase 0 — Preparación | [~] En curso | commits de preparación previos + cambios actuales | Contratos y matriz documentados; suites separadas; política de permisos y selección de almacén probadas; cobertura i18n medida y test estático añadido; pendiente CI y regresión backend real |
+| Fase 0 — Preparación | [~] En curso | `8e63f13`, `1b46f09`, `7cb4528`, `fe95b2e`, `e909e9c`, `8328af0`, `cb3f298`, `8392b49`, `1368b6c`, `44b7575`, `1f19bb3`, `b530bc1`, `4432c84` | Contratos y matriz documentados; suites separadas; política de permisos y selección de almacén probadas; cobertura i18n medida y test estático añadido. Webapp CI del último candidato pendiente; no cerrar Fase 0 todavía |
 | Fase 1 — Catálogos | [ ] Pendiente | — | — |
 | Fase 2 — Inventario y conteos | [ ] Pendiente | — | — |
 | Fase 3 — Abastecimiento | [ ] Pendiente | — | — |
