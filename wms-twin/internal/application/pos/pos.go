@@ -417,6 +417,7 @@ type RefundInput struct {
 	IdempotencyKey string `json:"idempotency_key"`
 	ExternalRefundRef string `json:"external_refund_ref"`
 	CashierID string `json:"cashier_id"`
+	Reason string `json:"reason"`
 	PaymentMethod string `json:"payment_method"`
 	TotalCents int64 `json:"total_cents"`
 	Lines []RefundLine `json:"lines,omitempty"`
@@ -430,6 +431,7 @@ type RefundRecord struct {
 	TotalCents int64 `json:"total_cents"`
 	ExternalRefundRef string `json:"external_refund_ref"`
 	CashierID string `json:"cashier_id"`
+	Reason string `json:"reason"`
 	Lines []SaleLine `json:"lines"`
 	FullyRefunded bool `json:"fully_refunded"`
 	CreatedAt time.Time `json:"created_at"`
@@ -438,7 +440,7 @@ type RefundRecord struct {
 func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]any, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if strings.TrimSpace(in.SONumber) == "" || strings.TrimSpace(in.IdempotencyKey) == "" || strings.TrimSpace(in.ExternalRefundRef) == "" || strings.TrimSpace(in.CashierID) == "" || in.TotalCents <= 0 {
+	if strings.TrimSpace(in.SONumber) == "" || strings.TrimSpace(in.IdempotencyKey) == "" || strings.TrimSpace(in.ExternalRefundRef) == "" || strings.TrimSpace(in.CashierID) == "" || strings.TrimSpace(in.Reason) == "" || len(in.Reason) > 500 || in.TotalCents <= 0 {
 		return nil, false, ErrInvalid
 	}
 	so, err := s.GetSO(in.SONumber)
@@ -538,7 +540,7 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 	full := alreadyTotal+requestedTotal == originalTotal
 	if in.TotalCents > sale.TotalCents-alreadyCents { return nil, false, fmt.Errorf("refund amount exceeds remaining sale total") }
 	if full && alreadyCents+in.TotalCents != sale.TotalCents { return nil, false, fmt.Errorf("full quantity refund must reconcile to the remaining sale amount") }
-	refund := RefundRecord{ID:refundID, SaleID:sale.ID, Fingerprint:fingerprint, Status:"PREPARING", TotalCents:in.TotalCents, ExternalRefundRef:in.ExternalRefundRef, CashierID:in.CashierID, Lines:requested, CreatedAt:time.Now().UTC()}
+	refund := RefundRecord{ID:refundID, SaleID:sale.ID, Fingerprint:fingerprint, Status:"PREPARING", TotalCents:in.TotalCents, ExternalRefundRef:in.ExternalRefundRef, CashierID:in.CashierID, Reason:in.Reason, Lines:requested, CreatedAt:time.Now().UTC()}
 	data, _ := json.Marshal(refund)
 	if _, err := s.store.Put("wms_pos_refund", refundID, data); err != nil { return nil, false, err }
 	for _, line := range requested {
