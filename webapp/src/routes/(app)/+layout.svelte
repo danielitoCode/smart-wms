@@ -198,10 +198,10 @@
 	.topbar-actions { display:flex; align-items:center; gap:12px; margin-left:auto; }
 	.warehouse-picker { display:flex; flex-direction:column; gap:3px; min-width:180px; color:var(--slate); font-size:.68rem; font-weight:600; }
 	.warehouse-picker select { width:100%; min-height:38px; padding:6px 30px 6px 10px; border:1px solid var(--line); border-radius:10px; background:var(--surface); color:var(--ink); font:500 .82rem var(--body); }
-	.account-action,.logout { min-height:40px; display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:8px 11px; border:1px solid var(--line); border-radius:10px; background:transparent; color:var(--navy); text-decoration:none; font:600 .78rem var(--body); cursor:pointer; }
+	.account-action,.logout { min-height:40px; display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:8px 11px; border:1px solid var(--line); border-radius:10px; background:transparent; color:var(--link,var(--navy)); text-decoration:none; font:600 .78rem var(--body); cursor:pointer; }
 	.account-action:hover,.logout:hover { background:var(--surface-2); border-color:var(--lightblue); }
 	.logout { color:var(--slate); }
-	.menu-toggle { display:none; width:42px; min-width:42px; height:42px; place-items:center; padding:0; border:1px solid var(--line); border-radius:10px; background:var(--surface); color:var(--navy); }
+	.menu-toggle { display:none; width:42px; min-width:42px; height:42px; place-items:center; padding:0; border:1px solid var(--line); border-radius:10px; background:var(--surface); color:var(--link,var(--navy)); }
 	.content { flex:1; min-width:0; padding:26px clamp(18px,2.5vw,34px) 42px; animation:fade-in 160ms ease-out; }
 	.scrim { display:none; }
 	.boot { padding:3rem 1.25rem; text-align:center; color:var(--slate); animation:fade-in 160ms ease-out; }
