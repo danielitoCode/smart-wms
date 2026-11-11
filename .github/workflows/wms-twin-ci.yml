@@ -99,22 +99,18 @@ jobs:
         working-directory: wms-twin
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version-file: wms-twin/go.mod
           cache: true
           cache-dependency-path: wms-twin/go.sum
-      - name: Normalize module graph on the working branch
-        if: github.event_name == 'push'
-        run: go mod tidy
-      - name: Verify module graph on pull requests
-        if: github.event_name == 'pull_request'
+      - name: Normalize and verify Go module graph
         run: |
-          go mod tidy -diff
+          go mod tidy
           go mod verify
-      - name: Verify module archives
-        if: github.event_name == 'push'
-        run: go mod verify
       - name: Format Go sources
         run: |
           gofmt -w .
@@ -124,12 +120,18 @@ jobs:
       - name: Race-enabled tests
         run: go test -race -count=1 ./...
       - name: Publish Go formatting and generated module graph
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+        env:
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           if ! git diff --quiet -- '*.go' go.mod go.sum; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add '*.go' go.mod go.sum
             git commit -m "build(wms-twin): normalize module graph and Go formatting [skip ci]"
-            git push origin "HEAD:${GITHUB_REF_NAME}"
+            target_ref="$GITHUB_REF_NAME"
+            if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+              target_ref="$PR_HEAD_REF"
+            fi
+            git push origin "HEAD:$target_ref"
           fi
