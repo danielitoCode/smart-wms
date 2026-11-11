@@ -118,7 +118,11 @@ func (s *Server) posV1(w http.ResponseWriter, r *http.Request, rest string) {
 			}
 			so, err := s.pos.Checkout(in.WarehouseID, in.Lines, rec.Name)
 			if err != nil {
-				writeJSON(w, 400, map[string]string{"error": err.Error()})
+				if errors.Is(err, pos.ErrUnsupported) {
+					writeJSON(w, 501, map[string]string{"error": err.Error()})
+				} else {
+					writeJSON(w, 400, map[string]string{"error": err.Error()})
+				}
 				return
 			}
 			if s.events != nil {
