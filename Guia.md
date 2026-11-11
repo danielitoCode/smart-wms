@@ -367,3 +367,8 @@ La prueba de cancelación RMA verifica el saldo neto en cero, no la ausencia fí
 ### Criterio de elegibilidad de RMA
 
 Un RMA solo puede reclamar cantidades con `QuantityShipped` confirmado. No uso `QuantityOrdered`, `QuantityPicked` ni `QuantityPacked` como sustitutos: esos estados no prueban que la mercancía haya salido físicamente del almacén. Si no quedan unidades despachadas y no devueltas, rechazo la creación. Añadí una prueba que cubre el caso de una orden marcada como shipped pero con cantidad solo empaquetada.
+
+
+### Protección adicional de pagos y reenvíos
+
+También protejo la referencia externa que entrega el gateway: no permito reutilizarla con otro idempotency key para crear otra venta ni reutilizar una referencia de refund para una segunda devolución. El void legacy genera una clave estable por generación de shipment, no por número de orden; así puedo anular, volver a despachar y anular otra vez sin que el ledger confunda la segunda compensación con un replay de la primera.
