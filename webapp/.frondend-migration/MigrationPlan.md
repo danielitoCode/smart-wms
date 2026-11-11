@@ -181,17 +181,66 @@ El diagrama es una guía de dependencias funcionales, no una afirmación de que 
 
 **Objetivo:** establecer una base repetible para migrar features sin introducir arquitecturas paralelas.
 
-- [ ] F0.1. Congelar inventario de capacidades React por módulo, incluyendo acciones, filtros, permisos, estados y exportaciones.
-- [ ] F0.2. Confirmar el árbol actual de `webapp/src` y las convenciones de feature-first existentes.
-- [ ] F0.3. Documentar para cada feature endpoints Flask reales, DTO, errores, permisos y efectos secundarios.
-- [ ] F0.4. Definir matriz de trazabilidad React → caso de uso → endpoint → ruta Svelte → prueba.
-- [ ] F0.5. Establecer comandos de validación y suites separadas: dominio, aplicación, infraestructura, UI e integración.
-- [ ] F0.6. Verificar cliente HTTP compartido: cookies, CSRF, expiración, timeout, cancelación y traducción de errores.
-- [ ] F0.7. Verificar i18n en italiano (idioma principal), español e inglés; no introducir textos nuevos sin claves de traducción.
-- [ ] F0.8. Verificar navegación, guardas de sesión, permisos y resolución de almacenes.
-- [ ] F0.9. Definir convención de evidencia por PR: tests ejecutados, resultado, endpoints contrastados y limitaciones.
+- [x] F0.1. Congelar inventario de capacidades React por módulo, incluyendo acciones, filtros, permisos, estados y exportaciones. **Evidencia:** auditoría comparativa React `admin/` → Svelte `webapp/` registrada antes de iniciar esta fase.
+- [x] F0.2. Confirmar el árbol actual de `webapp/src` y las convenciones de feature-first existentes. **Evidencia:** inspección de `core/feature`, `core/infrastructure`, `lib`, `routes` y `test/unitTest`.
+- [ ] F0.3. Documentar para cada feature endpoints Flask reales, DTO, errores, permisos y efectos secundarios. **En curso:** contratos de autenticación y cliente HTTP inspeccionados; falta el inventario endpoint por endpoint del resto de módulos.
+- [x] F0.4. Definir matriz de trazabilidad React → caso de uso → endpoint → ruta Svelte → prueba. **Evidencia:** matriz y plantilla de trazabilidad incorporadas en este documento; su rellenado por feature continúa durante cada migración.
+- [~] F0.5. Establecer comandos de validación y suites separadas: dominio, aplicación, infraestructura, UI e integración. **En curso:** existen `npm run check`, `npm test`, `npm run build` y suites Vitest de casos de uso/dominio e infraestructura; faltan suites independientes de aplicación, UI e integración y comandos filtrados por capa.
+- [~] F0.6. Verificar cliente HTTP compartido: cookies, CSRF, expiración, timeout, cancelación y traducción de errores. **En curso:** cookies HttpOnly mediante `credentials: include`, CSRF de doble envío y normalización de errores verificadas; corregida la pérdida del timeout al pasar un `AbortSignal` externo. La validación final depende de CI.
+- [~] F0.7. Verificar i18n en italiano (idioma principal), español e inglés; no introducir textos nuevos sin claves de traducción. **En curso:** italiano es el locale inicial; español funciona como texto fuente/canonical fallback (por eso su diccionario explícito está vacío); inglés tiene cobertura parcial y cae a texto español en claves no traducidas.
+- [~] F0.8. Verificar navegación, guardas de sesión, permisos y resolución de almacenes. **En curso:** verificados `/api/auth/me`, tratamiento de 401, redirección por `must_change_password`, restricciones de páginas por `allowedPages` y carga de almacenes autorizados; falta una matriz completa de permisos por acción/almacén y pruebas de regresión.
+- [x] F0.9. Definir convención de evidencia por PR: tests ejecutados, resultado, endpoints contrastados y limitaciones. **Evidencia:** protocolo de trabajo, Definition of Done y registro de progreso incluidos en este documento.
 
 **Salida obligatoria:** plantilla de checklist aprobada, contratos localizados y validaciones base ejecutables.
+
+### Ejecución Fase 0 — auditoría y avances
+
+**Corte de trabajo:** 2026-11-11. La fase permanece **en curso**; no se marca completa hasta cerrar contratos, suites independientes, cobertura de idioma y regresión de autorización.
+
+#### Evidencia de arquitectura y contratos revisados
+
+| Área | Evidencia inspeccionada | Resultado |
+|---|---|---|
+| Arquitectura | `src/core/feature`, `src/core/infrastructure`, `src/lib`, `src/routes` | Feature-first presente; infraestructura compartida centralizada |
+| Cliente HTTP | `core/infrastructure/api/ApiClient.ts` | Cookies incluidas, CSRF en mutaciones, parseo de respuesta y normalización de errores |
+| Sesión | `core/infrastructure/auth/AuthSession.ts` | Usuario en memoria; credencial permanece en cookie HttpOnly |
+| Autenticación | `AuthRemoteDataSource.ts`, `EnsureAuthenticatedUseCase.ts`, `authGuardState.svelte.ts` | Endpoints `/api/auth/login`, `/api/auth/me`, `/api/auth/refresh`, `/api/auth/logout`, `/api/auth/change-password`; 401 limpia sesión y 403 no se confunde con sesión inexistente |
+| Pruebas | `src/test/unitTest/feature/**`, `src/test/unitTest/infrastructure/**`, `src/lib/i18n/translations.test.ts` | Casos de uso, mapper, cliente HTTP e i18n; no se localizaron suites UI ni integración |
+| CI | `.github/workflows/webapp-ci.yml` | Ejecuta sync, `npm run check`, `npm run build` y `npm test` con Node 26 |
+
+#### Hallazgos y acciones correctivas
+
+1. **Timeout y cancelación HTTP:** el cliente original seleccionaba `options.signal ?? controller.signal`; al suministrar señal externa, el timeout interno dejaba de controlar la petición. Se implementó un único `AbortController` que combina timeout y cancelación externa, limpia el listener al finalizar y distingue `timeout` de `cancelled`.
+2. **Pruebas de validaciones síncronas:** el primer CI encontró 16 aserciones distribuidas en 12 archivos que usaban `.rejects.toThrow()` sobre casos de uso que lanzan el error de validación sincrónicamente. Se alinearon esas aserciones con el comportamiento real mediante `.toThrow()`; no se modificó la lógica de negocio para satisfacer tests incorrectos.
+3. **Suites por capa:** la estructura actual separa parcialmente pruebas de casos de uso y de infraestructura, pero no garantiza independencia para aplicación, UI e integración. Se debe completar antes de dar F0.5 por terminado.
+4. **Idiomas:** el diccionario español vacío es intencional porque las claves fuente ya están en español; el riesgo real está en la cobertura incompleta de inglés y en verificar que italiano tenga traducción para todas las claves visibles.
+5. **Permisos:** la comprobación de páginas existe en el layout, pero se necesita contrastar acciones sensibles con el backend y probar usuarios con distintos almacenes y permisos.
+
+#### Cambios de código vinculados a Fase 0
+
+| Cambio | Commit |
+|---|---|
+| Combinar timeout y cancelación externa en ApiClient | `268bfd0` |
+| Añadir pruebas de timeout/cancelación al cliente HTTP | `cde8ebe` |
+| Corregir aserciones de validación síncrona en 12 archivos de tests | `e4958fa` |
+
+#### Plantilla de trazabilidad por capacidad
+
+Completar una fila por operación significativa; no basta con una fila por pantalla.
+
+| React (pantalla/acción) | Caso de uso Svelte | Endpoint Flask real | DTO / mapper | Ruta / componente Svelte | Test de dominio/aplicación | Test HTTP/contrato | Test UI/integración |
+|---|---|---|---|---|---|---|---|
+| Auth: validar sesión | `EnsureAuthenticatedUseCase` | `GET /api/auth/me` | `MeResponseDto` / `AuthMapper` | Layout protegido | `EnsureAuthenticatedUseCase.test.ts` | Pendiente de aislar contrato | Pendiente |
+| Completar por feature | Pendiente | Pendiente de verificar | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente |
+
+#### Próximos cierres de Fase 0
+
+- [ ] F0-A. Confirmar CI verde después de corregir las aserciones síncronas y añadir pruebas de timeout/cancelación.
+- [ ] F0-B. Crear suites ejecutables independientes para dominio, aplicación, infraestructura, UI e integración; no etiquetar tests de casos de uso como dominio puro sin revisar su responsabilidad.
+- [ ] F0-C. Medir cobertura de claves por locale y cerrar brechas de italiano/inglés con pruebas de paridad.
+- [ ] F0-D. Completar inventario de endpoints Flask por feature, empezando por F1.1 Items y sus dependencias.
+- [ ] F0-E. Crear matriz de regresión de sesión, permisos de página/acción y ámbito de almacén.
+- [ ] F0-F. Registrar comandos y evidencias de CI por commit y dejar el checklist listo para el primer módulo.
 
 ### Fase 1 — Catálogos maestros y estructura del almacén
 
@@ -722,7 +771,7 @@ Actualizar esta sección al cerrar cada PR/feature. Mantener una única fuente d
 
 | Hito | Estado | PR/commit | Evidencia / notas |
 |---|---|---|---|
-| Fase 0 — Preparación | [ ] Pendiente | — | — |
+| Fase 0 — Preparación | [~] En curso | `268bfd0`, `cde8ebe`, `e4958fa` | Inventario/árbol y matriz definidos; cliente HTTP corregido; CI y cierres F0-A…F0-F pendientes |
 | Fase 1 — Catálogos | [ ] Pendiente | — | — |
 | Fase 2 — Inventario y conteos | [ ] Pendiente | — | — |
 | Fase 3 — Abastecimiento | [ ] Pendiente | — | — |
