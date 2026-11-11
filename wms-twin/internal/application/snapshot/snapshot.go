@@ -152,7 +152,7 @@ type restoreOperation struct {
 // The operation record and ledger operation ID make recovery safe after a
 // process interruption between the ledger write and completion marker.
 func (s *Service) RestoreSafely(id, operationID string, expectedVersion uint64) (RestoreResult, error) {
-	if strings.TrimSpace(operationID) == "" || len(operationID) > 128 {
+	if !validRestoreOperationID(operationID) {
 		return RestoreResult{}, fmt.Errorf("valid operation_id is required")
 	}
 	snap, err := s.Get(id)
@@ -231,4 +231,12 @@ func equalChecksum(a, b string) bool {
 		diff |= a[i] ^ b[i]
 	}
 	return diff == 0
+}
+
+func validRestoreOperationID(value string) bool {
+	if len(value) == 0 || len(value) > 128 { return false }
+	for _, r := range value {
+		if !(r >= 'a' && r <= 'z') && !(r >= 'A' && r <= 'Z') && !(r >= '0' && r <= '9') && r != '-' && r != '_' { return false }
+	}
+	return true
 }
