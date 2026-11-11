@@ -184,3 +184,6 @@ Esta sección es la referencia vigente para las capacidades ampliadas en el cort
 - CI verde en el SHA final de esta rama. Los resultados de runs cancelados o en cola no cuentan como aprobación.
 
 **Dictamen:** el WMS Twin tiene una base operativa ampliada y varios flujos transaccionales internos implementados, pero todavía no cumple la condición de sustitución del backend Flask. Se puede iniciar una fase de pruebas controladas en laboratorio una vez que CI termine verde; no se debe enviar tráfico productivo ni procesar pagos reales hasta cerrar los límites enumerados.
+
+
+POS rechaza la reutilización de una referencia externa de pago por otro idempotency key del mismo terminal y de una referencia externa de refund en otra devolución. El void legacy deriva su clave de operación de la generación del shipment, lo que permite retries seguros y posteriores redispatch/void sin colisión de IDs.
