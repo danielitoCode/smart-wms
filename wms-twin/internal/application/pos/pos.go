@@ -174,7 +174,7 @@ func (s *Service) ValidateCart(warehouseID int64, lines []CartLine) (map[string]
 			continue
 		}
 		bin, err := s.catalog.GetBin(line.BinID)
-		if err != nil || bin.WarehouseID != warehouseID || !bin.IsActive {
+		if err != nil || bin.WarehouseID != warehouseID || !bin.IsActive || (bin.BinType != "Pickable" && bin.BinType != "PickableStaging") {
 			valid = false
 		}
 		key := fmt.Sprintf("%d:%d", itemID, line.BinID)
@@ -249,7 +249,7 @@ func (s *Service) CheckoutTransaction(in CheckoutInput, actor string) (salesorde
 	if calculatedSubtotal != in.SubtotalCents || calculatedTax != in.TaxCents {
 		return salesorders.SalesOrder{}, false, fmt.Errorf("%w: cart lines do not reconcile to payment summary", ErrInvalid)
 	}
-	fingerprintBytes, err := json.Marshal(in)
+	fingerprintBytes, err := json.Marshal(struct { Request CheckoutInput `json:"request"`; Actor string `json:"actor"` }{Request:in, Actor:actor})
 	if err != nil { return salesorders.SalesOrder{}, false, err }
 	fingerprintSum := sha256.Sum256(fingerprintBytes)
 	fingerprint := hex.EncodeToString(fingerprintSum[:])
@@ -457,7 +457,7 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 		}
 	}
 
-	fingerprintBytes, err := json.Marshal(in)
+	fingerprintBytes, err := json.Marshal(struct { Request RefundInput `json:"request"`; Actor string `json:"actor"` }{Request:in, Actor:actor})
 	if err != nil { return nil, false, err }
 	fingerprintSum := sha256.Sum256(fingerprintBytes)
 	fingerprint := hex.EncodeToString(fingerprintSum[:])
@@ -601,6 +601,9 @@ func (s *Service) DispatchWithDetails(soNumber, carrier, tracking, actor, operat
 		if _, err := s.store.Put("wms_pos_sale", sale.ID, data); err != nil { return nil, err }
 	}
 	if sale.Status == "DISPATCHED" && so.Status != salesorders.StatusShipped { return nil, fulfillment.ErrState }
+	if so.Status != salesorders.StatusShipped && so.Status != salesorders.StatusPicked && so.Status != salesorders.StatusPacked {
+		return nil, fulfillment.ErrState
+	}
 	if so.Status == salesorders.StatusShipped && (sale.Status == "DISPATCHING" || sale.Status == "DISPATCHED") {
 		shipment, err := s.fulfill.GetShipment(so.SOID)
 		if err != nil { return nil, err }
