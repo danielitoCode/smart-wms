@@ -307,3 +307,14 @@ Se añadió una prueba que cubre dos líneas POS repetidas para el mismo artícu
 
 
 La anulación de un despacho POS telefónico restaura tanto on-hand como la reserva previa y permite una nueva expedición con una clave nueva. Para ventas POS normales la anulación restaura on-hand sin crear una reserva inexistente. Se añadió prueba de anulación, replay y reexpedición; falta contrastar el comportamiento con los estados y reglas del backend Flask.
+
+
+## Evidencia adicional del corte de cierre
+
+He completado la reversión de inventario POS asociada al void de fulfillment, el bloqueo de void para pedidos telefónicos no despachados y la consolidación de filas repetidas en refund. El RMA conserva disposición RESTOCK/SCRAP/HOLD y restock idempotente; cancelar revierte los restocks aplicados.
+
+Inbound ya mapea los campos de cabecera y líneas que existen en los agregados Go para items, sales orders y purchase orders, y valida recuperación por clave natural. La idempotencia requiere source_system/external_id/external_version. Una versión externa diferente todavía produce conflicto: no hay paridad demostrada con actualizaciones del ERP hasta definir la política de supersession.
+
+Snapshots incluyen checksum, respaldo previo, expected version y backup_snapshot_id. Webhooks incluyen outbox/retry/DLQ y secretos AES-GCM, con semántica at-least-once y sin lease HA entre workers. Mesh utiliza DHT/GossipSub reales solo en LibP2PTransport; el fallback TCP/local no es Kademlia.
+
+El arranque exige JWT_SECRET y bootstrap de identidad explícito. Las pruebas nuevas cubren casos locales, pero no equivalen a pruebas diferenciales Flask-Go ni a pruebas de red multinodo. CI debe quedar verde antes de iniciar el protocolo de pruebas reales.
