@@ -86,3 +86,6 @@ Cada registro puede incluir `source_system`, `external_id` y `external_version`.
 ### Snapshot restore — respaldo previo
 
 El endpoint devuelve `backup_snapshot_id` además del resultado del ledger. El cliente debe conservar ese ID para rollback operativo. Repetir el mismo operation_id devuelve el mismo backup y resultado; usarlo con otro snapshot/versión produce conflicto.
+
+
+En refund, `shipping_refund_cents` permite devolver el cargo de envío de forma separada. El `total_cents` debe ser exactamente la suma del importe calculado para las cantidades devueltas y `shipping_refund_cents`. Se pueden devolver primero los artículos y después el envío; la SO queda PARTIALLY_REFUNDED hasta que todo el importe original esté devuelto.
