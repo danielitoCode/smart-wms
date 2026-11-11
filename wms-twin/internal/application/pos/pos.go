@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -63,6 +64,7 @@ type CheckoutInput struct {
 	ExternalTxnRef string `json:"external_txn_ref"`
 	CashierID string `json:"cashier_id"`
 	TerminalID string `json:"terminal_id"`
+	ShippingCents int64 `json:"shipping_cents,omitempty"`
 	PaymentMethod string `json:"payment_method"`
 	SubtotalCents int64 `json:"subtotal_cents"`
 	TaxCents int64 `json:"tax_cents"`
@@ -94,6 +96,12 @@ type SaleRecord struct {
 	WarehouseID int64 `json:"warehouse_id"`
 	PhoneOrder bool `json:"phone_order"`
 	PaymentMethod string `json:"payment_method"`
+	ExternalTxnRef string `json:"external_txn_ref"`
+	CashierID string `json:"cashier_id"`
+	TerminalID string `json:"terminal_id"`
+	ShippingCents int64 `json:"shipping_cents"`
+	CustomerName string `json:"customer_name,omitempty"`
+	Notes string `json:"notes,omitempty"`
 	TotalCents int64 `json:"total_cents"`
 	Tenders []Tender `json:"tenders"`
 	Lines []SaleLine `json:"lines"`
@@ -198,7 +206,7 @@ func (s *Service) CheckoutTransaction(in CheckoutInput, actor string) (salesorde
 	}
 	method := strings.ToLower(strings.TrimSpace(in.PaymentMethod))
 	if method != "cash" && method != "card" && method != "split" { return salesorders.SalesOrder{}, false, ErrInvalid }
-	if in.SubtotalCents < 0 || in.TaxCents < 0 || in.TotalCents < 0 || in.TotalCents != in.SubtotalCents+in.TaxCents {
+	if in.SubtotalCents < 0 || in.TaxCents < 0 || in.ShippingCents < 0 || in.TotalCents < 0 || in.TotalCents != in.SubtotalCents+in.TaxCents+in.ShippingCents {
 		return salesorders.SalesOrder{}, false, fmt.Errorf("%w: payment totals do not reconcile", ErrInvalid)
 	}
 	if len(in.Tenders) == 0 || len(in.Tenders) > 8 { return salesorders.SalesOrder{}, false, ErrInvalid }
@@ -215,6 +223,22 @@ func (s *Service) CheckoutTransaction(in CheckoutInput, actor string) (salesorde
 		tenderTotal += tender.AmountCents
 	}
 	if tenderTotal != in.TotalCents { return salesorders.SalesOrder{}, false, fmt.Errorf("%w: tenders do not equal total", ErrInvalid) }
+	var calculatedSubtotal, calculatedTax int64
+	for _, line := range in.Lines {
+		if line.UnitPriceCents < 0 || line.TaxCents < 0 || line.LineTotalCents < 0 || (line.UnitPriceCents > 0 && line.Quantity > math.MaxInt64/line.UnitPriceCents) {
+			return salesorders.SalesOrder{}, false, ErrInvalid
+		}
+		lineSubtotal := line.UnitPriceCents * line.Quantity
+		if calculatedSubtotal > math.MaxInt64-lineSubtotal || calculatedTax > math.MaxInt64-line.TaxCents {
+			return salesorders.SalesOrder{}, false, ErrInvalid
+		}
+		if line.LineTotalCents != lineSubtotal+line.TaxCents { return salesorders.SalesOrder{}, false, fmt.Errorf("%w: line total does not reconcile for SKU %s", ErrInvalid, line.SKU) }
+		calculatedSubtotal += lineSubtotal
+		calculatedTax += line.TaxCents
+	}
+	if calculatedSubtotal != in.SubtotalCents || calculatedTax != in.TaxCents {
+		return salesorders.SalesOrder{}, false, fmt.Errorf("%w: cart lines do not reconcile to payment summary", ErrInvalid)
+	}
 	fingerprintBytes, err := json.Marshal(in)
 	if err != nil { return salesorders.SalesOrder{}, false, err }
 	fingerprintSum := sha256.Sum256(fingerprintBytes)
@@ -256,7 +280,7 @@ func (s *Service) CheckoutTransaction(in CheckoutInput, actor string) (salesorde
 			lines = append(lines, SaleLine{SKU:sku, ItemID:itemID, WarehouseID:in.WarehouseID, BinID:line.BinID, Quantity:line.Quantity, UnitPriceCents:line.UnitPriceCents, TaxCents:line.TaxCents, LineTotalCents:line.LineTotalCents})
 		}
 		for key, quantity := range requested { if available[key] < quantity { return salesorders.SalesOrder{}, false, fmt.Errorf("insufficient stock at %s: available %d, requested %d", key, available[key], quantity) } }
-		sale = SaleRecord{ID:recordID, Fingerprint:fingerprint, Status:"PREPARING", WarehouseID:in.WarehouseID, PhoneOrder:in.PhoneOrder, PaymentMethod:method, TotalCents:in.TotalCents, Tenders:in.Tenders, Lines:lines, CreatedAt:time.Now().UTC()}
+		sale = SaleRecord{ID:recordID, Fingerprint:fingerprint, Status:"PREPARING", WarehouseID:in.WarehouseID, PhoneOrder:in.PhoneOrder, PaymentMethod:method, ExternalTxnRef:in.ExternalTxnRef, CashierID:in.CashierID, TerminalID:in.TerminalID, ShippingCents:in.ShippingCents, CustomerName:in.CustomerName, Notes:in.Notes, TotalCents:in.TotalCents, Tenders:in.Tenders, Lines:lines, CreatedAt:time.Now().UTC()}
 		data, _ := json.Marshal(sale)
 		if _, err := s.store.Put("wms_pos_sale", recordID, data); err != nil { return salesorders.SalesOrder{}, false, err }
 	}
