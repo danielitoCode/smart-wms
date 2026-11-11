@@ -444,7 +444,7 @@ type RefundRecord struct {
 func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]any, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if strings.TrimSpace(in.SONumber) == "" || strings.TrimSpace(in.IdempotencyKey) == "" || strings.TrimSpace(in.ExternalRefundRef) == "" || strings.TrimSpace(in.CashierID) == "" || strings.TrimSpace(in.Reason) == "" || len(in.Reason) > 500 || in.TotalCents <= 0 {
+	if strings.TrimSpace(in.SONumber) == "" || strings.TrimSpace(in.IdempotencyKey) == "" || len(in.IdempotencyKey) > 128 || strings.TrimSpace(in.ExternalRefundRef) == "" || len(in.ExternalRefundRef) > 256 || strings.TrimSpace(in.CashierID) == "" || len(in.CashierID) > 128 || strings.TrimSpace(in.Reason) == "" || len(in.Reason) > 500 || in.TotalCents <= 0 {
 		return nil, false, ErrInvalid
 	}
 	so, err := s.GetSO(in.SONumber)
@@ -593,7 +593,7 @@ func (s *Service) DispatchWithDetails(soNumber, carrier, tracking, actor, operat
 	}
 	if sale == nil { return nil, fmt.Errorf("POS sale metadata not found") }
 	if !sale.PhoneOrder { return nil, fmt.Errorf("only phone orders can use POS dispatch") }
-	if strings.TrimSpace(operationID) == "" { return nil, ErrInvalid }
+	if strings.TrimSpace(operationID) == "" || len(operationID) > 128 { return nil, ErrInvalid }
 	fingerprintSum := sha256.Sum256([]byte(soNumber+"|"+carrier+"|"+tracking+"|"+actor))
 	fingerprint := hex.EncodeToString(fingerprintSum[:])
 	if sale.DispatchKey != "" && (sale.DispatchKey != operationID || sale.DispatchFingerprint != fingerprint) {
