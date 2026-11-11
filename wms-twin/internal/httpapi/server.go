@@ -133,9 +133,9 @@ func NewWithIdentity(node *core.Node, store *corestore.Store, token string, user
 	}
 }
 // StartBackground starts supervised outbox workers under the runtime context.
-func (s *Server) StartBackground(ctx context.Context) {
+func (s *Server) StartBackground(ctx context.Context) error {
 	if s.mesh != nil {
-		if err := s.mesh.Start(ctx); err != nil { log.Printf("WMS mesh startup: %v", err) }
+		if err := s.mesh.Start(ctx); err != nil { return fmt.Errorf("start WMS mesh: %w", err) }
 	}
 	if s.webhooks != nil { go s.webhooks.Run(ctx, time.Second) }
 	if s.events != nil {
@@ -158,6 +158,7 @@ func (s *Server) StartBackground(ctx context.Context) {
 			}
 		}()
 	}
+	return nil
 }
 
 func (s *Server) Handler() http.Handler {
