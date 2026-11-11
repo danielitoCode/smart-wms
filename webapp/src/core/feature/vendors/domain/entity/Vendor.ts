@@ -36,4 +36,14 @@ export type CreateVendor = {
 };
 
 /** Mirrors UpdateVendorRequest; omitted properties are left unchanged. */
-export type UpdateVendor = Partial<CreateVendor>;
+export type UpdateVendor = {
+	vendorName?: string | null;
+	contactName?: string | null;
+	email?: string | null;
+	phone?: string | null;
+	billingAddress?: string | null;
+	remitToAddress?: string | null;
+	taxId?: string | null;
+	paymentTerms?: string | null;
+	isActive?: boolean | null;
+};
