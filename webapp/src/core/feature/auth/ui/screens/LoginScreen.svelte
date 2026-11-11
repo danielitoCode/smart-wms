@@ -1,4 +1,8 @@
 <script lang="ts">
+	import { getContext } from 'svelte';
+	import LocaleSwitcher from '../../../../lib/components/LocaleSwitcher.svelte';
+	import type { I18nState } from '../../../../lib/i18n/i18n.svelte';
+	const i18n = getContext<I18nState>('i18n');
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -45,17 +49,17 @@
 	<div class="card">
 		<header>
 			<img src="/brand/abellis_mark_principal.svg" width="40" height="40" alt="Abellis" />
-			<div><p class="eyebrow">Abellis</p><h1>Smart WMS</h1></div>
+			<div><p class="eyebrow">Abellis</p><h1>Smart WMS</h1></div><LocaleSwitcher />
 		</header>
-		<p class="lead">Inicia sesión para operar el almacén.</p>
-		{#if passwordChanged}<p class="success" role="status">Contraseña actualizada. Inicia sesión con tu nueva contraseña.</p>{/if}
+		<p class="lead">{i18n.t(i18n.t('Inicia sesión para operar el almacén.'))}</p>
+		{#if passwordChanged}<p class="success" role="status">{i18n.t(i18n.t('Contraseña actualizada. Inicia sesión con tu nueva contraseña.'))}</p>{/if}
 		<form onsubmit={onSubmit}>
-			<label><span>Usuario</span><input type="text" name="username" autocomplete="username" required
+			<label><span>{i18n.t(i18n.t('Usuario'))}</span><input type="text" name="username" autocomplete="username" required
 				value={state.username} oninput={(e) => state.setUsername(e.currentTarget.value)} disabled={state.loading} /></label>
-			<label><span>Contraseña</span><input type="password" name="password" autocomplete="current-password" required
+			<label><span>{i18n.t(i18n.t('Contraseña'))}</span><input type="password" name="password" autocomplete="current-password" required
 				value={state.password} oninput={(e) => state.setPassword(e.currentTarget.value)} disabled={state.loading} /></label>
 			{#if state.error}<p class="error" role="alert">{state.error}</p>{/if}
-			<button type="submit" class="primary" disabled={state.loading}>{state.loading ? 'Entrando…' : 'Entrar'}</button>
+			<button type="submit" class="primary" disabled={state.loading}>{state.loading ? i18n.t('Entrando…') : i18n.t('Entrar')}</button>
 		</form>
 	</div>
 </section>

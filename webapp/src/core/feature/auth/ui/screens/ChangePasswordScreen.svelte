@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { getContext } from 'svelte';
+	import type { I18nState } from '../../../../lib/i18n/i18n.svelte';
+	const i18n = getContext<I18nState>('i18n');
 	import { goto } from '$app/navigation';
 	import { createChangePasswordState } from '../state/changePasswordState.svelte';
 	import { authSession } from '../../../../infrastructure/auth/AuthSession';
@@ -16,7 +19,7 @@
 	<div class="card">
 		{#if forced}<p class="forced-banner" role="alert"><strong>Configuración inicial:</strong> debes establecer una contraseña nueva antes de continuar.</p>{/if}
 		<p class="eyebrow">Seguridad de la cuenta</p>
-		<h1>Cambiar contraseña</h1>
+		<h1>{i18n.t(i18n.t('Cambiar contraseña'))}</h1>
 		<p class="intro">Actualiza tu contraseña para continuar usando Smart WMS.</p>
 		<form onsubmit={onSubmit}>
 			<label>
