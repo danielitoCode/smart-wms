@@ -43,7 +43,7 @@ body .workspace .content button:hover:not(:disabled) { border-color:var(--lightb
 body .workspace .content button.primary { border-color:var(--navy); background:var(--navy); color:#fff; }
 body .workspace .content button.primary:hover:not(:disabled) { border-color:var(--navy-2); background:var(--navy-2); }
 body .workspace .content button.accent { border-color:var(--gold); background:var(--gold); color:var(--navy-deep); }
-body .workspace .content button.secondary,body .workspace .content button.quiet { border-color:var(--line); background:var(--surface); color:var(--link,var(--navy)); }
+body .workspace .content button.secondary,body .workspace .content button.quiet { border-color:var(--link,var(--navy)); background:var(--surface); color:var(--link,var(--navy)); }
 body .workspace .content button.danger { border-color:color-mix(in srgb,var(--danger) 35%,var(--line)); background:var(--danger-bg); color:var(--danger); }
 
 /* Los estados se comunican con texto, además del color. */

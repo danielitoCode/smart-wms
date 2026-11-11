@@ -35,7 +35,7 @@
 				disabled={state.loading}
 			/>
 		</label>
-		<button type="submit" disabled={state.loading}>
+		<button type="submit" class="accent" disabled={state.loading}>
 			{state.loading ? 'Cargando…' : 'Filtrar'}
 		</button>
 		<button type="button" class="secondary" onclick={() => state.load()} disabled={state.loading}>

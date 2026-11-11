@@ -27,7 +27,7 @@
 			value={state.query}
 			oninput={(e) => state.setQuery(e.currentTarget.value)}
 		/>
-		<button type="submit" disabled={state.loading}>Buscar</button>
+		<button type="submit" class="accent" disabled={state.loading}>Buscar</button>
 	</form>
 
 	{#if state.loading}
