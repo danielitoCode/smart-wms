@@ -15,6 +15,6 @@ export type Refund = Omit<SalesOrder, 'orderType' | 'lines'> & {
 
 /** Mirrors the POS refund contract: refund an eligible original POS sale. */
 export type CreateRefund = {
-	originalSalesOrderNumber: string;
+	originalSoId: string;
 	idempotencyKey: string;
 };
