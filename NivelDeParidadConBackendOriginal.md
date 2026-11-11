@@ -298,3 +298,6 @@ En el corte más reciente, el snapshot usa filas tipadas para conservar enteros 
 
 
 El refund parcial ahora reconcilia el valor calculado de las cantidades por línea/bin y admite devolver el envío por separado. RMA descuenta devoluciones POS anteriores y reservas de expedientes RMA no cancelados. Aun así, el flujo financiero externo sigue siendo responsabilidad del procesador de pagos y requiere comparación diferencial con Flask.
+
+
+La cancelación de RMA ahora compensa las cantidades recibidas con disposición RESTOCK. La reversión es idempotente por recibo y recuperable tras reinicio. Los recibos SCRAP/HOLD no generan ajustes inversos. Esta garantía está cubierta por una prueba que verifica cancelación repetida sin doble movimiento; falta ejecutar la suite race y escenarios multinodo.
