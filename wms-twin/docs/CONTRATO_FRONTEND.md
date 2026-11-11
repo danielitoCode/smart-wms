@@ -44,3 +44,40 @@ La autenticación y el primer catálogo (warehouses/zones/bins) ya no son tareas
 ## Estado actualizado del contrato frontend
 
 El gemelo ya incluye auth, catálogo maestro y administración de Purchase Orders. El frontend sigue bloqueado: receiving, putaway, receipts/unreceive, inventory overview, sales orders y demás operaciones no están todavía portadas. No cambies la base URL del frontend.
+
+
+## Nuevos contratos de integración POS y operaciones
+
+### POS checkout
+
+`POST /api/v1/pos/checkout` requiere `idempotency_key`, `warehouse_id`, `external_txn_ref`, `cashier_id`, `terminal_id`, `payment_method`, `subtotal_cents`, `tax_cents`, `total_cents`, `tenders` y `lines`. Cada línea identifica item/SKU, bin, quantity, unit_price_cents, tax_cents y line_total_cents. El backend valida que el total de líneas, los impuestos, envío y tenders cuadren. Repetir el mismo cuerpo con la misma clave devuelve la misma SO e incluye `X-Idempotent-Replay: true`. Reutilizar la clave con otro cuerpo produce conflicto.
+
+Para tender cash, enviar amount_cents, amount_tendered_cents y change_cents. Para card, enviar card_brand, card_last4, auth_code y external_ref. Nunca enviar PAN/CVV. `is_phone_order=true` reserva existencias y deja la SO abierta para picking/packing; una venta de mostrador descuenta existencias y se marca SHIPPED.
+
+### POS refund
+
+`POST /api/v1/pos/refund` requiere `so_number`, `idempotency_key`, `external_refund_ref`, `cashier_id`, `reason`, `payment_method` y `total_cents`. `lines` es opcional: omitido significa devolución de toda la cantidad restante; informado permite devolución parcial por item/bin. El método debe coincidir con el tender original. La devolución completa debe reconciliarse con el saldo monetario restante. El servicio repone inventario y registra la referencia externa; la operación financiera en el adquirente sigue siendo responsabilidad de la integración de pagos externa.
+
+### POS dispatch
+
+`POST /api/v1/pos/dispatch` requiere `so_number`, `carrier`, `tracking_number` e `idempotency_key`. Solo despacha phone orders en estado PICKED/PACKED. El servicio convierte la reserva en salida física y persiste el shipment. Repetir la misma clave/comando devuelve el mismo shipment.
+
+### Dockd void
+
+`POST /api/v1/dockd/ship/{so_number}/void` requiere `reason` e `idempotency_key`. Devuelve la orden al estado previo al envío. No representa recepción física de mercancía: esa operación corresponde a RMA.
+
+### RMA receive-line
+
+`POST /api/v1/rma/{rma_id}/receive-line` recibe `item_id`, `quantity`, `disposition`, `operation_id`, `lot_number` y `bin_id` para RESTOCK. Dispositions permitidas: RESTOCK, SCRAP, HOLD. Cada operation_id es idempotente; la suma recibida no puede superar la cantidad esperada.
+
+### Snapshot restore
+
+`POST /api/v1/snapshots/{snapshot_id}/restore` requiere `operation_id` y `expected_ledger_version`. El cliente debe leer primero el ledger y enviar su versión actual confirmada. Si hay cambios concurrentes desde esa lectura, el servidor devuelve 409. El restore no se debe ofrecer como acción cotidiana ni ejecutarse sin respaldo.
+
+### Webhook outbox
+
+`GET /api/v1/webhooks/deliveries` lista el estado de entregas. `POST /api/v1/webhooks/deliveries/{delivery_id}/retry` permite reintentar una entrada DEAD. Los eventos se entregan al menos una vez; el consumidor debe deduplicar por event_id. El secreto de suscripción se cifra en servidor y no vuelve al frontend.
+
+### Inbound
+
+Cada registro puede incluir `source_system`, `external_id` y `external_version`. La combinación identifica el registro de origen. Repetición idéntica devuelve el resultado anterior; mismo external_version con otro contenido devuelve conflicto. Una versión mayor todavía no aplica update automático.
