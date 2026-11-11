@@ -449,3 +449,10 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - Se persiste el avance por recibo para recuperar tras caída; un retry no vuelve a descontar dos veces.
 - Si las unidades ya no están disponibles para retirar, la cancelación queda pendiente en vez de declararse exitosa.
 - Añadí prueba de cancelación y repetición idempotente.
+
+
+### AUD-0030 — Idempotencia de refund por ubicación y egress webhook
+
+- Se detectó que líneas refund duplicadas para el mismo artículo/bin compartían operation_id, por lo que la segunda cantidad podía convertirse en replay sin movimiento adicional.
+- Se consolidan las cantidades por ubicación antes de llamar al ledger y se añadió prueba de dos líneas repetidas.
+- Se amplió la validación SSRF de webhooks a CGNAT, redes de documentación, benchmarking y bloques especiales IPv6. Los redirects siguen deshabilitados y la conexión se realiza a la IP validada.
