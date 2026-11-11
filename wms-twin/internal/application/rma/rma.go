@@ -93,9 +93,12 @@ func (s *Service) Create(soNumber, reason, actor string, backorder bool) (RMA, e
 	if so == nil {
 		return RMA{}, salesorders.ErrNotFound
 	}
+	if so.Status != salesorders.StatusShipped {
+		return RMA{}, fmt.Errorf("only shipped sales orders can be returned")
+	}
 	s.seq++
 	r := RMA{
-		RMAID: s.seq, SOID: so.SOID, SONumber: so.SONumber,
+		RMAID: s.seq, SOID: so.SOID, SONumber: so.SONumber, WarehouseID: so.WarehouseID,
 		Status: "OPEN", Reason: reason, CreatedAt: time.Now().UTC(),
 		CreatedBy: actor, Backorder: backorder, UpdatedAt: time.Now().UTC(),
 		Lines: []RMALine{},
@@ -210,7 +213,11 @@ func (s *Service) ReceiveLine(id, itemID, quantity, binID int64, lot, dispositio
 		if err != nil { return RMA{}, err }
 	}
 	target.Received += quantity
-	target.Disposition = disposition
+	if target.Disposition == "" {
+		target.Disposition = disposition
+	} else if target.Disposition != disposition {
+		target.Disposition = "MIXED"
+	}
 	target.Receipts = append(target.Receipts, RMAReceipt{
 		OperationID: operationID, Quantity: quantity, BinID: binID, LotNumber: lot,
 		Disposition: disposition, ReceivedAt: time.Now().UTC(), ReceivedBy: actor,
