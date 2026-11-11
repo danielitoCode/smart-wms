@@ -12,7 +12,7 @@ export type RequestOptions = {
 
 function readCsrfCookie(): string | null {
 	if (typeof document === 'undefined') return null;
-	const match = document.cookie.match(/(?:^|;\s*)sentry_csrf=([^;]+)/);
+	const match = document.cookie.match(/(?:^|;\\s*)sentry_csrf=([^;]+)/);
 	if (!match) return null;
 	try {
 		return decodeURIComponent(match[1]);
@@ -41,9 +41,22 @@ export class ApiClient {
 			if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
 		}
 
+		// One controller combines the request timeout and caller cancellation.
+		// Passing options.signal directly to fetch would silently disable timeout.
 		const controller = new AbortController();
-		const timeout = setTimeout(() => controller.abort(), apiConfig.timeoutMs);
-		const signal = options.signal ?? controller.signal;
+		let timedOut = false;
+		const timeout = setTimeout(() => {
+			timedOut = true;
+			controller.abort();
+		}, apiConfig.timeoutMs);
+		const externalSignal = options.signal;
+		const abortFromCaller = () => controller.abort(externalSignal?.reason);
+
+		if (externalSignal?.aborted) {
+			abortFromCaller();
+		} else {
+			externalSignal?.addEventListener('abort', abortFromCaller, { once: true });
+		}
 
 		try {
 			const response = await fetch(this.baseUrl + path, {
@@ -51,7 +64,7 @@ export class ApiClient {
 				headers,
 				body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
 				credentials: 'include',
-				signal
+				signal: controller.signal
 			});
 
 			const text = await response.text();
@@ -69,11 +82,13 @@ export class ApiClient {
 		} catch (err) {
 			if (err instanceof ApiError) throw err;
 			if (err instanceof DOMException && err.name === 'AbortError') {
-				throw new ApiError(0, 'Request timed out', 'timeout');
+				if (timedOut) throw new ApiError(0, 'Request timed out', 'timeout');
+				throw new ApiError(0, 'Request cancelled', 'cancelled');
 			}
 			throw new ApiError(0, err instanceof Error ? err.message : 'Network error', 'network');
 		} finally {
 			clearTimeout(timeout);
+			externalSignal?.removeEventListener('abort', abortFromCaller);
 		}
 	}
 
