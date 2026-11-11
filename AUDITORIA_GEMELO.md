@@ -456,3 +456,11 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - Se detectó que líneas refund duplicadas para el mismo artículo/bin compartían operation_id, por lo que la segunda cantidad podía convertirse en replay sin movimiento adicional.
 - Se consolidan las cantidades por ubicación antes de llamar al ledger y se añadió prueba de dos líneas repetidas.
 - Se amplió la validación SSRF de webhooks a CGNAT, redes de documentación, benchmarking y bloques especiales IPv6. Los redirects siguen deshabilitados y la conexión se realiza a la IP validada.
+
+
+### AUD-0031 — Anulación de despacho POS con restauración de reserva
+
+- Se verificó que la anulación de una expedición POS telefónica debe restaurar el on-hand y la reserva anterior al despacho.
+- La reversión por ubicación se registra en `VoidReversedKeys` y usa operaciones deterministas en el ledger.
+- La venta telefónica vuelve a COMPLETED y permite un nuevo despacho con otra clave; las ventas normales no reciben una reserva artificial.
+- Se añadió una prueba de despacho → void → redispatch que verifica on-hand y allocated en cada transición.
