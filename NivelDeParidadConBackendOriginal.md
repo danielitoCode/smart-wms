@@ -318,3 +318,6 @@ Inbound ya mapea los campos de cabecera y líneas que existen en los agregados G
 Snapshots incluyen checksum, respaldo previo, expected version y backup_snapshot_id. Webhooks incluyen outbox/retry/DLQ y secretos AES-GCM, con semántica at-least-once y sin lease HA entre workers. Mesh utiliza DHT/GossipSub reales solo en LibP2PTransport; el fallback TCP/local no es Kademlia.
 
 El arranque exige JWT_SECRET y bootstrap de identidad explícito. Las pruebas nuevas cubren casos locales, pero no equivalen a pruebas diferenciales Flask-Go ni a pruebas de red multinodo. CI debe quedar verde antes de iniciar el protocolo de pruebas reales.
+
+
+La prueba de cancelación RMA comprueba saldo neto cero tras revertir RESTOCK. El ledger puede mantener el registro de balance con cero para conservar trazabilidad; esto no representa stock disponible.
