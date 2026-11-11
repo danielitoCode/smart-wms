@@ -205,3 +205,40 @@ Los tests nuevos cubren la validación de URL/SSRF, persistencia e integridad de
 
 
 El snapshot ahora conserva los campos numéricos en una estructura tipada `InventoryRow`; evito convertir IDs/cantidades a float64 antes de calcular/verificar SHA-256. Para el outbox de eventos añadí `events.publish` como scope independiente y `POST /api/v1/events/retry-pending`; es un reintento explícito, no un worker automático permanente.
+
+
+## Contratos añadidos en la fase de cierre funcional
+
+### POS
+
+`application/pos` ahora conserva el registro de venta en `wms_pos_sale` y devoluciones en `wms_pos_refund`. El checkout es una saga: persistencia PREPARING, movimientos ledger idempotentes, creación/recuperación de SO por número determinista y cierre COMPLETED. La lista `AppliedKeys` permite compensar movimientos parciales si falla una mutación. Los pedidos telefónicos reservan stock; el despacho libera la reserva y descuenta on-hand con IDs estables. El refund devuelve stock por el bin original, con control de cantidades acumuladas, tender y ventana de 90 días.
+
+El tender conserva datos mínimos de conciliación, nunca PAN/CVV. La devolución externa se identifica mediante `external_refund_ref`; no hay integración directa con un procesador financiero.
+
+### Fulfillment / Dockd
+
+`application/fulfillment` persiste un shipment por SO en `wms_fulfillment`. El envío conserva `PreShipStatus`, carrier, tracking y fechas. Void usa VOIDING → restauración del estado de la SO y cantidades shipped → VOIDED. `VoidOperationID` y fingerprint impiden que una segunda orden de anulación cambie el motivo o repita el efecto. Si el proceso cae después de guardar la SO, el siguiente intento termina el marcador de shipment.
+
+### RMA
+
+`application/rma` ahora persiste líneas esperadas y recibidas, recepciones y disposiciones. RESTOCK invoca `inventoryledger.Adjust` con operation_id; SCRAP/HOLD no crean disponibilidad. Se rechaza la recepción por encima de la cantidad esperada, el bin fuera del almacén y la finalización con cantidades pendientes.
+
+### Webhooks
+
+`application/webhooks` mantiene `wms_webhook` y `wms_webhook_delivery`. `DeliverEvent` crea una entrada por suscripción con ID derivado de subscription + event_id. `ProcessPending` procesa PENDING/RETRY, actualiza intentos y next_attempt_at, clasifica DEAD y permite RetryDeadDelivery. `Run(ctx)` ejecuta el worker con el ciclo de vida del runtime.
+
+Los secretos nuevos se guardan como AES-GCM nonce+ciphertext bajo `SecretCipher`; el campo legacy `Secret` se migra en el worker. La clave se obtiene de `SENTRY_ENCRYPTION_KEY` o `WMS_WEBHOOK_ENCRYPTION_KEY` (base64, 32 bytes). El transporte conserva el control SSRF existente.
+
+### Snapshots
+
+`snapshot.Restore(id, operationID, expectedVersion)` lee y verifica el snapshot, reconstruye balances tipados y llama a `inventoryledger.RestoreBalances`. La operación sustituye el ledger global o una proyección de warehouse dentro de una escritura del organismo, valida el expected version y es idempotente por operationID. Sigue siendo consistencia local del organismo; no es un CAS distribuido entre nodos.
+
+### Inbound
+
+`WriteRequest.SourceSystem` y los campos external_id/external_version activan el registro `wms_inbound_idempotency`. El fingerprint detecta reutilización de versión con cuerpo distinto; la repetición idéntica devuelve el resultado persistido. Para recuperar el intervalo entre escritura del agregado y escritura del mapa, items se buscan por SKU y SO/PO por número, validando warehouse y líneas. Se admite mapping por warehouse_code y SKU.
+
+Las actualizaciones de una external_version más nueva se rechazan explícitamente: el mapeo de actualización canónica por recurso todavía necesita un contrato PATCH/UPSERT definido con el sistema fuente.
+
+### Mesh
+
+`mesh.Start(ctx)` detecta el Host() de LibP2PTransport. En esa ruta inicia `dht.New(..., dht.ModeServer)`, Bootstrap y `pubsub.NewGossipSub`. Los topics se suscriben y los mensajes recibidos se entregan a handlers con deduplicación local. `FindClosestPeers`, `ProvideCID` y `FindProviders` exponen operaciones DHT. TCP/local mantiene el adapter TTL y no se declara compatible con Kademlia/GossipSub.
