@@ -30,7 +30,7 @@ describe('EnsureAuthenticatedUseCase', () => {
 	});
 
 	it('returns anonymous on 401 and clears only the in-memory user', async () => {
-		authSession.setUser({ userId: 1, username: 'admin', fullName: 'Admin', role: 'ADMIN', warehouseIds: [1], allowedPages: [], allowedFunctions: [], mustChangePassword: false });
+		authSession.setUser({ userId: 1, username: 'admin', fullName: 'Admin', role: 'ADMIN', warehouseIds: [1], allowedPages: [], allowedFunctions: [], mustChangePassword: false, mustChangePassword: false });
 		const repo = createRepo({ getCurrentUser: vi.fn().mockRejectedValue(new ApiError(401, 'unauthorized')) });
 		const result = await new EnsureAuthenticatedUseCase(repo).execute();
 		expect(result).toMatchObject({ ok: false, reason: 'unauthorized' });
@@ -39,7 +39,7 @@ describe('EnsureAuthenticatedUseCase', () => {
 	});
 
 	it('preserves the in-memory user when the API is unavailable', async () => {
-		const current = { userId: 1, username: 'admin', fullName: 'Admin', role: 'ADMIN', warehouseIds: [1], allowedPages: [], allowedFunctions: [] };
+		const current = { userId: 1, username: 'admin', fullName: 'Admin', role: 'ADMIN', warehouseIds: [1], allowedPages: [], allowedFunctions: [], mustChangePassword: false };
 		authSession.setUser(current);
 		const repo = createRepo({ getCurrentUser: vi.fn().mockRejectedValue(new ApiError(0, 'Network error', 'network')) });
 		const result = await new EnsureAuthenticatedUseCase(repo).execute();
