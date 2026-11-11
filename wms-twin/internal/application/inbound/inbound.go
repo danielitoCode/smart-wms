@@ -2,6 +2,8 @@ package inbound
 
 import (
 	"encoding/json"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strings"
 	"sync"
@@ -30,15 +32,17 @@ func MappingSchema() map[string]any {
 		"version":   1,
 		"resources": []string{"sales_orders", "items", "purchase_orders"},
 		"fields": map[string]any{
-			"sales_orders":    []string{"external_id", "so_number", "warehouse_id", "warehouse_code", "lines"},
-			"items":           []string{"sku", "item_name", "upc"},
-			"purchase_orders": []string{"po_number", "warehouse_code", "lines"},
+			"sales_orders":    []string{"external_id", "external_version", "so_number", "warehouse_id", "warehouse_code", "customer_name", "notes", "lines[item_id|sku,quantity]"},
+			"items":           []string{"external_id", "external_version", "sku", "item_name", "upc", "mpn", "category", "description"},
+			"purchase_orders": []string{"external_id", "external_version", "po_number", "warehouse_id", "warehouse_code", "vendor_name", "expected_date", "notes", "lines[item_id|sku,quantity_ordered]"},
 		},
+		"idempotency": map[string]any{"key": "source_system + resource + external_id", "same_version_same_payload": "replay cached result", "same_version_different_payload": "409 conflict", "newer_version": "requires explicit canonical update mapping"},
 		"engine": "PrismaTec-Core",
 	}
 }
 
 type WriteRequest struct {
+	SourceSystem string `json:"source_system"`
 	Resource string           `json:"resource"`
 	Records  []map[string]any `json:"records"`
 }
@@ -52,15 +56,48 @@ func (s *Service) Write(req WriteRequest, actor string) (map[string]any, error) 
 	for i, rec := range req.Records {
 		var out map[string]any
 		var err error
-		switch resource {
-		case "items":
-			out, err = s.writeItem(rec)
-		case "sales_orders", "sales-orders":
-			out, err = s.writeSO(rec, actor)
-		case "purchase_orders", "purchase-orders":
-			out, err = s.writePO(rec, actor)
-		default:
-			return nil, fmt.Errorf("unsupported resource %q", req.Resource)
+		sourceSystem := strings.TrimSpace(req.SourceSystem)
+		if sourceSystem == "" { sourceSystem, _ = rec["source_system"].(string) }
+		externalID, _ := rec["external_id"].(string)
+		externalVersion, _ := rec["external_version"].(string)
+		idemKey := ""
+		fingerprint := ""
+		if sourceSystem != "" || externalID != "" {
+			if sourceSystem == "" || strings.TrimSpace(externalID) == "" {
+				err = fmt.Errorf("source_system and external_id must be supplied together")
+			} else {
+				canonical, marshalErr := json.Marshal(rec)
+				if marshalErr != nil { err = marshalErr } else {
+					sum := sha256.Sum256(canonical); fingerprint = hex.EncodeToString(sum[:])
+					keySum := sha256.Sum256([]byte(sourceSystem+"|"+resource+"|"+externalID))
+					idemKey = hex.EncodeToString(keySum[:])
+					if saved, found, readErr := s.store.Get("wms_inbound_idempotency", idemKey); readErr != nil {
+						err = readErr
+					} else if found {
+						var prior struct { Fingerprint string `json:"fingerprint"`; Version string `json:"external_version"`; Result map[string]any `json:"result"` }
+						if unmarshalErr := json.Unmarshal(saved.Data, &prior); unmarshalErr != nil { err = unmarshalErr
+						} else if prior.Fingerprint == fingerprint && prior.Version == externalVersion { out = prior.Result
+						} else if prior.Version == externalVersion { err = fmt.Errorf("inbound idempotency conflict: same external version has a different payload")
+						} else { err = fmt.Errorf("inbound version conflict: canonical supersession is not supported for this resource") }
+					}
+				}
+			}
+		}
+		if err == nil && out == nil {
+			switch resource {
+			case "items":
+				out, err = s.writeItem(rec)
+			case "sales_orders", "sales-orders":
+				out, err = s.writeSO(rec, actor)
+			case "purchase_orders", "purchase-orders":
+				out, err = s.writePO(rec, actor)
+			default:
+				return nil, fmt.Errorf("unsupported resource %q", req.Resource)
+			}
+			if err == nil && idemKey != "" {
+				data, marshalErr := json.Marshal(map[string]any{"source_system":sourceSystem,"resource":resource,"external_id":externalID,"external_version":externalVersion,"fingerprint":fingerprint,"result":out,"applied_at":time.Now().UTC()})
+				if marshalErr != nil { err = marshalErr } else if _, putErr := s.store.Put("wms_inbound_idempotency", idemKey, data); putErr != nil { err = putErr }
+			}
 		}
 		if err != nil {
 			errorsOut = append(errorsOut, map[string]any{"index": i, "error": err.Error()})
