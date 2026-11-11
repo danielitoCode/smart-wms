@@ -14,8 +14,12 @@ export const AuthMapper = {
 			warehouseId: dto.warehouse_id ?? warehouseIds[0] ?? null,
 			warehouseIds,
 			allowedFunctions: dto.allowed_functions ?? [],
+			allowedPages: dto.allowed_pages ?? [],
+			allowedOverrides: dto.allowed_overrides ?? [],
 			isActive: dto.is_active ?? true,
-			requirePacking: dto.require_packing ?? false
+			// Backend defaults require_packing to true unless explicitly disabled.
+			requirePacking: dto.require_packing ?? true,
+			mustChangePassword: dto.must_change_password ?? false
 		};
 	}
 };

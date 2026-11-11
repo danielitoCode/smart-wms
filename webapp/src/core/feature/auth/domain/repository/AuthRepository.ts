@@ -1,19 +1,11 @@
 import type { Credentials, LoginResult, User } from '../entity/User';
 
-/**
- * Domain port for authentication.
- * Backend: /api/auth/* — contracts unchanged.
- */
+/** Domain port for browser authentication through the backend cookie session. */
 export interface AuthRepository {
-	/** POST /api/auth/login */
 	login(credentials: Credentials): Promise<LoginResult>;
-
-	/** GET /api/auth/me */
 	getCurrentUser(): Promise<User>;
-
-	/** POST /api/auth/refresh */
-	refreshToken(): Promise<string>;
-
-	/** Clear local session (no backend call required). */
-	logout(): void;
+	/** Rotates the backend cookie while the current session is still valid. */
+	refreshToken(): Promise<void>;
+	/** Revokes the browser session by asking the backend to clear its cookies. */
+	logout(): Promise<void>;
 }

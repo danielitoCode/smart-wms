@@ -1,6 +1,6 @@
 /**
- * Domain user identity returned by the authentication endpoints.
- * Role values match the backend users contract exactly.
+ * Domain user identity returned by /api/auth/login and /api/auth/me.
+ * Role and permission values mirror the backend contract.
  */
 export type UserRole = 'ADMIN' | 'USER';
 
@@ -12,8 +12,11 @@ export type User = {
 	warehouseId: number | null;
 	warehouseIds: number[];
 	allowedFunctions: string[];
+	allowedPages: string[];
+	allowedOverrides: string[];
 	isActive: boolean;
 	requirePacking: boolean;
+	mustChangePassword: boolean;
 };
 
 export type Credentials = {
@@ -21,11 +24,6 @@ export type Credentials = {
 	password: string;
 };
 
-export type AuthToken = {
-	token: string;
-};
-
 export type LoginResult = {
-	token: string;
 	user: User;
 };

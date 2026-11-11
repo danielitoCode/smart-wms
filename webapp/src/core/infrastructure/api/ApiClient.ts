@@ -1,5 +1,4 @@
 import { apiConfig } from '../config/ApiConfig';
-import { authSession } from '../auth/AuthSession';
 import { ApiError } from '../errors/ApiError';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -8,14 +7,20 @@ export type RequestOptions = {
 	method?: HttpMethod;
 	body?: unknown;
 	headers?: Record<string, string>;
-	/** Skip Authorization header (e.g. login) */
+	/** Skip auth-specific behavior for public endpoints such as login. */
 	anonymous?: boolean;
 	signal?: AbortSignal;
 };
 
+function readCsrfCookie(): string | null {
+	if (typeof document === 'undefined') return null;
+	const match = document.cookie.match(/(?:^|;\\s*)sentry_csrf=([^;]+)/);
+	return match ? decodeURIComponent(match[1]) : null;
+}
+
 /**
- * Shared HTTP client for all features.
- * Respects existing SentryWMS endpoints, auth (Bearer JWT) and error shapes.
+ * Shared HTTP client. Browser sessions use the backend's HttpOnly auth cookie
+ * and double-submit CSRF cookie; bearer tokens are reserved for non-browser clients.
  */
 export class ApiClient {
 	constructor(private readonly baseUrl: string = apiConfig.baseUrl) {}
@@ -27,15 +32,11 @@ export class ApiClient {
 			...options.headers
 		};
 
-		if (options.body !== undefined) {
-			headers['Content-Type'] = 'application/json';
-		}
+		if (options.body !== undefined) headers['Content-Type'] = 'application/json';
 
-		if (!options.anonymous) {
-			const token = authSession.getToken();
-			if (token) {
-				headers['Authorization'] = `Bearer ${token}`;
-			}
+		if (!options.anonymous && method !== 'GET') {
+			const csrfToken = readCsrfCookie();
+			if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
 		}
 
 		const controller = new AbortController();
@@ -47,6 +48,7 @@ export class ApiClient {
 				method,
 				headers,
 				body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+				credentials: 'include',
 				signal
 			});
 
@@ -60,10 +62,7 @@ export class ApiClient {
 				}
 			}
 
-			if (!response.ok) {
-				throw ApiError.fromResponse(response.status, body);
-			}
-
+			if (!response.ok) throw ApiError.fromResponse(response.status, body);
 			return body as T;
 		} catch (err) {
 			if (err instanceof ApiError) throw err;
@@ -93,5 +92,4 @@ export class ApiClient {
 	}
 }
 
-/** Singleton used by feature datasources unless a custom instance is injected. */
 export const apiClient = new ApiClient();

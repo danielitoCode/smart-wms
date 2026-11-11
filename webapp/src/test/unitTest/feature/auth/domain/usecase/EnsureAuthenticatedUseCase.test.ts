@@ -13,8 +13,11 @@ const sampleUser: User = {
 	warehouseId: 1,
 	warehouseIds: [1],
 	allowedFunctions: [],
+	allowedPages: [],
+	allowedOverrides: [],
 	isActive: true,
-	requirePacking: false
+	requirePacking: true,
+	mustChangePassword: false
 };
 
 function createRepo(overrides: Partial<AuthRepository> = {}): AuthRepository {
@@ -28,134 +31,37 @@ function createRepo(overrides: Partial<AuthRepository> = {}): AuthRepository {
 }
 
 describe('EnsureAuthenticatedUseCase', () => {
-	beforeEach(() => {
-		authSession.clear();
-	});
+	beforeEach(() => authSession.clear());
 
-	it('returns missing_token when no JWT is stored', async () => {
-		const useCase = new EnsureAuthenticatedUseCase(createRepo());
-		const result = await useCase.execute();
-		expect(result.ok).toBe(false);
-		if (!result.ok) expect(result.reason).toBe('missing_token');
-	});
-
-	it('returns user when /me succeeds', async () => {
-		authSession.setSession('jwt', {
-			userId: 1,
-			username: 'admin',
-			fullName: 'Admin',
-			role: 'ADMIN',
-			warehouseIds: [1]
-		});
-		const repo = createRepo({
-			getCurrentUser: vi.fn().mockResolvedValue(sampleUser)
-		});
-		const useCase = new EnsureAuthenticatedUseCase(repo);
-		const result = await useCase.execute();
+	it('validates the HttpOnly cookie through /me without requiring a client-readable token', async () => {
+		const repo = createRepo({ getCurrentUser: vi.fn().mockResolvedValue(sampleUser) });
+		const result = await new EnsureAuthenticatedUseCase(repo).execute();
+		expect(repo.getCurrentUser).toHaveBeenCalledOnce();
 		expect(result).toEqual({ ok: true, user: sampleUser });
+	});
+
+	it('returns anonymous on 401 and clears only the in-memory user', async () => {
+		authSession.setUser({ userId: 1, username: 'admin', fullName: 'Admin', role: 'ADMIN', warehouseIds: [1] });
+		const repo = createRepo({ getCurrentUser: vi.fn().mockRejectedValue(new ApiError(401, 'unauthorized')) });
+		const result = await new EnsureAuthenticatedUseCase(repo).execute();
+		expect(result).toMatchObject({ ok: false, reason: 'unauthorized' });
+		expect(authSession.getUser()).toBeNull();
 		expect(repo.refreshToken).not.toHaveBeenCalled();
 	});
 
-	it('refreshes once after 401 and recovers', async () => {
-		authSession.setSession('expired', {
-			userId: 1,
-			username: 'admin',
-			fullName: 'Admin',
-			role: 'ADMIN',
-			warehouseIds: [1]
-		});
-		const repo = createRepo({
-			getCurrentUser: vi
-				.fn()
-				.mockRejectedValueOnce(new ApiError(401, 'unauthorized'))
-				.mockResolvedValueOnce(sampleUser),
-			refreshToken: vi.fn().mockResolvedValue('new-jwt')
-		});
-		const useCase = new EnsureAuthenticatedUseCase(repo);
-		const result = await useCase.execute();
-		expect(repo.refreshToken).toHaveBeenCalledOnce();
-		expect(result.ok).toBe(true);
+	it('preserves the session view when the API is unavailable', async () => {
+		const current = { userId: 1, username: 'admin', fullName: 'Admin', role: 'ADMIN', warehouseIds: [1] };
+		authSession.setUser(current);
+		const repo = createRepo({ getCurrentUser: vi.fn().mockRejectedValue(new ApiError(0, 'Network error', 'network')) });
+		const result = await new EnsureAuthenticatedUseCase(repo).execute();
+		expect(result).toMatchObject({ ok: false, reason: 'unavailable' });
+		expect(authSession.getUser()).toEqual(current);
 	});
 
-	it('clears session and returns unauthorized when refresh fails with 401', async () => {
-		authSession.setSession('bad', {
-			userId: 1,
-			username: 'admin',
-			fullName: 'Admin',
-			role: 'ADMIN',
-			warehouseIds: [1]
-		});
-		const repo = createRepo({
-			getCurrentUser: vi.fn().mockRejectedValue(new ApiError(401, 'unauthorized')),
-			refreshToken: vi.fn().mockRejectedValue(new ApiError(401, 'expired')),
-			logout: vi.fn()
-		});
-		const useCase = new EnsureAuthenticatedUseCase(repo);
-		const result = await useCase.execute();
-		expect(repo.logout).toHaveBeenCalled();
-		expect(result.ok).toBe(false);
-		if (!result.ok) expect(result.reason).toBe('unauthorized');
-	});
-
-	it('returns unavailable on network errors without clearing session', async () => {
-		authSession.setSession('jwt', {
-			userId: 1,
-			username: 'admin',
-			fullName: 'Admin',
-			role: 'ADMIN',
-			warehouseIds: [1]
-		});
-		const repo = createRepo({
-			getCurrentUser: vi.fn().mockRejectedValue(new ApiError(0, 'Network error', 'network')),
-			logout: vi.fn()
-		});
-		const useCase = new EnsureAuthenticatedUseCase(repo);
-		const result = await useCase.execute();
-		expect(repo.logout).not.toHaveBeenCalled();
-		expect(result.ok).toBe(false);
-		if (!result.ok) expect(result.reason).toBe('unavailable');
-		expect(authSession.getToken()).toBe('jwt');
-	});
-
-	it('does not clear session when refresh fails due to network after 401 on /me', async () => {
-		authSession.setSession('jwt', {
-			userId: 1,
-			username: 'admin',
-			fullName: 'Admin',
-			role: 'ADMIN',
-			warehouseIds: [1]
-		});
-		const repo = createRepo({
-			getCurrentUser: vi.fn().mockRejectedValue(new ApiError(401, 'unauthorized')),
-			refreshToken: vi.fn().mockRejectedValue(new ApiError(0, 'Network error', 'network')),
-			logout: vi.fn()
-		});
-		const useCase = new EnsureAuthenticatedUseCase(repo);
-		const result = await useCase.execute();
-		expect(repo.logout).not.toHaveBeenCalled();
-		expect(result.ok).toBe(false);
-		if (!result.ok) expect(result.reason).toBe('unavailable');
-		expect(authSession.getToken()).toBe('jwt');
-	});
-
-	it('treats 403 on /me as unauthorized path and tries refresh', async () => {
-		authSession.setSession('jwt', {
-			userId: 1,
-			username: 'admin',
-			fullName: 'Admin',
-			role: 'ADMIN',
-			warehouseIds: [1]
-		});
-		const repo = createRepo({
-			getCurrentUser: vi
-				.fn()
-				.mockRejectedValueOnce(new ApiError(403, 'forbidden'))
-				.mockResolvedValueOnce(sampleUser),
-			refreshToken: vi.fn().mockResolvedValue('new')
-		});
-		const useCase = new EnsureAuthenticatedUseCase(repo);
-		const result = await useCase.execute();
-		expect(repo.refreshToken).toHaveBeenCalledOnce();
-		expect(result.ok).toBe(true);
+	it('does not treat permission or policy 403 responses as an expired login', async () => {
+		const repo = createRepo({ getCurrentUser: vi.fn().mockRejectedValue(new ApiError(403, 'Forbidden')) });
+		const result = await new EnsureAuthenticatedUseCase(repo).execute();
+		expect(result).toMatchObject({ ok: false, reason: 'unavailable' });
+		expect(repo.refreshToken).not.toHaveBeenCalled();
 	});
 });

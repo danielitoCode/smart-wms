@@ -1,5 +1,10 @@
 import type { ApiClient } from '../../../../infrastructure/api/ApiClient';
-import type { LoginResponseDto, MeResponseDto, RefreshResponseDto } from '../dto/AuthDto';
+import type {
+	LoginResponseDto,
+	LogoutResponseDto,
+	MeResponseDto,
+	RefreshResponseDto
+} from '../dto/AuthDto';
 
 export class AuthRemoteDataSource {
 	constructor(private readonly api: ApiClient) {}
@@ -18,5 +23,9 @@ export class AuthRemoteDataSource {
 
 	refresh(): Promise<RefreshResponseDto> {
 		return this.api.post<RefreshResponseDto>('/api/auth/refresh');
+	}
+
+	logout(): Promise<LogoutResponseDto> {
+		return this.api.post<LogoutResponseDto>('/api/auth/logout');
 	}
 }
