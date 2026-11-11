@@ -68,7 +68,32 @@ jobs:
         env:
           VITE_API_BASE_URL: http://localhost:5000
 
-      - name: Unit tests (Vitest)
+      - name: Domain suite
         if: steps.webapp.outputs.exists == 'true'
         working-directory: webapp
-        run: npm test
+        run: npm run test:domain
+
+      - name: Application suite
+        if: steps.webapp.outputs.exists == 'true'
+        working-directory: webapp
+        run: npm run test:application
+
+      - name: Infrastructure suite
+        if: steps.webapp.outputs.exists == 'true'
+        working-directory: webapp
+        run: npm run test:infrastructure
+
+      - name: UI / presentation suite
+        if: steps.webapp.outputs.exists == 'true'
+        working-directory: webapp
+        run: npm run test:ui
+
+      - name: Integration suite
+        if: steps.webapp.outputs.exists == 'true'
+        working-directory: webapp
+        run: npm run test:integration
+
+      - name: Full regression suite
+        if: steps.webapp.outputs.exists == 'true'
+        working-directory: webapp
+        run: npm run test:all
