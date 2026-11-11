@@ -82,15 +82,31 @@ func TestVoidReversesPOSInventoryExactlyOnce(t *testing.T) {
 	data, err := json.Marshal(sale)
 	if err != nil { t.Fatal(err) }
 	if _, err := store.Put("wms_pos_sale","pos-sale-void",data); err != nil { t.Fatal(err) }
-	voided, err := service.VoidWithID(so.SOID,"operator","customer cancelled","pos-void-operation")
+	voided, err := service.VoidLegacy(so.SOID,"operator","customer cancelled")
 	if err != nil { t.Fatal(err) }
 	if voided.Status!="VOIDED" || len(voided.VoidReversedKeys)!=1 { t.Fatalf("POS inventory reversal not recorded: %+v",voided) }
 	balances, _, err := ledger.List()
 	if err != nil { t.Fatal(err) }
 	if len(balances)!=1 || balances[0].OnHand!=8 || balances[0].Allocated!=2 { t.Fatalf("expected original on-hand and reservation after void, got %+v",balances) }
-	replayed, err := service.VoidWithID(so.SOID,"operator","customer cancelled","pos-void-operation")
+	replayed, err := service.VoidLegacy(so.SOID,"operator","customer cancelled")
 	if err != nil || !replayed.Replayed { t.Fatalf("void replay failed: result=%+v err=%v",replayed,err) }
 	balances, _, err = ledger.List()
 	if err != nil { t.Fatal(err) }
 	if balances[0].OnHand!=8 || balances[0].Allocated!=2 { t.Fatalf("void replay duplicated stock/reservation reversal: %+v",balances) }
+
+	// A later shipment generation must receive a different compensation ID;
+	// otherwise the ledger would treat the second void as the first replay.
+	if _, err := ledger.Release(inventoryledger.QuantityCommand{OperationID:"seed-pos-release-2",WarehouseID:warehouse.WarehouseID,BinID:bin.BinID,ItemID:item.ItemID,Quantity:2}); err != nil { t.Fatal(err) }
+	if _, err := ledger.Adjust(inventoryledger.AdjustCommand{OperationID:"seed-pos-dispatch-2",WarehouseID:warehouse.WarehouseID,BinID:bin.BinID,ItemID:item.ItemID,Delta:-2}); err != nil { t.Fatal(err) }
+	sale["status"], sale["dispatch_key"] = "DISPATCHED", "dispatch-2"
+	data, err = json.Marshal(sale)
+	if err != nil { t.Fatal(err) }
+	if _, err := store.Put("wms_pos_sale","pos-sale-void",data); err != nil { t.Fatal(err) }
+	if _, err := service.Fulfill(FulfillInput{SOID:so.SOID,Carrier:"UPS",TrackingNumber:"POS-VOID-TRACK-2"},[]int64{warehouse.WarehouseID},false); err != nil { t.Fatal(err) }
+	secondVoid, err := service.VoidLegacy(so.SOID,"operator","customer cancelled")
+	if err != nil { t.Fatal(err) }
+	if secondVoid.Status!="VOIDED" { t.Fatalf("second shipment generation was not voided: %+v",secondVoid) }
+	balances, _, err = ledger.List()
+	if err != nil { t.Fatal(err) }
+	if balances[0].OnHand!=8 || balances[0].Allocated!=2 { t.Fatalf("second shipment void reused the first compensation ID: %+v",balances) }
 }
