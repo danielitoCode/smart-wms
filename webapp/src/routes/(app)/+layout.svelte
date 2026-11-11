@@ -2,22 +2,36 @@
 	import { onMount, setContext } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import AppIcon from '../../lib/components/AppIcon.svelte';
 	import { createAuthGuardState } from '../../core/feature/auth/ui/state/authGuardState.svelte';
 	import { createWarehouseSelectionState } from '../../core/feature/warehouses/ui/state/warehouseSelectionState.svelte';
 
 	let { children } = $props();
+	let sidebarOpen = $state(false);
 	const guard = createAuthGuardState();
 	const warehouseSelection = createWarehouseSelectionState();
 	setContext('warehouseSelection', warehouseSelection);
-	const nav = [
-		{ href: '/inventory', label: 'Inventario', pageKey: 'inventory' },
-		{ href: '/cycle-count', label: 'Cycle count', pageKey: 'cycle-counts' },
-		{ href: '/receiving', label: 'Recepción', pageKey: 'receiving' },
-		{ href: '/putaway', label: 'Putaway', pageKey: 'putaway' },
-		{ href: '/picking', label: 'Picking' }, { href: '/packing', label: 'Packing' }, { href: '/shipping', label: 'Shipping' },
-		{ href: '/data', label: 'Datos' },
-		{ href: '/items', label: 'Ítems', pageKey: 'items' }
-	] as const;
+
+	type IconName = 'inbox' | 'map-pin' | 'clipboard-list' | 'package-check' | 'truck' | 'boxes' | 'scan' | 'package' | 'warehouse' | 'database';
+	type NavItem = { href: string; label: string; icon: IconName; pageKey?: string };
+	const navGroups: { label: string; items: NavItem[] }[] = [
+		{ label: 'Operaciones', items: [
+			{ href: '/receiving', label: 'Recepción', icon: 'inbox', pageKey: 'receiving' },
+			{ href: '/putaway', label: 'Ubicación', icon: 'map-pin', pageKey: 'putaway' },
+			{ href: '/picking', label: 'Preparación', icon: 'clipboard-list' },
+			{ href: '/packing', label: 'Empaque', icon: 'package-check' },
+			{ href: '/shipping', label: 'Despacho', icon: 'truck' }
+		]},
+		{ label: 'Control', items: [
+			{ href: '/inventory', label: 'Inventario', icon: 'boxes', pageKey: 'inventory' },
+			{ href: '/cycle-count', label: 'Conteo cíclico', icon: 'scan', pageKey: 'cycle-counts' }
+		]},
+		{ label: 'Catálogos', items: [
+			{ href: '/items', label: 'Productos', icon: 'package', pageKey: 'items' },
+			{ href: '/warehouses', label: 'Almacenes', icon: 'warehouse', pageKey: 'warehouses' },
+			{ href: '/data', label: 'Datos maestros', icon: 'database' }
+		]}
+	];
 
 	onMount(() => { void bootstrap(); });
 
@@ -28,12 +42,14 @@
 	});
 
 	const hasRouteAccess = $derived(guard.status !== 'authenticated' || canAccessPages(requiredPageKeys(page.url.pathname)));
+	const currentTitle = $derived(getPageTitle(page.url.pathname));
 
 	function canAccessPages(keys: string[]): boolean {
 		if (keys.length === 0 || guard.user?.role === 'ADMIN') return true;
 		const granted = guard.user?.allowedPages ?? [];
 		return keys.every(key => granted.includes(key));
 	}
+
 	function requiredPageKeys(pathname: string): string[] {
 		if (pathname === '/inventory' || pathname.startsWith('/inventory/')) return ['inventory'];
 		if (pathname === '/cycle-count' || pathname.startsWith('/cycle-count/')) return ['cycle-counts'];
@@ -47,49 +63,183 @@
 		if (pathname.startsWith('/warehouses/')) return ['warehouses', 'zones', 'bins'];
 		return [];
 	}
-	function canSeeNavItem(item: (typeof nav)[number]): boolean {
-		if ('pageKey' in item) return canAccessPages([item.pageKey]);
+
+	function canSeeNavItem(item: NavItem): boolean {
+		if (item.pageKey) return canAccessPages([item.pageKey]);
 		if (item.href === '/data') {
 			return guard.user?.role === 'ADMIN' ||
 				canAccessPages(['warehouses']) || canAccessPages(['zones']) ||
-				canAccessPages(['bins','zones']) || canAccessPages(['preferred-bins']);
+				canAccessPages(['bins', 'zones']) || canAccessPages(['preferred-bins']);
 		}
 		return true;
 	}
+
+	function getPageTitle(pathname: string): string {
+		if (pathname.startsWith('/receiving')) return 'Recepción de mercancía';
+		if (pathname.startsWith('/putaway')) return 'Ubicación de productos';
+		if (pathname.startsWith('/picking')) return 'Preparación de pedidos';
+		if (pathname.startsWith('/packing')) return 'Empaque de pedidos';
+		if (pathname.startsWith('/shipping')) return 'Despacho de pedidos';
+		if (pathname.startsWith('/inventory')) return 'Inventario';
+		if (pathname.startsWith('/cycle-count')) return 'Conteo cíclico';
+		if (pathname.startsWith('/items')) return 'Catálogo de productos';
+		if (pathname.startsWith('/warehouses')) return 'Almacenes';
+		if (pathname.startsWith('/data')) return 'Datos maestros';
+		if (pathname.startsWith('/change-password')) return 'Seguridad de la cuenta';
+		return 'Centro de operaciones';
+	}
+
+	function isActive(href: string) {
+		return page.url.pathname === href || page.url.pathname.startsWith(href + '/');
+	}
+
 	async function bootstrap() {
 		await guard.verify();
-		if (guard.status === 'authenticated' && !guard.user?.mustChangePassword) await warehouseSelection.load(guard.user ? {
-			userId: guard.user.userId, username: guard.user.username, fullName: guard.user.fullName,
-			role: guard.user.role, warehouseIds: guard.user.warehouseIds,
-			allowedPages: guard.user.allowedPages, allowedFunctions: guard.user.allowedFunctions, mustChangePassword: guard.user.mustChangePassword
-		} : null);
+		if (guard.status === 'authenticated' && !guard.user?.mustChangePassword) {
+			await warehouseSelection.load(guard.user ? {
+				userId: guard.user.userId, username: guard.user.username, fullName: guard.user.fullName,
+				role: guard.user.role, warehouseIds: guard.user.warehouseIds,
+				allowedPages: guard.user.allowedPages, allowedFunctions: guard.user.allowedFunctions,
+				mustChangePassword: guard.user.mustChangePassword
+			} : null);
+		}
 		if (guard.status === 'anonymous') {
 			const redirect = encodeURIComponent(page.url.pathname + page.url.search);
 			await goto('/login?redirect=' + redirect);
 		}
 	}
-	async function logout() { await guard.logout(); await goto('/login'); }
+
+	async function logout() {
+		sidebarOpen = false;
+		await guard.logout();
+		await goto('/login');
+	}
 	async function retry() { await bootstrap(); }
-	function isActive(href: string) { return page.url.pathname === href || page.url.pathname.startsWith(href + '/'); }
 </script>
 
-{#if guard.status === 'checking'}<p class="boot">Validando sesión…</p>
-{:else if guard.status === 'error'}<section class="boot panel" role="alert"><p class="title">Sin conexión con el servidor</p>{#if guard.message}<p class="detail">{guard.message}</p>{/if}<div class="actions"><button type="button" class="primary" onclick={retry}>Reintentar</button><button type="button" onclick={logout}>Cerrar sesión</button></div></section>
-{:else if guard.status === 'authenticated' && !hasRouteAccess}<section class="boot panel" role="alert"><p class="title">Acceso no autorizado</p><p class="detail">Tu cuenta no tiene los permisos de página necesarios para este módulo.</p><button type="button" class="primary" onclick={() => goto('/inventory')}>Continuar</button></section>
-{:else if guard.status === 'authenticated'}<div class="shell"><header class="topbar"><a class="brand" href="/inventory"><img src="/brand/abellis_mark_blanco.svg" width="28" height="28" alt="" /><span class="brand-text"><span class="name">Abellis</span><span class="product">Smart WMS</span></span></a>
-	{#if !guard.user?.mustChangePassword}<nav aria-label="Principal">{#each nav.filter(canSeeNavItem) as item}<a href={item.href} class:active={isActive(item.href)}>{item.label}</a>{/each}</nav>{/if}
-	<div class="session">{#if warehouseSelection.canSelect && warehouseSelection.warehouses.length > 0}<label class="warehouse-picker"><span>Almacén</span><select value={warehouseSelection.warehouseId ?? ''} onchange={(e) => warehouseSelection.select(Number(e.currentTarget.value))}>{#each warehouseSelection.warehouses as wh}<option value={wh.id}>{wh.code} — {wh.name}</option>{/each}</select></label>{/if}{#if guard.user}<span class="user">{guard.user.fullName || guard.user.username}</span>{/if}{#if !guard.user?.mustChangePassword}<a class="ghost" href="/change-password">Cambiar contraseña</a>{/if}<button type="button" class="ghost" onclick={logout}>Salir</button></div></header><main class="content">{@render children()}</main></div>
-{:else}<p class="boot">Redirigiendo…</p>{/if}
+{#if guard.status === 'checking'}
+	<p class="boot" role="status">Validando sesión…</p>
+{:else if guard.status === 'error'}
+	<section class="boot panel" role="alert">
+		<p class="title">No se pudo conectar con el servidor</p>
+		{#if guard.message}<p class="detail">{guard.message}</p>{/if}
+		<div class="actions"><button type="button" class="primary" onclick={retry}>Reintentar</button><button type="button" onclick={logout}>Cerrar sesión</button></div>
+	</section>
+{:else if guard.status === 'authenticated' && !hasRouteAccess}
+	<section class="boot panel" role="alert">
+		<p class="title">Acceso no autorizado</p>
+		<p class="detail">Tu cuenta no tiene permiso para abrir este módulo.</p>
+		<button type="button" class="primary" onclick={() => goto('/inventory')}>Ir al inventario</button>
+	</section>
+{:else if guard.status === 'authenticated'}
+	<div class="workspace">
+		<aside class="sidebar" class:open={sidebarOpen} aria-label="Navegación de Abellis">
+			<a class="brand" href="/inventory" aria-label="Abellis WMS, ir al inventario">
+				<img src="/brand/abellis_mark_blanco.svg" width="36" height="36" alt="" />
+				<span class="brand-text"><strong>Abellis</strong><small>WMS · Operaciones</small></span>
+			</a>
+			{#if !guard.user?.mustChangePassword}
+				<nav class="main-nav" aria-label="Navegación principal">
+					{#each navGroups as group}
+						{@const visibleItems = group.items.filter(canSeeNavItem)}
+						{#if visibleItems.length > 0}
+							<section class="nav-group">
+								<p class="group-label">{group.label}</p>
+								{#each visibleItems as item}
+									<a class="nav-link" class:active={isActive(item.href)} href={item.href}
+										aria-current={isActive(item.href) ? 'page' : undefined} onclick={() => sidebarOpen = false}>
+										<AppIcon name={item.icon} size={19} /><span>{item.label}</span>
+									</a>
+								{/each}
+							</section>
+						{/if}
+					{/each}
+				</nav>
+			{/if}
+			<div class="sidebar-footer">
+				<div class="avatar"><AppIcon name="user" size={18} /></div>
+				<div class="account"><strong>{guard.user.fullName || guard.user.username}</strong><span>{guard.user.role === 'ADMIN' ? 'Administrador' : 'Usuario de almacén'}</span></div>
+			</div>
+		</aside>
+		{#if sidebarOpen}<button class="scrim" type="button" aria-label="Cerrar menú" onclick={() => sidebarOpen = false}></button>{/if}
+		<div class="app-main">
+			<header class="topbar">
+				<button class="menu-toggle" type="button" aria-label="Abrir menú" aria-expanded={sidebarOpen} onclick={() => sidebarOpen = !sidebarOpen}><AppIcon name="menu" size={21} /></button>
+				<div class="page-context"><p>ABELLIS · WMS</p><h1>{currentTitle}</h1></div>
+				<div class="topbar-actions">
+					{#if warehouseSelection.canSelect && warehouseSelection.warehouses.length > 0}
+						<label class="warehouse-picker"><span>Almacén activo</span>
+							<select aria-label="Almacén activo" value={warehouseSelection.warehouseId ?? ''} onchange={(e) => warehouseSelection.select(Number(e.currentTarget.value))}>
+								{#each warehouseSelection.warehouses as wh}<option value={wh.id}>{wh.code} — {wh.name}</option>{/each}
+							</select>
+						</label>
+					{/if}
+					{#if !guard.user?.mustChangePassword}<a class="account-action" href="/change-password" aria-label="Cambiar contraseña" title="Cambiar contraseña"><AppIcon name="lock" size={17} /><span>Contraseña</span></a>{/if}
+					<button class="logout" type="button" onclick={logout}><AppIcon name="logout" size={17} /><span>Salir</span></button>
+				</div>
+			</header>
+			<main class="content">{@render children()}</main>
+		</div>
+	</div>
+{:else}
+	<p class="boot">Redirigiendo…</p>
+{/if}
 
 <style>
-	.shell { min-height:100vh; display:flex; flex-direction:column; background:var(--bg); color:var(--ink); }
-	.topbar { display:flex; flex-wrap:wrap; align-items:center; gap:.75rem 1rem; padding:.65rem 1.15rem; background:var(--navy-deep); color:#f5f8fc; border-bottom:1px solid rgba(255,255,255,.06); }
-	.brand { display:flex; align-items:center; gap:.55rem; text-decoration:none; color:inherit; margin-right:.25rem; } .brand img { display:block; flex:none; }
-	.brand-text { display:flex; flex-direction:column; line-height:1.05; min-width:0; } .brand-text .name { font-family:var(--disp); font-weight:700; font-size:.95rem; letter-spacing:-.02em; } .brand-text .product { font-size:.62rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); }
-	nav { display:flex; flex-wrap:wrap; gap:.15rem; flex:1; min-width:12rem; } nav a { color:rgba(245,248,252,.72); text-decoration:none; font-size:.84rem; padding:.35rem .55rem; border-radius:8px; transition:color 120ms ease,background 120ms ease; } nav a:hover { color:#fff; background:rgba(255,255,255,.06); } nav a.active { color:#fff; background:rgba(255,255,255,.1); font-weight:600; }
-	.session { display:flex; align-items:center; gap:.65rem; margin-left:auto; } .warehouse-picker { display:flex; align-items:center; gap:.4rem; color:rgba(245,248,252,.72); font-size:.75rem; } .warehouse-picker select { max-width:13rem; padding:.32rem .45rem; border:1px solid rgba(255,255,255,.2); border-radius:7px; background:rgba(255,255,255,.08); color:#fff; font:inherit; } .warehouse-picker option { color:#182536; } .user { font-size:.82rem; color:rgba(245,248,252,.8); max-width:10rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-	.ghost { padding:.3rem .7rem; border-radius:8px; border:1px solid rgba(255,255,255,.22); background:transparent; color:inherit; cursor:pointer; font-size:.82rem; text-decoration:none; } .ghost:hover { background:rgba(255,255,255,.08); }
-	.content { flex:1; animation:fade-in 160ms ease-out; } .boot { padding:3rem 1.25rem; text-align:center; color:var(--slate); animation:fade-in 160ms ease-out; }
-	.panel { max-width:22rem; margin:2.5rem auto; text-align:left; background:var(--card); border:1px solid var(--line); border-radius:var(--radius-card); padding:1.25rem; box-shadow:var(--shadow-1); } .panel .title { margin:0 0 .35rem; font-family:var(--disp); font-weight:600; color:var(--ink); } .panel .detail { margin:0; color:var(--danger); font-size:.9rem; }
-	.actions { display:flex; gap:.5rem; margin-top:1rem; } .actions .primary { background:var(--navy); border-color:var(--navy); color:#fff; }
+	.workspace { min-height:100vh; display:grid; grid-template-columns:252px minmax(0,1fr); background:var(--bg); color:var(--ink); }
+	.sidebar { position:sticky; top:0; height:100vh; min-height:100vh; display:flex; flex-direction:column; overflow:hidden; background:var(--navy-deep); color:#f5f8fc; border-right:1px solid rgba(255,255,255,.08); z-index:30; }
+	.brand { min-height:84px; display:flex; align-items:center; gap:12px; padding:18px 22px; color:#fff; text-decoration:none; border-bottom:1px solid rgba(255,255,255,.12); }
+	.brand img { display:block; flex:none; }
+	.brand-text { display:flex; flex-direction:column; gap:4px; line-height:1; }
+	.brand-text strong { font:700 1.12rem var(--disp); letter-spacing:-.02em; }
+	.brand-text small { color:var(--gold); font:600 .62rem var(--disp); letter-spacing:.14em; text-transform:uppercase; }
+	.main-nav { flex:1; overflow:auto; padding:22px 14px 18px; }
+	.nav-group { margin:0 0 22px; }
+	.group-label { margin:0 0 8px; padding:0 11px; color:rgba(224,235,247,.54); font:600 .65rem var(--disp); letter-spacing:.16em; text-transform:uppercase; }
+	.nav-link { min-height:44px; display:flex; align-items:center; gap:12px; margin:2px 0; padding:10px 12px; border-radius:10px; color:rgba(245,248,252,.78); text-decoration:none; font:500 .9rem var(--body); transition:background 160ms ease,color 160ms ease; }
+	.nav-link :global(svg) { flex:none; color:rgba(190,211,234,.8); }
+	.nav-link:hover { color:#fff; background:rgba(255,255,255,.07); }
+	.nav-link.active { color:#fff; background:rgba(143,180,218,.16); box-shadow:inset 3px 0 0 var(--gold); font-weight:600; }
+	.nav-link.active :global(svg) { color:var(--gold); }
+	.sidebar-footer { display:flex; align-items:center; gap:10px; padding:16px 18px; border-top:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.08); }
+	.avatar { width:34px; height:34px; display:grid; place-items:center; flex:none; border:1px solid rgba(255,255,255,.18); border-radius:50%; color:var(--gold); }
+	.account { min-width:0; display:flex; flex-direction:column; gap:3px; }
+	.account strong { max-width:168px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#fff; font-size:.82rem; font-weight:600; }
+	.account span { color:rgba(224,235,247,.62); font-size:.72rem; }
+	.app-main { min-width:0; display:flex; flex-direction:column; }
+	.topbar { position:sticky; top:0; z-index:20; min-height:82px; display:flex; align-items:center; gap:16px; padding:14px clamp(18px,2.5vw,34px); background:rgba(255,255,255,.94); border-bottom:1px solid var(--line); backdrop-filter:blur(8px); }
+	.page-context { min-width:0; }
+	.page-context p { margin:0 0 3px; color:var(--slate); font:600 .63rem var(--disp); letter-spacing:.16em; }
+	.page-context h1 { margin:0; color:var(--navy-deep); font:600 1.25rem/1.2 var(--disp); letter-spacing:-.02em; }
+	.topbar-actions { display:flex; align-items:center; gap:12px; margin-left:auto; }
+	.warehouse-picker { display:flex; flex-direction:column; gap:3px; min-width:180px; color:var(--slate); font-size:.68rem; font-weight:600; }
+	.warehouse-picker select { width:100%; min-height:38px; padding:6px 30px 6px 10px; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--ink); font:500 .82rem var(--body); }
+	.account-action,.logout { min-height:40px; display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:8px 11px; border:1px solid var(--line); border-radius:10px; background:transparent; color:var(--navy); text-decoration:none; font:600 .78rem var(--body); cursor:pointer; }
+	.account-action:hover,.logout:hover { background:var(--surface-2); border-color:var(--lightblue); }
+	.logout { color:var(--slate); }
+	.menu-toggle { display:none; width:42px; min-width:42px; height:42px; place-items:center; padding:0; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--navy); }
+	.content { flex:1; min-width:0; padding:26px clamp(18px,2.5vw,34px) 42px; animation:fade-in 160ms ease-out; }
+	.scrim { display:none; }
+	.boot { padding:3rem 1.25rem; text-align:center; color:var(--slate); animation:fade-in 160ms ease-out; }
+	.panel { max-width:26rem; margin:2.5rem auto; text-align:left; background:var(--card); border:1px solid var(--line); border-radius:var(--radius-card); padding:1.25rem; box-shadow:var(--shadow-1); }
+	.panel .title { margin:0 0 .35rem; font:600 1rem var(--disp); color:var(--ink); }
+	.panel .detail { margin:0; color:var(--danger); font-size:.9rem; }
+	.actions { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:1rem; }
+	@media (max-width:1080px) { .workspace { grid-template-columns:224px minmax(0,1fr); } .topbar { gap:10px; } .warehouse-picker { min-width:150px; } }
+	@media (max-width:800px) {
+		.workspace { display:block; }
+		.sidebar { position:fixed; left:0; top:0; width:min(84vw,290px); transform:translateX(-102%); transition:transform 180ms ease-out; box-shadow:none; }
+		.sidebar.open { transform:translateX(0); box-shadow:var(--shadow-3); }
+		.scrim { display:block; position:fixed; inset:0; z-index:25; border:0; border-radius:0; background:rgba(1,18,34,.48); }
+		.menu-toggle { display:grid; flex:none; }
+		.topbar { min-height:72px; padding:12px 16px; }
+		.page-context h1 { font-size:1.08rem; }
+		.topbar-actions { gap:7px; }
+		.warehouse-picker { min-width:0; max-width:180px; }
+		.account-action span,.logout span { display:none; }
+		.account-action,.logout { width:40px; min-width:40px; padding:0; }
+		.content { padding:20px 16px 32px; }
+	}
+	@media (max-width:520px) { .topbar { gap:9px; } .page-context p { font-size:.56rem; } .page-context h1 { max-width:38vw; font-size:.96rem; } .warehouse-picker { max-width:132px; } .warehouse-picker span { display:none; } }
+	@media (prefers-reduced-motion:reduce) { .sidebar,.nav-link,.content { transition:none; animation:none; } }
 </style>

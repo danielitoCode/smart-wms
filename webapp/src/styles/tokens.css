@@ -1,41 +1,46 @@
 /**
- * Abellis identity tokens — from Manual Identidad Abellis v1.0
- * Gold is accent only: never large surfaces, never body text on white.
+ * Identidad Abellis — Manual v1.0
+ * Paleta y sistema visual compartidos por la interfaz interna de Smart WMS.
  */
 :root {
-	--navy-deep: #012a50;
-	--navy: #004c8b;
-	--navy-2: #013a6b;
-	--gold: #e9a50b;
-	--gold-soft: #f6e4b8;
-	--lightblue: #8fb4da;
-	--green: #1e7a46;
-	--ink: #132234;
-	--slate: #5c6b7d;
-	--line: #e4eaf1;
-	--bg: #edf2f8;
-	--card: #ffffff;
-
+	color-scheme: light;
+	--navy-deep: #012a50; --navy: #004c8b; --navy-2: #013a6b;
+	--gold: #e9a50b; --gold-soft: #f6e4b8; --gold-ink: #8a5e00;
+	--lightblue: #8fb4da; --green: #1e7a46;
+	--ink: #132234; --slate: #5c6b7d; --muted: #7e8b9b;
+	--line: #d9e2ec; --line-soft: #e4eaf1; --bg: #edf2f8;
+	--card: #ffffff; --surface: #ffffff; --surface-2: #f5f8fc; --surface-3: #e7eef6;
+	--success: #1e7a46; --success-bg: #eaf5ee;
+	--warning: #9a6a00; --warning-bg: #fff6df;
+	--danger: #b3322b; --danger-bg: #fdf0ef;
+	--focus: 0 0 0 3px rgba(233, 165, 11, 0.38);
 	--disp: 'Space Grotesk', system-ui, sans-serif;
 	--body: 'Inter', system-ui, sans-serif;
-
-	--radius-field: 10px;
-	--radius-btn: 12px;
-	--radius-card: 16px;
-	--shadow-1: 0 1px 2px rgba(16, 38, 64, 0.06), 0 1px 3px rgba(16, 38, 64, 0.07);
-	--shadow-2: 0 6px 18px rgba(16, 38, 64, 0.09), 0 2px 6px rgba(16, 38, 64, 0.06);
-
-	--focus: 0 0 0 3px rgba(0, 76, 139, 0.28);
-	--danger: #b42318;
-	--danger-bg: #fef3f2;
+	--radius-field: 10px; --radius-btn: 12px; --radius-card: 16px;
+	--shadow-1: 0 1px 2px rgba(16,38,64,.06), 0 1px 3px rgba(16,38,64,.07);
+	--shadow-2: 0 6px 18px rgba(16,38,64,.09), 0 2px 6px rgba(16,38,64,.06);
+	--shadow-3: 0 22px 48px rgba(10,30,60,.16), 0 6px 14px rgba(10,30,60,.08);
 }
-
-@media (prefers-reduced-motion: reduce) {
-	*,
-	*::before,
-	*::after {
-		animation-duration: 0.01ms !important;
-		animation-iteration-count: 1 !important;
-		transition-duration: 0.01ms !important;
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) {
+		color-scheme: dark; --bg:#07131f; --card:#0c1d30; --surface:#0c1d30;
+		--surface-2:#0a1828; --surface-3:#12283e; --ink:#e6edf6;
+		--slate:#a9b9cb; --muted:#8194a9; --line:#1e334c; --line-soft:#182b42;
+		--navy-deep:#07182b; --navy:#8cbcec; --navy-2:#b7d4f0; --gold-ink:#f2b733;
+		--success:#5bbe86; --success-bg:#123a2a; --warning:#e0a83a; --warning-bg:#3b3019;
+		--danger:#ec7c74; --danger-bg:#3c2023;
+		--shadow-1:0 1px 2px rgba(0,0,0,.35); --shadow-2:0 6px 18px rgba(0,0,0,.4); --shadow-3:0 22px 48px rgba(0,0,0,.5);
 	}
+}
+:root[data-theme='dark'] {
+	color-scheme:dark; --bg:#07131f; --card:#0c1d30; --surface:#0c1d30;
+	--surface-2:#0a1828; --surface-3:#12283e; --ink:#e6edf6;
+	--slate:#a9b9cb; --muted:#8194a9; --line:#1e334c; --line-soft:#182b42;
+	--navy-deep:#07182b; --navy:#8cbcec; --navy-2:#b7d4f0; --gold-ink:#f2b733;
+	--success:#5bbe86; --success-bg:#123a2a; --warning:#e0a83a; --warning-bg:#3b3019;
+	--danger:#ec7c74; --danger-bg:#3c2023;
+	--shadow-1:0 1px 2px rgba(0,0,0,.35); --shadow-2:0 6px 18px rgba(0,0,0,.4); --shadow-3:0 22px 48px rgba(0,0,0,.5);
+}
+@media (prefers-reduced-motion: reduce) {
+	*,*::before,*::after { animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; scroll-behavior:auto!important; }
 }
