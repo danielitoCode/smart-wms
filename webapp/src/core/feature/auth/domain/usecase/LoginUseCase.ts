@@ -4,17 +4,11 @@ import type { Credentials, LoginResult } from '../entity/User';
 export class LoginUseCase {
 	constructor(private readonly repository: AuthRepository) {}
 
-	execute(credentials: Credentials): Promise<LoginResult> {
+	async execute(credentials: Credentials): Promise<LoginResult> {
 		const username = credentials.username?.trim() ?? '';
 		const password = credentials.password ?? '';
-
-		if (!username) {
-			throw new Error('username is required');
-		}
-		if (!password) {
-			throw new Error('password is required');
-		}
-
+		if (!username) throw new Error('username is required');
+		if (!password) throw new Error('password is required');
 		return this.repository.login({ username, password });
 	}
 }
