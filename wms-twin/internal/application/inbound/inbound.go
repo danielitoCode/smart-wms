@@ -118,11 +118,12 @@ func (s *Service) writeItem(rec map[string]any) (map[string]any, error) {
 	if sku == "" || name == "" {
 		return nil, fmt.Errorf("sku and item_name required")
 	}
-	var upc *string
-	if u, ok := rec["upc"].(string); ok && u != "" {
-		upc = &u
-	}
-	item, err := s.cat.CreateItem(catalog.ItemInput{SKU: sku, ItemName: name, UPC: upc})
+	var upc, mpn, category, description *string
+	if value, ok := rec["upc"].(string); ok && value != "" { upc = &value }
+	if value, ok := rec["mpn"].(string); ok && value != "" { mpn = &value }
+	if value, ok := rec["category"].(string); ok && value != "" { category = &value }
+	if value, ok := rec["description"].(string); ok && value != "" { description = &value }
+	item, err := s.cat.CreateItem(catalog.ItemInput{SKU: sku, ItemName: name, UPC: upc, MPN: mpn, Category: category, Description: description})
 	if err != nil {
 		return nil, err
 	}
