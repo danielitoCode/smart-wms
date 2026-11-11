@@ -42,7 +42,6 @@
 	});
 
 	const hasRouteAccess = $derived(guard.status !== 'authenticated' || canAccessPages(requiredPageKeys(page.url.pathname)));
-	const currentTitle = $derived(getPageTitle(page.url.pathname));
 
 	function canAccessPages(keys: string[]): boolean {
 		if (keys.length === 0 || guard.user?.role === 'ADMIN') return true;
@@ -72,21 +71,6 @@
 				canAccessPages(['bins', 'zones']) || canAccessPages(['preferred-bins']);
 		}
 		return true;
-	}
-
-	function getPageTitle(pathname: string): string {
-		if (pathname.startsWith('/receiving')) return 'Recepción de mercancía';
-		if (pathname.startsWith('/putaway')) return 'Ubicación de productos';
-		if (pathname.startsWith('/picking')) return 'Preparación de pedidos';
-		if (pathname.startsWith('/packing')) return 'Empaque de pedidos';
-		if (pathname.startsWith('/shipping')) return 'Despacho de pedidos';
-		if (pathname.startsWith('/inventory')) return 'Inventario';
-		if (pathname.startsWith('/cycle-count')) return 'Conteo cíclico';
-		if (pathname.startsWith('/items')) return 'Catálogo de productos';
-		if (pathname.startsWith('/warehouses')) return 'Almacenes';
-		if (pathname.startsWith('/data')) return 'Datos maestros';
-		if (pathname.startsWith('/change-password')) return 'Seguridad de la cuenta';
-		return 'Centro de operaciones';
 	}
 
 	function isActive(href: string) {
@@ -158,14 +142,14 @@
 			{/if}
 			<div class="sidebar-footer">
 				<div class="avatar"><AppIcon name="user" size={18} /></div>
-				<div class="account"><strong>{guard.user.fullName || guard.user.username}</strong><span>{guard.user.role === 'ADMIN' ? 'Administrador' : 'Usuario de almacén'}</span></div>
+				<div class="account"><strong>{guard.user?.fullName || guard.user?.username || 'Usuario'}</strong><span>{guard.user?.role === 'ADMIN' ? 'Administrador' : 'Usuario de almacén'}</span></div>
 			</div>
 		</aside>
 		{#if sidebarOpen}<button class="scrim" type="button" aria-label="Cerrar menú" onclick={() => sidebarOpen = false}></button>{/if}
 		<div class="app-main">
 			<header class="topbar">
 				<button class="menu-toggle" type="button" aria-label="Abrir menú" aria-expanded={sidebarOpen} onclick={() => sidebarOpen = !sidebarOpen}><AppIcon name="menu" size={21} /></button>
-				<div class="page-context"><p>ABELLIS · WMS</p><h1>{currentTitle}</h1></div>
+				<div class="page-context"><p>ABELLIS · WMS</p><span>Operaciones de almacén</span></div>
 				<div class="topbar-actions">
 					{#if warehouseSelection.canSelect && warehouseSelection.warehouses.length > 0}
 						<label class="warehouse-picker"><span>Almacén activo</span>
@@ -210,7 +194,7 @@
 	.topbar { position:sticky; top:0; z-index:20; min-height:82px; display:flex; align-items:center; gap:16px; padding:14px clamp(18px,2.5vw,34px); background:rgba(255,255,255,.94); border-bottom:1px solid var(--line); backdrop-filter:blur(8px); }
 	.page-context { min-width:0; }
 	.page-context p { margin:0 0 3px; color:var(--slate); font:600 .63rem var(--disp); letter-spacing:.16em; }
-	.page-context h1 { margin:0; color:var(--navy-deep); font:600 1.25rem/1.2 var(--disp); letter-spacing:-.02em; }
+	.page-context span { color:var(--navy-deep); font:600 .86rem var(--body); }
 	.topbar-actions { display:flex; align-items:center; gap:12px; margin-left:auto; }
 	.warehouse-picker { display:flex; flex-direction:column; gap:3px; min-width:180px; color:var(--slate); font-size:.68rem; font-weight:600; }
 	.warehouse-picker select { width:100%; min-height:38px; padding:6px 30px 6px 10px; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--ink); font:500 .82rem var(--body); }
@@ -233,13 +217,13 @@
 		.scrim { display:block; position:fixed; inset:0; z-index:25; border:0; border-radius:0; background:rgba(1,18,34,.48); }
 		.menu-toggle { display:grid; flex:none; }
 		.topbar { min-height:72px; padding:12px 16px; }
-		.page-context h1 { font-size:1.08rem; }
+		.page-context span { font-size:.82rem; }
 		.topbar-actions { gap:7px; }
 		.warehouse-picker { min-width:0; max-width:180px; }
 		.account-action span,.logout span { display:none; }
 		.account-action,.logout { width:40px; min-width:40px; padding:0; }
 		.content { padding:20px 16px 32px; }
 	}
-	@media (max-width:520px) { .topbar { gap:9px; } .page-context p { font-size:.56rem; } .page-context h1 { max-width:38vw; font-size:.96rem; } .warehouse-picker { max-width:132px; } .warehouse-picker span { display:none; } }
+	@media (max-width:520px) { .topbar { gap:9px; } .page-context p { font-size:.56rem; } .page-context span { max-width:38vw; font-size:.76rem; } .warehouse-picker { max-width:132px; } .warehouse-picker span { display:none; } }
 	@media (prefers-reduced-motion:reduce) { .sidebar,.nav-link,.content { transition:none; animation:none; } }
 </style>
