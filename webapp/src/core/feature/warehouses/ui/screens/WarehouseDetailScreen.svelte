@@ -3,9 +3,9 @@
 	import { createWarehouseDetailState } from '../state/warehouseDetailState.svelte';
 	import type { Bin, BinType, Zone, ZoneType } from '../../domain/entity/Warehouse';
 
-	let { warehouseId }: { warehouseId: number } = $props();
+	let { warehouseId, showZones = true, showBins = true, includeBins = true }: { warehouseId: number; showZones?: boolean; showBins?: boolean; includeBins?: boolean } = $props();
 	// svelte-ignore state_referenced_locally
-	const vm = createWarehouseDetailState(warehouseId);
+	const vm = createWarehouseDetailState(warehouseId, includeBins);
 
 	type ZoneForm = { code: string; name: string; zoneType: ZoneType; active: boolean };
 	type BinForm = { zoneId: number | null; code: string; barcode: string; binType: BinType; aisle: string; pickSequence: number; active: boolean };
@@ -87,7 +87,7 @@
 	{:else if vm.error && !vm.warehouse}<p class="error" role="alert">{vm.error}</p><button type="button" onclick={() => vm.load()}>Reintentar</button>
 	{:else}
 		{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
-		<section class="panel">
+		{#if showZones}<section class="panel">
 			<div class="section-header"><h2>Zonas</h2><button class="primary" type="button" onclick={openCreateZone}>Nueva zona</button></div>
 			{#if vm.zones.length === 0}<p class="status">Sin zonas.</p>
 			{:else}<div class="table-wrap"><table><thead><tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
@@ -95,8 +95,8 @@
 					<td class="actions"><button class="quiet" type="button" onclick={() => vm.loadBinsForZone(zone.id,1)}>Bins</button><button class="quiet" type="button" onclick={() => openEditZone(zone)}>Editar</button><button class="danger" type="button" onclick={() => deleteZoneTarget = zone}>Eliminar</button></td></tr>{/each}
 			</tbody></table></div>
 			{#if vm.selectedZoneId != null}<p class="filter-hint">Filtrando por zona #{vm.selectedZoneId} <button class="linkish" type="button" onclick={() => vm.loadBinsForZone(null,1)}>Quitar filtro</button></p>{/if}{/if}
-		</section>
-		<section class="panel">
+		</section>{/if}
+		{#if showBins}<section class="panel">
 			<div class="section-header bin-heading"><h2>Bins</h2><div class="bin-tools"><input aria-label="Buscar bins" placeholder="Buscar código o barcode" value={vm.binSearch} oninput={(e) => onSearch(e.currentTarget.value)} /><button class="quiet" type="button" onclick={exportCsv} disabled={exporting || vm.binTotal === 0}>{exporting ? 'Exportando…' : 'Exportar CSV'}</button><button class="primary" type="button" onclick={openCreateBin} disabled={vm.zones.length === 0}>Nuevo bin</button></div></div>
 			{#if vm.binsLoading}<p class="status">Actualizando bins…</p>
 			{:else if vm.bins.length === 0}<p class="status">Sin bins para este filtro.</p>
@@ -104,7 +104,7 @@
 				{#each vm.bins as bin (bin.id)}<tr><td><button class="linkish mono" type="button" onclick={() => vm.viewBin(bin.id)}>{bin.code}</button></td><td class="mono">{bin.barcode ?? '—'}</td><td>{bin.binType}</td><td>{bin.zoneName ?? bin.zoneId ?? '—'}</td><td>{bin.aisle ?? '—'}</td><td>{bin.pickSequence}</td><td>{bin.active ? 'Activo' : 'Inactivo'}</td><td class="actions"><button class="quiet" type="button" onclick={() => openEditBin(bin)}>Editar</button><button class="danger" type="button" onclick={() => deleteBinTarget = bin}>Eliminar</button></td></tr>{/each}
 			</tbody></table></div>
 			<div class="pagination"><span>{vm.binTotal} bins · página {vm.binPage} de {vm.binPages}</span><div><button type="button" disabled={vm.binPage <= 1 || vm.binsLoading} onclick={() => vm.loadBinsForZone(vm.selectedZoneId,vm.binPage - 1)}>Anterior</button><button type="button" disabled={vm.binPage >= vm.binPages || vm.binsLoading} onclick={() => vm.loadBinsForZone(vm.selectedZoneId,vm.binPage + 1)}>Siguiente</button></div></div>{/if}
-		</section>
+		</section>{/if}
 	{/if}
 </section>
 

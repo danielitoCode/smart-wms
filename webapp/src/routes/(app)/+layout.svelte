@@ -12,7 +12,7 @@
 		{ href: '/receiving', label: 'Recepción', pageKey: 'receiving' },
 		{ href: '/putaway', label: 'Putaway', pageKey: 'putaway' },
 		{ href: '/picking', label: 'Picking' }, { href: '/packing', label: 'Packing' }, { href: '/shipping', label: 'Shipping' },
-		{ href: '/warehouses', label: 'Almacenes', pageKey: 'warehouses' },
+		{ href: '/data', label: 'Datos' },
 		{ href: '/items', label: 'Ítems', pageKey: 'items' }
 	] as const;
 
@@ -37,12 +37,17 @@
 		if (pathname === '/receiving' || pathname.startsWith('/receiving/')) return ['receiving'];
 		if (pathname === '/putaway' || pathname.startsWith('/putaway/')) return ['putaway'];
 		if (pathname === '/items' || pathname.startsWith('/items/')) return ['items'];
-		if (pathname === '/warehouses') return ['warehouses'];
+		if (pathname === '/warehouses' || pathname.startsWith('/data/warehouses')) return ['warehouses'];
+		if (pathname.startsWith('/data/zones')) return ['zones'];
+		if (pathname.startsWith('/data/bins')) return ['bins', 'zones'];
+		if (pathname.startsWith('/data/preferred-bins')) return ['preferred-bins'];
 		if (pathname.startsWith('/warehouses/')) return ['warehouses', 'zones', 'bins'];
 		return [];
 	}
 	function canSeeNavItem(item: (typeof nav)[number]): boolean {
-		return !('pageKey' in item) || canAccessPages([item.pageKey]);
+		if ('pageKey' in item) return canAccessPages([item.pageKey]);
+		if (item.href === '/data') return ['warehouses','zones','bins','preferred-bins'].some(key => canAccessPages([key]));
+		return true;
 	}
 	async function bootstrap() {
 		await guard.verify();

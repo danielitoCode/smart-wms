@@ -1,0 +1,29 @@
+<script lang="ts">
+	import { page } from '$app/state';
+	import { authSession } from '../../../core/infrastructure/auth/AuthSession';
+	let { children } = $props();
+	const user = authSession.getUser();
+	const admin = user?.role === 'ADMIN';
+	const pages = user?.allowedPages ?? [];
+	const tabs = [
+		{ href: '/data/warehouses', label: 'Almacenes', keys: ['warehouses'] },
+		{ href: '/data/zones', label: 'Zonas', keys: ['zones'] },
+		{ href: '/data/bins', label: 'Bins', keys: ['bins', 'zones'] },
+		{ href: '/data/preferred-bins', label: 'Bins preferidos', keys: ['preferred-bins'] }
+	];
+	const visibleTabs = tabs.filter(tab => admin || tab.keys.every(key => pages.includes(key)));
+	function isActive(href: string) { return page.url.pathname === href || page.url.pathname.startsWith(href + '/'); }
+</script>
+
+<section class="data-page">
+	<nav aria-label="Datos maestros">{#each visibleTabs as tab}<a href={tab.href} class:active={isActive(tab.href)}>{tab.label}</a>{/each}</nav>
+	{@render children()}
+</section>
+
+<style>
+	.data-page { max-width:76rem; margin:0 auto; padding:1.25rem 1rem 2rem; }
+	nav { display:flex; flex-wrap:wrap; gap:.35rem; padding:0 0 .8rem; border-bottom:1px solid var(--line); }
+	nav a { padding:.45rem .75rem; border-radius:8px; color:var(--slate); text-decoration:none; font-size:.85rem; font-weight:600; }
+	nav a:hover { background:var(--surface-subtle,#f7fafc); color:var(--ink); }
+	nav a.active { background:var(--navy); color:white; }
+</style>
