@@ -297,3 +297,6 @@ No integro un procesador de pagos en este módulo: los tender/auth references so
 
 
 La prueba de compensación RMA contempla que el ledger conserva una fila de balance con cantidades cero para preservar trazabilidad. La condición de éxito es saldo neto OnHand=0 y Allocated=0, no que la consulta devuelva una lista vacía.
+
+
+La prueba de compensación RMA contempla que el ledger conserva una fila de balance con cantidades cero para preservar trazabilidad. La condición de éxito es saldo neto OnHand=0 y Allocated=0, no que la consulta devuelva una lista vacía.
