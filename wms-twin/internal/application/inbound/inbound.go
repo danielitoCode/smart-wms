@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/purchaseorders"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/salesorders"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 )
@@ -15,11 +16,12 @@ type Service struct {
 	store *corestore.Store
 	cat   *catalog.Repository
 	sos   *salesorders.Repository
+	pos   *purchaseorders.Repository
 	mu    sync.Mutex
 }
 
-func New(store *corestore.Store, cat *catalog.Repository, sos *salesorders.Repository) *Service {
-	return &Service{store: store, cat: cat, sos: sos}
+func New(store *corestore.Store, cat *catalog.Repository, sos *salesorders.Repository, pos *purchaseorders.Repository) *Service {
+	return &Service{store: store, cat: cat, sos: sos, pos: pos}
 }
 
 func MappingSchema() map[string]any {
@@ -55,7 +57,7 @@ func (s *Service) Write(req WriteRequest, actor string) (map[string]any, error) 
 		case "sales_orders", "sales-orders":
 			out, err = s.writeSO(rec, actor)
 		case "purchase_orders", "purchase-orders":
-			out, err = s.writePOShadow(rec, actor)
+			out, err = s.writePO(rec, actor)
 		default:
 			return nil, fmt.Errorf("unsupported resource %q", req.Resource)
 		}
@@ -146,14 +148,78 @@ func (s *Service) writeSO(rec map[string]any, actor string) (map[string]any, err
 	return map[string]any{"so_id": so.SOID, "so_number": so.SONumber}, nil
 }
 
-func (s *Service) writePOShadow(rec map[string]any, actor string) (map[string]any, error) {
+func (s *Service) writePO(rec map[string]any, actor string) (map[string]any, error) {
+	if s.pos == nil {
+		return nil, fmt.Errorf("purchase-order repository is not configured")
+	}
 	poNumber, _ := rec["po_number"].(string)
-	if poNumber == "" {
+	if strings.TrimSpace(poNumber) == "" {
 		return nil, fmt.Errorf("po_number required")
 	}
+	warehouseID, ok := integerField(rec["warehouse_id"])
+	if !ok || warehouseID <= 0 {
+		return nil, fmt.Errorf("warehouse_id must be a positive integer")
+	}
+	rawLines, ok := rec["lines"].([]any)
+	if !ok || len(rawLines) == 0 {
+		return nil, fmt.Errorf("at least one purchase-order line is required")
+	}
+	lines := make([]purchaseorders.LineInput, 0, len(rawLines))
+	for i, raw := range rawLines {
+		line, ok := raw.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("line %d must be an object", i)
+		}
+		itemID, okID := integerField(line["item_id"])
+		quantity, okQty := integerField(line["quantity_ordered"])
+		if !okQty {
+			quantity, okQty = integerField(line["quantity"])
+		}
+		if !okID || !okQty || itemID <= 0 || quantity <= 0 {
+			return nil, fmt.Errorf("line %d requires positive item_id and quantity", i)
+		}
+		lines = append(lines, purchaseorders.LineInput{ItemID: itemID, QuantityOrdered: quantity})
+	}
+	var vendor *string
+	if value, ok := rec["vendor_name"].(string); ok && strings.TrimSpace(value) != "" {
+		vendor = &value
+	}
+	var expected *string
+	if value, ok := rec["expected_date"].(string); ok && value != "" {
+		expected = &value
+	}
+	var notes *string
+	if value, ok := rec["notes"].(string); ok && value != "" {
+		notes = &value
+	}
+	po, err := s.pos.Create(purchaseorders.CreateInput{
+		PONumber: poNumber, WarehouseID: warehouseID, Lines: lines,
+		VendorName: vendor, ExpectedDate: expected, Notes: notes,
+	}, actor)
+	if err != nil {
+		return nil, err
+	}
 	return map[string]any{
-		"po_number": poNumber, "status": "ACCEPTED_SHADOW",
-		"note": "PO write maps to shadow record; use /api/admin purchase-orders for full PO lifecycle",
-		"actor": actor,
+		"po_id": po.POID, "po_number": po.PONumber, "status": po.Status,
+		"warehouse_id": po.WarehouseID, "lines": po.Lines, "created_by": actor,
 	}, nil
+}
+
+func integerField(value any) (int64, bool) {
+	switch number := value.(type) {
+	case float64:
+		if number != float64(int64(number)) {
+			return 0, false
+		}
+		return int64(number), true
+	case int:
+		return int64(number), true
+	case int64:
+		return number, true
+	case json.Number:
+		parsed, err := number.Int64()
+		return parsed, err == nil
+	default:
+		return 0, false
+	}
 }
