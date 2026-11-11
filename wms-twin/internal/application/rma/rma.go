@@ -2,6 +2,8 @@ package rma
 
 import (
 	"encoding/json"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sync"
@@ -38,6 +40,7 @@ type RMAReceipt struct {
 	Disposition string `json:"disposition"`
 	ReceivedAt time.Time `json:"received_at"`
 	ReceivedBy string `json:"received_by"`
+	Reversed bool `json:"reversed,omitempty"`
 }
 
 type RMA struct {
@@ -315,6 +318,9 @@ func (s *Service) Complete(id int64, actor string) (RMA, error) {
 func (s *Service) Cancel(id int64, actor string) (RMA, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if strings.TrimSpace(actor) == "" || len(actor) > 128 {
+		return RMA{}, fmt.Errorf("valid actor is required")
+	}
 	r, err := s.Get(id)
 	if err != nil {
 		return RMA{}, err
@@ -322,12 +328,47 @@ func (s *Service) Cancel(id int64, actor string) (RMA, error) {
 	if r.Status == "COMPLETED" {
 		return RMA{}, fmt.Errorf("cannot cancel completed rma")
 	}
+	if r.Status == "CANCELLED" {
+		return r, nil
+	}
+	// Persist the intent before compensating stock movements. A retry after a
+	// crash resumes from each receipt's Reversed marker and uses a stable
+	// ledger operation ID, so the same stock is never removed twice.
+	if r.Status != "CANCELLING" {
+		r.Status = "CANCELLING"
+		r.UpdatedAt = time.Now().UTC()
+		r.Notes = "cancellation started by " + actor
+		if err := s.save(r); err != nil { return RMA{}, err }
+	}
+	for i := range r.Lines {
+		for j := range r.Lines[i].Receipts {
+			receipt := &r.Lines[i].Receipts[j]
+			if receipt.Disposition != "RESTOCK" || receipt.Reversed { continue }
+			sum := sha256.Sum256([]byte("rma-cancel|" + receipt.OperationID))
+			reverseID := "rma-cancel-" + hex.EncodeToString(sum[:16])
+			if s.ledger == nil { return RMA{}, fmt.Errorf("inventory ledger is unavailable; RMA cancellation remains pending") }
+			_, err := s.ledger.Adjust(inventoryledger.AdjustCommand{
+				OperationID: reverseID, WarehouseID: r.WarehouseID, BinID: receipt.BinID,
+				ItemID: r.Lines[i].ItemID, LotNumber: receipt.LotNumber, Delta: -receipt.Quantity,
+			})
+			if err != nil { return RMA{}, fmt.Errorf("reverse RMA restock %s; cancellation remains pending: %w", receipt.OperationID, err) }
+			receipt.Reversed = true
+			r.UpdatedAt = time.Now().UTC()
+			if err := s.save(r); err != nil { return RMA{}, fmt.Errorf("inventory reversal applied but RMA progress could not be persisted: %w", err) }
+		}
+	}
 	r.Status = "CANCELLED"
 	r.UpdatedAt = time.Now().UTC()
 	r.Notes = "cancelled by " + actor
-	data, _ := json.Marshal(r)
+	if err := s.save(r); err != nil { return RMA{}, err }
+	return r, nil
+}
+
+func (s *Service) save(r RMA) error {
+	data, err := json.Marshal(r)
+	if err != nil { return err }
 	_, err = s.store.Put(kind, formatID(r.RMAID), data)
-	return r, err
+	return err
 }
 
 func formatID(id int64) string { return fmt.Sprintf("%d", id) }
