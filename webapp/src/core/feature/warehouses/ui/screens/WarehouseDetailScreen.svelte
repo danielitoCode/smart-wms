@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import type { I18nState } from '../../../../lib/i18n/i18n.svelte';
+	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
 	const i18n = getContext<I18nState>('i18n');
 	import { onDestroy, onMount } from 'svelte';
 	import { createWarehouseDetailState } from '../state/warehouseDetailState.svelte';
