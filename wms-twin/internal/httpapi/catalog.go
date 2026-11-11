@@ -103,8 +103,8 @@ func (s *Server) binRoutes(w http.ResponseWriter,r *http.Request,user identity.U
 		case http.MethodGet:
 			values,err:=s.catalog.ListBins();if err!=nil{writeCatalogError(w,err);return}
 			warehouseID,zoneID:=int64(0),int64(0)
-			if raw:=r.URL.Query().Get("warehouse_id");raw!=""{warehouseID,okID:=positivePathID(raw);if !okID{writeJSON(w,400,map[string]string{"error":"Invalid warehouse_id"});return}}
-			if raw:=r.URL.Query().Get("zone_id");raw!=""{zoneID,okID:=positivePathID(raw);if !okID{writeJSON(w,400,map[string]string{"error":"Invalid zone_id"});return}}
+			if raw:=r.URL.Query().Get("warehouse_id");raw!=""{parsedID,okID:=positivePathID(raw);if !okID{writeJSON(w,400,map[string]string{"error":"Invalid warehouse_id"});return};warehouseID=parsedID}
+			if raw:=r.URL.Query().Get("zone_id");raw!=""{parsedID,okID:=positivePathID(raw);if !okID{writeJSON(w,400,map[string]string{"error":"Invalid zone_id"});return};zoneID=parsedID}
 			if user.Role!="ADMIN" {if warehouseID>0&&!containsInt64(user.WarehouseIDs,warehouseID){writeJSON(w,403,map[string]string{"error":"Access denied for this warehouse"});return};if warehouseID==0{allowed:=int64Set(user.WarehouseIDs);filtered:=values[:0];for _,v:=range values{if allowed[v.WarehouseID]{filtered=append(filtered,v)}};values=filtered}}
 			values=catalog.FilterBins(values,warehouseID,zoneID,r.URL.Query().Get("bin_type"),r.URL.Query().Get("q"))
 			page,perPage:=pagination(r);items,total,page,pages:=catalog.Paginate(values,page,perPage)

@@ -323,3 +323,6 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Riesgos abiertos:** secuencia y registro son dos commits Core distintos; sin transacción distribuida. La serialización del catálogo es local al proceso. Falta exactitud Pydantic para null/errores, preferred_bins, detalle SKU/nombre, e integración de migraciones/fixtures.
 - **Pruebas añadidas:** ciclo warehouse-zone-bin, duplicados, referencias cruzadas, no reutilización de IDs, borrado con stock, rutas HTTP, login, page permission y warehouse scope.
 - **Validación:** pendiente del CI de este commit; no declaro ejecución local.
+
+- **Resultado CI inicial:** ejecución `42974237383`; el guard de documentación/alcance pasó, pero `go vet` detectó dos variables locales declaradas y no utilizadas por sombreado en el parseo de filtros `warehouse_id` y `zone_id`. Race tests quedaron omitidos.
+- **Corrección:** sustituyo las declaraciones cortas que ocultaban las variables externas por variables temporales y asignación explícita. La nueva validación debe completar vet y race tests antes de cerrar la fase.
