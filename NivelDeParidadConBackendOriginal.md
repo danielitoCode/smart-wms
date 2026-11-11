@@ -321,3 +321,6 @@ El arranque exige JWT_SECRET y bootstrap de identidad explícito. Las pruebas nu
 
 
 La prueba de cancelación RMA comprueba saldo neto cero tras revertir RESTOCK. El ledger puede mantener el registro de balance con cero para conservar trazabilidad; esto no representa stock disponible.
+
+
+RMA solo admite unidades con `QuantityShipped` confirmado. Las cantidades ordenadas, recogidas o empaquetadas no son elegibles por sí solas. Esta regla se prueba con un pedido cuyo estado es SHIPPED pero cuyo detalle solo tiene cantidad packed; el RMA debe rechazarse.
