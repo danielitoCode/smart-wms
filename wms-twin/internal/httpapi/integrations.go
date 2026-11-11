@@ -424,7 +424,7 @@ func (s *Server) snapshotV1(w http.ResponseWriter, r *http.Request, rest string)
 					writeJSON(w, 403, map[string]string{"error": "global snapshot restore requires an unscoped token"})
 					return
 				}
-				result, err := s.snapshot.Restore(parts[0], in.OperationID, *in.ExpectedVersion)
+				result, err := s.snapshot.RestoreSafely(parts[0], in.OperationID, *in.ExpectedVersion)
 				if err != nil {
 					if errors.Is(err, inventoryledger.ErrVersionConflict) || errors.Is(err, inventoryledger.ErrIdempotencyConflict) {
 						writeJSON(w, 409, map[string]string{"error": err.Error()})
@@ -433,7 +433,11 @@ func (s *Server) snapshotV1(w http.ResponseWriter, r *http.Request, rest string)
 					}
 					return
 				}
-				writeJSON(w, 200, result)
+				writeJSON(w, 200, map[string]any{
+					"ok": true, "result": result.Result,
+					"backup_snapshot_id": result.BackupSnapshotID,
+					"replayed": result.Replayed,
+				})
 			})(w, r)
 			return
 		}
