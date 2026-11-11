@@ -120,3 +120,6 @@ Configuro `SENTRY_ENCRYPTION_KEY` o `WMS_WEBHOOK_ENCRYPTION_KEY` como base64 de 
 ## Recuperación y red
 
 Snapshot Restore realiza primero un respaldo persistente del estado actual y devuelve `backup_snapshot_id`. La operación queda registrada por operation_id y se puede reintentar sin crear otro backup. El runtime exige que Kademlia/GossipSub arranquen cuando Core expone LibP2PTransport. Para activarlo se configura `PRISMATEC_TRANSPORT=libp2p` y `PRISMATEC_NETWORK_ADDR` como multiaddr; con TCP el fallback sigue siendo TTL fan-out. El dispatcher de eventos recorre el log persistido y repara la creación de deliveries webhook con el timestamp original.
+
+
+El refund calcula el importe proporcional por artículo/bin usando el valor de línea original y las cantidades ya devueltas; `shipping_refund_cents` permite devolver el envío en una operación separada. El estado PARTIALLY_REFUNDED permite completar la devolución financiera en varias operaciones. RMA descuenta las cantidades ya devueltas por POS y las reservadas por RMAs activos/completados, evitando volver a recibir dos veces la misma unidad.
