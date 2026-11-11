@@ -40,6 +40,6 @@ describe('ConfirmPickUseCase', () => {
 		const useCase = new ConfirmPickUseCase(createRepo());
 		expect(() => 
 			useCase.execute({ pickTaskId: 1, scannedBarcode: '  ', quantityPicked: 1 })
-		).toThrow(/barcode/);
+		).toThrow(/scannedBarcode/);
 	});
 });
