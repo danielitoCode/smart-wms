@@ -131,18 +131,18 @@ func (m *Mesh) Publish(topic string, payload any) error {
 		Payload: raw, TTL: 3, Origin: m.selfID, SentAt: time.Now().UTC(),
 	}
 	m.handleGossip(env)
+	body, _ := json.Marshal(env)
 	m.mu.Lock()
 	ps := m.pubsub
 	ctx := m.ctx
 	m.mu.Unlock()
 	if ps != nil {
-		topic, err := m.joinTopic(topic)
+		pubTopic, err := m.joinTopic(topic)
 		if err != nil { return err }
 		if ctx == nil { ctx = context.Background() }
-		return topic.Publish(ctx, raw)
+		return pubTopic.Publish(ctx, body)
 	}
 	if m.transport == nil { return nil }
-	body, _ := json.Marshal(env)
 	return m.transport.Broadcast(context.Background(), network.Message{
 		Type: MsgGossip, From: m.selfID, Payload: body, SentAt: time.Now().UTC(),
 	})
