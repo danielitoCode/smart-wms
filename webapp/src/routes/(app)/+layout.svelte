@@ -7,6 +7,7 @@
 	import type { I18nState } from '../../lib/i18n/i18n.svelte';
 	import { createAuthGuardState } from '../../core/feature/auth/ui/state/authGuardState.svelte';
 	import { createWarehouseSelectionState } from '../../core/feature/warehouses/ui/state/warehouseSelectionState.svelte';
+	import { canAccessPages, requiredPageKeysForPath } from '../../core/feature/auth/domain/policy/AccessPolicy';
 
 	const i18n = getContext<I18nState>('i18n');
 	let { children } = $props();
@@ -44,27 +45,8 @@
 		}
 	});
 
-	const hasRouteAccess = $derived(guard.status !== 'authenticated' || canAccessPages(requiredPageKeys(page.url.pathname)));
+	const hasRouteAccess = $derived(guard.status !== 'authenticated' || canAccessPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], requiredPageKeysForPath(page.url.pathname)));
 
-	function canAccessPages(keys: string[]): boolean {
-		if (keys.length === 0 || guard.user?.role === 'ADMIN') return true;
-		const granted = guard.user?.allowedPages ?? [];
-		return keys.every(key => granted.includes(key));
-	}
-
-	function requiredPageKeys(pathname: string): string[] {
-		if (pathname === '/inventory' || pathname.startsWith('/inventory/')) return ['inventory'];
-		if (pathname === '/cycle-count' || pathname.startsWith('/cycle-count/')) return ['cycle-counts'];
-		if (pathname === '/receiving' || pathname.startsWith('/receiving/')) return ['receiving'];
-		if (pathname === '/putaway' || pathname.startsWith('/putaway/')) return ['putaway'];
-		if (pathname === '/items' || pathname.startsWith('/items/')) return ['items'];
-		if (pathname === '/warehouses' || pathname.startsWith('/data/warehouses')) return ['warehouses'];
-		if (pathname.startsWith('/data/zones')) return ['zones'];
-		if (pathname.startsWith('/data/bins')) return ['bins', 'zones'];
-		if (pathname.startsWith('/data/preferred-bins')) return ['preferred-bins'];
-		if (pathname.startsWith('/warehouses/')) return ['warehouses', 'zones', 'bins'];
-		return [];
-	}
 
 	function canSeeNavItem(item: NavItem): boolean {
 		if (item.pageKey) return canAccessPages([item.pageKey]);
