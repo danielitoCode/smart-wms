@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/domain/inventory"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 )
@@ -38,10 +39,13 @@ type InventoryRow struct {
 type Service struct {
 	store  *corestore.Store
 	ledger *inventoryledger.Ledger
+	catalog *catalog.Repository
 }
 
-func New(store *corestore.Store, ledger *inventoryledger.Ledger) *Service {
-	return &Service{store: store, ledger: ledger}
+func New(store *corestore.Store, ledger *inventoryledger.Ledger, catalogs ...*catalog.Repository) *Service {
+	service := &Service{store: store, ledger: ledger}
+	if len(catalogs) > 0 { service.catalog = catalogs[0] }
+	return service
 }
 
 func (s *Service) Inventory(warehouseID int64) (map[string]any, error) {
@@ -163,6 +167,13 @@ func (s *Service) RestoreSafely(id, operationID string, expectedVersion uint64) 
 		}
 		balance := inventory.Balance{WarehouseID:row.WarehouseID,BinID:row.BinID,ItemID:row.ItemID,LotNumber:row.LotNumber,OnHand:row.OnHand,Allocated:row.Allocated}
 		if err := balance.Validate(); err != nil { return RestoreResult{}, fmt.Errorf("snapshot %s contains invalid balance: %w",id,err) }
+		if s.catalog == nil { return RestoreResult{}, fmt.Errorf("snapshot restore requires a catalog repository to validate warehouse, bin and item references") }
+		warehouse, err := s.catalog.GetWarehouse(row.WarehouseID)
+		if err != nil || warehouse.WarehouseID != row.WarehouseID { return RestoreResult{}, fmt.Errorf("snapshot %s references unknown warehouse %d",id,row.WarehouseID) }
+		bin, err := s.catalog.GetBin(row.BinID)
+		if err != nil || bin.BinID != row.BinID || bin.WarehouseID != row.WarehouseID { return RestoreResult{}, fmt.Errorf("snapshot %s references bin %d outside warehouse %d",id,row.BinID,row.WarehouseID) }
+		item, err := s.catalog.GetItem(row.ItemID)
+		if err != nil || item.ItemID != row.ItemID { return RestoreResult{}, fmt.Errorf("snapshot %s references unknown item %d",id,row.ItemID) }
 		balances = append(balances,balance)
 	}
 	fingerprintBytes := sha256.Sum256([]byte(fmt.Sprintf("%s|%d|%d",id,expectedVersion,snap.WarehouseID)))
