@@ -1,5 +1,5 @@
-// Package mesh provides a Kademlia-inspired peer table and gossip fan-out
-// on top of PrismaTec-Core network.Transport (Broadcast / OnMessage).
+// Package mesh provides Kademlia DHT and GossipSub on Core LibP2PTransport,
+// with a clearly limited TTL fan-out fallback for non-libp2p transports.
 package mesh
 
 import (
