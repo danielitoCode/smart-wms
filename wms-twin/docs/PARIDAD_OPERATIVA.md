@@ -63,3 +63,55 @@ Para cada endpoint debo:
 7. Registrar evidencia reproducible y conservar rollback al backend original.
 
 Hasta cerrar esos puntos, el frontend original no debe cambiar su upstream productivo al gemelo.
+
+
+## Integraciones transaccionales del corte actual
+
+| Capacidad | Contrato implementado | Condición/límite |
+|---|---|---|
+| POS checkout | `POST /api/v1/pos/checkout`; idempotency_key, warehouse_id, líneas item/SKU/bin/qty/precio/impuesto, payment_method, tenders, total y external_txn_ref | Stock y SO quedan persistidos; el tender es conciliación y referencia, no captura financiera |
+| POS refund | `POST /api/v1/pos/refund`; so_number, idempotency_key, external_refund_ref, cashier_id, reason, payment_method, total_cents, líneas opcionales | Full/partial inventory restock; no llama al adquirente |
+| POS dispatch | `POST /api/v1/pos/dispatch`; so_number, carrier, tracking_number, idempotency_key | Solo phone orders con SO en PICKED/PACKED; reserva se convierte en salida de stock |
+| Dockd void | `POST /api/v1/dockd/ship/{so_number}/void`; reason e idempotency_key | Recupera estado pre-shipment; no restockea bienes físicamente devueltos |
+| RMA receive line | `POST /api/v1/rma/{id}/receive-line`; item_id, quantity, bin_id para RESTOCK, disposition, operation_id | RESTOCK/SCRAP/HOLD; cantidad limitada a lo esperado |
+| Snapshot restore | `POST /api/v1/snapshots/{id}/restore`; operation_id y expected_ledger_version | Restore de un organismo ledger; no distributed CAS |
+| Webhook deliveries | `GET /api/v1/webhooks/deliveries`; `POST /api/v1/webhooks/deliveries/{id}/retry` | Retry manual solo para DEAD; worker automático procesa PENDING/RETRY |
+| Inbound | `POST /api/v1/inbound`; source_system y external_id/version en cada registro | Repetición exacta idempotente; versión nueva no se actualiza todavía |
+| Mesh | LibP2PTransport inicia DHT Kademlia y GossipSub | Otros transportes mantienen fallback TTL |
+
+### POS checkout request de referencia
+
+```json
+{
+  "warehouse_id": 1,
+  "idempotency_key": "terminal-01-transaction-0001",
+  "external_txn_ref": "processor-reference",
+  "cashier_id": "cashier-01",
+  "terminal_id": "terminal-01",
+  "payment_method": "cash",
+  "subtotal_cents": 2000,
+  "tax_cents": 200,
+  "shipping_cents": 0,
+  "total_cents": 2200,
+  "tenders": [
+    {"type": "cash", "amount_cents": 2200, "amount_tendered_cents": 2200, "change_cents": 0}
+  ],
+  "lines": [
+    {"sku": "SKU-001", "item_id": 1, "bin_id": 2, "quantity": 2, "unit_price_cents": 1000, "tax_cents": 200, "line_total_cents": 2200}
+  ]
+}
+```
+
+Para tarjeta solo envío marca, last4, auth_code y external_ref. No enviar PAN ni CVV.
+
+### Configuración operativa de webhooks
+
+Configuro `SENTRY_ENCRYPTION_KEY` o `WMS_WEBHOOK_ENCRYPTION_KEY` como base64 de exactamente 32 bytes. Sin esta clave, la creación de una suscripción falla de forma explícita. Los secretos no se devuelven en respuestas ni listados.
+
+### Advertencias de consistencia
+
+- La saga POS recupera los movimientos por operation_id y compensa movimientos parciales conocidos. La protección es local al proceso/CoreStore; no reemplaza una transacción distribuida con fencing multinodo.
+- El outbox de webhooks es al menos una vez. Los consumidores deben deduplicar por event_id.
+- La restauración de snapshots requiere una ventana operativa controlada y respaldo externo; expected_ledger_version no es compare-and-swap distribuido.
+- La idempotencia inbound cubre repetición exacta y recuperación por claves naturales; no acepta todavía una external_version nueva como UPSERT.
+- Kademlia/GossipSub solo está activo sobre LibP2PTransport; no atribuyo esas garantías al adapter TCP.
