@@ -195,7 +195,7 @@ El diagrama es una guía de dependencias funcionales, no una afirmación de que 
 
 ### Ejecución Fase 0 — auditoría y avances
 
-**Corte de trabajo:** 2026-11-11. La fase permanece **en curso**; no se marca completa hasta cerrar contratos, suites independientes, cobertura de idioma y regresión de autorización.
+**Corte de trabajo:** 2026-11-11. La fase permanece **en curso**; no se marca completa hasta cerrar contratos, suites independientes, cobertura de idioma y regresión de autorización. Se ha iniciado el levantamiento contractual de F1.1 (Items) para que el primer módulo de Fase 1 no arranque sobre DTO o endpoints supuestos.
 
 #### Evidencia de arquitectura y contratos revisados
 
@@ -215,6 +215,34 @@ El diagrama es una guía de dependencias funcionales, no una afirmación de que 
 3. **Suites por capa:** la estructura actual separa parcialmente pruebas de casos de uso y de infraestructura, pero no garantiza independencia para aplicación, UI e integración. Se debe completar antes de dar F0.5 por terminado.
 4. **Idiomas:** el diccionario español vacío es intencional porque las claves fuente ya están en español; el riesgo real está en la cobertura incompleta de inglés y en verificar que italiano tenga traducción para todas las claves visibles.
 5. **Permisos:** la comprobación de páginas existe en el layout, pero se necesita contrastar acciones sensibles con el backend y probar usuarios con distintos almacenes y permisos.
+
+#### Contrato backend verificado — F1.1 Items
+
+Fuentes inspeccionadas en la rama: `api/routes/admin/admin_items.py`, `api/routes/lookup.py`, `api/schemas/items.py`, `admin/src/pages/Items.jsx` y la implementación Svelte de `core/feature/items/**`.
+
+| Operación | Endpoint real | Contrato / comportamiento |
+|---|---|---|
+| Listado | `GET /api/admin/items` | Query: `page` (1 por defecto), `per_page` (50 por defecto, máximo 1000), `category`, `active=true/false`, `q`. Respuesta: `{ items, total, page, per_page, pages }`. Búsqueda backend: SKU, nombre, UPC, MPN y alias de código de barras. |
+| Detalle | `GET /api/admin/items/{id}` | Respuesta envolvente `{ item, inventory, preferred_bins }`; el detalle incluye descripción, alias, dimensiones, reorden, tracking por lote/serie, fechas y estado. |
+| Alta | `POST /api/admin/items` | Obligatorios: `sku` (1–128) y `item_name` (1–256). Opcionales: descripción (máx. 1000), UPC (128), MPN (64), categoría (128), peso 0–99999 y `default_bin_id > 0`. Responde 201. SKU y UPC duplicados devuelven 400. |
+| Edición | `PUT /api/admin/items/{id}` | Actualización parcial de campos permitidos: SKU, nombre, descripción, UPC, MPN, categoría, peso, ubicación por defecto, punto/cantidad de reposición y estado. 404 si no existe; 400 si no hay campos válidos. |
+| Archivar/restaurar | `POST /api/admin/items/{id}/archive` | Alterna `is_active`; no elimina el registro. 404 si no existe. |
+| Borrado físico | `DELETE /api/admin/items/{id}` | Bloqueado si hay stock positivo, líneas históricas de ventas o compras. En caso permitido elimina primero referencias de preferred bins, conteos, ajustes e inventario. 404 si no existe; 400 si hay restricciones. |
+| Búsqueda operativa | `GET /api/lookup/item/search?q=` | Devuelve array plano, máximo 50. Admin ve catálogo completo; usuarios no admin solo ítems con inventario o preferred bin en almacenes asignados. |
+| Lookup por código | `GET /api/lookup/item/{barcode}` | Respuesta `{ item, locations }`; incluye UPC/SKU/alias y filtra ubicaciones por almacenes autorizados para usuarios no admin. |
+
+**Autorización:** endpoints administrativos protegidos por `require_auth` + `require_admin_or_page_permission("items")`. Lookup requiere autenticación y aplica alcance de almacén en resultados operativos. La autorización de página en Svelte no sustituye estos controles del servidor.
+
+**Efectos secundarios:** alta y cambios persisten en `items`; archive alterna estado; delete puede eliminar físicamente y limpia relaciones solo tras validar que no hay stock positivo ni historial PO/SO. No se debe ofrecer delete como alternativa a archive cuando el backend lo rechaza.
+
+**Brechas concretas detectadas en Svelte (no corregidas todavía):**
+1. `ItemRemoteDataSource.getById()` declara que recibe `ItemDto`, pero Flask devuelve `{ item, inventory, preferred_bins }`; el mapper actual no desempaqueta `item`.
+2. `list()` descarta `total/page/per_page/pages`, y la pantalla no implementa paginación ni los filtros Active / Archived / All presentes en React.
+3. Svelte solo implementa listado/búsqueda; faltan detalle, alta, edición, archive/restore, delete con confirmación y presentación de restricciones del servidor.
+4. El DTO actual no representa campos reales de listado/detalle (por ejemplo `weight_lbs`, `default_bin_code`, `description`, dimensiones, reorden, tracking, inventario y preferred bins).
+5. La búsqueda administrativa y la búsqueda operativa son contratos distintos; no se debe sustituir una por otra ni perder la autorización de almacén de lookup.
+
+**Decisión de arranque:** F1.1 está contractualmente preparada para implementación, pero la Fase 1 no se declara iniciada formalmente hasta cerrar F0-B, F0-C y F0-E. Estos hallazgos se convierten en criterios obligatorios de aceptación de F1.1.
 
 #### Cambios de código vinculados a Fase 0
 
@@ -239,7 +267,7 @@ Completar una fila por operación significativa; no basta con una fila por panta
 - [x] F0-A. Confirmar CI verde después de corregir las aserciones síncronas y añadir pruebas de timeout/cancelación. **CI:** [Webapp CI — commit `46c0f48`](https://github.com/danielitoCode/smart-wms/actions/runs/42974442039).
 - [ ] F0-B. Crear suites ejecutables independientes para dominio, aplicación, infraestructura, UI e integración; no etiquetar tests de casos de uso como dominio puro sin revisar su responsabilidad.
 - [ ] F0-C. Medir cobertura de claves por locale y cerrar brechas de italiano/inglés con pruebas de paridad.
-- [ ] F0-D. Completar inventario de endpoints Flask por feature, empezando por F1.1 Items y sus dependencias.
+- [~] F0-D. Completar inventario de endpoints Flask por feature. **Avance:** F1.1 Items tiene identificadas rutas, métodos, parámetros, esquemas Pydantic, respuestas, permisos y restricciones de borrado; faltan sus pruebas de contrato y el resto de features.
 - [ ] F0-E. Crear matriz de regresión de sesión, permisos de página/acción y ámbito de almacén.
 - [x] F0-F. Registrar comandos y evidencias de CI por commit y dejar el checklist listo para el primer módulo.
 
