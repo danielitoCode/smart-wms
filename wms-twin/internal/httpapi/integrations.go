@@ -254,14 +254,14 @@ func (s *Server) dockdV1(w http.ResponseWriter, r *http.Request, rest string) {
 		})(w, r)
 	case r.Method == http.MethodPost && len(parts) == 3 && parts[0] == "orders" && parts[2] == "void-ship":
 		s.requireWMSToken("dockd.void-ship", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
-			var in struct { Reason string `json:"reason"` }
-			if err := decodeBody(r, &in); err != nil {
-				writeJSON(w, 400, map[string]string{"error": "reason is required"})
+			var in struct { Reason string `json:"reason"`; IdempotencyKey string `json:"idempotency_key"` }
+			if err := decodeBody(r, &in); err != nil || strings.TrimSpace(in.Reason) == "" || strings.TrimSpace(in.IdempotencyKey) == "" {
+				writeJSON(w, 400, map[string]string{"error": "reason and idempotency_key are required"})
 				return
 			}
 			allowed := []int64{}
 			if rec.WarehouseID != nil { allowed = []int64{*rec.WarehouseID} }
-			out, err := s.dockd.VoidShipWithReason(parts[1], rec.Name, in.Reason, allowed, rec.WarehouseID == nil)
+			out, err := s.dockd.VoidShipWithReason(parts[1], rec.Name, in.Reason, in.IdempotencyKey, allowed, rec.WarehouseID == nil)
 			if err != nil {
 				if errors.Is(err, fulfillment.ErrScope) { writeJSON(w, 404, map[string]string{"error": "not found"}) } else if errors.Is(err, fulfillment.ErrState) { writeJSON(w, 409, map[string]string{"error": err.Error()}) } else { writeJSON(w, 400, map[string]string{"error": err.Error()}) }
 				return
