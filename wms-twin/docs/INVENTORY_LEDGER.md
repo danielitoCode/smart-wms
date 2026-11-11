@@ -113,3 +113,14 @@ Se añadieron pruebas para ajuste/reserva/liberación, idempotencia, movimiento,
 ## Evidencia automatizada
 
 La ejecución `42893176180` validó el corte anterior. En `42895311390` pasaron inventoryledger, corestore, domain/inventory, replication y runtime; httpapi falló por aceptación de token sin esquema Bearer. El middleware ya está corregido y la suite queda pendiente de repetición.
+
+
+## Movimientos de POS, RMA y restauración de snapshots
+
+- **POS checkout de mostrador:** crea un Adjust negativo por cada ubicación artículo/bin. El operation_id deriva de la idempotency_key y la ubicación; líneas repetidas se agregan antes del movimiento.
+- **POS phone order:** crea Allocate por ubicación. En Dispatch se ejecuta Release y después Adjust negativo, ambos con IDs deterministas. El despacho persiste su clave para recuperación.
+- **POS refund:** Adjust positivo por artículo/bin original, limitado por la cantidad vendida menos devoluciones completadas. El refund completo también reconcilia el monto restante y marca la SO REFUNDED.
+- **RMA:** ReceiveLine con disposition RESTOCK ejecuta Adjust positivo. SCRAP/HOLD no alteran el ledger. El operation_id de recepción es único en todo el servicio RMA, no solo dentro de una línea.
+- **Snapshot restore:** el snapshot contiene balances tipados, versión y checksum. Restore verifica checksum y Available, exige expected_ledger_version y ejecuta RestoreBalances con operation_id. El ledger rechaza una versión desactualizada y conserva balances de otros almacenes cuando el snapshot es warehouse-scoped.
+
+**Límite:** estas operaciones se serializan con mutex local y escrituras CoreStore; no constituyen una transacción distribuida ni CAS multinodo. En POS, la saga persiste progreso y compensa los movimientos parciales conocidos. En Restore, la versión esperada evita pisar cambios posteriores en el mismo estado observado, pero no sustituye fencing/quorum entre nodos.
