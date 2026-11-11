@@ -3,6 +3,7 @@ package runtime
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -13,6 +14,8 @@ func TestRuntimeSeparatesWMSAndAIPHandlers(t *testing.T) {
 		HTTPAddr: "127.0.0.1:0",
 		AIPAddr:  "127.0.0.1:0",
 		APIToken: "test-token",
+		JWTSecret: strings.Repeat("j",32),
+		AllowDemoBootstrap: true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -31,5 +34,19 @@ func TestRuntimeSeparatesWMSAndAIPHandlers(t *testing.T) {
 	}
 	if app.Handler() == app.AIPHandler() {
 		t.Fatal("WMS and AIP handlers must be separate")
+	}
+}
+
+func TestRuntimeRejectsMissingJWTSecret(t *testing.T) {
+	_, err := New(Config{DataDir:t.TempDir(),NodeName:"runtime-no-jwt"})
+	if err == nil || !strings.Contains(err.Error(),"JWT_SECRET must contain at least 32 characters") {
+		t.Fatalf("runtime should reject a missing JWT secret, got %v",err)
+	}
+}
+
+func TestRuntimeRequiresExplicitIdentityBootstrap(t *testing.T) {
+	_, err := New(Config{DataDir:t.TempDir(),NodeName:"runtime-no-identities",JWTSecret:strings.Repeat("j",32)})
+	if err == nil || !strings.Contains(err.Error(),"no WMS identities configured") {
+		t.Fatalf("runtime should reject an empty identity store without explicit demo opt-in, got %v",err)
 	}
 }
