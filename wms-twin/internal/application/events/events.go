@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"strings"
 	"time"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
@@ -19,6 +20,7 @@ type Event struct {
 	Payload   map[string]any `json:"payload"`
 	CreatedAt time.Time      `json:"created_at"`
 	Acked     bool           `json:"acked"`
+	Published bool           `json:"published"`
 }
 
 type Service struct {
@@ -38,12 +40,25 @@ func (s *Service) Emit(eventType string, payload map[string]any) (Event, error) 
 	s.seq++
 	id := time.Now().UTC().Format("20060102T150405") + "-" + formatN(s.seq)
 	ev := Event{EventID: id, Type: eventType, Version: 1, Payload: payload, CreatedAt: time.Now().UTC()}
-	data, _ := json.Marshal(ev)
+	data, err := json.Marshal(ev)
+	if err != nil {
+		return ev, err
+	}
 	if _, err := s.store.Put(kind, id, data); err != nil {
 		return ev, err
 	}
 	if s.mesh != nil {
-		_ = s.mesh.Publish("wms.events", ev)
+		if err := s.mesh.Publish("wms.events", ev); err != nil {
+			return ev, fmt.Errorf("event %s persisted but mesh publication is pending: %w", id, err)
+		}
+		ev.Published = true
+		data, err = json.Marshal(ev)
+		if err != nil {
+			return ev, err
+		}
+		if _, err := s.store.Put(kind, id, data); err != nil {
+			return ev, fmt.Errorf("event %s published but publication marker could not be persisted: %w", id, err)
+		}
 	}
 	return ev, nil
 }
@@ -82,6 +97,47 @@ func (s *Service) Ack(eventID string) error {
 	data, _ := json.Marshal(e)
 	_, err = s.store.Put(kind, eventID, data)
 	return err
+}
+
+
+// PublishPending retries durable events whose mesh publication did not
+// complete. It is safe to call repeatedly because message IDs are stable.
+func (s *Service) PublishPending() error {
+	if s.mesh == nil {
+		return nil
+	}
+	records, err := s.store.List(kind)
+	if err != nil {
+		return err
+	}
+	var failures []string
+	for _, record := range records {
+		var ev Event
+		if err := json.Unmarshal(record.Data, &ev); err != nil {
+			failures = append(failures, record.ID+": decode: "+err.Error())
+			continue
+		}
+		if ev.Published {
+			continue
+		}
+		if err := s.mesh.Publish("wms.events", ev); err != nil {
+			failures = append(failures, ev.EventID+": "+err.Error())
+			continue
+		}
+		ev.Published = true
+		data, err := json.Marshal(ev)
+		if err != nil {
+			failures = append(failures, ev.EventID+": encode: "+err.Error())
+			continue
+		}
+		if _, err := s.store.Put(kind, ev.EventID, data); err != nil {
+			failures = append(failures, ev.EventID+": persist marker: "+err.Error())
+		}
+	}
+	if len(failures) > 0 {
+		return fmt.Errorf("some event publications remain pending: %s", strings.Join(failures, "; "))
+	}
+	return nil
 }
 
 func (s *Service) Types() []string {
