@@ -85,6 +85,8 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/health", s.health)
 	mux.HandleFunc("/api/auth/", s.authRoute)
+	mux.HandleFunc("/api/admin/system-info", s.RequireAuth(s.systemInfo))
+	mux.HandleFunc("/api/admin/users", s.RequireAuth(s.adminUsers))
 	mux.HandleFunc("/api/admin/", s.RequireAuth(s.adminCatalog))
 	mux.HandleFunc("/api/receiving/", s.RequireAuth(s.receivingRoute))
 	mux.HandleFunc("/api/putaway/", s.RequireAuth(s.putawayRoute))
@@ -129,7 +131,16 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 405, map[string]string{"error": "method not allowed"})
 		return
 	}
-	writeJSON(w, 200, map[string]any{"status": "ok", "service": "smart-wms-twin", "time": time.Now().UTC()})
+	// Compat: el original responde service=sentry-wms. En modo compat se iguala
+	// para que probes/monitores compartidos no fallen.
+	service := "smart-wms-twin"
+	if strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_TWIN_HEALTH_SERVICE")), "sentry-wms") {
+		service = "sentry-wms"
+	}
+	writeJSON(w, 200, map[string]any{
+		"status": "ok", "service": service, "engine": "PrismaTec-Core",
+		"twin": "smart-wms-twin", "time": time.Now().UTC(),
+	})
 }
 func (s *Server) authorize(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

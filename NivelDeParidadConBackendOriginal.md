@@ -1,5 +1,11 @@
 # Nivel de paridad con el backend original
 
+> **Actualización 2026-11-11 (PrismaTec-Core / wms-twin):** el gemelo cubre el **camino operativo núcleo**
+> (auth JWT, catálogo, PO, recepción, putaway, picking/wave, packing, shipping, transfers, cycle-count,
+> lookup, balances, system-info, users). **No es sustituible** todavía respecto a POS, Dockd, events/snapshots,
+> webhooks, inbound ni la suite E2E Flask. Usar `wms-twin/scripts/parity-smoke.sh` y `demo-flow.sh` para
+> demos del equipo. Health puede emitir `service=sentry-wms` con `WMS_TWIN_HEALTH_SERVICE=sentry-wms`.
+
 ## Estado global
 
 **NO SUSTITUIBLE.** El backend Flask original permanece intacto y operativo. El gemelo arranca PrismaTec-Core, expone AIP separada, persiste registros por organismo/CID y contiene un ledger técnico de inventario con idempotencia y serialización dentro de una instancia. Todavía no puede atender el frontend original.
@@ -20,14 +26,14 @@ No declaro paridad por tener rutas con nombres parecidos. Cada caso debe igualar
 | Auth | JWT HS256 + estado vivo de usuario | JWT HS256 + estado vivo de usuario; Bearer técnico aislado en /api/twin | Parcial; falta diferencial completo |
 | Cookies/CSRF | `sentry_auth`, `sentry_csrf`, doble envío | `sentry_auth`, `sentry_csrf`, CSRF en mutaciones con cookie | Parcial; falta prueba diferencial completa |
 | Roles/permisos | Roles, page permissions, warehouse scopes | ADMIN/page permissions y warehouse scope en auth + catálogo inicial | Parcial; falta aplicar a todos los flujos |
-| Warehouses/zones/bins/items | CRUD, validación y relaciones | CRUD warehouses/zones/bins bajo /api/admin; items pendiente | Parcial |
+| Warehouses/zones/bins/items | CRUD, validación y relaciones | CRUD warehouses/zones/bins/items/vendors/preferred-bins | Alta en núcleo; validaciones residuales |
 | Inventario | Transacciones, locks, reservas y auditoría | Ledger global: adjust/allocate/release/move, idempotencia, append por operación y réplica CID | Parcial de dominio; un primario global, no paridad ni quorum |
 | Receiving/put-away | PO, recepción, cancelación y ubicación | Rutas core implementadas | Parcial |
-| Picking/waves | Batch, wave, short pick, cancel | Batch/confirm/short/complete/cancel; wave pendiente | Parcial |
+| Picking/waves | Batch, wave, short pick, cancel | Batch + wave-validate/wave-create + confirm/short/complete/cancel | Alta en núcleo |
 | Packing/shipping | Verificación y despacho | verify/complete/fulfill básicos | Parcial |
 | Cycle counts/adjustments | Conteo, aprobación y ajustes | create/get/submit | Parcial |
 | Transfers | Movimiento y órdenes inter-almacén | POST /api/transfers/move + ledger | Parcial |
-| Orders/RMA/backorders/POS | Workflows completos | No | Pendiente |
+| Orders/RMA/backorders/POS | Workflows completos | Sales orders admin + fulfill básicos; POS/RMA/backorders pendientes | Parcial / pendiente POS |
 | Events/snapshots | Outbox, consumer groups, ack, cursor | Pulse/AIP no equivalen al contrato WMS | Pendiente |
 | Connectors/webhooks/inbound/Dockd | Scopes, firmas, retry, DLQ | No | Pendiente |
 | Auditoría | Hash-chain y atribución WMS | Audit Core sin mapeo WMS | No paridad |

@@ -78,4 +78,27 @@ curl -sS -X POST "$BASE/api/shipping/fulfill" -H "$AUTH" -H 'Content-Type: appli
 
 echo "== lookup =="
 curl -sS "$BASE/api/lookup/item/SKU-$SUF" -H "$AUTH"; echo
+
+echo "== system-info / users / balances =="
+curl -sS "$BASE/api/admin/system-info" -H "$AUTH" | head -c 400; echo
+curl -sS "$BASE/api/admin/users" -H "$AUTH" | head -c 400; echo
+curl -sS "$BASE/api/inventory/balances" -H "$AUTH" | head -c 400; echo
+
+echo "== wave validate/create =="
+# reuse SO if available
+SO_JSON=$(curl -sS "$BASE/api/admin/sales-orders" -H "$AUTH")
+SOID=$(echo "$SO_JSON" | sed -n 's/.*"so_id"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' | head -1)
+if [[ -n "${SOID}" && -n "${WID}" ]]; then
+  curl -sS -X POST "$BASE/api/picking/wave-validate" -H "$AUTH" -H 'Content-Type: application/json' \
+    -d "{\"so_barcode\":\"SO-$SUF\",\"warehouse_id\":$WID}" | head -c 300; echo
+  curl -sS -X POST "$BASE/api/picking/wave-create" -H "$AUTH" -H 'Content-Type: application/json' \
+    -d "{\"so_ids\":[$SOID],\"warehouse_id\":$WID}" | head -c 300; echo
+fi
+
+echo "== cycle-count create =="
+if [[ -n "${WID}" && -n "${PKID}" ]]; then
+  curl -sS -X POST "$BASE/api/inventory/cycle-count/create" -H "$AUTH" -H 'Content-Type: application/json' \
+    -d "{\"warehouse_id\":$WID,\"bin_ids\":[$PKID]}" | head -c 400; echo
+fi
+
 echo "DEMO OK"

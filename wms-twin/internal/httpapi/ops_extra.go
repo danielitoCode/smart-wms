@@ -101,6 +101,27 @@ func (s *Server) inventoryRoute(w http.ResponseWriter, r *http.Request) {
 		actor = user.Username
 	}
 	switch {
+	case r.Method == http.MethodGet && (path == "" || path == "balances"):
+		balances, version, err := s.ledger.List()
+		if err != nil {
+			writeJSON(w, 500, map[string]string{"error": err.Error()})
+			return
+		}
+		if !isAdmin {
+			allowedSet := map[int64]bool{}
+			for _, id := range allowed {
+				allowedSet[id] = true
+			}
+			filtered := balances[:0]
+			for _, b := range balances {
+				if allowedSet[b.WarehouseID] {
+					filtered = append(filtered, b)
+				}
+			}
+			balances = filtered
+		}
+		writeJSON(w, 200, map[string]any{"version": version, "balances": balances, "total": len(balances)})
+		return
 	case r.Method == http.MethodPost && path == "cycle-count/create":
 		var in struct {
 			WarehouseID int64   `json:"warehouse_id"`
@@ -215,4 +236,62 @@ func (s *Server) waveCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 200, map[string]any{"batch": batch, "tasks": tasks, "wave": true})
+}
+
+func (s *Server) systemInfo(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, 405, map[string]string{"error": "method not allowed"})
+		return
+	}
+	user := userFrom(r)
+	if user == nil || user.Role != "ADMIN" {
+		writeJSON(w, 403, map[string]string{"error": "ADMIN required"})
+		return
+	}
+	info := map[string]any{}
+	if s.node != nil {
+		info["core"] = s.node.Info()
+	}
+	writeJSON(w, 200, map[string]any{
+		"service":  "smart-wms-twin",
+		"engine":   "PrismaTec-Core",
+		"aip_base": "/aip/v1",
+		"storage":  "PrismaTec-Core organism memory + local CID block store",
+		"node":     info,
+		"capabilities": []string{
+			"auth", "catalog", "purchase-orders", "sales-orders",
+			"receiving", "putaway", "picking", "wave", "packing", "shipping",
+			"transfers", "cycle-counts", "lookup", "inventory-ledger",
+		},
+	})
+}
+
+func (s *Server) adminUsers(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, 405, map[string]string{"error": "method not allowed"})
+		return
+	}
+	user := userFrom(r)
+	if user == nil || user.Role != "ADMIN" {
+		writeJSON(w, 403, map[string]string{"error": "ADMIN required"})
+		return
+	}
+	if s.users == nil {
+		writeJSON(w, 503, map[string]string{"error": "identity not configured"})
+		return
+	}
+	list, err := s.users.List()
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	out := make([]map[string]any, 0, len(list))
+	for _, u := range list {
+		out = append(out, map[string]any{
+			"user_id": u.UserID, "username": u.Username, "full_name": u.FullName,
+			"role": u.Role, "is_active": u.IsActive, "warehouse_id": u.WarehouseID,
+			"warehouse_ids": u.WarehouseIDs, "allowed_pages": u.AllowedPages,
+		})
+	}
+	writeJSON(w, 200, map[string]any{"users": out, "total": len(out)})
 }
