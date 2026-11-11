@@ -120,7 +120,7 @@
 		<aside class="sidebar" class:open={sidebarOpen} aria-label="Navegación de Abellis">
 			<a class="brand" href="/inventory" aria-label="Abellis WMS, ir al inventario">
 				<img src="/brand/abellis_mark_blanco.svg" width="36" height="36" alt="" />
-				<span class="brand-text"><strong>Abellis</strong><small>WMS · Operaciones</small></span>
+				<span class="brand-text"><strong>Abellis</strong><small>Smart WMS</small></span>
 			</a>
 			{#if !guard.user?.mustChangePassword}
 				<nav class="main-nav" aria-label="Navegación principal">
@@ -149,7 +149,7 @@
 		<div class="app-main">
 			<header class="topbar">
 				<button class="menu-toggle" type="button" aria-label="Abrir menú" aria-expanded={sidebarOpen} onclick={() => sidebarOpen = !sidebarOpen}><AppIcon name="menu" size={21} /></button>
-				<div class="page-context"><p>ABELLIS · WMS</p><span>Operaciones de almacén</span></div>
+				<div class="page-context"><p>ABELLIS · SMART WMS</p><span>Operaciones de almacén</span></div>
 				<div class="topbar-actions">
 					{#if warehouseSelection.canSelect && warehouseSelection.warehouses.length > 0}
 						<label class="warehouse-picker"><span>Almacén activo</span>
