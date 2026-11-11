@@ -72,7 +72,7 @@
 			const csvCell = (value: unknown) => {
 				if (value == null) return '';
 				const raw = String(value);
-				return /[",\\n]/.test(raw) ? '"' + raw.replace(/"/g, '""') + '"' : raw;
+				return raw.includes(',') || raw.includes('"') || raw.includes(String.fromCharCode(10)) ? '"' + raw.replace(/"/g, '""') + '"' : raw;
 			};
 			const csv = [columns.join(','), ...rows.map(bin => [bin.code,bin.barcode,bin.zoneName,bin.warehouseId,bin.binType,bin.aisle,bin.pickSequence,bin.putawaySequence,''].map(csvCell).join(','))].join('\r\n');
 			const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
