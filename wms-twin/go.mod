@@ -110,4 +110,21 @@ require (
 	golang.org/x/tools v0.45.0 // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
 	lukechampine.com/blake3 v1.4.0 // indirect
+	github.com/hashicorp/golang-lru v1.0.2 // indirect
+	github.com/ipfs/boxo v0.28.0 // indirect
+	github.com/ipfs/go-datastore v0.8.2 // indirect
+	github.com/ipfs/go-detect-race v0.0.1 // indirect
+	github.com/ipfs/go-log v1.0.5 // indirect
+	github.com/ipfs/go-test v0.2.1 // indirect
+	github.com/libp2p/go-libp2p-kbucket v0.6.5 // indirect
+	github.com/libp2p/go-libp2p-record v0.3.1 // indirect
+	github.com/libp2p/go-libp2p-routing-helpers v0.7.5 // indirect
+	github.com/libp2p/go-libp2p-testing v0.12.0 // indirect
+	github.com/libp2p/go-libp2p-xor v0.1.0 // indirect
+	github.com/stretchr/testify v1.10.0 // indirect
+	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
+	go.opentelemetry.io/otel v1.34.0 // indirect
+	go.opentelemetry.io/otel/metric v1.34.0 // indirect
+	go.opentelemetry.io/otel/trace v1.34.0 // indirect
+	gonum.org/v1/gonum v0.15.1 // indirect
 )
