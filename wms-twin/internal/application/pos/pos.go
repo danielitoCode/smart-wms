@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
@@ -12,7 +11,10 @@ import (
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 )
 
-var ErrInvalid = errors.New("invalid pos request")
+var (
+	ErrInvalid = errors.New("invalid pos request")
+	ErrUnsupported = errors.New("POS operation is not implemented by the current WMS contract")
+)
 
 type Service struct {
 	catalog *catalog.Repository
@@ -149,23 +151,15 @@ func (s *Service) GetSO(soNumber string) (salesorders.SalesOrder, error) {
 }
 
 func (s *Service) Refund(soNumber string, actor string) (map[string]any, error) {
-	so, err := s.GetSO(soNumber)
-	if err != nil {
+	if _, err := s.GetSO(soNumber); err != nil {
 		return nil, err
 	}
-	return map[string]any{
-		"so_id": so.SOID, "so_number": so.SONumber, "status": "REFUND_RECORDED",
-		"actor": actor, "at": time.Now().UTC(),
-	}, nil
+	return nil, ErrUnsupported
 }
 
 func (s *Service) Dispatch(soNumber, actor string) (map[string]any, error) {
-	so, err := s.GetSO(soNumber)
-	if err != nil {
+	if _, err := s.GetSO(soNumber); err != nil {
 		return nil, err
 	}
-	return map[string]any{
-		"so_id": so.SOID, "so_number": so.SONumber, "status": "DISPATCHED",
-		"actor": actor, "at": time.Now().UTC(),
-	}, nil
+	return nil, ErrUnsupported
 }
