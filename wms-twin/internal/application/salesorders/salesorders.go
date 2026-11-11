@@ -28,6 +28,7 @@ const (
 	StatusPacked   = "PACKED"
 	StatusShipped  = "SHIPPED"
 	StatusRefunded = "REFUNDED"
+	StatusPartiallyRefunded = "PARTIALLY_REFUNDED"
 	StatusClosed   = "CLOSED"
 	LineOpen       = "OPEN"
 	LinePicked     = "PICKED"
