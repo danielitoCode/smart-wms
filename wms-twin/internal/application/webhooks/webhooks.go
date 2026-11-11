@@ -124,6 +124,8 @@ func (s *Service) DeliverEvent(eventID, eventType string, payload any) error {
 }
 
 func (s *Service) DeliverEventAt(eventID, eventType string, payload any, occurredAt time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if strings.TrimSpace(eventID) == "" || len(eventID) > 256 || strings.TrimSpace(eventType) == "" || len(eventType) > 128 { return fmt.Errorf("event id and type are required and must be within length limits") }
 	if occurredAt.IsZero() { occurredAt = time.Now().UTC() }
 	body, err := json.Marshal(map[string]any{"event_id":eventID,"event_type":eventType,"payload":payload,"occurred_at":occurredAt.UTC()})
