@@ -6,27 +6,16 @@ import { authSession } from '../../../../../../core/infrastructure/auth/AuthSess
 import { ApiError } from '../../../../../../core/infrastructure/errors/ApiError';
 
 const sampleUser: User = {
-	userId: 1,
-	username: 'admin',
-	fullName: 'Admin',
-	role: 'ADMIN',
-	warehouseId: 1,
-	warehouseIds: [1],
-	allowedFunctions: [],
-	allowedPages: [],
-	allowedOverrides: [],
-	isActive: true,
-	requirePacking: true,
-	mustChangePassword: false
+	userId: 1, username: 'admin', fullName: 'Admin', role: 'ADMIN',
+	warehouseId: 1, warehouseIds: [1], allowedFunctions: [],
+	allowedPages: [], allowedOverrides: [], isActive: true,
+	requirePacking: true, mustChangePassword: false
 };
 
 function createRepo(overrides: Partial<AuthRepository> = {}): AuthRepository {
 	return {
-		login: vi.fn(),
-		getCurrentUser: vi.fn(),
-		refreshToken: vi.fn(),
-		logout: vi.fn(),
-		...overrides
+		login: vi.fn(), getCurrentUser: vi.fn(), refreshToken: vi.fn(),
+		logout: vi.fn(), changePassword: vi.fn(), ...overrides
 	};
 }
 
@@ -49,7 +38,7 @@ describe('EnsureAuthenticatedUseCase', () => {
 		expect(repo.refreshToken).not.toHaveBeenCalled();
 	});
 
-	it('preserves the session view when the API is unavailable', async () => {
+	it('preserves the in-memory user when the API is unavailable', async () => {
 		const current = { userId: 1, username: 'admin', fullName: 'Admin', role: 'ADMIN', warehouseIds: [1] };
 		authSession.setUser(current);
 		const repo = createRepo({ getCurrentUser: vi.fn().mockRejectedValue(new ApiError(0, 'Network error', 'network')) });
@@ -58,7 +47,7 @@ describe('EnsureAuthenticatedUseCase', () => {
 		expect(authSession.getUser()).toEqual(current);
 	});
 
-	it('does not treat permission or policy 403 responses as an expired login', async () => {
+	it('does not treat a 403 response as an expired login', async () => {
 		const repo = createRepo({ getCurrentUser: vi.fn().mockRejectedValue(new ApiError(403, 'Forbidden')) });
 		const result = await new EnsureAuthenticatedUseCase(repo).execute();
 		expect(result).toMatchObject({ ok: false, reason: 'unavailable' });

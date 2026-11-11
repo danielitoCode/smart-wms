@@ -14,7 +14,6 @@ export function createAuthGuardState() {
 
 	async function verify() {
 		if (inFlight) return inFlight;
-
 		inFlight = (async () => {
 			status = 'checking';
 			message = null;
@@ -34,7 +33,6 @@ export function createAuthGuardState() {
 				status = 'error';
 			}
 		})();
-
 		try {
 			await inFlight;
 		} finally {
@@ -45,6 +43,8 @@ export function createAuthGuardState() {
 	async function logout() {
 		try {
 			await deps.logout.execute();
+		} catch {
+			// Local state is cleared by the repository even if the server is unavailable.
 		} finally {
 			user = null;
 			status = 'anonymous';
