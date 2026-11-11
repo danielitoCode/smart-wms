@@ -338,3 +338,8 @@ Añadí una compensación explícita al cancelar un RMA que ya recibió mercanc�
 ### Últimos endurecimientos de POS y webhooks
 
 En las devoluciones POS consolido las líneas repetidas del mismo artículo/ubicación antes de ejecutar el movimiento de inventario. Esto evita que dos renglones compartan el mismo operation_id y el segundo quede tratado como replay de la primera cantidad. En webhooks amplié el bloqueo de destinos SSRF para incluir redes especiales y de documentación, además de redes privadas, loopback y link-local.
+
+
+### Anulación de despacho POS y reexpedición
+
+Al anular un despacho POS, el gemelo recupera el inventario que se descontó durante la expedición. Si era una orden telefónica, restablece también la reserva que existía antes del despacho; en una venta POS normal no crea una reserva artificial. La operación se identifica por despacho y ubicación, guarda el progreso en el envío y se puede reintentar sin duplicar unidades. Tras la anulación, la orden telefónica vuelve al estado pagado/no expedido y puede despacharse con una nueva clave de idempotencia.
