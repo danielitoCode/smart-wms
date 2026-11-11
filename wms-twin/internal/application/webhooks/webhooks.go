@@ -186,6 +186,23 @@ func (s *Service) Deliveries(limit int) ([]Delivery, error) {
 func (s *Service) ProcessPending(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	// Migrate legacy plaintext subscription secrets before processing any
+	// delivery. New records are encrypted at creation time.
+	subscriptions, err := s.store.List(kind)
+	if err != nil { return err }
+	var failures []string
+	for _, record := range subscriptions {
+		var sub Subscription
+		if err := json.Unmarshal(record.Data, &sub); err != nil { failures = append(failures, record.ID+": "+err.Error()); continue }
+		if sub.SecretCipher == "" && sub.Secret != "" {
+			encrypted, err := encryptSecret(sub.Secret)
+			if err != nil { failures = append(failures, record.ID+": secret migration: "+err.Error()); continue }
+			sub.SecretCipher, sub.Secret = encrypted, ""
+			data, err := json.Marshal(sub)
+			if err == nil { _, err = s.store.Put(kind, sub.ID, data) }
+			if err != nil { failures = append(failures, record.ID+": secret migration persist: "+err.Error()) }
+		}
+	}
 	records, err := s.store.List(deliveryKind)
 	if err != nil { return err }
 	now := time.Now().UTC()
@@ -202,7 +219,6 @@ func (s *Service) ProcessPending(ctx context.Context) error {
 		if err := json.Unmarshal(subRec.Data, &sub); err != nil { failures = append(failures, delivery.ID+": "+err.Error()); continue }
 		if !sub.Active { delivery.Status, delivery.LastError = "DEAD", "subscription is inactive"; _ = s.persistDelivery(delivery); continue }
 		secret, err := decryptSecret(sub.SecretCipher)
-		if err != nil && sub.Secret != "" { secret, err = sub.Secret, nil } // legacy records are migrated on the next explicit rotation
 		if err != nil { delivery.Status, delivery.LastError = "DEAD", "webhook secret cannot be decrypted"; _ = s.persistDelivery(delivery); continue }
 		status, sendErr := s.post(ctx, sub, secret, delivery.Body)
 		delivery.Attempts++
