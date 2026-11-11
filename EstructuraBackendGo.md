@@ -264,3 +264,8 @@ Refund calcula el importe proporcional acumulado de cada ubicación artículo/bi
 El servicio POS agrupa líneas de refund por `item_id:bin_id` antes de calcular y ejecutar la operación de ledger. El identificador idempotente se aplica una sola vez a la cantidad consolidada. La salida HTTP mantiene el desglose financiero calculado sobre el total original de la línea.
 
 El cliente HTTP de webhooks desactiva redirects y resuelve DNS al conectar; ahora `isPublicWebhookIP` rechaza también CGNAT, redes de documentación, benchmarking y bloques especiales IPv6, además de direcciones privadas/locales.
+
+
+### Compensación de despacho POS
+
+`fulfillment.reversePOSDispatch` inspecciona el registro POS vinculado a la SO y revierte solo estados cuyo movimiento está confirmado (`DISPATCHED` o `COMPLETED`). Por cada ubicación ejecuta un ajuste positivo idempotente y persiste `Shipment.VoidReversedKeys`. Para `PhoneOrder=true`, restaura además la asignación previa con un operation_id independiente; para ventas normales no crea asignaciones. Al terminar, devuelve la venta al estado `COMPLETED` y limpia `DispatchKey/DispatchFingerprint` de órdenes telefónicas, permitiendo un nuevo despacho. Un replay del mismo void usa las claves persistidas y no duplica stock.
