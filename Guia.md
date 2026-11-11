@@ -269,3 +269,49 @@ Añadí pruebas unitarias de rechazo SSRF, checksum de snapshots y manipulación
 ## Ajustes posteriores de validación
 
 Los snapshots usan filas tipadas con enteros para que la verificación SHA-256 no dependa de conversiones float64 al deserializar JSON. Añadí el scope `events.publish` y la ruta `POST /api/v1/events/retry-pending` para que un operador autorizado pueda reintentar publicaciones pendientes. La verificación de auditoría también libera el bloqueo cuando una re-verificación completa confirma que la cadena volvió a ser válida. El CI de la rama sigue siendo la autoridad para validar formato, vet y race tests.
+
+
+## Cierre funcional de las integraciones — POS, Dockd, RMA, Webhooks, Snapshots, Inbound y Mesh
+
+En esta fase amplié el endurecimiento inicial para que las operaciones principales produzcan efectos persistentes y puedan recuperarse después de fallos.
+
+### POS
+
+- El checkout acepta una clave de idempotencia, almacén, líneas con artículo/SKU/bin/cantidad, precios en centavos, impuestos, envío, caja, terminal y referencia externa de transacción.
+- Valido que subtotal, impuestos, envío, total, líneas y tenders cuadren. Para tarjeta guardo únicamente marca, últimos cuatro dígitos, código de autorización y referencia externa; no acepto ni persisto PAN/CVV.
+- Cada línea debe pertenecer a un bin activo y pickable del almacén autorizado. Agrupo cantidades repetidas por artículo/bin y verifico disponibilidad agregada.
+- El checkout de mostrador descuenta inventario; el pedido telefónico reserva inventario. Cada movimiento usa un operation_id estable.
+- Persisto el registro de la venta y el progreso de la saga. Si un movimiento falla después de otros ya aplicados, marco COMPENSATING, revierto los movimientos confirmados con IDs de compensación y cierro como FAILED. Una repetición de una operación completada devuelve la misma venta.
+- Dispatch de pedido telefónico libera la reserva y descuenta existencias; persiste la clave de despacho y recupera el resultado si el proceso cae después de completar el shipment.
+- Refund admite devolución parcial o total por artículo/bin, verifica la venta original, el método de pago, la ventana de 90 días, las cantidades restantes y la conciliación monetaria de la devolución completa. El inventario devuelto se repone con operation_id idempotente.
+
+**Límite importante:** el gemelo registra la referencia de la devolución externa; no ejecuta por sí mismo una operación contra un adquirente/banco. La equivalencia de DTO/status con todas las variantes del POS Flask todavía debe probarse con fixtures reales.
+
+### Dockd y RMA
+
+- Dockd persiste el shipment antes y después de cambiar la orden. Void exige motivo y clave de idempotencia, guarda VOIDING antes de revertir el estado y puede terminar la reversión tras un reinicio.
+- El void devuelve la orden al estado previo al envío y pone QuantityShipped a cero. No introduce mercancía en inventario: una devolución física debe entrar por RMA.
+- RMA deriva las cantidades retornables de las líneas enviadas. ReceiveLine registra cada recepción con operation_id y exige disposición RESTOCK, SCRAP o HOLD. RESTOCK necesita bin activo del mismo almacén y suma existencias al ledger; SCRAP/HOLD quedan registrados sin incrementar disponible. Complete exige que todas las cantidades esperadas estén recibidas y dispuestas.
+
+### Webhooks
+
+- Los eventos generan registros de outbox por suscripción y event_id estable.
+- Un worker supervisado por el contexto del runtime procesa la cola. Reintenta errores de red, HTTP 429 y 5xx con backoff exponencial; los 4xx permanentes y el máximo de 12 intentos terminan en DEAD (DLQ).
+- Expuse consulta de deliveries y reintento manual de una entrada DEAD.
+- Los secretos nuevos se cifran con AES-256-GCM. Configuro `SENTRY_ENCRYPTION_KEY` o `WMS_WEBHOOK_ENCRYPTION_KEY` con una clave base64 de 32 bytes. El worker migra secretos antiguos en texto claro antes de procesar entregas. Las respuestas no exponen secreto ni ciphertext.
+- Se mantiene la defensa SSRF: HTTPS, sin proxy de entorno, sin redirects y conexión a IP pública validada.
+
+### Snapshots e Inbound
+
+- Snapshot Restore verifica SHA-256, consistencia de Available y expected_ledger_version. La restauración es una sola escritura del organismo ledger y admite operation_id idempotente. Si la versión cambió, devuelve conflicto en vez de sobrescribir trabajo posterior.
+- Inbound usa source_system + resource + external_id como identidad externa, guarda fingerprint y external_version, devuelve el resultado previo ante repetición exacta y rechaza payload distinto bajo la misma versión. Añadí resolución por warehouse_code y SKU y mapeo de atributos de item, sales order y purchase order. Si el registro de idempotencia no alcanzó a persistirse tras crear el agregado, recupera por claves naturales cuando el payload canónico coincide.
+
+### Mesh
+
+- Cuando PrismaTec-Core entrega un transporte LibP2P con Host(), arranco el DHT Kademlia real de go-libp2p-kad-dht y GossipSub de go-libp2p-pubsub. Incluí bootstrap, lookup de peers, anuncio/provisión de CID, búsqueda de providers, join/subscribe y publicación por topics.
+- En transportes TCP/locales que no exponen un host libp2p se conserva el fallback peer-table + TTL fan-out. Ese fallback no se etiqueta como DHT ni GossipSub.
+- Los eventos remotos recibidos por el topic `wms.events` se persisten y deduplican por event_id.
+
+### Validación
+
+Añadí pruebas unitarias para checkout/replay, refund/restock/replay, dispatch telefónico, void/replay, RMA restock/disposición, outbox de webhooks, idempotencia inbound, snapshot restore y recepción remota de eventos. La validación definitiva depende de los workflows de GitHub Actions; no marco el corte como validado hasta leer sus resultados.
