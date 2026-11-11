@@ -50,7 +50,11 @@ func (s *Service) recoverTip() {
 func (s *Service) Verify() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.verifyAndRecover()
+	err := s.verifyAndRecover()
+	if err != nil {
+		s.verificationErr = err
+	}
+	return err
 }
 
 func (s *Service) verifyAndRecover() error {
@@ -92,6 +96,10 @@ func (s *Service) Record(actor, action, resource string, ok bool, detail string,
 	defer s.mu.Unlock()
 	if s.verificationErr != nil {
 		return Entry{}, fmt.Errorf("WMS audit chain is not writable until integrity is restored: %w", s.verificationErr)
+	}
+	if err := s.verifyAndRecover(); err != nil {
+		s.verificationErr = err
+		return Entry{}, fmt.Errorf("WMS audit chain integrity check failed: %w", err)
 	}
 	nextSeq := s.seq + 1
 	e := Entry{
