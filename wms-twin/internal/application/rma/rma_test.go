@@ -36,6 +36,7 @@ func TestRMAReceiptDispositionRestocksIdempotentlyAndCompletes(t *testing.T) {
 	service := New(store,sos,cat,ledger)
 	rma, err := service.Create(so.SONumber,"damaged packaging","tester",false)
 	if err != nil { t.Fatal(err) }
+	if _, err := service.Create(so.SONumber,"duplicate return","tester",false); err == nil { t.Fatal("duplicate RMA reserved the same shipped quantities") }
 	first, err := service.ReceiveLine(rma.RMAID,item.ItemID,2,bin.BinID,"LOT-1","RESTOCK","rma-receipt-1","receiver")
 	if err != nil { t.Fatal(err) }
 	if first.Lines[0].Received != 2 { t.Fatalf("expected 2 received: %+v",first.Lines[0]) }
