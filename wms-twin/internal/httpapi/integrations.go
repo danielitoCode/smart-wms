@@ -140,7 +140,11 @@ func (s *Server) posV1(w http.ResponseWriter, r *http.Request, rest string) {
 			}
 			out, err := s.pos.Refund(in.SONumber, rec.Name)
 			if err != nil {
-				writeJSON(w, 404, map[string]string{"error": err.Error()})
+				if errors.Is(err, pos.ErrUnsupported) {
+					writeJSON(w, 501, map[string]string{"error": err.Error()})
+				} else {
+					writeJSON(w, 404, map[string]string{"error": err.Error()})
+				}
 				return
 			}
 			if s.events != nil {
@@ -159,7 +163,11 @@ func (s *Server) posV1(w http.ResponseWriter, r *http.Request, rest string) {
 			}
 			out, err := s.pos.Dispatch(in.SONumber, rec.Name)
 			if err != nil {
-				writeJSON(w, 404, map[string]string{"error": err.Error()})
+				if errors.Is(err, pos.ErrUnsupported) {
+					writeJSON(w, 501, map[string]string{"error": err.Error()})
+				} else {
+					writeJSON(w, 404, map[string]string{"error": err.Error()})
+				}
 				return
 			}
 			if s.events != nil {
@@ -179,7 +187,7 @@ func (s *Server) posV1(w http.ResponseWriter, r *http.Request, rest string) {
 		})(w, r)
 	case r.Method == http.MethodPost && rest == "reference-orders":
 		s.requireWMSToken("pos.reference-orders", func(w http.ResponseWriter, r *http.Request, rec wmstoken.TokenRecord) {
-			writeJSON(w, 200, map[string]any{"orders": []any{}, "note": "reference lookup stub"})
+			writeJSON(w, 501, map[string]string{"error": "reference-order lookup is not implemented"})
 		})(w, r)
 	default:
 		writeJSON(w, 404, map[string]string{"error": "not found"})
@@ -554,7 +562,11 @@ func (s *Server) rmaRoutes(w http.ResponseWriter, r *http.Request) {
 		id, _ := strconv.ParseInt(strings.TrimSuffix(path, "/complete"), 10, 64)
 		out, err := s.rma.Complete(id, user.Username)
 		if err != nil {
-			writeJSON(w, 400, map[string]string{"error": err.Error()})
+			if errors.Is(err, rma.ErrRestockRequired) {
+				writeJSON(w, 409, map[string]string{"error": err.Error()})
+			} else {
+				writeJSON(w, 400, map[string]string{"error": err.Error()})
+			}
 			return
 		}
 		if s.events != nil {
