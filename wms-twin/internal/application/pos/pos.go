@@ -482,14 +482,17 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 		if prior.Status == "COMPLETED" {
 			if prior.FullyRefunded {
 				sale.Status = "REFUNDED"
-				saleData, marshalErr := json.Marshal(sale)
-				if marshalErr != nil { return nil, false, marshalErr }
-				if _, persistErr := s.store.Put("wms_pos_sale", sale.ID, saleData); persistErr != nil { return nil, false, persistErr }
 				so.Status = salesorders.StatusRefunded
 				for i := range so.Lines { so.Lines[i].Status = salesorders.LineRefunded }
-				if saveErr := s.sos.Save(so); saveErr != nil { return nil, false, saveErr }
+			} else {
+				sale.Status = "PARTIALLY_REFUNDED"
+				so.Status = salesorders.StatusPartiallyRefunded
 			}
-			return map[string]any{"refund_id":prior.ID,"original_so_number":in.SONumber,"fully_refunded":prior.FullyRefunded,"total_cents":prior.TotalCents,"replayed":true}, true, nil
+			saleData, marshalErr := json.Marshal(sale)
+			if marshalErr != nil { return nil, false, marshalErr }
+			if _, persistErr := s.store.Put("wms_pos_sale", sale.ID, saleData); persistErr != nil { return nil, false, persistErr }
+			if saveErr := s.sos.Save(so); saveErr != nil { return nil, false, saveErr }
+			return map[string]any{"refund_id":prior.ID,"original_so_number":in.SONumber,"fully_refunded":prior.FullyRefunded,"all_items_returned":prior.AllItemsReturned,"total_cents":prior.TotalCents,"replayed":true}, true, nil
 		}
 	}
 	if !found || (sale.Status != "COMPLETED" && sale.Status != "DISPATCHED" && sale.Status != "PARTIALLY_REFUNDED") || (so.Status != salesorders.StatusShipped && so.Status != salesorders.StatusPartiallyRefunded) {
@@ -503,7 +506,7 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 	for _, line := range sale.Lines {
 		key := fmt.Sprintf("%d:%d", line.ItemID, line.BinID)
 		current, exists := original[key]
-		if !exists { current = line }
+		if !exists { current = line; current.Quantity = 0; current.LineTotalCents = 0; current.TaxCents = 0 }
 		current.Quantity += line.Quantity
 		current.LineTotalCents += line.LineTotalCents
 		current.TaxCents += line.TaxCents
@@ -595,14 +598,17 @@ func (s *Service) RefundTransaction(in RefundInput, actor string) (map[string]an
 	if _, err := s.store.Put("wms_pos_refund", refundID, data); err != nil { return nil, false, err }
 	if fullyRefunded {
 		sale.Status = "REFUNDED"
-		data, err = json.Marshal(sale)
-		if err != nil { return nil, false, err }
-		if _, err := s.store.Put("wms_pos_sale", sale.ID, data); err != nil { return nil, false, err }
 		so.Status = salesorders.StatusRefunded
 		for i := range so.Lines { so.Lines[i].Status = salesorders.LineRefunded }
-		if err := s.sos.Save(so); err != nil { return nil, false, err }
+	} else {
+		sale.Status = "PARTIALLY_REFUNDED"
+		so.Status = salesorders.StatusPartiallyRefunded
 	}
-	return map[string]any{"refund_id":refundID,"original_so_number":in.SONumber,"fully_refunded":full,"total_cents":in.TotalCents,"external_refund_ref":in.ExternalRefundRef,"actor":actor,"replayed":false}, false, nil
+	data, err = json.Marshal(sale)
+	if err != nil { return nil, false, err }
+	if _, err := s.store.Put("wms_pos_sale", sale.ID, data); err != nil { return nil, false, err }
+	if err := s.sos.Save(so); err != nil { return nil, false, err }
+	return map[string]any{"refund_id":refundID,"original_so_number":in.SONumber,"fully_refunded":fullyRefunded,"all_items_returned":allItemsReturned,"shipping_refund_cents":in.ShippingRefundCents,"total_cents":in.TotalCents,"external_refund_ref":in.ExternalRefundRef,"actor":actor,"replayed":false}, false, nil
 }
 
 func (s *Service) Refund(soNumber string, actor string) (map[string]any, error) {
