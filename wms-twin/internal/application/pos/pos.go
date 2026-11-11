@@ -561,47 +561,49 @@ func (s *Service) DispatchWithDetails(soNumber, carrier, tracking, actor string,
 	}
 	records, err := s.store.List("wms_pos_sale")
 	if err != nil { return nil, err }
+	var sale *SaleRecord
 	for _, record := range records {
-		var sale SaleRecord
-		if json.Unmarshal(record.Data, &sale) != nil || sale.SOID != so.SOID { continue }
-		if sale.PhoneOrder && sale.Status != "DISPATCHED" {
-			aggregated := make(map[string]SaleLine)
-			for _, line := range sale.Lines {
-				key := fmt.Sprintf("%d:%d:%d", line.WarehouseID, line.BinID, line.ItemID)
-				current := aggregated[key]
-				current.WarehouseID, current.BinID, current.ItemID = line.WarehouseID, line.BinID, line.ItemID
-				current.Quantity += line.Quantity
-				aggregated[key] = current
-			}
-			for key, line := range aggregated {
-				base := sha256.Sum256([]byte(sale.ID + "|dispatch|" + key))
-				releaseID := "pos-rel-" + hex.EncodeToString(base[:12])
-				commitID := "pos-out-" + hex.EncodeToString(base[:12])
-				if _, err := s.ledger.Release(inventoryledger.QuantityCommand{OperationID:releaseID, WarehouseID:line.WarehouseID, BinID:line.BinID, ItemID:line.ItemID, Quantity:line.Quantity}); err != nil { return nil, err }
-				if _, err := s.ledger.Adjust(inventoryledger.AdjustCommand{OperationID:commitID, WarehouseID:line.WarehouseID, BinID:line.BinID, ItemID:line.ItemID, Delta:-line.Quantity}); err != nil { return nil, err }
-			}
-			sale.Status = "DISPATCHING"
-			data, _ := json.Marshal(sale)
-			if _, err := s.store.Put("wms_pos_sale", sale.ID, data); err != nil { return nil, err }
-		}
+		var candidate SaleRecord
+		if json.Unmarshal(record.Data, &candidate) == nil && candidate.SOID == so.SOID { copy := candidate; sale = &copy; break }
 	}
-	shipment, err := s.fulfill.Fulfill(fulfillment.FulfillInput{
-		SOID:so.SOID, Carrier:carrier, TrackingNumber:tracking, WarehouseID:so.WarehouseID,
-	}, allowed, isAdmin)
-	if err != nil { return nil, err }
-	for _, record := range records {
-		var sale SaleRecord
-		if json.Unmarshal(record.Data, &sale) == nil && sale.SOID == so.SOID && sale.PhoneOrder {
+	if sale == nil { return nil, fmt.Errorf("POS sale metadata not found") }
+	if !sale.PhoneOrder { return nil, fmt.Errorf("only phone orders can use POS dispatch") }
+	if so.Status == salesorders.StatusShipped && (sale.Status == "DISPATCHING" || sale.Status == "DISPATCHED") {
+		shipment, err := s.fulfill.GetShipment(so.SOID)
+		if err != nil { return nil, err }
+		if shipment.Status != "SHIPPED" { return nil, fulfillment.ErrState }
+		if sale.Status != "DISPATCHED" {
 			sale.Status = "DISPATCHED"
 			data, _ := json.Marshal(sale)
 			if _, err := s.store.Put("wms_pos_sale", sale.ID, data); err != nil { return nil, err }
 		}
+		return map[string]any{"so_id":so.SOID,"so_number":so.SONumber,"status":shipment.Status,"carrier":shipment.Carrier,"tracking_number":shipment.TrackingNumber,"shipped_at":shipment.ShippedAt,"actor":actor,"replayed":true}, nil
 	}
-	return map[string]any{
-		"so_id":so.SOID, "so_number":so.SONumber, "status":shipment.Status,
-		"carrier":shipment.Carrier, "tracking_number":shipment.TrackingNumber,
-		"shipped_at":shipment.ShippedAt, "actor":actor,
-	}, nil
+	if sale.Status == "DISPATCHED" { return nil, fulfillment.ErrState }
+	aggregated := make(map[string]SaleLine)
+	for _, line := range sale.Lines {
+		key := fmt.Sprintf("%d:%d:%d", line.WarehouseID, line.BinID, line.ItemID)
+		current := aggregated[key]
+		current.WarehouseID, current.BinID, current.ItemID = line.WarehouseID, line.BinID, line.ItemID
+		current.Quantity += line.Quantity
+		aggregated[key] = current
+	}
+	for key, line := range aggregated {
+		base := sha256.Sum256([]byte(sale.ID + "|dispatch|" + key))
+		releaseID := "pos-rel-" + hex.EncodeToString(base[:12])
+		commitID := "pos-out-" + hex.EncodeToString(base[:12])
+		if _, err := s.ledger.Release(inventoryledger.QuantityCommand{OperationID:releaseID, WarehouseID:line.WarehouseID, BinID:line.BinID, ItemID:line.ItemID, Quantity:line.Quantity}); err != nil { return nil, err }
+		if _, err := s.ledger.Adjust(inventoryledger.AdjustCommand{OperationID:commitID, WarehouseID:line.WarehouseID, BinID:line.BinID, ItemID:line.ItemID, Delta:-line.Quantity}); err != nil { return nil, err }
+	}
+	sale.Status = "DISPATCHING"
+	data, _ := json.Marshal(sale)
+	if _, err := s.store.Put("wms_pos_sale", sale.ID, data); err != nil { return nil, err }
+	shipment, err := s.fulfill.Fulfill(fulfillment.FulfillInput{SOID:so.SOID, Carrier:carrier, TrackingNumber:tracking, WarehouseID:so.WarehouseID}, allowed, isAdmin)
+	if err != nil { return nil, err }
+	sale.Status = "DISPATCHED"
+	data, _ = json.Marshal(sale)
+	if _, err := s.store.Put("wms_pos_sale", sale.ID, data); err != nil { return nil, err }
+	return map[string]any{"so_id":so.SOID,"so_number":so.SONumber,"status":shipment.Status,"carrier":shipment.Carrier,"tracking_number":shipment.TrackingNumber,"shipped_at":shipment.ShippedAt,"actor":actor,"replayed":false}, nil
 }
 
 func (s *Service) Dispatch(soNumber, actor string) (map[string]any, error) {
