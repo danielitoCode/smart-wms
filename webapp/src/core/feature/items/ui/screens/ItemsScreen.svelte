@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { getContext } from 'svelte';
+	import type { I18nState } from '../../../../lib/i18n/i18n.svelte';
+	const i18n = getContext<I18nState>('i18n');
 	import { onMount } from 'svelte';
 	import { createItemsState } from '../state/itemsState.svelte';
 
@@ -16,37 +19,37 @@
 
 <section class="page">
 	<header>
-		<h1>Productos</h1>
-		<p class="subtitle">Consulta y busca los productos registrados en el almacén.</p>
+		<h1>{i18n.t(i18n.t('Productos'))}</h1>
+		<p class="subtitle">{i18n.t(i18n.t('Consulta y busca los productos registrados en el almacén.'))}</p>
 	</header>
 
 	<form class="search" onsubmit={onSearch}>
 		<input
 			type="search"
-			placeholder="Buscar por código, nombre o código de barras"
+			placeholder={i18n.t(i18n.t('Buscar por código, nombre o código de barras'))}
 			value={state.query}
 			oninput={(e) => state.setQuery(e.currentTarget.value)}
 		/>
-		<button type="submit" class="accent" disabled={state.loading}>Buscar</button>
+		<button type="submit" class="accent" disabled={state.loading}>{i18n.t(i18n.t('Buscar'))}</button>
 	</form>
 
 	{#if state.loading}
-		<p class="status">Cargando…</p>
+		<p class="status">{i18n.t(i18n.t('Cargando…'))}</p>
 	{:else if state.error}
 		<p class="status error" role="alert">{state.error}</p>
-		<button type="button" onclick={() => state.load()}>Reintentar</button>
+		<button type="button" onclick={() => state.load()}>{i18n.t(i18n.t('Reintentar'))}</button>
 	{:else if state.items.length === 0}
-		<p class="status">Todavía no hay productos registrados.</p>
+		<p class="status">{i18n.t(i18n.t('Todavía no hay productos registrados.'))}</p>
 	{:else}
 		<div class="table-wrap">
 			<table>
 				<thead>
 					<tr>
-						<th>SKU</th>
-						<th>Nombre</th>
-						<th>Código de barras</th>
-						<th>Categoría</th>
-						<th>Estado</th>
+						<th>{i18n.t(i18n.t('SKU'))}</th>
+						<th>{i18n.t(i18n.t('Nombre'))}</th>
+						<th>{i18n.t(i18n.t('Código de barras'))}</th>
+						<th>{i18n.t(i18n.t('Categoría'))}</th>
+						<th>{i18n.t(i18n.t('Estado'))}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -56,7 +59,7 @@
 							<td>{item.name}</td>
 							<td>{item.upc ?? '—'}</td>
 							<td>{item.category ?? '—'}</td>
-							<td>{item.active ? 'Activo' : 'Inactivo'}</td>
+							<td>{item.active ? i18n.t('Activo') : i18n.t('Inactivo')}</td>
 						</tr>
 					{/each}
 				</tbody>
