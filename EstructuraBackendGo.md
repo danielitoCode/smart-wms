@@ -242,3 +242,12 @@ Las actualizaciones de una external_version más nueva se rechazan explícitamen
 ### Mesh
 
 `mesh.Start(ctx)` detecta el Host() de LibP2PTransport. En esa ruta inicia `dht.New(..., dht.ModeServer)`, Bootstrap y `pubsub.NewGossipSub`. Los topics se suscriben y los mensajes recibidos se entregan a handlers con deduplicación local. `FindClosestPeers`, `ProvideCID` y `FindProviders` exponen operaciones DHT. TCP/local mantiene el adapter TTL y no se declara compatible con Kademlia/GossipSub.
+
+
+### Recuperación final y arranque estricto del mesh
+
+`snapshot.RestoreSafely` registra `wms_inventory_restore`, crea un snapshot de respaldo de la proyección actual, persiste PREPARING, aplica RestoreBalances y guarda COMPLETED. El mismo operation_id devuelve el resultado previo y backup_snapshot_id. La escritura del ledger sigue siendo una operación CoreStore local con expected version, no un commit distribuido.
+
+`Server.StartBackground(ctx)` devuelve error si el transporte expone un host libp2p y no se pueden iniciar DHT/GossipSub. `Runtime.New` propaga el error y detiene el nodo, en vez de iniciar la API anunciando una red no disponible. Para la ruta libp2p configuro `PRISMATEC_TRANSPORT=libp2p` y una multiaddr en `PRISMATEC_NETWORK_ADDR`; TCP y modo offline conservan el fallback experimental.
+
+El dispatcher de eventos recorre los eventos persistidos y llama `DeliverEventAt` con CreatedAt original. La suscripción no recibe eventos anteriores a su CreatedAt. El registro de delivery por subscription/event_id evita duplicados.
