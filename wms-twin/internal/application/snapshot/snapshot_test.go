@@ -35,7 +35,7 @@ func TestCreateAndVerifyInventorySnapshot(t *testing.T) {
 		t.Fatalf("snapshot did not round-trip: created=%#v loaded=%#v", created, loaded)
 	}
 
-	loaded.Rows[0]["on_hand"] = int64(999)
+	loaded.Rows[0].OnHand = 999
 	data, err := json.Marshal(loaded)
 	if err != nil {
 		t.Fatal(err)
