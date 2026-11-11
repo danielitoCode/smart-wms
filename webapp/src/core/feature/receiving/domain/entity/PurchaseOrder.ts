@@ -1,42 +1,37 @@
 /**
- * Receiving workflow projection of a purchase order.
+ * Receiving workflow projection returned by GET /receiving/po/<barcode>.
  *
- * The canonical purchasing aggregate lives in the purchase-orders feature.
- * These types preserve the barcode-receiving use case and its operational
- * line-progress information.
+ * The projection intentionally contains only fields emitted by that
+ * endpoint. Canonical purchasing details and administrative fields belong
+ * to the purchase-orders feature.
  */
-
-export type PurchaseOrderStatus = 'OPEN' | 'PARTIAL' | 'RECEIVED' | 'CLOSED' | 'ARCHIVED' | string;
-export type PoLineStatus = 'PENDING' | 'PARTIAL' | 'RECEIVED' | 'COMPLETE' | string;
+export type PurchaseOrderStatus = 'OPEN' | 'PARTIAL' | 'RECEIVED';
+export type PoLineStatus = 'PENDING' | 'PARTIAL' | 'RECEIVED';
 
 export type PurchaseOrder = {
 	poId: number;
 	poNumber: string;
-	vendorName: string;
+	vendorName: string | null;
 	status: PurchaseOrderStatus;
 	warehouseId: number;
-	poBarcode?: string | null;
-	vendorId?: string | null;
-	expectedDate?: string | null;
-	notes?: string | null;
-	createdAt?: string | null;
-	receivedAt?: string | null;
-	createdBy?: string | null;
+	poBarcode: string | null;
+	expectedDate: string | null;
+	notes: string | null;
+	createdAt: string | null;
 };
 
 export type PurchaseOrderLine = {
 	poLineId: number;
+	lineNumber: number;
 	itemId: number;
 	sku: string;
 	itemName: string;
 	upc: string | null;
+	mpn: string | null;
 	quantityOrdered: number;
 	quantityReceived: number;
 	quantityRemaining: number;
 	status: PoLineStatus;
-	lineNumber?: number;
-	unitCost?: number | null;
-	mpn?: string | null;
 };
 
 export type PurchaseOrderDetail = {
