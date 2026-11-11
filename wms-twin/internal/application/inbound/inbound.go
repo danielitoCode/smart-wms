@@ -63,7 +63,7 @@ func (s *Service) Write(req WriteRequest, actor string) (map[string]any, error) 
 		idemKey := ""
 		fingerprint := ""
 		if sourceSystem != "" || externalID != "" {
-			if sourceSystem == "" || strings.TrimSpace(externalID) == "" {
+			if sourceSystem == "" || len(sourceSystem) > 128 || strings.TrimSpace(externalID) == "" || len(externalID) > 256 || len(externalVersion) > 128 {
 				err = fmt.Errorf("source_system and external_id must be supplied together")
 			} else {
 				canonical, marshalErr := json.Marshal(rec)
