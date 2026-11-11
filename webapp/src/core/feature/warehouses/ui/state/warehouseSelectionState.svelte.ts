@@ -1,6 +1,7 @@
 import { createWarehousesDependencies } from '../../di/warehouses.dependencies';
 import type { Warehouse } from '../../domain/entity/Warehouse';
 import type { AuthUser } from '../../../../infrastructure/auth/AuthSession';
+import { resolveWarehouseSelection } from '../../../auth/domain/policy/AccessPolicy';
 
 const deps = createWarehousesDependencies();
 const STORAGE_KEY = 'sentry_warehouse_id';
@@ -23,6 +24,7 @@ export function createWarehouseSelectionState() {
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 	let initialized = $state(false);
+	let selectableIds = $state<number[]>([]);
 
 	async function load(user: AuthUser | null) {
 		if (loading || initialized) return;
@@ -33,19 +35,22 @@ export function createWarehouseSelectionState() {
 		try {
 			if (canSelect) {
 				warehouses = await deps.listAdminWarehouses.execute();
-				const savedExists = savedId != null && warehouses.some(row => row.id === savedId);
-				warehouseId = savedExists ? savedId : warehouses[0]?.id ?? null;
-				if (warehouseId != null) persistId(warehouseId);
+				selectableIds = warehouses.map(row => row.id);
+				warehouseId = resolveWarehouseSelection({ role: user?.role ?? 'USER', allowedPages: user?.allowedPages ?? [], assignedWarehouseIds: user?.warehouseIds ?? [], availableWarehouseIds: selectableIds, savedId });
+				persistId(warehouseId);
 			} else {
 				// Match React WarehouseProvider: users without the warehouses page
 				// grant keep the persisted selection but do not receive the global picker.
-				warehouseId = savedId ?? user?.warehouseIds?.[0] ?? null;
-				if (warehouseId != null) persistId(warehouseId);
+				selectableIds = [...(user?.warehouseIds ?? [])];
+				warehouseId = resolveWarehouseSelection({ role: user?.role ?? 'USER', allowedPages: user?.allowedPages ?? [], assignedWarehouseIds: selectableIds, availableWarehouseIds: [], savedId });
+				persistId(warehouseId);
 			}
 			initialized = true;
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'No se pudo cargar el almacén seleccionado';
-			warehouseId = savedId ?? user?.warehouseIds?.[0] ?? null;
+			selectableIds = [...(user?.warehouseIds ?? [])];
+			warehouseId = resolveWarehouseSelection({ role: user?.role ?? 'USER', allowedPages: user?.allowedPages ?? [], assignedWarehouseIds: selectableIds, availableWarehouseIds: [], savedId });
+			persistId(warehouseId);
 			initialized = true;
 		} finally {
 			loading = false;
@@ -53,7 +58,7 @@ export function createWarehouseSelectionState() {
 	}
 
 	function select(id: number) {
-		if (!Number.isInteger(id) || id <= 0) return;
+		if (!Number.isInteger(id) || id <= 0 || !selectableIds.includes(id)) return;
 		warehouseId = id;
 		persistId(id);
 	}
