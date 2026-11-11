@@ -359,3 +359,6 @@ En este corte cerré varios huecos de idempotencia y recuperación que encontré
 - El arranque ya no trae una clave JWT fija ni credenciales demo implícitas. Exijo JWT_SECRET de al menos 32 caracteres y solo creo operator/admin de demo cuando activo explícitamente `WMS_TWIN_ALLOW_DEMO_BOOTSTRAP=true`.
 
 Para validar esta rama primero ejecutaré CI y la suite Go. Después comenzaré las pruebas reales en un único nodo y con datos aislados. El procesador de pagos externo, la actualización de recursos con external_version más nueva y la coordinación HA del worker siguen siendo integraciones/contratos pendientes; no las disfrazo como terminadas.
+
+
+La prueba de cancelación RMA verifica el saldo neto en cero, no la ausencia física de la fila del balance. El ledger conserva balances históricos con cantidad cero, por lo que la aserción correcta es OnHand=0 y Allocated=0.
