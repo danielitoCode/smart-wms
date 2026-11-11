@@ -424,3 +424,12 @@ La lectura de GitHub mostraba `feat/wms-prismatec-genesis` sin branch protection
 - **Tests añadidos:** POS checkout/refund/dispatch; fulfillment void; RMA restock; webhook secret encryption/outbox retry; inbound idempotency; snapshot restore; persistencia de eventos remotos.
 - **Alcance:** no alteré Flask, frontends ni los cuatro artefactos existentes en la raíz.
 - **Validación:** los workflows de esta rama se lanzaron, pero siguen pendientes de resultado. No declaro la suite aprobada hasta leer los logs y corregir cualquier error que aparezca.
+
+
+### AUD-0027 — Backup previo a snapshot restore y reconciliación del outbox
+
+- Snapshot restore ahora crea un snapshot de respaldo antes de reemplazar el ledger; persiste operación PREPARING/COMPLETED con backup_snapshot_id y resultado para replay seguro.
+- La API devuelve `backup_snapshot_id`; exige expected_ledger_version explícito.
+- El worker de eventos recorre los eventos persistidos y reintenta su inclusión en webhook outbox por event_id/subscription, respetando CreatedAt de la suscripción.
+- El runtime propaga el error de arranque del DHT/GossipSub cuando el transporte es LibP2PTransport; no inicia API si la configuración libp2p no puede inicializarse.
+- Configuración requerida para DHT real: `PRISMATEC_TRANSPORT=libp2p` y `PRISMATEC_NETWORK_ADDR` multiaddr. TCP/local conserva TTL fan-out.
