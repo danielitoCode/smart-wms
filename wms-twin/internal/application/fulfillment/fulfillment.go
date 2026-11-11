@@ -2,6 +2,9 @@ package fulfillment
 
 import (
 	"errors"
+	"encoding/json"
+	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -18,12 +21,15 @@ var (
 )
 
 type Service struct {
+	store *corestore.Store
 	sos *salesorders.Repository
 	mu  sync.Mutex
 }
 
-func New(_ *corestore.Store, sos *salesorders.Repository) *Service {
-	return &Service{sos: sos}
+const shipmentKind = "wms_fulfillment"
+
+func New(store *corestore.Store, sos *salesorders.Repository) *Service {
+	return &Service{store: store, sos: sos}
 }
 
 func contains(ids []int64, id int64) bool {
@@ -114,6 +120,10 @@ type Shipment struct {
 	TrackingNumber string    `json:"tracking_number"`
 	ShippedAt      time.Time `json:"shipped_at"`
 	Status         string    `json:"status"`
+	PreShipStatus  string    `json:"pre_ship_status"`
+	VoidedAt       *time.Time `json:"voided_at,omitempty"`
+	VoidedBy       string     `json:"voided_by,omitempty"`
+	VoidReason     string     `json:"void_reason,omitempty"`
 }
 
 func (s *Service) Fulfill(in FulfillInput, allowed []int64, isAdmin bool) (Shipment, error) {
@@ -132,13 +142,88 @@ func (s *Service) Fulfill(in FulfillInput, allowed []int64, isAdmin bool) (Shipm
 			return Shipment{}, ErrState
 		}
 	}
+	if strings.TrimSpace(in.Carrier) == "" || strings.TrimSpace(in.TrackingNumber) == "" {
+		return Shipment{}, ErrInvalid
+	}
+	now := time.Now().UTC()
+	shipment := Shipment{
+		SOID: so.SOID, Carrier: strings.TrimSpace(in.Carrier),
+		TrackingNumber: strings.TrimSpace(in.TrackingNumber),
+		ShippedAt: now, Status: "PREPARING", PreShipStatus: so.Status,
+	}
+	if s.store == nil {
+		return Shipment{}, fmt.Errorf("fulfillment store is not configured")
+	}
+	data, err := json.Marshal(shipment)
+	if err != nil { return Shipment{}, err }
+	if _, err := s.store.Put(shipmentKind, strconv.FormatInt(so.SOID, 10), data); err != nil {
+		return Shipment{}, err
+	}
+	for i := range so.Lines {
+		line := &so.Lines[i]
+		qty := line.QuantityPacked
+		if qty == 0 { qty = line.QuantityPicked }
+		if qty < line.QuantityOrdered { return Shipment{}, ErrState }
+		line.QuantityShipped = qty
+		line.Status = salesorders.LineShipped
+	}
 	so.Status = salesorders.StatusShipped
 	if err := s.sos.Save(so); err != nil {
 		return Shipment{}, err
 	}
-	return Shipment{
-		SOID: so.SOID, Carrier: strings.TrimSpace(in.Carrier),
-		TrackingNumber: strings.TrimSpace(in.TrackingNumber),
-		ShippedAt: time.Now().UTC(), Status: "SHIPPED",
-	}, nil
+	shipment.Status = "SHIPPED"
+	data, err = json.Marshal(shipment)
+	if err != nil { return Shipment{}, err }
+	if _, err := s.store.Put(shipmentKind, strconv.FormatInt(so.SOID, 10), data); err != nil {
+		return Shipment{}, fmt.Errorf("order shipped but shipment marker persistence failed: %w", err)
+	}
+	return shipment, nil
+}
+
+// Void reverses the latest shipment record for an order. The transition is
+// persisted as VOIDING before the order is changed, so a retry can finish a
+// crash-interrupted void without applying the reversal twice.
+func (s *Service) Void(soID int64, actor, reason string) (Shipment, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.store == nil { return Shipment{}, fmt.Errorf("fulfillment store is not configured") }
+	key := strconv.FormatInt(soID, 10)
+	rec, ok, err := s.store.Get(shipmentKind, key)
+	if err != nil { return Shipment{}, err }
+	if !ok { return Shipment{}, ErrNotFound }
+	var shipment Shipment
+	if err := json.Unmarshal(rec.Data, &shipment); err != nil { return Shipment{}, err }
+	if shipment.Status == "VOIDED" { return shipment, nil }
+	if shipment.Status != "SHIPPED" && shipment.Status != "VOIDING" {
+		return Shipment{}, ErrState
+	}
+	so, err := s.sos.Get(soID)
+	if err != nil { return Shipment{}, ErrNotFound }
+	if shipment.PreShipStatus == "" { shipment.PreShipStatus = salesorders.StatusPicked }
+	if shipment.Status != "VOIDING" {
+		shipment.Status = "VOIDING"
+		data, _ := json.Marshal(shipment)
+		if _, err := s.store.Put(shipmentKind, key, data); err != nil { return Shipment{}, err }
+	}
+	if so.Status == salesorders.StatusShipped {
+		so.Status = shipment.PreShipStatus
+		for i := range so.Lines {
+			line := &so.Lines[i]
+			line.QuantityShipped = 0
+			if shipment.PreShipStatus == salesorders.StatusPacked {
+				line.Status = salesorders.LinePacked
+			} else {
+				line.Status = salesorders.LinePicked
+			}
+		}
+		if err := s.sos.Save(so); err != nil { return Shipment{}, err }
+	} else if so.Status != shipment.PreShipStatus {
+		return Shipment{}, fmt.Errorf("%w: order is %s, expected SHIPPED or %s", ErrState, so.Status, shipment.PreShipStatus)
+	}
+	now := time.Now().UTC()
+	shipment.Status, shipment.VoidedAt, shipment.VoidedBy, shipment.VoidReason = "VOIDED", &now, actor, strings.TrimSpace(reason)
+	data, err := json.Marshal(shipment)
+	if err != nil { return Shipment{}, err }
+	if _, err := s.store.Put(shipmentKind, key, data); err != nil { return Shipment{}, err }
+	return shipment, nil
 }
