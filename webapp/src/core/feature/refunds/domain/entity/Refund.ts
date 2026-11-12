@@ -8,7 +8,7 @@ import type { SalesOrder, SalesOrderLine } from '../../../sales-orders/domain/en
 export type Refund = Omit<SalesOrder, 'orderType' | 'lines' | 'externalId'> & {
 	orderType: 'refund';
 	externalId?: string | null;
-	parentSalesOrderId: number;
+	parentSalesOrderId: number | null;
 	/** Credit-memo amount is represented by the signed sales_orders.order_total. */
 	orderTotal: number;
 	lines: SalesOrderLine[];
