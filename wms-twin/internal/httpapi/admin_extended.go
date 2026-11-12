@@ -574,7 +574,6 @@ func (s *Server) warehousesPublic(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 404, map[string]string{"error": "Not found"})
 }
 
-
 func (s *Server) adminInboundActivity(w http.ResponseWriter, r *http.Request, parts []string) {
 	if r.Method != http.MethodGet {
 		writeJSON(w, 405, map[string]string{"error": "method not allowed"})

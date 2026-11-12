@@ -521,7 +521,6 @@ func (s *Server) salesOrdersAdmin(w http.ResponseWriter, r *http.Request, rest s
 	writeJSON(w, 404, map[string]string{"error": "not found"})
 }
 
-
 func paginateAny[T any](values []T, page, perPage int) ([]T, int, int, int) {
 	total := len(values)
 	if perPage < 1 {
