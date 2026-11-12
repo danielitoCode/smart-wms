@@ -1,11 +1,14 @@
-import type {CustomerRepository} from "#core/feature/customers/domain/repository/CustomerRepository.ts";
-import type {Customer} from "#core/feature/customers/domain/entity/Customer.ts";
+import type { CustomerId } from '../entity/Customer';
+import type { CustomerRepository } from '../repository/CustomerRepository';
 
 export class DeleteCustomerUseCase {
-    constructor(private readonly repository: CustomerRepository) {}
+	constructor(private readonly repository: CustomerRepository) {}
 
-    async execute(customerId: number): Promise<void> {
-        if (customerId === null) return
-        await this.repository.deleteCustomer(customerId)
-    }
+	execute(id: CustomerId): Promise<void> {
+		const value = id?.trim() ?? '';
+		if (!value) {
+			throw new Error('customer id is required');
+		}
+		return this.repository.delete(value);
+	}
 }

@@ -4,8 +4,11 @@
  * Sales orders may also retain customer snapshots for historical accuracy.
  */
 
+/** PostgreSQL UUID string used by the customer endpoints. */
+export type CustomerId = string;
+
 export type Customer = {
-	canonicalId: string;
+	canonicalId: CustomerId;
 	externalId: string;
 	customerName: string | null;
 	email: string | null;
@@ -19,8 +22,9 @@ export type Customer = {
 	latestInboundId: number;
 };
 
+/** Payload for creating a customer (name required from admin/UI flows). */
 export type CreateCustomer = {
-	customerName?: string | null;
+	customerName: string;
 	email?: string | null;
 	phone?: string | null;
 	billingAddress?: string | null;
@@ -29,4 +33,13 @@ export type CreateCustomer = {
 	isActive?: boolean | null;
 };
 
-export type UpdateCustomer = Partial<CreateCustomer>;
+/** Partial update; omitted fields are left unchanged. */
+export type UpdateCustomer = {
+	customerName?: string | null;
+	email?: string | null;
+	phone?: string | null;
+	billingAddress?: string | null;
+	shippingAddress?: string | null;
+	taxId?: string | null;
+	isActive?: boolean | null;
+};

@@ -1,11 +1,14 @@
-import type {CustomerRepository} from "#core/feature/customers/domain/repository/CustomerRepository.ts";
-import type {Customer} from "#core/feature/customers/domain/entity/Customer.ts";
+import type { Customer, CustomerId } from '../entity/Customer';
+import type { CustomerRepository } from '../repository/CustomerRepository';
 
 export class GetCustomerByIdUseCase {
-    constructor(private readonly repository: CustomerRepository) {}
+	constructor(private readonly repository: CustomerRepository) {}
 
-    execute(customerId: number): Promise<Customer | null> {
-        if (customerId === null) throw new Error('customerId must be valid number');
-        return this.repository.getById(customerId)
-    }
+	execute(id: CustomerId): Promise<Customer> {
+		const value = id?.trim() ?? '';
+		if (!value) {
+			throw new Error('customer id is required');
+		}
+		return this.repository.getById(value);
+	}
 }

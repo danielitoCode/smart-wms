@@ -1,9 +1,14 @@
-import type {Customer} from "#core/feature/customers/domain/entity/Customer.ts";
+import type {
+	CreateCustomer,
+	Customer,
+	CustomerId,
+	UpdateCustomer
+} from '../entity/Customer';
 
 export interface CustomerRepository {
-    getById(id: number): Promise<Customer>;
-    getAllCustomer(): Promise<Customer[]>;
-    addCustomer(customer: Customer): Promise<void>;
-    deleteCustomer(id: number): Promise<void>;
-    modifyCustomer(customer: Customer): Promise<void>;
+	getById(id: CustomerId): Promise<Customer>;
+	list(query?: { search?: string; active?: boolean | null }): Promise<Customer[]>;
+	create(input: CreateCustomer): Promise<Customer>;
+	update(id: CustomerId, input: UpdateCustomer): Promise<Customer>;
+	delete(id: CustomerId): Promise<void>;
 }

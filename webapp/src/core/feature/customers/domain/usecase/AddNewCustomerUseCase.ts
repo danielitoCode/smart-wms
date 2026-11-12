@@ -1,11 +1,14 @@
-import type {CustomerRepository} from "#core/feature/customers/domain/repository/CustomerRepository.ts";
-import type {Customer} from "#core/feature/customers/domain/entity/Customer.ts";
+import type { CreateCustomer, Customer } from '../entity/Customer';
+import type { CustomerRepository } from '../repository/CustomerRepository';
 
 export class AddNewCustomerUseCase {
-    constructor(private readonly repository: CustomerRepository) {}
+	constructor(private readonly repository: CustomerRepository) {}
 
-    async execute(newCustomer: Customer): Promise<void> {
-        if (newCustomer.customerName === "") return
-        await this.repository.addCustomer(newCustomer)
-    }
+	execute(input: CreateCustomer): Promise<Customer> {
+		const customerName = input.customerName?.trim() ?? '';
+		if (!customerName) {
+			throw new Error('El nombre del cliente es obligatorio');
+		}
+		return this.repository.create({ ...input, customerName });
+	}
 }
