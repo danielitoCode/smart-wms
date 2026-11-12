@@ -5,8 +5,9 @@
  */
 import type { SalesOrder, SalesOrderLine } from '../../../sales-orders/domain/entity/SalesOrder';
 
-export type Refund = Omit<SalesOrder, 'orderType' | 'lines'> & {
+export type Refund = Omit<SalesOrder, 'orderType' | 'lines' | 'externalId'> & {
 	orderType: 'refund';
+	externalId?: string | null;
 	parentSalesOrderId: number;
 	/** Credit-memo amount is represented by the signed sales_orders.order_total. */
 	orderTotal: number;
