@@ -185,10 +185,10 @@ El diagrama es una guía de dependencias funcionales, no una afirmación de que 
 - [x] F0.2. Confirmar el árbol actual de `webapp/src` y las convenciones de feature-first existentes. **Evidencia:** inspección de `core/feature`, `core/infrastructure`, `lib`, `routes` y `test/unitTest`.
 - [ ] F0.3. Documentar para cada feature endpoints Flask reales, DTO, errores, permisos y efectos secundarios. **En curso:** inventario transversal de rutas, esquemas Pydantic, guards de página, sesión y alcance de almacén incorporado en `webapp/docs/API-Contracts.md`; los payloads/respuestas y side effects se verifican feature por feature mediante tests.
 - [x] F0.4. Definir matriz de trazabilidad React → caso de uso → endpoint → ruta Svelte → prueba. **Evidencia:** matriz y plantilla de trazabilidad incorporadas en este documento; su rellenado por feature continúa durante cada migración.
-- [~] F0.5. Establecer comandos de validación y suites separadas: dominio, aplicación, infraestructura, UI e integración. **En curso:** `npm run check`, `npm test` y `npm run build` están operativos; la suite Vitest completa pasa en CI. Existen pruebas de casos de uso, mapper e infraestructura, pero faltan suites independientes de aplicación, UI e integración y comandos filtrados por capa.
+- [~] F0.5. Establecer comandos de validación y suites separadas: dominio, aplicación, infraestructura, UI e integración. **En curso:** comandos independientes ejecutados y aprobados en CI: `test:domain` (2 archivos/8 tests), `test:application` (27/63), `test:infrastructure` (3/14), `test:ui` (1/4), `test:integration` (1/1) y regresión completa `test:all` (34/90). `npm run check` y `npm run build` también pasan. La suite UI actualmente valida i18n, pero aún faltan pruebas de interacción de componentes/pantallas; no se declara cerrada.
 - [x] F0.6. Verificar cliente HTTP compartido: cookies, CSRF, expiración, timeout, cancelación y traducción de errores. **Evidencia:** cookies HttpOnly mediante `credentials: include`, CSRF de doble envío, respuesta 401/403, normalización de errores, timeout y cancelación cubiertos por código y pruebas; CI Webapp verde en el commit `46c0f48`.
-- [~] F0.7. Verificar i18n en italiano (idioma principal), español e inglés; no introducir textos nuevos sin claves de traducción. **En curso:** catálogo registrado: 204 claves únicas; italiano 204/204, inglés inicialmente 201/204 (98,53%); se completaron `Contraseña actualizada`, `Código` y `¿Eliminar`. Test actualizado para recorrer las llamadas literales `t(...)` de todos los `.svelte`/`.ts` y medir claves reales; cerrar cuando CI confirme 100%. Español conserva fallback canónico.
-- [~] F0.8. Verificar navegación, guardas de sesión, permisos y resolución de almacenes. **En curso:** matriz P-01…P-16 en `webapp/docs/API-Contracts.md`; política de acceso frontend extraída y probada; selección de almacén descarta IDs persistidos fuera de `warehouse_ids` y rechaza selección fuera del conjunto autorizado. Falta regresión HTTP real contra Flask.
+- [x] F0.7. Verificar i18n en italiano (idioma principal), español e inglés; no introducir textos nuevos sin claves de traducción. **Verificado:** catálogo registrado con 204 claves únicas; italiano 204/204 e inglés 204/204 (100%). El test recorre las llamadas literales `t(...)` de archivos `.svelte`/`.ts`, está incluido explícitamente en Vitest y pasó en CI (4/4 tests de i18n). Español conserva el texto fuente canónico y fallback.
+- [~] F0.8. Verificar navegación, guardas de sesión, permisos y resolución de almacenes. **En curso:** matriz P-01…P-16 en `webapp/docs/API-Contracts.md`; política de acceso frontend extraída y probada; selección de almacén descarta IDs persistidos fuera de `warehouse_ids` y rechaza selección fuera del conjunto autorizado. Falta convertir todos los escenarios de la matriz en pruebas de regresión HTTP contra Flask, incluyendo revocación de grants/scope con JWT vigente.
 - [x] F0.9. Definir convención de evidencia por PR: tests ejecutados, resultado, endpoints contrastados y limitaciones. **Evidencia:** protocolo de trabajo, Definition of Done y registro de progreso incluidos en este documento.
 
 **Salida obligatoria:** plantilla de checklist aprobada, contratos localizados y validaciones base ejecutables.
@@ -198,6 +198,18 @@ El diagrama es una guía de dependencias funcionales, no una afirmación de que 
 **Documentación de contratos:** `webapp/docs/API-Contracts.md` contiene el inventario de rutas Flask, request schemas, page grants, controles de sesión, WMS token scopes y matriz de regresión P-01…P-16. Se distingue el inventario de endpoints del cierre de cada response DTO: cada feature debe añadir pruebas de contrato para envelope, nulabilidad, errores y efectos secundarios.
 
 **Corte de trabajo:** 2026-11-11. La fase permanece **en curso**; no se marca completa hasta cerrar contratos, suites independientes, cobertura de idioma y regresión de autorización. Se ha iniciado el levantamiento contractual de F1.1 (Items) para que el primer módulo de Fase 1 no arranque sobre DTO o endpoints supuestos.
+
+#### Validación de seguridad y CI — 2026-11-11
+
+Se corrigieron los bloqueos del pipeline de dependencias antes de continuar la migración:
+
+- Python: `PyJWT` actualizado de `2.13.0` a `2.15.0`. `pip-audit` terminó con **No known vulnerabilities found** (se mantienen únicamente las dos excepciones históricas documentadas en `audit.yml`: Flask-CORS debug-only y el aviso disputado de PyJWT).
+- Admin: overrides de `brace-expansion`, `browserslist`, `js-yaml`, `source-map-js`, `undici` y `zod`; Vite actualizado. Auditoría: **0 avisos HIGH/CRITICAL sin aceptar**.
+- Mobile: overrides para `@xmldom/xmldom`, `brace-expansion`, `browserslist`, `compression`, `decode-uri-component`, `js-yaml` 3.x/4.x, `joi`, `node-forge`, `shell-quote`, `source-map-js`, `undici`, `vite` y `zod`. Auditoría de producción y árbol completo: **0 avisos HIGH/CRITICAL sin aceptar**. Permanecen 2 excepciones documentadas de `image-size` (GHSA-5p2g-fcmc-qvqq y GHSA-w3rx-r6r6-pgpr), porque la versión publicada disponible sigue dentro del rango afectado; se limita su uso a parsers de assets internos en build.
+- Webapp: añadido `@types/node` para que `translations.test.ts` sea comprobado por TypeScript. Corregido `vite.config.ts` para que Vitest incluya el test de i18n que antes quedaba fuera del patrón `src/test`.
+- Lockfiles de admin, mobile y webapp regenerados con npm y guardados en el commit `06b476a`. La automatización de refresh ejecutó auditorías, check, build y todas las suites antes de guardar los lockfiles.
+
+**Evidencia CI:** [Refresh dependency lockfiles — run 42977481412](https://github.com/danielitoCode/smart-wms/actions/runs/42977481412). Resultado: `svelte-check` 0 errores (7 warnings preexistentes de accesibilidad/CSS), build correcto, 34 archivos de test y 90 tests aprobados; `pip-audit` sin vulnerabilidades conocidas; auditorías npm sin HIGH/CRITICAL no aceptados. Además, en el commit `140f72a` los workflows ordinarios quedaron aprobados: [Webapp CI](https://github.com/danielitoCode/smart-wms/actions/runs/42977875511), [Dependency Audit](https://github.com/danielitoCode/smart-wms/actions/runs/42977875515), [Lockfile Version Check](https://github.com/danielitoCode/smart-wms/actions/runs/42977875555) y [gitleaks](https://github.com/danielitoCode/smart-wms/actions/runs/42977875440). El workflow general `Tests` seguía ejecutando la suite backend al registrar esta evidencia; su resultado se mantiene separado de los gates específicos de la migración.
 
 #### Evidencia de arquitectura y contratos revisados
 
@@ -802,7 +814,7 @@ Actualizar esta sección al cerrar cada PR/feature. Mantener una única fuente d
 
 | Hito | Estado | PR/commit | Evidencia / notas |
 |---|---|---|---|
-| Fase 0 — Preparación | [~] En curso | `8e63f13`, `1b46f09`, `7cb4528`, `fe95b2e`, `e909e9c`, `8328af0`, `cb3f298`, `8392b49`, `1368b6c`, `44b7575`, `1f19bb3`, `b530bc1`, `4432c84` | Contratos y matriz documentados; suites separadas; política de permisos y selección de almacén probadas; cobertura i18n medida y test estático añadido. Webapp CI del último candidato pendiente; no cerrar Fase 0 todavía |
+| Fase 0 — Preparación | [~] En curso | `8e63f13` … `4432c84`, `b06b06b`, `faa10f8`, `06b476a` | Auditorías, check, build y suites separadas aprobados en run 42977481412; gates ordinarios del commit 140f72a: Webapp CI, Dependency Audit, Lockfile Version Check y gitleaks en verde. F0.7 verificado; F0.3, F0.5 (tests UI de interacción) y F0.8 (regresión HTTP completa) siguen abiertos. |
 | Fase 1 — Catálogos | [ ] Pendiente | — | — |
 | Fase 2 — Inventario y conteos | [ ] Pendiente | — | — |
 | Fase 3 — Abastecimiento | [ ] Pendiente | — | — |
@@ -878,3 +890,10 @@ Actualizar esta sección al cerrar cada PR/feature. Mantener una única fuente d
 ---
 
 **Regla final:** el progreso se mide por capacidades verificadas y pruebas aprobadas, no por cantidad de rutas, componentes, entidades o archivos creados.
+
+
+#### Auditoría de features entity-only y primera integración UI — 2026-11-11
+
+Se verificó la rama `svelte-webapp` contra las páginas React de `main` y los contratos Flask. Se confirmó que carecían de capas de datos/UI: backorders, cycle-count-approvals, fraud, inter-warehouse-transfers, inventory-adjustments, pos-activity, preferred-bins, purchase-orders, refunds, returns, transfer-orders, users y vendors. `customers` se conserva como entidad canónica embebida en órdenes e integración: el React original no contiene pantalla administrativa independiente ni se confirmó un endpoint admin CRUD; no se inventa esa feature.
+
+Se añadió una vertical común de consulta conectada al ApiClient Flask: DTO, datasource, repositorio, caso de uso, DI, estado Svelte, catálogo de pantallas y ruta dinámica para los 13 módulos. Se añadieron navegación y guardas usando los page keys ya definidos en Flask. La consulta incluye filtros básicos, colas de backorders y resumen POS. **No equivale aún a paridad funcional completa de escritura**: CRUD, aprobaciones, cancelaciones, recepción RMA, importación y acciones de ciclo de vida necesitan implementaciones específicas y pruebas antes de cerrar estas migraciones.
