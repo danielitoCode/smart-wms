@@ -1,31 +1,3 @@
-import type {BackorderStatus} from "#core/feature/backorders/domain/entity/Backorder.ts";
-
-export type BackorderInboundPurchaseOrderDto = {
-    purchase_order_id?: number;
-    purchase_order_number: string;
-    expected_date: string | null;
-    quantity_remaining: number;
-};
-
-export type BackorderItemDto = {
-    item_id: number;
-    sku: string;
-    item_name: string;
-    quantity: number;
-    open_purchase_order: BackorderInboundPurchaseOrderDto | null;
-};
-
-export type BackorderDto = {
-    sales_order_id: number;
-    sales_order_number: string;
-    parent_sales_order_id: number;
-    parent_sales_order_number: string;
-    warehouse_id: number;
-    customer_name: string | null;
-    status: BackorderStatus;
-    opened_at: string | null;
-    fulfillable_since: string | null;
-    days_waiting: number;
-    cancellation_reason?: string | null;
-    items: BackorderItemDto[];
-};
+export type BackorderItemDto={sku:string;item_name:string;qty:number;open_po:{po_number:string;expected_date:string|null;quantity_remaining:number}|null};
+export type BackorderDto={so_id:number;so_number:string;parent_so_number:string|null;warehouse_id:number;status:string;customer_name:string|null;items:BackorderItemDto[];days_waiting:number;backorder_opened_at:string|null;fulfillable_since:string|null};
+export type BackorderListDto={tab:string;backorders:BackorderDto[]};

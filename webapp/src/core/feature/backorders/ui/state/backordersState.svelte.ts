@@ -1,0 +1,5 @@
+import {createBackordersDependencies} from '../../di/backorders.dependencies';import type {Backorder,BackorderQueueTab} from '../../domain/entity/Backorder';import {toUserMessage} from '../../../../infrastructure/errors/ApiError';const d=createBackordersDependencies();
+export function createBackordersState(){let rows=$state<Backorder[]>([]),tab=$state<BackorderQueueTab>('waiting'),loading=$state(false),saving=$state(false),error=$state<string|null>(null);
+async function load(warehouseId:number|null,nextTab=tab){loading=true;error=null;tab=nextTab;try{rows=await d.list.execute(warehouseId,tab);}catch(e){error=toUserMessage(e,'No se pudieron cargar los pedidos pendientes');}finally{loading=false;}}
+async function cancel(id:number,reason:string,warehouseId:number|null){saving=true;error=null;try{await d.cancel.execute(id,reason);await load(warehouseId);return true;}catch(e){error=toUserMessage(e,'No se pudo cancelar el pedido pendiente');return false;}finally{saving=false;}}
+return {get rows(){return rows;},get tab(){return tab;},get loading(){return loading;},get saving(){return saving;},get error(){return error;},load,cancel};}

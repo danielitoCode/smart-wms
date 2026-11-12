@@ -1,0 +1,3 @@
+import type {BackordersRepository} from '../repository/BackordersRepository';import type {BackorderQueueTab} from '../entity/Backorder';
+export class ListBackordersUseCase{constructor(private r:BackordersRepository){}execute(w:number|null,t:BackorderQueueTab){return this.r.list(w,t);}}
+export class CancelBackorderUseCase{constructor(private r:BackordersRepository){}execute(id:number,reason:string){if(!['found','customer_asked','refunded','parent_cancelled','other'].includes(reason))throw new Error('Motivo de cancelación no válido');return this.r.cancel(id,reason);}}
