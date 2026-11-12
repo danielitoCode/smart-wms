@@ -13,6 +13,7 @@
 	let { children } = $props();
 	let sidebarOpen = $state(false);
 	const guard = createAuthGuardState();
+	setContext('authGuard', guard);
 	const warehouseSelection = createWarehouseSelectionState();
 	setContext('warehouseSelection', warehouseSelection);
 

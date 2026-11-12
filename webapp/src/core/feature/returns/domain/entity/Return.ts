@@ -12,10 +12,11 @@ export type ReturnLine = SalesOrderLine & {
 	originalSalesOrderLineId?: number | null;
 };
 
-export type Return = Omit<SalesOrder, 'orderType' | 'lines' | 'status'> & {
+export type Return = Omit<SalesOrder, 'orderType' | 'lines' | 'status' | 'externalId'> & {
 	orderType: 'return';
+	externalId?: string | null;
 	status: ReturnStatus;
-	parentSalesOrderId: number;
+	parentSalesOrderId: number | null;
 	lines: ReturnLine[];
 	/** Soft void from migration 076; voided rows remain auditable. */
 	voidedAt?: string | null;
@@ -43,3 +44,6 @@ export type ReceiveReturn = {
 	notes?: string | null;
 	idempotencyKey?: string | null;
 };
+
+export type ReturnWarehouseOption={warehouseId:number;warehouseCode:string;warehouseName:string};
+export type ReturnBinOption={binId:number;binCode:string;warehouseId:number;zoneName?:string|null};
