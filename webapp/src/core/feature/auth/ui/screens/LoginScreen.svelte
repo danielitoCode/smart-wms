@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
 	import LocaleSwitcher from '../../../../../lib/components/LocaleSwitcher.svelte';
-	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
+	import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
 	const i18n = getContext<I18nState>('i18n');
+
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -20,7 +21,7 @@
 	async function redirectIfAlreadyAuthenticated() {
 		const result = await auth.ensureAuthenticated.execute();
 		if (result.ok) {
-			await goto(result.user.mustChangePassword ? '/change-password' : '/inventory', { replaceState: true });
+			await goto(result.user.mustChangePassword ? '/change-password' : '/inventory', { replace: true });
 		}
 	}
 
@@ -32,7 +33,7 @@
 			// Route directly to the only screen allowed by the auth middleware;
 			// do not briefly enter a protected operational page first.
 			if (state.user?.mustChangePassword) {
-				await goto('/change-password', { replaceState: true });
+				await goto('/change-password', { replace: true });
 				return;
 			}
 			const redirect = page.url.searchParams.get('redirect');
@@ -68,7 +69,7 @@
 	.login { min-height: 100vh; display: grid; place-items: center; padding: 1.5rem 1rem; background: var(--bg); animation: fade-in 180ms ease-out; }
 	.card { width: 100%; max-width: 22rem; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); padding: 1.5rem 1.35rem 1.4rem; box-shadow: var(--shadow-1); }
 	header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.85rem; }
-	.eyebrow { margin: 0; font-family: var(--disp); font-size: 0.68rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--navy); }
+	.eyebrow { margin: 0; font-family: var(--disp),serif; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--navy); }
 	h1 { margin: 0.1rem 0 0; font-size: 1.35rem; }
 	.lead { margin: 0 0 1.15rem; color: var(--slate); font-size: 0.9rem; }
 	form { display: flex; flex-direction: column; gap: 0.9rem; }

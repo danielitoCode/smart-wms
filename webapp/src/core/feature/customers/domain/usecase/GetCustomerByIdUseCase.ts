@@ -4,8 +4,8 @@ import type {Customer} from "#core/feature/customers/domain/entity/Customer.ts";
 export class GetCustomerByIdUseCase {
     constructor(private readonly repository: CustomerRepository) {}
 
-    async execute(customerId: number): Promise<Customer | null> {
-        if (customerId === null) return null
+    execute(customerId: number): Promise<Customer | null> {
+        if (customerId === null) throw new Error('customerId must be valid number');
         return this.repository.getById(customerId)
     }
 }

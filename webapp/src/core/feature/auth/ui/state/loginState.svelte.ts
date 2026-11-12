@@ -1,6 +1,6 @@
 import { createAuthDependencies } from '../../di/auth.dependencies';
 import type { User } from '../../domain/entity/User';
-import { ApiError } from '../../../../infrastructure/errors/ApiError';
+import { ApiError } from '#core/infrastructure/errors/ApiError.ts';
 
 const deps = createAuthDependencies();
 

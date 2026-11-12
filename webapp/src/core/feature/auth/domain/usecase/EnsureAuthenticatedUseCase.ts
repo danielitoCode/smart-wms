@@ -1,7 +1,7 @@
 import type { AuthRepository } from '../repository/AuthRepository';
 import type { User } from '../entity/User';
-import { authSession } from '../../../../infrastructure/auth/AuthSession';
-import { ApiError } from '../../../../infrastructure/errors/ApiError';
+import { authSession } from '#core/infrastructure/auth/AuthSession.ts';
+import { ApiError } from '#core/infrastructure/errors/ApiError.ts';
 
 export type EnsureAuthenticatedResult =
 	| { ok: true; user: User }

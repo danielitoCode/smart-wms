@@ -1,17 +1,17 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
+	import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
 	const i18n = getContext<I18nState>('i18n');
 	import { goto } from '$app/navigation';
 	import { createChangePasswordState } from '../state/changePasswordState.svelte';
-	import { authSession } from '../../../../infrastructure/auth/AuthSession';
+	import { authSession } from '#core/infrastructure/auth/AuthSession.ts';
 
 	const state = createChangePasswordState();
 	const forced = authSession.getUser()?.mustChangePassword ?? false;
 
 	async function onSubmit(event: SubmitEvent) {
 		event.preventDefault();
-		if (await state.submit()) await goto('/login?passwordChanged=1', { replaceState: true });
+		if (await state.submit()) await goto('/login?passwordChanged=1', { replace: true });
 	}
 </script>
 
@@ -58,6 +58,4 @@
 	input:focus { outline: none; border-color: var(--navy); box-shadow: var(--focus); }
 	.hint { margin: -0.55rem 0 0; color: var(--slate); font-size: 0.78rem; }
 	.error { margin: 0; color: var(--danger); font-size: 0.88rem; }
-	.primary { margin-top: 0.25rem; padding: 0.65rem 1rem; border: 0; border-radius: var(--radius-btn); background: var(--navy); color: #fff; font-weight: 600; cursor: pointer; }
-	.primary:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>

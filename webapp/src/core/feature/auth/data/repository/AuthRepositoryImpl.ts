@@ -2,7 +2,7 @@ import type { AuthRepository } from '../../domain/repository/AuthRepository';
 import type { ChangePasswordInput, Credentials, LoginResult, User } from '../../domain/entity/User';
 import type { AuthRemoteDataSource } from '../datasource/AuthRemoteDataSource';
 import { AuthMapper } from '../mapper/AuthMapper';
-import { authSession } from '../../../../infrastructure/auth/AuthSession';
+import { authSession } from '#core/infrastructure/auth/AuthSession.ts';
 
 export class AuthRepositoryImpl implements AuthRepository {
 	constructor(private readonly datasource: AuthRemoteDataSource) {}
