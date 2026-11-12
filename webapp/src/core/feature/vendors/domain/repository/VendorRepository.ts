@@ -1,8 +1,9 @@
-import type {CreateVendor,UpdateVendor,Vendor,VendorId} from '../entity/Vendor';
-export interface VendorRepository{
- getAllVendors(query?:{search?:string;active?:boolean|null}):Promise<Vendor[]>;
- getVendorById(vendorId:VendorId):Promise<Vendor>;
- deleteVendor(vendorId:VendorId):Promise<void>;
- saveVendor(vendor:CreateVendor):Promise<Vendor>;
- modifyVendor(vendorId:VendorId,vendor:UpdateVendor):Promise<Vendor>;
+import type { CreateVendor, UpdateVendor, Vendor, VendorId, VendorListQuery, VendorPage } from '../entity/Vendor';
+
+export interface VendorRepository {
+	list(query?: VendorListQuery): Promise<VendorPage>;
+	getById(vendorId: VendorId): Promise<Vendor>;
+	create(input: CreateVendor): Promise<Vendor>;
+	update(vendorId: VendorId, input: UpdateVendor): Promise<Vendor>;
+	delete(vendorId: VendorId): Promise<void>;
 }

@@ -1,12 +1,4 @@
-/**
- * Canonical vendor entity backed by the vendors table.
- *
- * Only canonical_id, external_id and timestamps are guaranteed non-null by
- * the database. Descriptive vendor columns (including vendor_name and
- * is_active) are nullable on persisted/imported rows, even though the admin
- * create request requires vendor_name and defaults is_active to true.
- */
-/** PostgreSQL UUID string used by the vendor endpoints. */
+/** Canonical vendor master data persisted in PostgreSQL. */
 export type VendorId = string;
 
 export type Vendor = {
@@ -25,7 +17,21 @@ export type Vendor = {
 	updatedAt: string;
 };
 
-/** Mirrors CreateVendorRequest: vendor_name is required; remaining fields optional. */
+export type VendorFilter = 'active' | 'archived' | 'all';
+export type VendorListQuery = {
+	search?: string;
+	filter?: VendorFilter;
+	page?: number;
+	perPage?: number;
+};
+export type VendorPage = {
+	items: Vendor[];
+	total: number;
+	page: number;
+	perPage: number;
+	pages: number;
+};
+
 export type CreateVendor = {
 	vendorName: string;
 	contactName?: string | null;
@@ -38,7 +44,6 @@ export type CreateVendor = {
 	isActive?: boolean | null;
 };
 
-/** Mirrors UpdateVendorRequest; omitted properties are left unchanged. */
 export type UpdateVendor = {
 	vendorName?: string | null;
 	contactName?: string | null;
