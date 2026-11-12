@@ -6,6 +6,7 @@
  import PreferredBinsScreen from '../../../../core/feature/preferred-bins/ui/screens/PreferredBinsScreen.svelte';
  import PurchaseOrdersScreen from '../../../../core/feature/purchase-orders/ui/screens/PurchaseOrdersScreen.svelte';
  import TransferOrdersScreen from '../../../../core/feature/transfer-orders/ui/screens/TransferOrdersScreen.svelte';
+ import InventoryAdjustmentsScreen from '../../../../core/feature/inventory-adjustments/ui/screens/InventoryAdjustmentsScreen.svelte';
 </script>
 {#if page.params.feature==='vendors'}
  <VendorsScreen />
@@ -17,6 +18,8 @@
  <PurchaseOrdersScreen />
 {:else if page.params.feature==='transfer-orders'}
  <TransferOrdersScreen />
+{:else if page.params.feature==='adjustments'||page.params.feature==='count-approvals'}
+ <InventoryAdjustmentsScreen />
 {:else}
  <AdminOperationScreen />
 {/if}
