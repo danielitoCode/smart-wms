@@ -6,8 +6,11 @@
  * is_active) are nullable on persisted/imported rows, even though the admin
  * create request requires vendor_name and defaults is_active to true.
  */
+/** PostgreSQL UUID string used by the vendor endpoints. */
+export type VendorId = string;
+
 export type Vendor = {
-	canonicalId: string;
+	canonicalId: VendorId;
 	externalId: string;
 	vendorName: string | null;
 	contactName: string | null;
