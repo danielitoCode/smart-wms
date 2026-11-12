@@ -16,7 +16,7 @@
 	const warehouseSelection = createWarehouseSelectionState();
 	setContext('warehouseSelection', warehouseSelection);
 
-	type IconName = 'inbox' | 'map-pin' | 'clipboard-list' | 'package-check' | 'truck' | 'boxes' | 'scan' | 'package' | 'warehouse' | 'database' | 'clock' | 'clipboard-check' | 'sliders-horizontal' | 'arrow-left-right' | 'shield-alert' | 'receipt' | 'wallet' | 'package-x' | 'users';
+	type IconName = 'inbox' | 'map-pin' | 'clipboard-list' | 'package-check' | 'truck' | 'boxes' | 'scan' | 'package' | 'warehouse' | 'database' | 'user' | 'globe';
 	type NavItem = { href: string; label: string; icon: IconName; pageKey?: string };
 	const navGroups: { label: string; items: NavItem[] }[] = $derived([
 		{ label: i18n.t('Operaciones'), items: [
@@ -33,17 +33,17 @@
 		{ label: i18n.t('Gestión'), items: [
 			{ href: '/management/purchase-orders', label: i18n.t('Compras'), icon: 'clipboard-list', pageKey: 'purchase-orders' },
 			{ href: '/management/vendors', label: i18n.t('Proveedores'), icon: 'truck', pageKey: 'vendors' },
-			{ href: '/management/backorders', label: i18n.t('Pendientes'), icon: 'clock', pageKey: 'backorders' },
-			{ href: '/management/count-approvals', label: i18n.t('Aprobaciones'), icon: 'clipboard-check', pageKey: 'count-approvals' },
-			{ href: '/management/adjustments', label: i18n.t('Ajustes'), icon: 'sliders-horizontal', pageKey: 'adjustments' },
-			{ href: '/management/inter-warehouse-transfers', label: i18n.t('Movimientos'), icon: 'arrow-left-right', pageKey: 'transfer-orders' },
+			{ href: '/management/backorders', label: i18n.t('Pendientes'), icon: 'scan', pageKey: 'backorders' },
+			{ href: '/management/count-approvals', label: i18n.t('Aprobaciones'), icon: 'clipboard-list', pageKey: 'count-approvals' },
+			{ href: '/management/adjustments', label: i18n.t('Ajustes'), icon: 'database', pageKey: 'adjustments' },
+			{ href: '/management/inter-warehouse-transfers', label: i18n.t('Movimientos'), icon: 'truck', pageKey: 'transfer-orders' },
 			{ href: '/management/transfer-orders', label: i18n.t('Órdenes de traslado'), icon: 'truck', pageKey: 'transfer-orders' },
 			{ href: '/management/preferred-bins', label: i18n.t('Ubicaciones preferidas'), icon: 'map-pin', pageKey: 'preferred-bins' },
-			{ href: '/management/fraud', label: i18n.t('Revisión de pedidos'), icon: 'shield-alert', pageKey: 'sales-orders' },
-			{ href: '/management/pos-activity', label: i18n.t('Actividad POS'), icon: 'receipt', pageKey: 'pos-activity' },
-			{ href: '/management/refunds', label: i18n.t('Reembolsos'), icon: 'wallet', pageKey: 'sales-orders' },
-			{ href: '/management/returns', label: i18n.t('Devoluciones'), icon: 'package-x', pageKey: 'sales-orders' },
-			{ href: '/management/users', label: i18n.t('Usuarios'), icon: 'users', pageKey: 'users' }
+			{ href: '/management/fraud', label: i18n.t('Revisión de pedidos'), icon: 'user', pageKey: 'sales-orders' },
+			{ href: '/management/pos-activity', label: i18n.t('Actividad POS'), icon: 'database', pageKey: 'pos-activity' },
+			{ href: '/management/refunds', label: i18n.t('Reembolsos'), icon: 'package', pageKey: 'sales-orders' },
+			{ href: '/management/returns', label: i18n.t('Devoluciones'), icon: 'package', pageKey: 'sales-orders' },
+			{ href: '/management/users', label: i18n.t('Usuarios'), icon: 'user', pageKey: 'users' }
 		]},
 		{ label: i18n.t('Catálogos'), items: [
 			{ href: '/items', label: i18n.t('Productos'), icon: 'package', pageKey: 'items' },
