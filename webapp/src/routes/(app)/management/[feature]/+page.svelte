@@ -13,6 +13,7 @@
  import InterWarehouseTransfersScreen from '../../../../core/feature/inter-warehouse-transfers/ui/screens/InterWarehouseTransfersScreen.svelte';
  import ReturnsScreen from '../../../../core/feature/returns/ui/screens/ReturnsScreen.svelte';
  import RefundsScreen from '../../../../core/feature/refunds/ui/screens/RefundsScreen.svelte';
+ import CycleCountApprovalsScreen from '../../../../core/feature/cycle-count-approvals/ui/screens/CycleCountApprovalsScreen.svelte';
 </script>
 {#if page.params.feature==='vendors'}
  <VendorsScreen />
@@ -36,7 +37,9 @@
  <ReturnsScreen />
 {:else if page.params.feature==='refunds'}
  <RefundsScreen />
-{:else if page.params.feature==='adjustments'||page.params.feature==='count-approvals'}
+{:else if page.params.feature==='count-approvals'}
+ <CycleCountApprovalsScreen />
+{:else if page.params.feature==='adjustments'}
  <InventoryAdjustmentsScreen />
 {:else}
  <AdminOperationScreen />
