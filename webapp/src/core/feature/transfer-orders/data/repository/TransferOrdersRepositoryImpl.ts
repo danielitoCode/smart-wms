@@ -1,0 +1,7 @@
+import type {TransferOrder,CreateTransferOrder,TransferOrderImportResult} from '../../domain/entity/TransferOrder';import type {TransferOrdersRepository} from '../../domain/repository/TransferOrdersRepository';import type {TransferOrdersRemoteDataSource} from '../datasource/TransferOrdersRemoteDataSource';import {TransferOrderMapper as M} from '../mapper/TransferOrderMapper';
+export class TransferOrdersRepositoryImpl implements TransferOrdersRepository{constructor(private remote:TransferOrdersRemoteDataSource){}
+ async list(q?:{status?:string}):Promise<TransferOrder[]>{return (await this.remote.list(q)).map(x=>M.header(x));}
+ async detail(id:number){const x=await this.remote.detail(id);return M.header(x.transfer_order,x.lines,x.approvals);}
+ async create(v:CreateTransferOrder):Promise<TransferOrderImportResult>{return M.importResult(await this.remote.create(M.create(v)));}
+ async startPicking(id:number){await this.remote.startPicking(id);}async submitPicks(id:number){await this.remote.submitPicks(id);}async approve(id:number,a:number){await this.remote.approve(id,a);}async reject(id:number,a:number,r:string){await this.remote.reject(id,a,r);}async cancel(id:number){await this.remote.cancel(id);}async remove(id:number){await this.remote.remove(id);}async shortClose(id:number,l:number){await this.remote.shortClose(id,l);}
+}

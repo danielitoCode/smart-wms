@@ -1,0 +1,6 @@
+export type TransferOrderHeaderDto={to_id:number;to_number:string;source_warehouse_id:number;destination_warehouse_id:number;status:string;created_by:string;notes:string|null;external_id:string;created_at:string|null;updated_at:string|null};
+export type TransferOrderLineDto={to_line_id:number;to_id:number;item_id:number;sku?:string|null;item_name?:string|null;line_number:number;requested_qty:number;committed_qty:number;picked_qty:number;approved_qty:number;status:string};
+export type TransferOrderApprovalDto={to_approval_id:number;to_id:number;submitted_by:string;submitted_at:string|null;approved_by:string|null;approved_at:string|null;rejected_at:string|null;rejection_reason:string|null;status:string;external_id:string};
+export type TransferOrderListDto={transfer_orders:TransferOrderHeaderDto[];total:number;page:number;per_page:number;pages:number};
+export type TransferOrderDetailDto={transfer_order:TransferOrderHeaderDto;lines:TransferOrderLineDto[];approvals:TransferOrderApprovalDto[]};
+export type TransferOrderImportDto={to_id:number;to_number:string;source_warehouse_id:number;destination_warehouse_id:number;line_count:number;shortages:Array<{sku:string;requested_qty:number;committed_qty:number;shortfall:number}>};
