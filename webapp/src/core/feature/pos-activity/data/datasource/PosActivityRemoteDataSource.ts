@@ -1,0 +1,5 @@
+import type {ApiClient} from '../../../../infrastructure/api/ApiClient';import type {PosActivityDto,PosActivityListDto,PosActivitySummaryDto} from '../dto/PosActivityDto';import type {PosActivityQuery} from '../../domain/entity/PosActivity';
+export class PosActivityRemoteDataSource{constructor(private api:ApiClient){}
+ async list(q:PosActivityQuery={}){const p=new URLSearchParams({page:String(q.page??1),per_page:String(q.perPage??50),order_type:q.orderType??'sale'});if(q.date)p.set('date',q.date);if(q.terminalId)p.set('terminal_id',q.terminalId);if(q.cashierId)p.set('cashier_id',q.cashierId);if(q.status)p.set('status',q.status);if(q.channel)p.set('channel',q.channel);return this.api.get<PosActivityListDto>('/api/admin/pos/sales-orders?'+p);}
+ summary(date:string){return this.api.get<PosActivitySummaryDto>('/api/admin/pos/summary?date='+encodeURIComponent(date));}
+}

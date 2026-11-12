@@ -1,0 +1,6 @@
+import {createPosActivityDependencies} from '../../di/posActivity.dependencies';import type {PosActivityPage,PosActivityQuery,PosActivitySummary} from '../../domain/entity/PosActivity';import {toUserMessage} from '../../../../infrastructure/errors/ApiError';const d=createPosActivityDependencies();
+export function createPosActivityState(){let page=$state<PosActivityPage>({salesOrders:[],total:0,page:1,perPage:50,pages:1}),summary=$state<PosActivitySummary|null>(null),loading=$state(false),error=$state<string|null>(null),query=$state<PosActivityQuery>({page:1,perPage:50,orderType:'sale',date:new Date().toISOString().slice(0,10)});
+async function load(){loading=true;error=null;try{const [list,kpis]=await Promise.all([d.list.execute(query),d.summary.execute(query.date??new Date().toISOString().slice(0,10))]);page=list;summary=kpis;}catch(e){error=toUserMessage(e,'No se pudo cargar la actividad POS');}finally{loading=false;}}
+function set<K extends keyof PosActivityQuery>(key:K,value:PosActivityQuery[K]){query={...query,[key]:value,page:1};}
+function setPage(v:number){query={...query,page:v};}
+return {get page(){return page;},get summary(){return summary;},get loading(){return loading;},get error(){return error;},get query(){return query;},set, setPage,load};}
