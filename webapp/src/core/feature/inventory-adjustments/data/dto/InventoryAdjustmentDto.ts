@@ -1,0 +1,2 @@
+export type InventoryAdjustmentDto={adjustment_id:number;item_id:number;bin_id:number;warehouse_id:number;quantity_change:number;reason_code:string;reason_detail:string|null;status:'PENDING'|'APPROVED'|'REJECTED';adjusted_by:string;adjusted_at:string|null;cycle_count_id:number|null;sku?:string|null;item_name?:string|null;bin_code?:string|null;expected_quantity?:number|null;counted_quantity?:number|null;username?:string|null};
+export type AdjustmentListDto={adjustments:InventoryAdjustmentDto[];total?:number;page?:number;pages?:number};

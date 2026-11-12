@@ -1,0 +1,2 @@
+import type {InventoryAdjustment,CreateInventoryAdjustment,InventoryAdjustmentDecision} from '../entity/InventoryAdjustment';
+export interface InventoryAdjustmentsRepository{list(q?:{warehouseId?:number|null;pending?:boolean}):Promise<InventoryAdjustment[]>;create(input:CreateInventoryAdjustment):Promise<void>;review(decisions:InventoryAdjustmentDecision[]):Promise<void>;}

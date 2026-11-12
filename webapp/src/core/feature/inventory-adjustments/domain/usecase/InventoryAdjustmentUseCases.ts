@@ -1,0 +1,4 @@
+import type {InventoryAdjustmentsRepository} from '../repository/InventoryAdjustmentsRepository';import type {CreateInventoryAdjustment,InventoryAdjustmentDecision} from '../entity/InventoryAdjustment';
+export class ListInventoryAdjustmentsUseCase{constructor(private r:InventoryAdjustmentsRepository){}execute(q?:{warehouseId?:number|null;pending?:boolean}){return this.r.list(q);}}
+export class CreateInventoryAdjustmentUseCase{constructor(private r:InventoryAdjustmentsRepository){}execute(v:CreateInventoryAdjustment){if(v.itemId<=0||v.binId<=0||v.warehouseId<=0||v.quantity<=0||!v.reason.trim())throw new Error('Los datos del ajuste no son válidos');return this.r.create(v);}}
+export class ReviewInventoryAdjustmentsUseCase{constructor(private r:InventoryAdjustmentsRepository){}execute(v:InventoryAdjustmentDecision[]){if(!v.length)throw new Error('Selecciona al menos un ajuste');return this.r.review(v);}}
