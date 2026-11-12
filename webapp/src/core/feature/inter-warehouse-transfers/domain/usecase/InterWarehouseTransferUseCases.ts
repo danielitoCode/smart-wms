@@ -1,0 +1,3 @@
+import type {InterWarehouseTransfersRepository} from '../repository/InterWarehouseTransfersRepository';import type {RecordInterWarehouseTransfer} from '../entity/InterWarehouseTransfer';
+export class ListInterWarehouseTransfersUseCase{constructor(private r:InterWarehouseTransfersRepository){}execute(limit=100){return this.r.list(limit);}}
+export class CreateInterWarehouseTransferUseCase{constructor(private r:InterWarehouseTransfersRepository){}execute(v:RecordInterWarehouseTransfer){if(v.itemId<=0||v.fromBinId<=0||v.toBinId<=0||v.fromWarehouseId<=0||v.toWarehouseId<=0||v.fromWarehouseId===v.toWarehouseId||v.quantity<=0)throw new Error('Verifica producto, almacenes, ubicaciones y cantidad');return this.r.create(v);}}

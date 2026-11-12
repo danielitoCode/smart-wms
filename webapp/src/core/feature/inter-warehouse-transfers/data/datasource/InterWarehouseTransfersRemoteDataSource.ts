@@ -1,0 +1,2 @@
+import type {ApiClient} from '../../../../infrastructure/api/ApiClient';import type {InterWarehouseTransferDto,InterWarehouseTransferListDto} from '../dto/InterWarehouseTransferDto';
+export class InterWarehouseTransfersRemoteDataSource{constructor(private api:ApiClient){}async list(limit=100){const r=await this.api.get<InterWarehouseTransferListDto>('/api/admin/inter-warehouse-transfers?limit='+limit);return r.transfers??[];}async create(body:unknown){return this.api.post<InterWarehouseTransferDto>('/api/admin/inter-warehouse-transfer',body);}}
