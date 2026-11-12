@@ -298,7 +298,6 @@ func (s *Server) adminUsers(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"users": out, "total": len(out)})
 }
 
-
 // adminTokenAlias maps Flask-facing /api/admin/tokens/{id}/rotate to the WMS token store.
 func (s *Server) adminTokenAlias(w http.ResponseWriter, r *http.Request) {
 	path := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/admin/tokens/"), "/")
