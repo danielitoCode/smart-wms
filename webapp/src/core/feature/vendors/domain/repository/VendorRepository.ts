@@ -1,9 +1,8 @@
-import type {CreateVendor, UpdateVendor, Vendor} from "#core/feature/vendors/domain/entity/Vendor.ts";
-
-export interface VendorRepository {
-    getAllVendors(): Promise<Vendor[]>
-    getVendorById(vendorId: number): Promise<void>
-    deleteVendor(vendorId: number): Promise<void>
-    saveVendor(vendor: CreateVendor): Promise<void>
-    modifyVendor(vendor: UpdateVendor): Promise<void>
+import type {CreateVendor,UpdateVendor,Vendor} from '../entity/Vendor';
+export interface VendorRepository{
+ getAllVendors(query?:{search?:string;active?:boolean|null}):Promise<Vendor[]>;
+ getVendorById(vendorId:string):Promise<Vendor>;
+ deleteVendor(vendorId:string):Promise<void>;
+ saveVendor(vendor:CreateVendor):Promise<Vendor>;
+ modifyVendor(vendorId:string,vendor:UpdateVendor):Promise<Vendor>;
 }

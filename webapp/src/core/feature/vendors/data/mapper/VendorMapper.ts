@@ -1,0 +1,7 @@
+import type {Vendor,CreateVendor,UpdateVendor} from '../../domain/entity/Vendor';
+import type {VendorDto,VendorMutationDto} from '../dto/VendorDto';
+export const VendorMapper={
+ toDomain(d:VendorDto):Vendor{return {canonicalId:d.canonical_id,externalId:d.external_id,vendorName:d.vendor_name,contactName:d.contact_name,email:d.email,phone:d.phone,billingAddress:d.billing_address,remitToAddress:d.remit_to_address,taxId:d.tax_id,paymentTerms:d.payment_terms,isActive:d.is_active,createdAt:d.created_at??'',updatedAt:d.updated_at??''};},
+ toCreateDto(v:CreateVendor):VendorMutationDto{return {vendor_name:v.vendorName,contact_name:v.contactName,email:v.email,phone:v.phone,billing_address:v.billingAddress,remit_to_address:v.remitToAddress,tax_id:v.taxId,payment_terms:v.paymentTerms,is_active:v.isActive};},
+ toUpdateDto(v:UpdateVendor):VendorMutationDto{const d:VendorMutationDto={};if(v.vendorName!==undefined)d.vendor_name=v.vendorName;if(v.contactName!==undefined)d.contact_name=v.contactName;if(v.email!==undefined)d.email=v.email;if(v.phone!==undefined)d.phone=v.phone;if(v.billingAddress!==undefined)d.billing_address=v.billingAddress;if(v.remitToAddress!==undefined)d.remit_to_address=v.remitToAddress;if(v.taxId!==undefined)d.tax_id=v.taxId;if(v.paymentTerms!==undefined)d.payment_terms=v.paymentTerms;if(v.isActive!==undefined)d.is_active=v.isActive;return d;}
+};

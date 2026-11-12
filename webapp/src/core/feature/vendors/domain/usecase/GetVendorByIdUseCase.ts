@@ -1,0 +1,2 @@
+import type {VendorRepository} from '../repository/VendorRepository';
+export class GetVendorByIdUseCase{constructor(private readonly repository:VendorRepository){}execute(id:string){return this.repository.getVendorById(id);}}

@@ -1,0 +1,3 @@
+export type VendorDto={canonical_id:string;external_id:string;vendor_name:string|null;contact_name:string|null;email:string|null;phone:string|null;billing_address:string|null;remit_to_address:string|null;tax_id:string|null;payment_terms:string|null;is_active:boolean|null;created_at:string|null;updated_at:string|null};
+export type VendorListDto={vendors:VendorDto[];total:number;page:number;per_page:number;pages:number};
+export type VendorMutationDto={vendor_name?:string;contact_name?:string|null;email?:string|null;phone?:string|null;billing_address?:string|null;remit_to_address?:string|null;tax_id?:string|null;payment_terms?:string|null;is_active?:boolean|null};
