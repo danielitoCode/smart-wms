@@ -1,4 +1,4 @@
-import type {ApiClient} from '../../../infrastructure/api/ApiClient';
+import type {ApiClient} from '../../../../infrastructure/api/ApiClient';
 import type {PreferredBinDto} from '../dto/PreferredBinDto';
 export class PreferredBinsRemoteDataSource{constructor(private readonly api:ApiClient){}
  async list(q:{search?:string;itemId?:number}={}):Promise<PreferredBinDto[]>{const p=new URLSearchParams();if(q.search?.trim())p.set('q',q.search.trim());if(q.itemId)p.set('item_id',String(q.itemId));const r=await this.api.get<{preferred_bins:PreferredBinDto[]}>('/api/admin/preferred-bins'+(p.size?'?'+p.toString():''));return r.preferred_bins??[];}

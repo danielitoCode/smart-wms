@@ -1,4 +1,4 @@
-import type {ApiClient} from '../../../infrastructure/api/ApiClient';
+import type {ApiClient} from '../../../../infrastructure/api/ApiClient';
 import type {ManagedUserDto,UserPermissionsDto} from '../dto/ManagedUserDto';
 export class ManagedUsersRemoteDataSource{
  constructor(private readonly api:ApiClient){}

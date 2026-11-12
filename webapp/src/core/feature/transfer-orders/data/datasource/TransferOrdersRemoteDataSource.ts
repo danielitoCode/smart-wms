@@ -1,4 +1,4 @@
-import type {ApiClient} from '../../../infrastructure/api/ApiClient';import type {TransferOrderListDto,TransferOrderDetailDto,TransferOrderImportDto} from '../dto/TransferOrderDto';
+import type {ApiClient} from '../../../../infrastructure/api/ApiClient';import type {TransferOrderListDto,TransferOrderDetailDto,TransferOrderImportDto} from '../dto/TransferOrderDto';
 export class TransferOrdersRemoteDataSource{constructor(private api:ApiClient){}
  async list(q:{status?:string}={}){const p=new URLSearchParams({per_page:'200'});if(q.status)p.set('status',q.status);const r=await this.api.get<TransferOrderListDto>('/api/admin/transfer-orders?'+p);return r.transfer_orders??[];}
  detail(id:number){return this.api.get<TransferOrderDetailDto>('/api/admin/transfer-orders/'+id);}

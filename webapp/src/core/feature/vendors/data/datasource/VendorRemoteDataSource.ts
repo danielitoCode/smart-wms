@@ -1,4 +1,4 @@
-import type {ApiClient} from '../../../infrastructure/api/ApiClient';
+import type {ApiClient} from '../../../../infrastructure/api/ApiClient';
 import type {VendorDto,VendorListDto,VendorMutationDto} from '../dto/VendorDto';
 export class VendorRemoteDataSource{
  constructor(private readonly api:ApiClient){}
