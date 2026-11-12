@@ -1,0 +1,2 @@
+import type {ManagedUser,CreateManagedUser,UpdateManagedUser,UserPagePermissions,UpdateUserPagePermissions} from '../entity/UserManagement';
+export interface ManagedUsersRepository{list():Promise<ManagedUser[]>;create(input:CreateManagedUser):Promise<ManagedUser>;update(input:UpdateManagedUser):Promise<ManagedUser>;remove(userId:number):Promise<void>;getPermissions(userId:number):Promise<UserPagePermissions>;updatePermissions(input:UpdateUserPagePermissions):Promise<UserPagePermissions>;}
