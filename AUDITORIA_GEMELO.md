@@ -537,3 +537,10 @@ Persistencia: organismos PrismaTec-Core (`wms_admin_*`). Núcleo operativo previ
 - Inventario de ~189 llamadas método+path desde admin/mobile (solo lectura del frontend).
 - Cierre de gaps críticos de UI: putaway `staging-summary` + `update-preferred`, inbound activity admin, sales-orders paginado/filtros y acciones void-return/receive-return/memo.
 - Documento: `wms-twin/docs/CASOS_USO_FRONTEND.md`.
+
+### AUD-0028 — Verificación admin: cookies CSRF y proxy lab
+
+- Cookies `sentry_auth` / `sentry_csrf`: SameSite=Lax en HTTP lab, Strict en HTTPS.
+- Script `scripts/admin-e2e-cookie.sh`: login cookie-only, CSRF en mutaciones, rutas admin de arranque, logout.
+- Proxy `scripts/admin-lab-proxy.py` puerto 3080: `/api`→twin, resto→Vite admin (sin modificar frontend).
+- Guía `docs/ADMIN_E2E_VERIFICACION.md`.

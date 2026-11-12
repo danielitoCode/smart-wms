@@ -70,7 +70,7 @@ func TestHTTPAuthLoginMeCookieCSRFAndPasswordRotation(t *testing.T) {
 		}
 	}
 	if authCookie == nil || csrfCookie == nil || !authCookie.HttpOnly || csrfCookie.HttpOnly ||
-		authCookie.SameSite != http.SameSiteStrictMode || authCookie.MaxAge != 28800 {
+		authCookie.SameSite != http.SameSiteLaxMode || authCookie.MaxAge != 28800 {
 		t.Fatalf("auth cookies do not match the WMS contract: %#v %#v", authCookie, csrfCookie)
 	}
 
