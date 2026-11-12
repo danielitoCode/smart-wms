@@ -8,7 +8,7 @@ export class AdminOperationsRemoteDataSource{
  async list(feature:AdminOperationKey,q:AdminOperationQuery={}):Promise<AdminOperationResult>{
   const d=defs[feature],p=new URLSearchParams();if(d.warehouse&&q.warehouseId!=null)p.set('warehouse_id',String(q.warehouseId));if(q.search?.trim())p.set('q',q.search.trim());p.set('per_page','200');
   if(feature==='backorders')p.set('tab',q.tab??'waiting');
-  if(feature==='inter-warehouse-transfers')p.set('status','APPROVED');if(feature==='fraud')p.set('status','FRAUD_REVIEW');if(feature==='refunds')p.set('order_type','refund');if(feature==='returns')p.set('order_type','return');
+  if(feature==='fraud')p.set('status','FRAUD_REVIEW');if(feature==='refunds')p.set('order_type','refund');if(feature==='returns')p.set('order_type','return');
   if(feature==='pos-activity'){p.set('date',q.date??new Date().toISOString().slice(0,10));p.set('order_type','all');if(q.status)p.set('status',q.status);}
   const body=rec(await this.api.get<AdminOperationListDto>(d.path+'?'+p.toString()));const data=body[d.key];const rows=Array.isArray(data)?data.map(rec):[];let summary:Record<string,unknown>|null=null;
   if(feature==='pos-activity'){const date=q.date??new Date().toISOString().slice(0,10);summary=rec(await this.api.get<unknown>('/api/admin/pos/summary?date='+encodeURIComponent(date)));}

@@ -10,6 +10,7 @@
  import BackordersScreen from '../../../../core/feature/backorders/ui/screens/BackordersScreen.svelte';
  import FraudReviewScreen from '../../../../core/feature/fraud/ui/screens/FraudReviewScreen.svelte';
  import PosActivityScreen from '../../../../core/feature/pos-activity/ui/screens/PosActivityScreen.svelte';
+ import InterWarehouseTransfersScreen from '../../../../core/feature/inter-warehouse-transfers/ui/screens/InterWarehouseTransfersScreen.svelte';
 </script>
 {#if page.params.feature==='vendors'}
  <VendorsScreen />
@@ -27,6 +28,8 @@
  <FraudReviewScreen />
 {:else if page.params.feature==='pos-activity'}
  <PosActivityScreen />
+{:else if page.params.feature==='inter-warehouse-transfers'}
+ <InterWarehouseTransfersScreen />
 {:else if page.params.feature==='adjustments'||page.params.feature==='count-approvals'}
  <InventoryAdjustmentsScreen />
 {:else}
