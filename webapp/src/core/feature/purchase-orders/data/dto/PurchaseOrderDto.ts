@@ -1,0 +1,4 @@
+export type PurchaseOrderLineDto={po_line_id:number;line_number:number;item_id:number;sku?:string|null;item_name?:string|null;upc?:string|null;mpn?:string|null;quantity_ordered:number;quantity_received:number;unit_cost:number|null;status:string};
+export type PurchaseOrderDto={po_id:number;po_number:string;po_barcode?:string|null;vendor_id?:string|null;vendor_name:string|null;status:string;expected_date:string|null;warehouse_id:number;notes:string|null;created_at:string|null;received_at:string|null;created_by:string|null};
+export type PurchaseOrderListDto={purchase_orders:PurchaseOrderDto[];total:number;page:number;pages:number};
+export type PurchaseOrderDetailDto={purchase_order:PurchaseOrderDto;lines:PurchaseOrderLineDto[]};

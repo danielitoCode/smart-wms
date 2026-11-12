@@ -1,2 +1,0 @@
-export type ManagedUserDto={user_id:number;username:string;full_name:string;role:'ADMIN'|'USER';warehouse_id:number|null;warehouse_ids:number[]|null;allowed_functions:string[]|null;is_active:boolean;created_at?:string|null;last_login?:string|null};
-export type UserPermissionsDto={user_id:number;role:'ADMIN'|'USER';page_keys:string[];is_full_access:boolean};

@@ -1,2 +1,0 @@
-import type {PreferredBin,PreferredBinCandidate} from '../entity/PreferredBin';
-export interface PreferredBinsRepository{list(query?:{search?:string;itemId?:number}):Promise<PreferredBin[]>;create(input:PreferredBinCandidate):Promise<void>;update(id:number,priority:number):Promise<void>;remove(id:number):Promise<void>;}

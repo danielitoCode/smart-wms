@@ -1,7 +1,0 @@
-import {createPreferredBinsDependencies} from '../../di/preferredBins.dependencies';import type {PreferredBin,PreferredBinCandidate} from '../../domain/entity/PreferredBin';import {toUserMessage} from '../../../../infrastructure/errors/ApiError';
-const deps=createPreferredBinsDependencies();export function createPreferredBinsState(){let rows=$state<PreferredBin[]>([]),loading=$state(false),saving=$state(false),error=$state<string|null>(null),search=$state('');
-async function load(){loading=true;error=null;try{rows=await deps.list.execute({search});}catch(e){error=toUserMessage(e,'No se pudieron cargar las ubicaciones preferidas');}finally{loading=false;}}
-async function create(v:PreferredBinCandidate){saving=true;error=null;try{await deps.create.execute(v);await load();return true;}catch(e){error=toUserMessage(e,'No se pudo asignar la ubicación preferida');return false;}finally{saving=false;}}
-async function update(id:number,p:number){saving=true;error=null;try{await deps.update.execute(id,p);await load();return true;}catch(e){error=toUserMessage(e,'No se pudo actualizar la prioridad');return false;}finally{saving=false;}}
-async function remove(id:number){saving=true;error=null;try{await deps.remove.execute(id);await load();return true;}catch(e){error=toUserMessage(e,'No se pudo eliminar la asignación');return false;}finally{saving=false;}}
-return {get rows(){return rows;},get loading(){return loading;},get saving(){return saving;},get error(){return error;},get search(){return search;},setSearch(v:string){search=v;},load,create,update,remove};}

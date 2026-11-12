@@ -1,3 +1,0 @@
-import type {PreferredBin,PreferredBinCandidate} from '../../domain/entity/PreferredBin';
-import type {PreferredBinDto} from '../dto/PreferredBinDto';
-export const PreferredBinMapper={toDomain(d:PreferredBinDto):PreferredBin{return {preferredBinId:d.preferred_bin_id,itemId:d.item_id,binId:d.bin_id,priority:d.priority,updatedAt:d.updated_at,sku:d.sku,itemName:d.item_name,binCode:d.bin_code,zoneName:d.zone_name};},toCreateDto(v:PreferredBinCandidate){return {item_id:v.itemId,bin_id:v.binId,priority:v.priority};},toUpdateDto(v:{priority:number}){return {priority:v.priority};}};
