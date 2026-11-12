@@ -1,0 +1,1 @@
+import type {RefundsRepository} from '../repository/RefundsRepository';export class ListRefundsUseCase{constructor(private r:RefundsRepository){}execute(q?:{status?:string;search?:string}){return this.r.list(q);}}export class GetRefundDetailUseCase{constructor(private r:RefundsRepository){}execute(id:number){return this.r.detail(id);}}
