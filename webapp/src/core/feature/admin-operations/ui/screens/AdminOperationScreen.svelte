@@ -1,14 +1,23 @@
 <script lang="ts">
- import {getContext,onMount} from 'svelte';
+ import {getContext,untrack} from 'svelte';
  import {page} from '$app/state';
  import type {I18nState} from '../../../../../lib/i18n/i18n.svelte';
  import {ADMIN_OPERATION_CATALOG} from '../AdminOperationCatalog';
+ import type {AdminOperationKey} from '../../domain/AdminOperation';
  import {createAdminOperationState} from '../state/adminOperationState.svelte';
  const i18n=getContext<I18nState>('i18n');
  const selection=getContext<{warehouseId:number|null}>('warehouseSelection');
- const definition=ADMIN_OPERATION_CATALOG[page.params.feature??''];
- const vm=definition?createAdminOperationState(definition.key):null;
- onMount(()=>{if(definition&&vm)void vm.load({warehouseId:definition.warehouseScoped?selection?.warehouseId:null});});
+ const definition=$derived(ADMIN_OPERATION_CATALOG[page.params.feature??'']);
+ let activeFeature=$state<AdminOperationKey|null>(null);
+ let vm=$state<ReturnType<typeof createAdminOperationState>|null>(null);
+ $effect(()=>{
+  const key=definition?.key??null;
+  if(key!==activeFeature){activeFeature=key;vm=key?createAdminOperationState(key):null;}
+ });
+ $effect(()=>{
+  const state=vm, current=definition, warehouseId=selection?.warehouseId;
+  if(state&&current)untrack(()=>void state.load({warehouseId:current.warehouseScoped?warehouseId:null}));
+ });
  function display(row:Record<string,unknown>,key:string){const v=row[key];if(v==null||v==='')return '—';return typeof v==='object'?JSON.stringify(v):String(v);}
  function submit(e:SubmitEvent){e.preventDefault();if(vm&&definition)void vm.load({warehouseId:definition.warehouseScoped?selection?.warehouseId:null});}
 </script>
