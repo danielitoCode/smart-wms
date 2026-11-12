@@ -1,0 +1,6 @@
+import {createFraudReviewDependencies} from '../../di/fraudReview.dependencies';import type {FraudReview} from '../../domain/entity/FraudReview';import {toUserMessage} from '../../../../infrastructure/errors/ApiError';const d=createFraudReviewDependencies();
+export function createFraudReviewState(){let rows=$state<FraudReview[]>([]),loading=$state(false),saving=$state(false),error=$state<string|null>(null);
+async function load(w:number|null){loading=true;error=null;try{rows=await d.list.execute(w);}catch(e){error=toUserMessage(e,'No se pudieron cargar los pedidos retenidos');}finally{loading=false;}}
+async function updateMemo(id:number,memo:string){saving=true;error=null;try{await d.updateMemo.execute(id,memo);rows=rows.map(x=>x.salesOrderId===id?{...x,memo}:x);return true;}catch(e){error=toUserMessage(e,'No se pudo guardar la observación');return false;}finally{saving=false;}}
+async function push(id:number,w:number|null){saving=true;error=null;try{await d.push.execute(id);await load(w);return true;}catch(e){error=toUserMessage(e,'No se pudo liberar el pedido a preparación');return false;}finally{saving=false;}}
+return {get rows(){return rows;},get loading(){return loading;},get saving(){return saving;},get error(){return error;},load,updateMemo,push};}
