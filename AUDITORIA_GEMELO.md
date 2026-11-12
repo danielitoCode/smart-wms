@@ -549,3 +549,8 @@ Persistencia: organismos PrismaTec-Core (`wms_admin_*`). Núcleo operativo previ
 
 - Script `scripts/mobile-e2e-bearer.sh`: JWT en header, mutaciones sin CSRF (modelo del app React Native).
 - Complementa `admin-e2e-cookie.sh` (cookies + CSRF del admin web).
+
+### AUD-0030 — Lookup item por SKU e item_id
+
+- `ItemByBarcode` acepta barcode/SKU/UPC/alias y también `item_id` numérico.
+- `mobile-e2e-bearer.sh` valida el path real del mobile (SKU) y el path por id.

@@ -20,7 +20,6 @@ TOKEN=$(echo "$LOGIN" | sed -n 's/.*"token"[[:space:]]*:[[:space:]]*"\([^"]*\)".
 AUTH="Authorization: Bearer $TOKEN"
 ok "login returned JWT (mobile stores it in secure storage)"
 
-# Mobile does not send CSRF for Bearer; twin must accept Bearer mutations.
 WH=$(curl -sS -X POST "$BASE/api/admin/warehouses" -H "$AUTH" -H 'Content-Type: application/json' \
   -d "{\"warehouse_code\":\"MOB-$SUF\",\"warehouse_name\":\"Mobile E2E\"}")
 WID=$(echo "$WH" | sed -n 's/.*"warehouse_id"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p')
@@ -36,12 +35,12 @@ STID=$(echo "$ST" | sed -n 's/.*"bin_id"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1
 PK=$(curl -sS -X POST "$BASE/api/admin/bins" -H "$AUTH" -H 'Content-Type: application/json' \
   -d "{\"warehouse_id\":$WID,\"zone_id\":$ZID,\"bin_code\":\"MP\",\"bin_barcode\":\"MP$SUF\",\"bin_type\":\"Pickable\"}")
 PKID=$(echo "$PK" | sed -n 's/.*"bin_id"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p')
+SKU="MOB-$SUF"
 IT=$(curl -sS -X POST "$BASE/api/admin/items" -H "$AUTH" -H 'Content-Type: application/json' \
-  -d "{\"sku\":\"MOB-$SUF\",\"item_name\":\"Mobile Item\"}")
+  -d "{\"sku\":\"$SKU\",\"item_name\":\"Mobile Item\"}")
 IID=$(echo "$IT" | sed -n 's/.*"item_id"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p')
 ok "catalog via Bearer item=$IID bins=$STID/$PKID"
 
-# Floor paths mobile uses
 curl -sS "$BASE/api/warehouses/list" -H "$AUTH" | grep -q warehouses || fail "warehouses/list"
 ok "GET /warehouses/list"
 
@@ -54,14 +53,19 @@ curl -sS -X POST "$BASE/api/putaway/confirm" -H "$AUTH" -H 'Content-Type: applic
   -d "{\"item_id\":$IID,\"from_bin_id\":$STID,\"to_bin_id\":$PKID,\"quantity\":3}" >/dev/null || true
 ok "receive + putaway floor flow"
 
-for path in \
-  "/api/lookup/item/$IID" \
-  "/api/auth/me"
-do
-  CODE=$(curl -sS -o /tmp/mob.json -w '%{http_code}' -H "$AUTH" "$BASE$path")
-  [[ "$CODE" == "200" ]] || fail "GET $path → $CODE"
-  ok "GET $path"
-done
+# Mobile screens pass scanned barcode/SKU in the path (not item_id).
+CODE=$(curl -sS -o /tmp/mob-sku.json -w '%{http_code}' -H "$AUTH" "$BASE/api/lookup/item/$SKU")
+[[ "$CODE" == "200" ]] || fail "GET /lookup/item/$SKU → $CODE $(head -c 200 /tmp/mob-sku.json)"
+ok "GET /lookup/item by SKU (mobile scan path)"
+
+# Also accept numeric item_id for convenience / tooling.
+CODE=$(curl -sS -o /tmp/mob-id.json -w '%{http_code}' -H "$AUTH" "$BASE/api/lookup/item/$IID")
+[[ "$CODE" == "200" ]] || fail "GET /lookup/item/$IID → $CODE $(head -c 200 /tmp/mob-id.json)"
+ok "GET /lookup/item by item_id"
+
+CODE=$(curl -sS -o /tmp/mob-me.json -w '%{http_code}' -H "$AUTH" "$BASE/api/auth/me")
+[[ "$CODE" == "200" ]] || fail "GET /auth/me → $CODE"
+ok "GET /auth/me"
 
 echo
 echo "MOBILE BEARER E2E PASSED"

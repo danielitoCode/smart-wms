@@ -2,6 +2,7 @@ package lookup
 
 import (
 	"errors"
+	"strconv"
 	"strings"
 
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
@@ -30,7 +31,16 @@ func (s *Service) ItemByBarcode(barcode string) (map[string]any, error) {
 	}
 	var item catalog.Item
 	found := false
+	// Mobile scans barcodes/SKU; numeric path segments may be item_id.
+	if id, err := strconv.ParseInt(barcode, 10, 64); err == nil && id > 0 {
+		if it, err := s.master.GetItem(id); err == nil && it.IsActive {
+			item, found = it, true
+		}
+	}
 	for _, it := range items {
+		if found {
+			break
+		}
 		if !it.IsActive {
 			continue
 		}
