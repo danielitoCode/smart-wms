@@ -39,7 +39,7 @@ describe('admin feature mappers', () => {
   expect(mapped).toMatchObject({transferOrderId:1,transferOrderNumber:'TO-1',lines:[{toLineId:4,requestedQuantity:8,pickedQuantity:7}],approvals:[{approvalId:5,status:'PENDING'}]});
  });
  it('maps vendor and user snake-case payloads to domain names', () => {
-  expect(VendorMapper.toDomain({canonical_id:'v-1',external_id:'ext-1',vendor_name:'Vendor',contact_name:null,email:null,phone:null,billing_address:null,remit_to_address:null,tax_id:null,payment_terms:null,is_active:true,created_at:null,updated_at:null})).toMatchObject({canonicalId:'v-1',vendorName:'Vendor',isActive:true});
+  expect(VendorMapper.toDomain({canonical_id:'v-1',external_id:'ext-1',vendor_name:'Vendor',contact_name:null,email:null,phone:null,billing_address:null,remit_to_address:null,tax_id:null,payment_terms:null,is_active:true,created_at:'2026-01-01T00:00:00Z',updated_at:'2026-01-02T00:00:00Z'})).toMatchObject({canonicalId:'v-1',vendorName:'Vendor',isActive:true});
   expect(ManagedUserMapper.toDomain({user_id:5,username:'ada',full_name:'Ada Lovelace',role:'USER',warehouse_id:2,warehouse_ids:[2,3],allowed_functions:['receive'],is_active:true})).toMatchObject({userId:5,fullName:'Ada Lovelace',warehouseIds:[2,3],allowedFunctions:['receive']});
  });
 });

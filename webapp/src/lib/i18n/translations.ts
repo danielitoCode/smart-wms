@@ -202,7 +202,7 @@ const featureTranslations: Record<'it'|'en', Record<string,string>> = {
   "Eliminar proveedor": "Elimina fornitore",
   "¿Eliminar permanentemente": "Eliminare definitivamente",
   "La eliminación será rechazada si existen artículos que referencian este proveedor. En ese caso, desactívelo para archivarlo.": "L’eliminazione non sarà consentita se esistono articoli che fanno riferimento a questo fornitore. In tal caso, disattivalo per archiviarlo.",
-  "Eliminando…": "Eliminazione…"
+  "Eliminando…": "Eliminazione…",
   "Nuevo proveedor": "Nuovo fornitore",
   "Editar proveedor": "Modifica fornitore",
   "Contacto": "Contatto",
@@ -390,7 +390,7 @@ const featureTranslations: Record<'it'|'en', Record<string,string>> = {
   "Eliminar proveedor": "Delete vendor",
   "¿Eliminar permanentemente": "Permanently delete",
   "La eliminación será rechazada si existen artículos que referencian este proveedor. En ese caso, desactívelo para archivarlo.": "Deletion is blocked while any items reference this vendor. Deactivate it to archive it instead.",
-  "Eliminando…": "Deleting…"
+  "Eliminando…": "Deleting…",
   "Nuevo proveedor": "New vendor",
   "Editar proveedor": "Edit vendor",
   "Contacto": "Contact",
