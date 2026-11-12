@@ -14,7 +14,7 @@ export type BackorderInboundPurchaseOrder = {
 };
 
 export type BackorderItem = {
-	itemId: number;
+	itemId: number | null;
 	sku: string;
 	itemName: string;
 	quantity: number;
@@ -24,7 +24,7 @@ export type BackorderItem = {
 export type Backorder = {
 	salesOrderId: number;
 	salesOrderNumber: string;
-	parentSalesOrderId: number;
+	parentSalesOrderId: number | null;
 	parentSalesOrderNumber: string;
 	warehouseId: number;
 	customerName: string | null;

@@ -7,6 +7,7 @@
  import PurchaseOrdersScreen from '../../../../core/feature/purchase-orders/ui/screens/PurchaseOrdersScreen.svelte';
  import TransferOrdersScreen from '../../../../core/feature/transfer-orders/ui/screens/TransferOrdersScreen.svelte';
  import InventoryAdjustmentsScreen from '../../../../core/feature/inventory-adjustments/ui/screens/InventoryAdjustmentsScreen.svelte';
+ import BackordersScreen from '../../../../core/feature/backorders/ui/screens/BackordersScreen.svelte';
 </script>
 {#if page.params.feature==='vendors'}
  <VendorsScreen />
@@ -18,6 +19,8 @@
  <PurchaseOrdersScreen />
 {:else if page.params.feature==='transfer-orders'}
  <TransferOrdersScreen />
+{:else if page.params.feature==='backorders'}
+ <BackordersScreen />
 {:else if page.params.feature==='adjustments'||page.params.feature==='count-approvals'}
  <InventoryAdjustmentsScreen />
 {:else}
