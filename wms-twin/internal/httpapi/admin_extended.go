@@ -95,6 +95,8 @@ func (s *Server) adminExtended(w http.ResponseWriter, r *http.Request, user iden
 			return
 		}
 		writeJSON(w, 200, map[string]any{"imported": 0, "entity_type": strings.Join(parts[1:], "/"), "status": "accepted"})
+	case "inbound":
+		s.adminInboundActivity(w, r, parts[1:])
 	default:
 		s.adminGenericCRUD(w, r, kind, resource, parts[1:])
 	}
@@ -570,4 +572,49 @@ func (s *Server) warehousesPublic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 404, map[string]string{"error": "Not found"})
+}
+
+
+func (s *Server) adminInboundActivity(w http.ResponseWriter, r *http.Request, parts []string) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, 405, map[string]string{"error": "method not allowed"})
+		return
+	}
+	if len(parts) == 0 || parts[0] == "" || parts[0] == "activity" {
+		if len(parts) <= 1 {
+			// GET /admin/inbound/activity
+			list, _ := s.store.List("wms_admin_inbound_activity")
+			rows := make([]map[string]any, 0, len(list))
+			for _, rec := range list {
+				var m map[string]any
+				_ = json.Unmarshal(rec.Data, &m)
+				if m == nil {
+					m = map[string]any{"id": rec.ID}
+				}
+				rows = append(rows, m)
+			}
+			writeJSON(w, 200, map[string]any{"rows": rows, "total": len(rows)})
+			return
+		}
+		// GET /admin/inbound/activity/{resource}/{inbound_id}
+		resource, inboundID := parts[1], ""
+		if len(parts) > 2 {
+			inboundID = parts[2]
+		}
+		key := resource + ":" + inboundID
+		rec, ok, err := s.store.Get("wms_admin_inbound_activity", key)
+		if err != nil {
+			writeJSON(w, 500, map[string]string{"error": err.Error()})
+			return
+		}
+		if !ok {
+			writeJSON(w, 200, map[string]any{"resource": resource, "inbound_id": inboundID, "payload": map[string]any{}})
+			return
+		}
+		var m map[string]any
+		_ = json.Unmarshal(rec.Data, &m)
+		writeJSON(w, 200, m)
+		return
+	}
+	s.adminGenericCRUD(w, r, "wms_admin_inbound", "inbound", parts)
 }

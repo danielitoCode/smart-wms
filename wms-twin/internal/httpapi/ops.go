@@ -3,11 +3,13 @@ package httpapi
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/fulfillment"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/identity"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/picking"
@@ -117,6 +119,65 @@ func (s *Server) putawayRoute(w http.ResponseWriter, r *http.Request) {
 		}
 		code, _ := s.receiving.SuggestBin(itemID, wid)
 		writeJSON(w, 200, map[string]any{"suggested_bin": code})
+	case r.Method == http.MethodGet && len(parts) == 2 && parts[0] == "staging-summary":
+		wid, _ := strconv.ParseInt(parts[1], 10, 64)
+		pending, err := s.receiving.PendingPutaway(wid, allowed, isAdmin)
+		if err != nil {
+			writeJSON(w, 400, map[string]string{"error": err.Error()})
+			return
+		}
+		// Shape expected by admin PutAway.jsx: { bins: [{ bin_code, sku_count, total_qty, items: [...] }] }
+		grouped := map[string]map[string]any{}
+		order := []string{}
+		for _, row := range pending {
+			code := fmt.Sprint(row["bin_code"])
+			g, ok := grouped[code]
+			if !ok {
+				g = map[string]any{"bin_code": code, "bin_id": row["bin_id"], "sku_count": 0, "total_qty": int64(0), "items": []map[string]any{}}
+				grouped[code] = g
+				order = append(order, code)
+			}
+			qty, _ := row["quantity"].(int64)
+			if qty == 0 {
+				switch v := row["quantity"].(type) {
+				case float64:
+					qty = int64(v)
+				case int:
+					qty = int64(v)
+				}
+			}
+			items := g["items"].([]map[string]any)
+			items = append(items, map[string]any{
+				"sku": row["sku"], "item_name": row["item_name"], "upc": row["upc"],
+				"quantity_on_hand": qty, "suggested_bin": row["suggested_bin"], "lot_number": row["lot_number"],
+				"item_id": row["item_id"],
+			})
+			g["items"] = items
+			g["sku_count"] = len(items)
+			if total, ok := g["total_qty"].(int64); ok {
+				g["total_qty"] = total + qty
+			}
+		}
+		bins := make([]map[string]any, 0, len(order))
+		for _, code := range order {
+			bins = append(bins, grouped[code])
+		}
+		writeJSON(w, 200, map[string]any{"bins": bins, "warehouse_id": wid})
+	case r.Method == http.MethodPost && parts[0] == "update-preferred":
+		var in struct {
+			ItemID      int64 `json:"item_id"`
+			WarehouseID int64 `json:"warehouse_id"`
+			BinID       int64 `json:"bin_id"`
+		}
+		if err := decodeBody(r, &in); err != nil {
+			writeJSON(w, 400, map[string]string{"error": "Invalid request body"})
+			return
+		}
+		if err := s.catalog.CreatePreferredBin(catalog.PreferredBinInput{ItemID: in.ItemID, BinID: in.BinID, Priority: 1}); err != nil {
+			writeJSON(w, 400, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, 200, map[string]any{"status": "ok"})
 	case r.Method == http.MethodPost && parts[0] == "confirm":
 		var in receiving.ConfirmPutawayInput
 		if err := decodeBody(r, &in); err != nil {
@@ -341,13 +402,31 @@ func (s *Server) salesOrdersAdmin(w http.ResponseWriter, r *http.Request, rest s
 			writeJSON(w, 500, map[string]string{"error": err.Error()})
 			return
 		}
+		q := strings.TrimSpace(r.URL.Query().Get("q"))
+		status := strings.TrimSpace(r.URL.Query().Get("status"))
+		excludePost := r.URL.Query().Get("exclude_post_fulfillment") == "true"
 		out := make([]salesorders.SalesOrder, 0)
 		for _, so := range list {
-			if isAdmin || containsInt64(allowed, so.WarehouseID) {
-				out = append(out, so)
+			if !isAdmin && !containsInt64(allowed, so.WarehouseID) {
+				continue
 			}
+			if status != "" && !strings.EqualFold(status, "All") && !strings.EqualFold(so.Status, status) {
+				continue
+			}
+			if excludePost && (so.Status == salesorders.StatusRefunded || so.Status == salesorders.StatusPartiallyRefunded) {
+				continue
+			}
+			if q != "" {
+				hay := strings.ToLower(so.SONumber + " " + so.CustomerName + " " + so.Status)
+				if !strings.Contains(hay, strings.ToLower(q)) {
+					continue
+				}
+			}
+			out = append(out, so)
 		}
-		writeJSON(w, 200, map[string]any{"sales_orders": out})
+		page, perPage := pagination(r)
+		items, total, page, pages := paginateAny(out, page, perPage)
+		writeJSON(w, 200, map[string]any{"sales_orders": items, "page": page, "pages": pages, "total": total, "per_page": perPage})
 		return
 	}
 	if r.Method == http.MethodPost && (rest == "" || rest == "/") {
@@ -379,8 +458,92 @@ func (s *Server) salesOrdersAdmin(w http.ResponseWriter, r *http.Request, rest s
 			writeJSON(w, 404, map[string]string{"error": "not found"})
 			return
 		}
-		writeJSON(w, 200, so)
+		if !isAdmin && !containsInt64(allowed, so.WarehouseID) {
+			writeJSON(w, 403, map[string]string{"error": "Access denied"})
+			return
+		}
+		if len(parts) == 1 {
+			switch r.Method {
+			case http.MethodGet:
+				writeJSON(w, 200, so)
+			case http.MethodPut, http.MethodPatch:
+				var body map[string]any
+				if err := decodeBody(r, &body); err != nil {
+					writeJSON(w, 400, map[string]string{"error": "Invalid request body"})
+					return
+				}
+				if v, ok := body["customer_name"].(string); ok {
+					so.CustomerName = v
+				}
+				if v, ok := body["status"].(string); ok && v != "" {
+					so.Status = v
+				}
+				if err := s.salesOrders.Save(so); err != nil {
+					writeJSON(w, 500, map[string]string{"error": err.Error()})
+					return
+				}
+				writeJSON(w, 200, so)
+			default:
+				writeJSON(w, 405, map[string]string{"error": "method not allowed"})
+			}
+			return
+		}
+		switch parts[1] {
+		case "void-return":
+			if r.Method != http.MethodPost {
+				writeJSON(w, 405, map[string]string{"error": "method not allowed"})
+				return
+			}
+			so.Status = salesorders.StatusShipped
+			_ = s.salesOrders.Save(so)
+			writeJSON(w, 200, map[string]any{"status": "ok", "so": so})
+		case "receive-return":
+			if r.Method != http.MethodPost {
+				writeJSON(w, 405, map[string]string{"error": "method not allowed"})
+				return
+			}
+			so.Status = salesorders.StatusRefunded
+			_ = s.salesOrders.Save(so)
+			writeJSON(w, 200, map[string]any{"status": "ok", "so": so})
+		case "memo":
+			if r.Method != http.MethodPatch && r.Method != http.MethodPost {
+				writeJSON(w, 405, map[string]string{"error": "method not allowed"})
+				return
+			}
+			var body map[string]any
+			_ = decodeBody(r, &body)
+			writeJSON(w, 200, map[string]any{"status": "ok", "so_id": so.SOID, "memo": body})
+		default:
+			writeJSON(w, 404, map[string]string{"error": "not found"})
+		}
 		return
 	}
 	writeJSON(w, 404, map[string]string{"error": "not found"})
+}
+
+
+func paginateAny[T any](values []T, page, perPage int) ([]T, int, int, int) {
+	total := len(values)
+	if perPage < 1 {
+		perPage = 50
+	}
+	if page < 1 {
+		page = 1
+	}
+	pages := total / perPage
+	if total%perPage != 0 {
+		pages++
+	}
+	if pages == 0 {
+		pages = 1
+	}
+	start := (page - 1) * perPage
+	if start >= total {
+		return []T{}, total, page, pages
+	}
+	end := start + perPage
+	if end > total {
+		end = total
+	}
+	return values[start:end], total, page, pages
 }

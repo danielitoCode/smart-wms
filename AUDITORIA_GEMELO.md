@@ -531,3 +531,9 @@ Implementé en el gemelo (sin tocar Flask ni frontends) el enrutado de los recur
 - `/api/v1/dashboard/*` (productivity, preferences, received, shipping-health)
 
 Persistencia: organismos PrismaTec-Core (`wms_admin_*`). Núcleo operativo previo intacto. Tests `go test ./...` en verde.
+
+### AUD-0027 — Casos de uso del frontend → gemelo
+
+- Inventario de ~189 llamadas método+path desde admin/mobile (solo lectura del frontend).
+- Cierre de gaps críticos de UI: putaway `staging-summary` + `update-preferred`, inbound activity admin, sales-orders paginado/filtros y acciones void-return/receive-return/memo.
+- Documento: `wms-twin/docs/CASOS_USO_FRONTEND.md`.
