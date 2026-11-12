@@ -1,1 +1,1 @@
-import type {InterWarehouseTransfer,RecordInterWarehouseTransfer} from '../entity/InterWarehouseTransfer';export interface InterWarehouseTransfersRepository{list(limit?:number):Promise<InterWarehouseTransfer[]>;create(input:RecordInterWarehouseTransfer):Promise<InterWarehouseTransfer>;}
+import type {InterWarehouseTransfer,RecordInterWarehouseTransfer} from '../entity/InterWarehouseTransfer';export interface InterWarehouseTransfersRepository{list(limit?:number):Promise<InterWarehouseTransfer[]>;create(input:RecordInterWarehouseTransfer):Promise<void>;}
