@@ -1,0 +1,1 @@
+import type {CycleCountApproval} from '../entity/CycleCountApproval';export interface CycleCountApprovalRepository{list():Promise<CycleCountApproval[]>;review(cycleCountId:number,decisions:Array<{adjustmentId:number;action:'approve'|'reject'}>):Promise<void>;}
