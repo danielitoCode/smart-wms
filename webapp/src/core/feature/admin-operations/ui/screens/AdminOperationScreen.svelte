@@ -9,10 +9,10 @@
  const selection=getContext<{warehouseId:number|null}>('warehouseSelection');
  const definition=$derived(ADMIN_OPERATION_CATALOG[page.params.feature??'']);
  let activeFeature=$state<AdminOperationKey|null>(null);
- let vm=$state<ReturnType<typeof createAdminOperationState>|null>(null);
+ let vm=$state(createAdminOperationState('backorders'));
  $effect(()=>{
   const key=definition?.key??null;
-  if(key!==activeFeature){activeFeature=key;vm=key?createAdminOperationState(key):null;}
+  if(key&&key!==activeFeature){activeFeature=key;vm=createAdminOperationState(key);}
  });
  $effect(()=>{
   const state=vm, current=definition, warehouseId=selection?.warehouseId;
@@ -21,7 +21,7 @@
  function display(row:Record<string,unknown>,key:string){const v=row[key];if(v==null||v==='')return '—';return typeof v==='object'?JSON.stringify(v):String(v);}
  function submit(e:SubmitEvent){e.preventDefault();if(vm&&definition)void vm.load({warehouseId:definition.warehouseScoped?selection?.warehouseId:null});}
 </script>
-{#if !definition||!vm}
+{#if !definition}
  <section class="page"><h1>{i18n.t('Módulo no encontrado')}</h1><p>{i18n.t('La ruta solicitada no corresponde a una funcionalidad migrada.')}</p></section>
 {:else}
  <section class="page">
