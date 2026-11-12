@@ -544,3 +544,8 @@ Persistencia: organismos PrismaTec-Core (`wms_admin_*`). Núcleo operativo previ
 - Script `scripts/admin-e2e-cookie.sh`: login cookie-only, CSRF en mutaciones, rutas admin de arranque, logout.
 - Proxy `scripts/admin-lab-proxy.py` puerto 3080: `/api`→twin, resto→Vite admin (sin modificar frontend).
 - Guía `docs/ADMIN_E2E_VERIFICACION.md`.
+
+### AUD-0029 — Verificación mobile Bearer
+
+- Script `scripts/mobile-e2e-bearer.sh`: JWT en header, mutaciones sin CSRF (modelo del app React Native).
+- Complementa `admin-e2e-cookie.sh` (cookies + CSRF del admin web).
