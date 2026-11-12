@@ -297,3 +297,33 @@ func (s *Server) adminUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, 200, map[string]any{"users": out, "total": len(out)})
 }
+
+
+// adminTokenAlias maps Flask-facing /api/admin/tokens/{id}/rotate to the WMS token store.
+func (s *Server) adminTokenAlias(w http.ResponseWriter, r *http.Request) {
+	path := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/admin/tokens/"), "/")
+	parts := strings.Split(path, "/")
+	if len(parts) >= 2 && parts[1] == "rotate" && r.Method == http.MethodPost {
+		// reuse revoke/create rotation semantics via POST body empty — expose rotate as new token marker
+		user, ok := s.authenticatedUser(w, r)
+		if !ok {
+			return
+		}
+		if user.Role != "ADMIN" {
+			writeJSON(w, 403, map[string]string{"error": "ADMIN required"})
+			return
+		}
+		if s.wmsTokens == nil {
+			writeJSON(w, 503, map[string]string{"error": "tokens not configured"})
+			return
+		}
+		id := parts[0]
+		if err := s.wmsTokens.Revoke(id); err != nil {
+			writeJSON(w, 404, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, 200, map[string]any{"status": "rotated", "token_id": id, "note": "previous token revoked; create a new token"})
+		return
+	}
+	s.adminTokenRevoke(w, r)
+}

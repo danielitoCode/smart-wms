@@ -177,6 +177,16 @@ func (s *Server) adminSettings(w http.ResponseWriter, r *http.Request, kind stri
 			writeJSON(w, 200, payload)
 			return
 		}
+		// Settings.jsx sends { settings: { key: value, ... } }
+		if nested, ok := payload["settings"].(map[string]any); ok {
+			for k, v := range nested {
+				row := map[string]any{"setting_key": k, "value": v, "updated_at": time.Now().UTC().Format(time.RFC3339)}
+				data, _ := json.Marshal(row)
+				_, _ = s.store.Put(kind, k, data)
+			}
+			writeJSON(w, 200, map[string]any{"status": "ok", "updated": len(nested)})
+			return
+		}
 		for k, v := range payload {
 			row := map[string]any{"setting_key": k, "value": v, "updated_at": time.Now().UTC().Format(time.RFC3339)}
 			data, _ := json.Marshal(row)
@@ -407,6 +417,24 @@ func (s *Server) adminGenericCRUD(w http.ResponseWriter, r *http.Request, kind, 
 				if _, ok := m["id"]; !ok {
 					m["id"] = rec.ID
 				}
+				switch resource {
+				case "channels":
+					if _, ok := m["channel_id"]; !ok {
+						m["channel_id"] = m["id"]
+					}
+				case "webhooks", "notification-webhooks":
+					if _, ok := m["subscription_id"]; !ok {
+						m["subscription_id"] = m["id"]
+					}
+				case "consumer-groups":
+					if _, ok := m["consumer_group_id"]; !ok {
+						m["consumer_group_id"] = m["id"]
+					}
+				case "transfer-orders":
+					if _, ok := m["to_id"]; !ok {
+						m["to_id"] = m["id"]
+					}
+				}
 				out = append(out, m)
 			}
 			writeJSON(w, 200, map[string]any{collectionKey: out, "total": len(out)})
@@ -426,6 +454,19 @@ func (s *Server) adminGenericCRUD(w http.ResponseWriter, r *http.Request, kind, 
 				id = v
 			}
 			payload["id"] = id
+			switch resource {
+			case "channels":
+				payload["channel_id"] = id
+			case "webhooks", "notification-webhooks":
+				payload["subscription_id"] = id
+			case "consumer-groups":
+				payload["consumer_group_id"] = id
+			case "transfer-orders":
+				payload["to_id"] = id
+				payload["transfer_order_id"] = id
+			case "connector-registry":
+				payload["connector_id"] = id
+			}
 			payload["created_at"] = time.Now().UTC().Format(time.RFC3339)
 			if _, ok := payload["status"]; !ok {
 				payload["status"] = "ACTIVE"

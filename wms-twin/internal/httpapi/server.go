@@ -183,6 +183,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/admin/users", s.RequireAuth(s.adminUsers))
 	mux.HandleFunc("/api/admin/wms-tokens", s.RequireAuth(s.adminTokens))
 	mux.HandleFunc("/api/admin/wms-tokens/", s.RequireAuth(s.adminTokenRevoke))
+	mux.HandleFunc("/api/admin/tokens", s.RequireAuth(s.adminTokens))
+	mux.HandleFunc("/api/admin/tokens/", s.RequireAuth(s.adminTokenAlias))
 	mux.HandleFunc("/api/admin/audit", s.RequireAuth(s.auditRecent))
 	mux.HandleFunc("/api/admin/mesh", s.RequireAuth(s.meshStatus))
 	mux.HandleFunc("/api/admin/", s.RequireAuth(s.adminCatalog))
