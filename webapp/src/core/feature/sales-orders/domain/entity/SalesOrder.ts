@@ -43,6 +43,16 @@ export interface UpdateSalesOrderAddressInput {
   shippingAddress?: SalesOrderAddressInput;
 }
 
+export interface AvailableSalesOrderBin {
+  binId: number;
+  binCode: string;
+  zoneName: string;
+  quantityOnHand: number;
+  quantityAllocated: number;
+  quantityAvailable: number;
+  preferredPriority: number | null;
+}
+
 export interface SalesOrderPickTask {
   pickTaskId: number;
   soLineId: number;
