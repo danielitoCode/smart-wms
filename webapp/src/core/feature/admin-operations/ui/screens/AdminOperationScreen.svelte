@@ -273,9 +273,7 @@
       <nav class="pagination" aria-label={i18n.t('Paginación')}>
         <span>{i18n.t('Página')} {vm.pagination.page} {i18n.t('de')} {vm.pagination.pages} · {vm.pagination.total} {i18n.t('registros')}</span>
         <div>
-          <button type="button" onclick={() => changePage(vm.pagination!.page - 1)} disabled={vm.loading || vm.pagination.page <= 1}>{i18n.t('Anterior')}</button>
-          <button type="button" onclick={() => changePage(vm.pagination!.page + 1)} disabled={vm.loading || vm.pagination.page >= vm.pagination.pages}>{i18n.t('Siguiente')}</button>
-          <button type="button" onclick={() => changePage(vm.pagination.page - 1)} disabled={vm.loading || vm.pagination.page <= 1}>{i18n.t('Anterior')}</button>
+            <button type="button" onclick={() => changePage(vm.pagination.page - 1)} disabled={vm.loading || vm.pagination.page <= 1}>{i18n.t('Anterior')}</button>
           <button type="button" onclick={() => changePage(vm.pagination.page + 1)} disabled={vm.loading || vm.pagination.page >= vm.pagination.pages}>{i18n.t('Siguiente')}</button>
         </div>
       </nav>
