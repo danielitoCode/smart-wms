@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/admindata"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/cyclecounts"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/dockd"
@@ -61,6 +62,7 @@ type Server struct {
 	rma              *rma.Service
 	wmsTokens        *wmstoken.Store
 	wmsAudit         *wmsaudit.Service
+	adminData        *admindata.Store
 	mesh             *mesh.Mesh
 	token            string
 	users            *identity.Repository
@@ -125,6 +127,7 @@ func NewWithIdentity(node *core.Node, store *corestore.Store, token string, user
 		rma:         rma.New(store, sos, master, ledger),
 		wmsTokens:   wmstoken.NewStore(store),
 		wmsAudit:    auditSvc,
+		adminData:   admindata.New(store),
 		mesh:        meshLayer,
 		token:       token,
 		users:       users, jwtSecret: append([]byte(nil), jwtSecret...),

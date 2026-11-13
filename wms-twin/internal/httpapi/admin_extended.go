@@ -402,6 +402,15 @@ func (s *Server) adminGenericCRUD(w http.ResponseWriter, r *http.Request, kind, 
 	if len(parts) == 0 {
 		switch r.Method {
 		case http.MethodGet:
+			if s.adminData != nil {
+				out, err := s.adminData.List(resource)
+				if err != nil {
+					writeJSON(w, 500, map[string]string{"error": err.Error()})
+					return
+				}
+				writeJSON(w, 200, map[string]any{collectionKey: out, "total": len(out)})
+				return
+			}
 			list, err := s.store.List(kind)
 			if err != nil {
 				writeJSON(w, 500, map[string]string{"error": err.Error()})
@@ -449,24 +458,24 @@ func (s *Server) adminGenericCRUD(w http.ResponseWriter, r *http.Request, kind, 
 			} else {
 				payload = map[string]any{}
 			}
+			if s.adminData != nil {
+				id := ""
+				if v, ok := payload["id"].(string); ok {
+					id = v
+				}
+				doc, err := s.adminData.Put(resource, id, payload)
+				if err != nil {
+					writeJSON(w, 500, map[string]string{"error": err.Error()})
+					return
+				}
+				writeJSON(w, 201, doc)
+				return
+			}
 			id := newEntityID(resource)
 			if v, ok := payload["id"].(string); ok && v != "" {
 				id = v
 			}
 			payload["id"] = id
-			switch resource {
-			case "channels":
-				payload["channel_id"] = id
-			case "webhooks", "notification-webhooks":
-				payload["subscription_id"] = id
-			case "consumer-groups":
-				payload["consumer_group_id"] = id
-			case "transfer-orders":
-				payload["to_id"] = id
-				payload["transfer_order_id"] = id
-			case "connector-registry":
-				payload["connector_id"] = id
-			}
 			payload["created_at"] = time.Now().UTC().Format(time.RFC3339)
 			if _, ok := payload["status"]; !ok {
 				payload["status"] = "ACTIVE"

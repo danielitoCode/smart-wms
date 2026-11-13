@@ -554,3 +554,10 @@ Persistencia: organismos PrismaTec-Core (`wms_admin_*`). Núcleo operativo previ
 
 - `ItemByBarcode` acepta barcode/SKU/UPC/alias y también `item_id` numérico.
 - `mobile-e2e-bearer.sh` valida el path real del mobile (SKU) y el path por id.
+
+### AUD-0031 — Mocks en capa de datos (criterio Daniel)
+
+- Paquete `internal/application/admindata`: List/Get/Put/Delete sobre organismos Core.
+- Seeds solo en `seedIfEmpty` (no en controladores HTTP).
+- `httpapi` delega list/create genérico a `adminData` cuando está cableado.
+- Doc: `docs/CAPA_DATOS_MOCKS.md`.
