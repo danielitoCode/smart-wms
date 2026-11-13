@@ -42,8 +42,7 @@ export type BackorderItemProjection = {
 
 export type BackorderProjection = {
   salesOrderNumber: string;
-  parentSalesOrderId: number | null;
-  orderType: string;
+  parentSalesOrderNumber: string | null;
   customerName: string | null;
   status: string;
   daysWaiting: number;
@@ -68,7 +67,8 @@ export type AdjustmentProjection = {
 
 export type SalesOrderProjection = {
   salesOrderNumber: string;
-  parentSalesOrderNumber: string | null;
+  parentSalesOrderId: number | null;
+  orderType: string;
   customerName: string | null;
   customerPhone: string | null;
   status: string;
