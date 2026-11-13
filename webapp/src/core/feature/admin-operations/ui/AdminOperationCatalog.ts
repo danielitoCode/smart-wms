@@ -243,7 +243,7 @@ export const ADMIN_OPERATION_CATALOG: Record<string, AdminOperationDefinition> =
     description: 'Reposición de mercancía entre almacenes.',
     pageKey: 'transfer-orders',
     apiPermission: 'transfer-orders',
-    statusOptions: ['DRAFT', 'PENDING', 'AWAITING_APPROVAL', 'APPROVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
+    statusOptions: ['OPEN', 'PARTIALLY_PICKED', 'AWAITING_APPROVAL', 'APPROVED', 'CLOSED', 'CANCELLED'],
     warehouseIdFilters: true,
     columns: columns([
       { key: 'transferOrderNumber', label: 'Orden' },
