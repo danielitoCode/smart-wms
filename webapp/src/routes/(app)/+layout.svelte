@@ -5,6 +5,7 @@
 	import AppIcon from '../../lib/components/AppIcon.svelte';
 	import LocaleSwitcher from '../../lib/components/LocaleSwitcher.svelte';
 	import ThemeToggle from '../../lib/components/ThemeToggle.svelte';
+	import WarehousePicker from '../../lib/components/WarehousePicker.svelte';
 	import type { I18nState } from '../../lib/i18n/i18n.svelte';
 	import { createAuthGuardState } from '../../core/feature/auth/ui/state/authGuardState.svelte';
 	import { createWarehouseSelectionState } from '../../core/feature/warehouses/ui/state/warehouseSelectionState.svelte';
@@ -179,11 +180,7 @@
 					<ThemeToggle />
 					<LocaleSwitcher />
 					{#if warehouseSelection.canSelect && warehouseSelection.warehouses.length > 0}
-						<label class="warehouse-picker"><span>{i18n.t('Almacén activo')}</span>
-							<select aria-label={i18n.t('Almacén activo')} value={warehouseSelection.warehouseId ?? ''} onchange={(e) => warehouseSelection.select(Number(e.currentTarget.value))}>
-								{#each warehouseSelection.warehouses as wh}<option value={wh.id}>{wh.code} — {wh.name}</option>{/each}
-							</select>
-						</label>
+						<WarehousePicker />
 					{/if}
 					{#if !guard.user?.mustChangePassword}<a class="account-action" href="/change-password" aria-label={i18n.t('Cambiar contraseña')} title={i18n.t('Cambiar contraseña')}><AppIcon name="lock" size={17} /><span>{i18n.t('Contraseña')}</span></a>{/if}
 					<button class="logout" type="button" onclick={logout}><AppIcon name="logout" size={17} /><span>{i18n.t('Salir')}</span></button>
@@ -245,48 +242,13 @@
 	}
 	.topbar-actions :global(.theme-toggle),
 	.topbar-actions :global(.locale .trigger),
-	.warehouse-picker,
+	.topbar-actions :global(.warehouse .trigger),
 	.account-action,
 	.logout {
 		height: 40px;
 		min-height: 40px;
 		box-sizing: border-box;
 	}
-	.warehouse-picker {
-		display: inline-flex;
-		flex-direction: row;
-		align-items: center;
-		gap: 8px;
-		min-width: 0;
-		max-width: 280px;
-		padding: 0 4px 0 10px;
-		border: 1px solid var(--line);
-		border-radius: 10px;
-		background: var(--surface);
-		color: var(--slate);
-		font-size: 0.68rem;
-		font-weight: 600;
-	}
-	.warehouse-picker span {
-		flex: none;
-		white-space: nowrap;
-		line-height: 1;
-	}
-	.warehouse-picker select {
-		flex: 1 1 auto;
-		min-width: 120px;
-		max-width: 220px;
-		height: 100%;
-		min-height: 0;
-		padding: 0 28px 0 0;
-		border: 0;
-		border-radius: 0;
-		background: transparent;
-		color: var(--ink);
-		font: 500 0.82rem var(--body);
-		cursor: pointer;
-	}
-	.warehouse-picker select:focus { outline: none; }
 	.account-action,
 	.logout {
 		display: inline-flex;
@@ -313,7 +275,7 @@
 	.panel .title { margin:0 0 .35rem; font:600 1rem var(--disp); color:var(--ink); }
 	.panel .detail { margin:0; color:var(--danger); font-size:.9rem; }
 	.actions { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:1rem; }
-	@media (max-width:1080px) { .workspace { grid-template-columns:224px minmax(0,1fr); } .topbar { gap:10px; } .warehouse-picker { min-width:150px; } }
+	@media (max-width:1080px) { .workspace { grid-template-columns:224px minmax(0,1fr); } .topbar { gap:10px; } }
 	@media (max-width:800px) {
 		.workspace { display:block; }
 		.sidebar { position:fixed; left:0; top:0; width:min(84vw,290px); transform:translateX(-102%); transition:transform var(--motion-base,200ms) var(--ease-out,ease); box-shadow:none; }
@@ -323,11 +285,10 @@
 		.topbar { min-height:56px; padding:8px 16px; }
 		.page-context span { font-size:.82rem; }
 		.topbar-actions { gap:7px; }
-		.warehouse-picker { min-width:0; max-width:180px; padding-left:8px; }
 		.account-action span,.logout span { display:none; }
 		.account-action,.logout { width:40px; min-width:40px; padding:0; }
 		.content { padding:20px 16px 32px; }
 	}
-	@media (max-width:520px) { .topbar { gap:9px; } .page-context p { font-size:.56rem; } .page-context span { max-width:38vw; font-size:.76rem; } .warehouse-picker { max-width:140px; padding-left:6px; } .warehouse-picker span { display:none; } }
+	@media (max-width:520px) { .topbar { gap:9px; } .page-context p { font-size:.56rem; } .page-context span { max-width:38vw; font-size:.76rem; } }
 	@media (prefers-reduced-motion:reduce) { .sidebar,.nav-link,.content,.scrim,.boot { transition:none; animation:none; } }
 </style>
