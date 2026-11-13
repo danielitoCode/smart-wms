@@ -216,13 +216,35 @@ Detalle histórico y matrices antiguas: carpeta `doc/archive/` (solo referencia;
 
 ---
 
-## 12. PDF hermano
+## 12. Admin en el navegador (errores habituales)
+
+Si veo `vite: Permission denied` o `vite: not found`:
+
+1. Trabajo en `admin/` del monorepo, **sin sudo**.
+2. `npm ci` (o `npm install`) para crear `node_modules`.
+3. Arranco con **`npx vite --host 127.0.0.1 --port 3000`**, no confío solo en el script si el bit de ejecución de `.bin/vite` está roto.
+
+El proxy **no** está en `admin/scripts/`. Está en el gemelo:
+
+```bash
+cd wms-twin
+python3 scripts/admin-lab-proxy.py
+```
+
+Resumen de comandos: `./scripts/run-admin-lab.sh`.
+
+## 13. Manual de framework PrismaTec-Core
+
+Profundidad de integración con el Core (organismos, ledger, nodo, ports):  
+→ [MANUAL_FRAMEWORK_PRISMATEC.md](MANUAL_FRAMEWORK_PRISMATEC.md)
+
+## 14. PDF hermano
 
 El archivo `Guia_Completa_WMS_Twin_PrismaTec.pdf` en este mismo directorio `doc/` cuenta la misma infraestructura, con el mismo orden mental (componentes, capas, features, Core, auth, arranque, cómo extender, verificación). Si actualizo esta guía de forma sustancial, mantengo el PDF alineado.
 
 ---
 
-## 13. Reglas que me imponen disciplina
+## 15. Reglas que me imponen disciplina
 
 - No modifico el frontend ni el backend Flask desde el trabajo del gemelo.
 - Documentación del gemelo **solo** bajo `wms-twin/doc/`.
