@@ -1,47 +1,89 @@
-import type { CreateSalesOrderInput, SalesOrder } from '../../domain/entity/SalesOrder';
 import type {
-	ListSalesOrdersParams,
-	SalesOrderRepository
-} from '../../domain/repository/SalesOrderRepository';
+  CreateSalesOrderInput, SalesOrder, SalesOrderPage, UpdateSalesOrder,
+  PartialFulfillInput, RevertSalesOrderInput, CreateRmaInput, ReceiveReturnInput
+} from '../../domain/entity/SalesOrder';
+import type { ListSalesOrdersParams, SalesOrderRepository } from '../../domain/repository/SalesOrderRepository';
 import type { SalesOrderRemoteDataSource } from '../datasource/SalesOrderRemoteDataSource';
 import { SalesOrderMapper } from '../mapper/SalesOrderMapper';
 
+function toDetail(row: Awaited<ReturnType<SalesOrderRemoteDataSource['getById']>>): SalesOrder {
+  if ('sales_order' in row && row.sales_order) return SalesOrderMapper.toDetail(row);
+  return SalesOrderMapper.toDomain(row);
+}
+
 export class SalesOrderRepositoryImpl implements SalesOrderRepository {
-	constructor(private readonly datasource: SalesOrderRemoteDataSource) {}
+  constructor(private readonly datasource: SalesOrderRemoteDataSource) {}
 
-	async list(params?: ListSalesOrdersParams): Promise<SalesOrder[]> {
-		const rows = await this.datasource.list(params);
-		return rows.map(SalesOrderMapper.toDomain);
-	}
+  async list(params?: ListSalesOrdersParams): Promise<SalesOrder[]> {
+    return (await this.listPage(params)).items;
+  }
 
-	async getById(id: number): Promise<SalesOrder> {
-		const row = await this.datasource.getById(id);
-		return SalesOrderMapper.toDomain(row);
-	}
+  async listPage(params?: ListSalesOrdersParams): Promise<SalesOrderPage> {
+    const page = await this.datasource.list(params);
+    return SalesOrderMapper.toPage(page);
+  }
 
-	async create(input: CreateSalesOrderInput): Promise<SalesOrder> {
-		const payload: Record<string, unknown> = {
-			so_number: input.soNumber,
-			warehouse_id: input.warehouseId,
-			lines: input.lines.map((l) => ({
-				item_id: l.itemId,
-				quantity_ordered: l.quantityOrdered
-			}))
-		};
-		if (input.customerName) payload.customer_name = input.customerName;
-		if (input.customerEmail) payload.customer_email = input.customerEmail;
-		if (input.customerPhone) payload.customer_phone = input.customerPhone;
-		if (input.customerAddress) payload.customer_address = input.customerAddress;
-		if (input.shipAddress) payload.ship_address = input.shipAddress;
-		if (input.shipMethod) payload.ship_method = input.shipMethod;
-		if (input.memo) payload.memo = input.memo;
+  async getById(id: number): Promise<SalesOrder> {
+    return toDetail(await this.datasource.getById(id));
+  }
 
-		const row = await this.datasource.create(payload);
-		return SalesOrderMapper.toDomain(row);
-	}
+  async create(input: CreateSalesOrderInput): Promise<SalesOrder> {
+    const payload: Record<string, unknown> = {
+      so_number: input.soNumber,
+      warehouse_id: input.warehouseId,
+      lines: input.lines.map((line) => ({
+        item_id: line.itemId, quantity_ordered: line.quantityOrdered
+      }))
+    };
+    const optionalFields: Array<[string, string | null | undefined]> = [
+      ['customer_name', input.customerName], ['customer_email', input.customerEmail],
+      ['customer_phone', input.customerPhone], ['customer_address', input.customerAddress],
+      ['ship_address', input.shipAddress], ['ship_method', input.shipMethod],
+      ['ship_by_date', input.shipByDate], ['memo', input.memo], ['order_origin', input.orderOrigin]
+    ];
+    for (const [key, value] of optionalFields) if (value != null && value !== '') payload[key] = value;
+    return toDetail(await this.datasource.create(payload));
+  }
 
-	async cancel(id: number): Promise<SalesOrder> {
-		const row = await this.datasource.cancel(id);
-		return SalesOrderMapper.toDomain(row);
-	}
+  async update(id: number, input: UpdateSalesOrder): Promise<void> {
+    const fields: Record<string, string> = {
+      salesOrderNumber: 'so_number', soNumber: 'so_number',
+      customerName: 'customer_name', customerPhone: 'customer_phone',
+      customerEmail: 'customer_email', customerAddress: 'customer_address',
+      shipAddress: 'ship_address', shipMethod: 'ship_method',
+      shipByDate: 'ship_by_date', shippedAt: 'shipped_date_local',
+      trackingNumber: 'tracking_number', carrier: 'carrier', memo: 'memo',
+      orderOrigin: 'order_origin', sourceSystem: 'source_system',
+      priority: 'priority', status: 'status'
+    };
+    const payload: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(input)) {
+      const apiKey = fields[key];
+      if (apiKey) payload[apiKey] = value;
+    }
+    if (!Object.keys(payload).length) throw new Error('No hay campos compatibles para actualizar');
+    await this.datasource.update(id, payload);
+  }
+
+  async cancel(id: number): Promise<SalesOrder> {
+    return toDetail(await this.datasource.cancel(id));
+  }
+
+  addLine(id: number, input: { itemId: number; quantityOrdered: number }): Promise<void> {
+    return this.datasource.addLine(id, { item_id: input.itemId, quantity_ordered: input.quantityOrdered });
+  }
+  updateLine(id: number, lineId: number, quantity: number): Promise<void> {
+    return this.datasource.updateLine(id, lineId, quantity);
+  }
+  deleteLine(id: number, lineId: number): Promise<void> { return this.datasource.deleteLine(id, lineId); }
+  adminShip(id: number): Promise<void> { return this.datasource.adminShip(id); }
+  adminPick(id: number, lines: Array<{ soLineId: number; binId: number; quantity: number }>): Promise<void> {
+    return this.datasource.adminPick(id, lines);
+  }
+  partialFulfill(id: number, input: PartialFulfillInput): Promise<void> { return this.datasource.partialFulfill(id, input); }
+  revertStatus(id: number, input: RevertSalesOrderInput): Promise<void> { return this.datasource.revertStatus(id, input); }
+  async related(id: number): Promise<unknown> { return this.datasource.related(id); }
+  createRma(id: number, input: CreateRmaInput): Promise<void> { return this.datasource.createRma(id, input); }
+  receiveReturn(id: number, input: ReceiveReturnInput): Promise<void> { return this.datasource.receiveReturn(id, input); }
+  voidReturn(id: number): Promise<void> { return this.datasource.voidReturn(id); }
 }

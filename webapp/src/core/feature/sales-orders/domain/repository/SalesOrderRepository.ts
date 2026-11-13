@@ -1,23 +1,39 @@
-import type { CreateSalesOrderInput, SalesOrder } from '../entity/SalesOrder';
+import type {
+  CreateSalesOrderInput,
+  PartialFulfillInput,
+  ReceiveReturnInput,
+  RevertSalesOrderInput,
+  CreateRmaInput,
+  SalesOrder,
+  SalesOrderPage,
+  UpdateSalesOrder
+} from '../entity/SalesOrder';
 
 export type ListSalesOrdersParams = {
-	status?: string;
-	warehouseId?: number;
-	page?: number;
-	perPage?: number;
-	q?: string;
+  status?: string;
+  warehouseId?: number;
+  page?: number;
+  perPage?: number;
+  q?: string;
+  excludePostFulfillment?: boolean;
 };
 
 export interface SalesOrderRepository {
-	/** GET /api/admin/sales-orders */
-	list(params?: ListSalesOrdersParams): Promise<SalesOrder[]>;
-
-	/** GET /api/admin/sales-orders/{id} */
-	getById(id: number): Promise<SalesOrder>;
-
-	/** POST /api/admin/sales-orders */
-	create(input: CreateSalesOrderInput): Promise<SalesOrder>;
-
-	/** POST /api/admin/sales-orders/{id}/cancel */
-	cancel(id: number): Promise<SalesOrder>;
+  list(params?: ListSalesOrdersParams): Promise<SalesOrder[]>;
+  listPage(params?: ListSalesOrdersParams): Promise<SalesOrderPage>;
+  getById(id: number): Promise<SalesOrder>;
+  create(input: CreateSalesOrderInput): Promise<SalesOrder>;
+  update(id: number, input: UpdateSalesOrder): Promise<void>;
+  cancel(id: number): Promise<SalesOrder>;
+  addLine(id: number, input: { itemId: number; quantityOrdered: number }): Promise<void>;
+  updateLine(id: number, lineId: number, quantity: number): Promise<void>;
+  deleteLine(id: number, lineId: number): Promise<void>;
+  adminShip(id: number): Promise<void>;
+  adminPick(id: number, lines: Array<{ soLineId: number; binId: number; quantity: number }>): Promise<void>;
+  partialFulfill(id: number, input: PartialFulfillInput): Promise<void>;
+  revertStatus(id: number, input: RevertSalesOrderInput): Promise<void>;
+  related(id: number): Promise<unknown>;
+  createRma(id: number, input: CreateRmaInput): Promise<void>;
+  receiveReturn(id: number, input: ReceiveReturnInput): Promise<void>;
+  voidReturn(id: number): Promise<void>;
 }
