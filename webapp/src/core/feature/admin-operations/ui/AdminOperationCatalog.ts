@@ -95,7 +95,7 @@ export const ADMIN_OPERATION_CATALOG: Record<string, AdminOperationDefinition> =
       { key: 'salesOrderNumber', label: 'Pedido' },
       { key: 'customerName', label: 'Cliente' },
       { key: 'customerPhone', label: 'Teléfono' },
-      { key: 'orderSource', label: 'Origen' },
+      { key: 'orderType', label: 'Tipo' },
       { key: 'status', label: 'Estado', format: 'status' },
       { key: 'createdAt', label: 'Fecha', format: 'date' },
       { key: 'memo', label: 'Observaciones' }
@@ -215,10 +215,9 @@ export const ADMIN_OPERATION_CATALOG: Record<string, AdminOperationDefinition> =
     searchable: true,
     columns: columns([
       { key: 'salesOrderNumber', label: 'Documento' },
-      { key: 'parentSalesOrderNumber', label: 'Venta original' },
+      { key: 'parentSalesOrderId', label: 'ID venta original' },
       { key: 'customerName', label: 'Cliente' },
       { key: 'status', label: 'Estado', format: 'status' },
-      { key: 'orderTotal', label: 'Importe', format: 'money' },
       { key: 'createdAt', label: 'Fecha', format: 'date' }
     ])
   },
