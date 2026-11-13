@@ -55,6 +55,8 @@ export function createSalesOrdersState() {
   let cancellingId = $state<number | null>(null);
   let availableBinsByLine = $state<Record<number, AvailableSalesOrderBin[]>>({});
   let loadingBinsByLine = $state<Record<number, boolean>>({});
+  let binsRequestSequence = 0;
+  let binsRequestByLine: Record<number, number> = {};
 
   async function load(): Promise<boolean> {
     if (loading) return false;
@@ -126,6 +128,8 @@ export function createSalesOrdersState() {
     relatedOrders = [];
     availableBinsByLine = {};
     loadingBinsByLine = {};
+    binsRequestByLine = {};
+    binsRequestSequence += 1;
     try {
       selected = await deps.getSalesOrder.execute(id);
       return true;
@@ -141,6 +145,8 @@ export function createSalesOrdersState() {
     relatedOrders = [];
     availableBinsByLine = {};
     loadingBinsByLine = {};
+    binsRequestByLine = {};
+    binsRequestSequence += 1;
   }
 
   async function update(id: number, input: UpdateSalesOrder): Promise<boolean> {
@@ -221,6 +227,46 @@ export function createSalesOrdersState() {
       return false;
     } finally {
       loadingRelated = false;
+    }
+  }
+
+  async function loadAvailableBins(lineId: number): Promise<boolean> {
+    if (!selected || !Number.isInteger(lineId) || lineId < 1) return false;
+
+    const orderId = selected.salesOrderId;
+    const requestId = ++binsRequestSequence;
+    binsRequestByLine = { ...binsRequestByLine, [lineId]: requestId };
+    loadingBinsByLine = { ...loadingBinsByLine, [lineId]: true };
+    error = null;
+
+    try {
+      const bins = await deps.getAvailableSalesOrderBins.execute(orderId, lineId);
+
+      if (
+        selected?.salesOrderId !== orderId ||
+        binsRequestByLine[lineId] !== requestId
+      ) {
+        return false;
+      }
+
+      availableBinsByLine = { ...availableBinsByLine, [lineId]: bins };
+      return true;
+    } catch (err) {
+      if (
+        selected?.salesOrderId === orderId &&
+        binsRequestByLine[lineId] === requestId
+      ) {
+        error = toUserMessage(err, 'No se pudieron cargar las ubicaciones disponibles');
+        availableBinsByLine = { ...availableBinsByLine, [lineId]: [] };
+      }
+      return false;
+    } finally {
+      if (binsRequestByLine[lineId] === requestId) {
+        const nextLoading = { ...loadingBinsByLine };
+        delete nextLoading[lineId];
+        loadingBinsByLine = nextLoading;
+        delete binsRequestByLine[lineId];
+      }
     }
   }
 
