@@ -1,32 +1,5 @@
 <script lang="ts">
-	// Smart WMS — public entry
+	import SplashScreen from '../core/feature/auth/ui/screens/SplashScreen.svelte';
 </script>
 
-<main>
-	<h1>Smart WMS</h1>
-	<p>Frontend en <strong>SvelteKit</strong> + TypeScript.</p>
-	<p>Arquitectura Feature-First / Clean Architecture.</p>
-	<ul>
-		<li><a href="/login">Login</a></li>
-		<li><a href="/inventory">Inventario</a> (requiere sesión)</li>
-		<li><a href="/warehouses">Almacenes</a> (requiere sesión)</li>
-		<li><a href="/items">Ítems</a> (requiere sesión)</li>
-	</ul>
-</main>
-
-<style>
-	main {
-		font-family: system-ui, -apple-system, sans-serif;
-		max-width: 40rem;
-		margin: 4rem auto;
-		padding: 0 1.5rem;
-		line-height: 1.5;
-	}
-	h1 {
-		font-size: 2rem;
-		margin-bottom: 0.5rem;
-	}
-	ul {
-		padding-left: 1.25rem;
-	}
-</style>
+<SplashScreen />

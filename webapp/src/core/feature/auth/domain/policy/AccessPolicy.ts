@@ -9,6 +9,43 @@ export function canAccessPages(
 	return requiredKeys.every((key) => allowedPages.includes(key));
 }
 
+/** Preferencia de aterrizaje interno tras login o splash, por page key. */
+const HOME_ROUTE_CANDIDATES: { pageKey: string; path: string }[] = [
+	{ pageKey: 'inventory', path: '/inventory' },
+	{ pageKey: 'receiving', path: '/receiving' },
+	{ pageKey: 'putaway', path: '/putaway' },
+	{ pageKey: 'picking', path: '/picking' },
+	{ pageKey: 'packing', path: '/packing' },
+	{ pageKey: 'shipping', path: '/shipping' },
+	{ pageKey: 'cycle-counts', path: '/cycle-count' },
+	{ pageKey: 'sales-orders', path: '/management/sales-orders' },
+	{ pageKey: 'purchase-orders', path: '/management/purchase-orders' },
+	{ pageKey: 'items', path: '/items' },
+	{ pageKey: 'warehouses', path: '/warehouses' },
+	{ pageKey: 'vendors', path: '/management/vendors' },
+	{ pageKey: 'users', path: '/management/users' },
+	{ pageKey: 'settings', path: '/management/settings' }
+];
+
+/**
+ * Ruta interna por defecto según rol y páginas permitidas.
+ * ADMIN → inventario. USER → primera ruta operativa a la que tenga acceso.
+ */
+export function resolveHomePath(input: {
+	role: AccessRole;
+	allowedPages: readonly string[];
+	mustChangePassword?: boolean;
+}): string {
+	if (input.mustChangePassword) return '/change-password';
+	if (input.role === 'ADMIN') return '/inventory';
+	for (const candidate of HOME_ROUTE_CANDIDATES) {
+		if (input.allowedPages.includes(candidate.pageKey)) {
+			return candidate.path;
+		}
+	}
+	return '/inventory';
+}
+
 export function requiredPageKeysForPath(pathname: string): string[] {
 	if (pathname === '/inventory' || pathname.startsWith('/inventory/')) return ['inventory'];
 	if (pathname === '/cycle-count' || pathname.startsWith('/cycle-count/')) return ['cycle-counts'];
