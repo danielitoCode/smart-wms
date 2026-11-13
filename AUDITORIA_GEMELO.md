@@ -561,3 +561,11 @@ Persistencia: organismos PrismaTec-Core (`wms_admin_*`). Núcleo operativo previ
 - Seeds solo en `seedIfEmpty` (no en controladores HTTP).
 - `httpapi` delega list/create genérico a `adminData` cuando está cableado.
 - Doc: `docs/CAPA_DATOS_MOCKS.md`.
+
+### AUD-0032 — Clean Architecture ports + guía PDF
+
+- `internal/ports` (AdminResourceRepository, CatalogRepository).
+- `internal/infrastructure/persistence` adapters.
+- `admindata` implementa el port (assert en compilación).
+- Docs: CLEAN_ARCHITECTURE.md + PDF Guia_Completa_WMS_Twin_PrismaTec.pdf.
+- Sin reescritura masiva de packages application (no se rompe el wiring existente).
