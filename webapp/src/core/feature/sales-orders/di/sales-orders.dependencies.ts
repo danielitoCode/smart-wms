@@ -4,12 +4,20 @@ import { SalesOrderRepositoryImpl } from '../data/repository/SalesOrderRepositor
 import { CancelSalesOrderUseCase } from '../domain/usecase/CancelSalesOrderUseCase';
 import { CreateSalesOrderUseCase } from '../domain/usecase/CreateSalesOrderUseCase';
 import { GetSalesOrderUseCase } from '../domain/usecase/GetSalesOrderUseCase';
+import { GetRelatedSalesOrdersUseCase } from '../domain/usecase/GetRelatedSalesOrdersUseCase';
 import { ListSalesOrdersUseCase } from '../domain/usecase/ListSalesOrdersUseCase';
 import { UpdateSalesOrderUseCase } from '../domain/usecase/UpdateSalesOrderUseCase';
 import {
   AddSalesOrderLineUseCase, UpdateSalesOrderLineUseCase, DeleteSalesOrderLineUseCase
 } from '../domain/usecase/ManageSalesOrderLinesUseCase';
-import { AdminShipSalesOrderUseCase } from '../domain/usecase/FulfillSalesOrderUseCases';
+import {
+  AdminPickSalesOrderUseCase, AdminShipSalesOrderUseCase,
+  PartialFulfillSalesOrderUseCase, RevertSalesOrderStatusUseCase
+} from '../domain/usecase/FulfillSalesOrderUseCases';
+import {
+  CreateSalesOrderRmaUseCase, ReceiveSalesOrderReturnUseCase,
+  VoidSalesOrderReturnUseCase
+} from '../domain/usecase/ManageSalesOrderReturnsUseCases';
 
 export function createSalesOrdersDependencies() {
   const datasource = new SalesOrderRemoteDataSource(apiClient);
@@ -18,13 +26,20 @@ export function createSalesOrdersDependencies() {
     repository,
     listSalesOrders: new ListSalesOrdersUseCase(repository),
     getSalesOrder: new GetSalesOrderUseCase(repository),
+    getRelatedSalesOrders: new GetRelatedSalesOrdersUseCase(repository),
     createSalesOrder: new CreateSalesOrderUseCase(repository),
     updateSalesOrder: new UpdateSalesOrderUseCase(repository),
     cancelSalesOrder: new CancelSalesOrderUseCase(repository),
     addSalesOrderLine: new AddSalesOrderLineUseCase(repository),
     updateSalesOrderLine: new UpdateSalesOrderLineUseCase(repository),
     deleteSalesOrderLine: new DeleteSalesOrderLineUseCase(repository),
-    adminShipSalesOrder: new AdminShipSalesOrderUseCase(repository)
+    adminPickSalesOrder: new AdminPickSalesOrderUseCase(repository),
+    adminShipSalesOrder: new AdminShipSalesOrderUseCase(repository),
+    partialFulfillSalesOrder: new PartialFulfillSalesOrderUseCase(repository),
+    revertSalesOrderStatus: new RevertSalesOrderStatusUseCase(repository),
+    createSalesOrderRma: new CreateSalesOrderRmaUseCase(repository),
+    receiveSalesOrderReturn: new ReceiveSalesOrderReturnUseCase(repository),
+    voidSalesOrderReturn: new VoidSalesOrderReturnUseCase(repository)
   };
 }
 

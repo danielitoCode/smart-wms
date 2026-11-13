@@ -5,10 +5,14 @@ import type {
 } from '../../domain/entity/SalesOrder';
 import type { ListSalesOrdersParams, SalesOrderRepository } from '../../domain/repository/SalesOrderRepository';
 import type { SalesOrderRemoteDataSource } from '../datasource/SalesOrderRemoteDataSource';
+import type { SalesOrderDetailResponseDto } from '../dto/SalesOrderDto';
 import { SalesOrderMapper } from '../mapper/SalesOrderMapper';
 
 function toDetail(row: Awaited<ReturnType<SalesOrderRemoteDataSource['getById']>>): SalesOrder {
-  if ('sales_order' in row && row.sales_order) return SalesOrderMapper.toDetail(row);
+  const detail = row as Partial<SalesOrderDetailResponseDto>;
+  if (detail.sales_order && Array.isArray(detail.lines) && Array.isArray(detail.pick_tasks)) {
+    return SalesOrderMapper.toDetail(detail as SalesOrderDetailResponseDto);
+  }
   return SalesOrderMapper.toDomain(row);
 }
 
@@ -37,7 +41,8 @@ export class SalesOrderRepositoryImpl implements SalesOrderRepository {
       ['ship_by_date', input.shipByDate], ['memo', input.memo], ['order_origin', input.orderOrigin]
     ];
     for (const [key, value] of optionalFields) if (value != null && value !== '') payload[key] = value;
-    return toDetail(await this.datasource.create(payload));
+    const created = await this.datasource.create(payload);
+    return toDetail(created);
   }
   async update(id: number, input: UpdateSalesOrder): Promise<void> {
     const fields: Record<string, string> = {
@@ -65,19 +70,29 @@ export class SalesOrderRepositoryImpl implements SalesOrderRepository {
   addLine(id: number, input: { itemId: number; quantityOrdered: number }): Promise<void> {
     return this.datasource.addLine(id, { item_id: input.itemId, quantity_ordered: input.quantityOrdered });
   }
-  updateLine(id: number, lineId: number, quantity: number): Promise<void> { return this.datasource.updateLine(id, lineId, quantity); }
+  updateLine(id: number, lineId: number, quantity: number): Promise<void> {
+    return this.datasource.updateLine(id, lineId, quantity);
+  }
   deleteLine(id: number, lineId: number): Promise<void> { return this.datasource.deleteLine(id, lineId); }
   adminShip(id: number): Promise<void> { return this.datasource.adminShip(id); }
   adminPick(id: number, lines: Array<{ soLineId: number; binId: number; quantity: number }>): Promise<void> {
     return this.datasource.adminPick(id, lines);
   }
-  partialFulfill(id: number, input: PartialFulfillInput): Promise<void> { return this.datasource.partialFulfill(id, input); }
-  revertStatus(id: number, input: RevertSalesOrderInput): Promise<void> { return this.datasource.revertStatus(id, input); }
+  partialFulfill(id: number, input: PartialFulfillInput): Promise<void> {
+    return this.datasource.partialFulfill(id, input);
+  }
+  revertStatus(id: number, input: RevertSalesOrderInput): Promise<void> {
+    return this.datasource.revertStatus(id, input);
+  }
   async related(id: number): Promise<RelatedSalesOrder[]> {
     const response = await this.datasource.related(id);
     return SalesOrderMapper.toRelated(response.records);
   }
-  createRma(id: number, input: CreateRmaInput): Promise<void> { return this.datasource.createRma(id, input); }
-  receiveReturn(id: number, input: ReceiveReturnInput): Promise<void> { return this.datasource.receiveReturn(id, input); }
+  createRma(id: number, input: CreateRmaInput): Promise<void> {
+    return this.datasource.createRma(id, input);
+  }
+  receiveReturn(id: number, input: ReceiveReturnInput): Promise<void> {
+    return this.datasource.receiveReturn(id, input);
+  }
   voidReturn(id: number): Promise<void> { return this.datasource.voidReturn(id); }
 }
