@@ -1,5 +1,17 @@
-import type { PartialFulfillInput, RevertSalesOrderInput } from '../entity/SalesOrder';
+import type { AvailableSalesOrderBin, PartialFulfillInput, RevertSalesOrderInput } from '../entity/SalesOrder';
 import type { SalesOrderRepository } from '../repository/SalesOrderRepository';
+
+export class GetAvailableSalesOrderBinsUseCase {
+  constructor(private readonly repository: SalesOrderRepository) {}
+
+  execute(id: number, lineId: number): Promise<AvailableSalesOrderBin[]> {
+    validateOrderId(id);
+    if (!Number.isInteger(lineId) || lineId < 1) {
+      throw new Error('El identificador de la línea no es válido');
+    }
+    return this.repository.getAvailableBins(id, lineId);
+  }
+}
 
 export class AdminShipSalesOrderUseCase {
   constructor(private readonly repository: SalesOrderRepository) {}
