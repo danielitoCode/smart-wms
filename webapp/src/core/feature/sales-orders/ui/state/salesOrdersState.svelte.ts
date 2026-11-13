@@ -57,7 +57,7 @@ export function createSalesOrdersState() {
     loading = true;
     error = null;
     try {
-      pageData = await deps.repository.listPage({
+      pageData = await deps.listSalesOrders.execute({
         status: status || undefined,
         warehouseId: warehouseId ?? undefined,
         q: search || undefined,
