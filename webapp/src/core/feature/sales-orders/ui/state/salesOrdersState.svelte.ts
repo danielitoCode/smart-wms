@@ -1,5 +1,5 @@
 import { createSalesOrdersDependencies } from '../../di/sales-orders.dependencies';
-import type { CreateSalesOrder, SalesOrder, SalesOrderPage, UpdateSalesOrder } from '../../domain/entity/SalesOrder';
+import type {\n  CreateSalesOrder, SalesOrder, SalesOrderPage, UpdateSalesOrder, RelatedSalesOrder,\n  PartialFulfillInput, RevertSalesOrderInput, CreateRmaInput, ReceiveReturnInput\n} from '../../domain/entity/SalesOrder';
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 
 const deps = createSalesOrdersDependencies();
@@ -186,7 +186,7 @@ export function createSalesOrdersState() {
     get selected() { return selected; },
     get cancellingId() { return cancellingId; },
     setSearch, setStatus, setPage, setWarehouseId,
-    load, create, open, close, update, addLine, updateLine, deleteLine, cancel, adminShip
+    load, create, open, close, update, addLine, updateLine, deleteLine, cancel, adminShip,\n    loadRelated, adminPick, partialFulfill, revertStatus, createRma, receiveReturn, voidReturn
   };
 }
 
