@@ -5,9 +5,10 @@
   import { ADMIN_OPERATION_CATALOG, type AdminOperationColumn } from '../AdminOperationCatalog';
   import type { AdminOperationKey, AdminOperationRow, BackorderItemProjection } from '../../domain/entity/AdminOperation.ts';
   import { createAdminOperationState } from '../state/adminOperationState.svelte';
+  import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
 
   const i18n = getContext<I18nState>('i18n');
-  const selection = getContext<{ warehouseId: number | null }>('warehouseSelection');
+  const selection = getContext<WarehouseSelectionState>('warehouseSelection');
   function isAdminOperationKey(value: string | undefined): value is AdminOperationKey {
     return value !== undefined && Object.prototype.hasOwnProperty.call(ADMIN_OPERATION_CATALOG, value);
   }
@@ -32,7 +33,7 @@
     const state = vm;
     const current = definition;
     const warehouseId = selection?.warehouseId;
-    if (state && current) {
+    if (state && current && (!current.warehouseScoped || selection.initialized)) {
       untrack(() => void state.load({
         warehouseId: current.warehouseScoped ? warehouseId : null
       }));
@@ -117,7 +118,7 @@
   }
 
   function load(): void {
-    if (!definition) return;
+    if (!definition || (definition.warehouseScoped && !selection.initialized)) return;
     void vm.load({
       warehouseId: definition.warehouseScoped ? selection?.warehouseId : null
     });
