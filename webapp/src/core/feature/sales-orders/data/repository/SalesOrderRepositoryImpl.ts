@@ -1,7 +1,8 @@
 import type {
   CreateSalesOrderInput, SalesOrder, SalesOrderPage, UpdateSalesOrder,
   PartialFulfillInput, RevertSalesOrderInput, CreateRmaInput, ReceiveReturnInput,
-  RelatedSalesOrder
+  RelatedSalesOrder,
+  UpdateSalesOrderAddressInput
 } from '../../domain/entity/SalesOrder';
 import type { ListSalesOrdersParams, SalesOrderRepository } from '../../domain/repository/SalesOrderRepository';
 import type { SalesOrderRemoteDataSource } from '../datasource/SalesOrderRemoteDataSource';
@@ -62,6 +63,40 @@ export class SalesOrderRepositoryImpl implements SalesOrderRepository {
     if (!Object.keys(payload).length) throw new Error('No hay campos compatibles para actualizar');
     await this.datasource.update(id, payload);
   }
+  async updateAddress(id: number, input: UpdateSalesOrderAddressInput): Promise<void> {
+    const addressFields: Record<string, string> = {
+      name: 'name',
+      line1: 'line1',
+      line2: 'line2',
+      city: 'city',
+      state: 'state',
+      postalCode: 'postal_code',
+      country: 'country',
+      phone: 'phone'
+    };
+    const payload: Record<string, string> = {};
+
+    for (const [group, address] of Object.entries({
+      billing: input.billingAddress,
+      shipping: input.shippingAddress
+    })) {
+      if (!address) continue;
+
+      for (const [field, value] of Object.entries(address)) {
+        const apiField = addressFields[field];
+        if (apiField && value !== null && value !== undefined) {
+          payload[`${group}_address_${apiField}`] = value;
+        }
+      }
+    }
+
+    if (!Object.keys(payload).length) {
+      throw new Error('No hay campos de dirección compatibles para actualizar');
+    }
+
+    await this.datasource.updateAddress(id, payload);
+  }
+
   async cancel(id: number): Promise<SalesOrder> {
     await this.datasource.cancel(id);
     return this.getById(id);

@@ -2,31 +2,16 @@ import { describe, expect, it, vi } from 'vitest';
 import { CreateSalesOrderUseCase } from '../../../../../../core/feature/sales-orders/domain/usecase/CreateSalesOrderUseCase';
 import { ListSalesOrdersUseCase } from '../../../../../../core/feature/sales-orders/domain/usecase/ListSalesOrdersUseCase';
 import type { SalesOrderRepository } from '../../../../../../core/feature/sales-orders/domain/repository/SalesOrderRepository';
-import type { SalesOrderPage } from '../../../../../../core/feature/sales-orders/domain/entity/SalesOrder';
 
 describe('Sales order use cases', () => {
   it('validates pagination and search before listing', async () => {
-    const page: SalesOrderPage = {
-      items: [],
-      total: 0,
-      page: 1,
-      perPage: 50,
-      pages: 1
-    };
-    const listPage = vi.fn().mockResolvedValue(page);
-    const repository = { listPage } as unknown as SalesOrderRepository;
+    const list = vi.fn().mockResolvedValue([]);
+    const repository = { list } as unknown as SalesOrderRepository;
     const useCase = new ListSalesOrdersUseCase(repository);
 
     expect(() => useCase.execute({ page: 0 })).toThrow(/page/);
     await useCase.execute({ q: ' SO-1 ' });
-    expect(listPage).toHaveBeenCalledWith({
-      q: 'SO-1',
-      status: undefined,
-      warehouseId: undefined,
-      page: undefined,
-      perPage: undefined,
-      excludePostFulfillment: false
-    });
+    expect(list).toHaveBeenCalledWith({ q: 'SO-1', status: undefined, warehouseId: undefined, page: undefined, perPage: undefined });
   });
 
   it('requires a number, warehouse and unique positive item lines', () => {
