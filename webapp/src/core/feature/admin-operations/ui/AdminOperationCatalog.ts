@@ -112,6 +112,7 @@ export const ADMIN_OPERATION_CATALOG = {
     description: 'Pedidos retenidos antes de preparación.',
     pageKey: 'sales-orders',
     apiPermission: 'sales-orders',
+    warehouseScoped: true,
     searchable: true,
     columns: columns<'fraud'>([
       { key: 'salesOrderNumber', label: 'Pedido' },
