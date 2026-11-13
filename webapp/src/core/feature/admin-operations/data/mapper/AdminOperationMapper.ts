@@ -52,7 +52,7 @@ function mapBackorder(value: BackorderDto): Extract<AdminOperationRow, { feature
 function mapAdjustment(
   feature: 'count-approvals' | 'adjustments',
   value: AdjustmentDto
-): Extract<AdminOperationRow, { feature: 'count-approvals' | 'adjustments' }> {
+): Extract<AdminOperationRow, { feature: 'count-approvals' }> | Extract<AdminOperationRow, { feature: 'adjustments' }> {
   const data: AdjustmentProjection = {
     adjustmentId: value.adjustment_id,
     cycleCountId: value.cycle_count_id,
@@ -77,7 +77,7 @@ function mapAdjustment(
 function mapSalesOrder(
   feature: 'fraud' | 'refunds' | 'returns',
   value: SalesOrderDto
-): Extract<AdminOperationRow, { feature: 'fraud' | 'refunds' | 'returns' }> {
+): Extract<AdminOperationRow, { feature: 'fraud' }> | Extract<AdminOperationRow, { feature: 'refunds' }> | Extract<AdminOperationRow, { feature: 'returns' }> {
   const data: SalesOrderProjection = {
     salesOrderNumber: value.so_number,
     parentSalesOrderNumber: value.parent_so_number ?? null,
