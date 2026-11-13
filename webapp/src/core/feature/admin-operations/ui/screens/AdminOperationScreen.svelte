@@ -275,6 +275,8 @@
         <div>
           <button type="button" onclick={() => changePage(vm.pagination!.page - 1)} disabled={vm.loading || vm.pagination.page <= 1}>{i18n.t('Anterior')}</button>
           <button type="button" onclick={() => changePage(vm.pagination!.page + 1)} disabled={vm.loading || vm.pagination.page >= vm.pagination.pages}>{i18n.t('Siguiente')}</button>
+          <button type="button" onclick={() => changePage(vm.pagination.page - 1)} disabled={vm.loading || vm.pagination.page <= 1}>{i18n.t('Anterior')}</button>
+          <button type="button" onclick={() => changePage(vm.pagination.page + 1)} disabled={vm.loading || vm.pagination.page >= vm.pagination.pages}>{i18n.t('Siguiente')}</button>
         </div>
       </nav>
     {/if}
