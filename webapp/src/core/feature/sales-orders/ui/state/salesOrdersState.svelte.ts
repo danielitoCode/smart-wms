@@ -1,11 +1,25 @@
 import { createSalesOrdersDependencies } from '../../di/sales-orders.dependencies';
-import type {\n  CreateSalesOrder, SalesOrder, SalesOrderPage, UpdateSalesOrder, RelatedSalesOrder,\n  PartialFulfillInput, RevertSalesOrderInput, CreateRmaInput, ReceiveReturnInput\n} from '../../domain/entity/SalesOrder';
+import type {
+  CreateSalesOrder,
+  CreateRmaInput,
+  PartialFulfillInput,
+  ReceiveReturnInput,
+  RelatedSalesOrder,
+  RevertSalesOrderInput,
+  SalesOrder,
+  SalesOrderPage,
+  UpdateSalesOrder
+} from '../../domain/entity/SalesOrder';
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 
 const deps = createSalesOrdersDependencies();
 
 const emptyPage = (): SalesOrderPage => ({
-  items: [], total: 0, page: 1, perPage: 50, pages: 1
+  items: [],
+  total: 0,
+  page: 1,
+  perPage: 50,
+  pages: 1
 });
 
 function toCreateInput(input: CreateSalesOrder) {
@@ -34,6 +48,8 @@ export function createSalesOrdersState() {
   let error = $state<string | null>(null);
   let loadedOnce = $state(false);
   let selected = $state<SalesOrder | null>(null);
+  let relatedOrders = $state<RelatedSalesOrder[]>([]);
+  let loadingRelated = $state(false);
   let cancellingId = $state<number | null>(null);
 
   async function load(): Promise<boolean> {
@@ -60,6 +76,12 @@ export function createSalesOrdersState() {
     }
   }
 
+  async function refreshSelected(): Promise<void> {
+    if (selected) {
+      selected = await deps.getSalesOrder.execute(selected.salesOrderId);
+    }
+  }
+
   async function runMutation(action: () => Promise<void>, fallback: string): Promise<boolean> {
     if (saving) return false;
     saving = true;
@@ -67,10 +89,7 @@ export function createSalesOrdersState() {
     try {
       await action();
       await load();
-      if (selected) {
-        const refreshed = await deps.getSalesOrder.execute(selected.salesOrderId);
-        selected = refreshed;
-      }
+      await refreshSelected();
       return true;
     } catch (err) {
       error = toUserMessage(err, fallback);
@@ -86,7 +105,7 @@ export function createSalesOrdersState() {
     error = null;
     try {
       await deps.createSalesOrder.execute(toCreateInput(input));
-      showSelectedNull();
+      selected = null;
       page = 1;
       await load();
       return true;
@@ -98,10 +117,9 @@ export function createSalesOrdersState() {
     }
   }
 
-  function showSelectedNull() { selected = null; }
-
   async function open(id: number): Promise<boolean> {
     error = null;
+    relatedOrders = [];
     try {
       selected = await deps.getSalesOrder.execute(id);
       return true;
@@ -112,10 +130,16 @@ export function createSalesOrdersState() {
     }
   }
 
-  function close() { selected = null; }
+  function close(): void {
+    selected = null;
+    relatedOrders = [];
+  }
 
   async function update(id: number, input: UpdateSalesOrder): Promise<boolean> {
-    return runMutation(() => deps.updateSalesOrder.execute(id, input), 'No se pudo actualizar el pedido');
+    return runMutation(
+      () => deps.updateSalesOrder.execute(id, input),
+      'No se pudo actualizar el pedido'
+    );
   }
 
   async function addLine(itemId: number, quantity: number): Promise<boolean> {
@@ -143,13 +167,15 @@ export function createSalesOrdersState() {
   }
 
   async function cancel(id: number): Promise<boolean> {
-    if (cancellingId != null) return false;
+    if (cancellingId !== null) return false;
     cancellingId = id;
     error = null;
     try {
       await deps.cancelSalesOrder.execute(id);
       await load();
-      if (selected?.salesOrderId === id) selected = await deps.getSalesOrder.execute(id);
+      if (selected?.salesOrderId === id) {
+        selected = await deps.getSalesOrder.execute(id);
+      }
       return true;
     } catch (err) {
       error = toUserMessage(err, 'No se pudo cancelar el pedido');
@@ -167,10 +193,90 @@ export function createSalesOrdersState() {
     );
   }
 
-  function setSearch(value: string) { search = value; page = 1; }
-  function setStatus(value: string) { status = value === 'All' ? '' : value; page = 1; }
-  function setPage(value: number) { page = Math.max(1, Math.min(value, pageData.pages || 1)); }
-  function setWarehouseId(value: number | null) { warehouseId = value; page = 1; }
+  async function loadRelated(id = selected?.salesOrderId): Promise<boolean> {
+    if (!id || loadingRelated) return false;
+    loadingRelated = true;
+    error = null;
+    try {
+      relatedOrders = await deps.getRelatedSalesOrders.execute(id);
+      return true;
+    } catch (err) {
+      error = toUserMessage(err, 'No se pudieron cargar los pedidos relacionados');
+      relatedOrders = [];
+      return false;
+    } finally {
+      loadingRelated = false;
+    }
+  }
+
+  async function adminPick(
+    lines: Array<{ soLineId: number; binId: number; quantity: number }>
+  ): Promise<boolean> {
+    if (!selected) return false;
+    return runMutation(
+      () => deps.adminPickSalesOrder.execute(selected!.salesOrderId, lines),
+      'No se pudo registrar el picking administrativo'
+    );
+  }
+
+  async function partialFulfill(input: PartialFulfillInput): Promise<boolean> {
+    if (!selected) return false;
+    return runMutation(
+      () => deps.partialFulfillSalesOrder.execute(selected!.salesOrderId, input),
+      'No se pudo realizar el cumplimiento parcial'
+    );
+  }
+
+  async function revertStatus(input: RevertSalesOrderInput): Promise<boolean> {
+    if (!selected) return false;
+    return runMutation(
+      () => deps.revertSalesOrderStatus.execute(selected!.salesOrderId, input),
+      'No se pudo revertir el estado del pedido'
+    );
+  }
+
+  async function createRma(input: CreateRmaInput): Promise<boolean> {
+    if (!selected) return false;
+    return runMutation(
+      () => deps.createSalesOrderRma.execute(selected!.salesOrderId, input),
+      'No se pudo crear la devolución'
+    );
+  }
+
+  async function receiveReturn(input: ReceiveReturnInput): Promise<boolean> {
+    if (!selected) return false;
+    return runMutation(
+      () => deps.receiveSalesOrderReturn.execute(selected!.salesOrderId, input),
+      'No se pudo registrar la recepción de la devolución'
+    );
+  }
+
+  async function voidReturn(): Promise<boolean> {
+    if (!selected) return false;
+    return runMutation(
+      () => deps.voidSalesOrderReturn.execute(selected!.salesOrderId),
+      'No se pudo anular la devolución'
+    );
+  }
+
+  function setSearch(value: string): void {
+    search = value;
+    page = 1;
+  }
+
+  function setStatus(value: string): void {
+    status = value === 'All' ? '' : value;
+    page = 1;
+  }
+
+  function setPage(value: number): void {
+    page = Math.max(1, Math.min(value, pageData.pages || 1));
+  }
+
+  function setWarehouseId(value: number | null): void {
+    warehouseId = value;
+    page = 1;
+  }
 
   return {
     get orders() { return pageData.items; },
@@ -184,9 +290,30 @@ export function createSalesOrdersState() {
     get error() { return error; },
     get loadedOnce() { return loadedOnce; },
     get selected() { return selected; },
+    get relatedOrders() { return relatedOrders; },
+    get loadingRelated() { return loadingRelated; },
     get cancellingId() { return cancellingId; },
-    setSearch, setStatus, setPage, setWarehouseId,
-    load, create, open, close, update, addLine, updateLine, deleteLine, cancel, adminShip,\n    loadRelated, adminPick, partialFulfill, revertStatus, createRma, receiveReturn, voidReturn
+    setSearch,
+    setStatus,
+    setPage,
+    setWarehouseId,
+    load,
+    create,
+    open,
+    close,
+    update,
+    addLine,
+    updateLine,
+    deleteLine,
+    cancel,
+    adminShip,
+    loadRelated,
+    adminPick,
+    partialFulfill,
+    revertStatus,
+    createRma,
+    receiveReturn,
+    voidReturn
   };
 }
 
@@ -232,6 +359,7 @@ export function createSalesOrderDetailState(soId: number) {
     get loading() { return loading; },
     get error() { return error; },
     get cancelling() { return cancelling; },
-    load, cancel
+    load,
+    cancel
   };
 }
