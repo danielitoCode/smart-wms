@@ -1,0 +1,80 @@
+import { describe, expect, it, vi } from 'vitest';
+import type { ApiClient } from '../../../../../../core/infrastructure/api/ApiClient';
+import { AdminOperationsRemoteDataSource } from '../../../../../../core/feature/admin-operations/data/datasource/AdminOperationsRemoteDataSource';
+
+function createDataSource(response: unknown = {}) {
+  const get = vi.fn(async (_path: string) => response);
+  const api = { get } as unknown as ApiClient;
+  return { dataSource: new AdminOperationsRemoteDataSource(api), get };
+}
+
+describe('AdminOperationsRemoteDataSource Flask contracts', () => {
+  it('sends only tab and warehouse scope to the backorders endpoint', async () => {
+    const { dataSource, get } = createDataSource({ backorders: [] });
+
+    await dataSource.list('backorders', {
+      tab: 'ready-to-ship',
+      warehouseId: 3,
+      search: 'ignored',
+      page: 4,
+      perPage: 20
+    });
+
+    const url = new URL(get.mock.calls[0][0], 'http://localhost');
+    expect(url.pathname).toBe('/api/admin/backorders');
+    expect(url.searchParams.get('tab')).toBe('ready-to-ship');
+    expect(url.searchParams.get('warehouse_id')).toBe('3');
+    expect(url.searchParams.has('q')).toBe(false);
+    expect(url.searchParams.has('per_page')).toBe(false);
+  });
+
+  it('uses adjustments permission endpoint for count approvals without inventing query filters', async () => {
+    const { dataSource, get } = createDataSource({ adjustments: [] });
+
+    await dataSource.list('count-approvals', { warehouseId: 2, search: 'cycle' });
+
+    expect(get.mock.calls[0][0]).toBe('/api/admin/adjustments/pending');
+  });
+
+  it('does not send an unsupported warehouse filter to preferred bins', async () => {
+    const { dataSource, get } = createDataSource({ preferred_bins: [] });
+
+    await dataSource.list('preferred-bins', { warehouseId: 2, search: 'SKU-1' });
+
+    const url = new URL(get.mock.calls[0][0], 'http://localhost');
+    expect(url.pathname).toBe('/api/admin/preferred-bins');
+    expect(url.searchParams.get('q')).toBe('SKU-1');
+    expect(url.searchParams.has('warehouse_id')).toBe(false);
+  });
+
+  it('paginates users but does not send an unsupported search query', async () => {
+    const { dataSource, get } = createDataSource({ users: [], total: 0, page: 2, per_page: 25, pages: 0 });
+
+    await dataSource.list('users', { search: 'ada', page: 2, perPage: 25 });
+
+    const url = new URL(get.mock.calls[0][0], 'http://localhost');
+    expect(url.searchParams.get('page')).toBe('2');
+    expect(url.searchParams.get('per_page')).toBe('25');
+    expect(url.searchParams.has('q')).toBe(false);
+  });
+
+  it('uses the POS list filters and loads its independent summary contract', async () => {
+    const { dataSource, get } = createDataSource({
+      sales_orders: [],
+      total: 0,
+      page: 1,
+      per_page: 50,
+      pages: 0
+    });
+
+    await dataSource.list('pos-activity', { date: '2026-11-12', status: 'OPEN' });
+
+    expect(get).toHaveBeenCalledTimes(2);
+    const listUrl = new URL(get.mock.calls[0][0], 'http://localhost');
+    expect(listUrl.pathname).toBe('/api/admin/pos/sales-orders');
+    expect(listUrl.searchParams.get('order_type')).toBe('all');
+    expect(listUrl.searchParams.get('date')).toBe('2026-11-12');
+    expect(listUrl.searchParams.get('status')).toBe('OPEN');
+    expect(get.mock.calls[1][0]).toBe('/api/admin/pos/summary?date=2026-11-12');
+  });
+});
