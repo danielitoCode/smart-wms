@@ -82,6 +82,7 @@ export const ADMIN_OPERATION_CATALOG = {
     pageKey: 'count-approvals',
     apiPermission: 'adjustments',
     columns: columns<'count-approvals'>([
+      { key: 'adjustmentId', label: 'Ajuste' },
       { key: 'cycleCountId', label: 'Conteo' },
       { key: 'sku', label: 'SKU' },
       { key: 'itemName', label: 'Producto' },
@@ -89,7 +90,10 @@ export const ADMIN_OPERATION_CATALOG = {
       { key: 'expectedQuantity', label: 'Esperado', format: 'quantity' },
       { key: 'countedQuantity', label: 'Contado', format: 'quantity' },
       { key: 'quantityChange', label: 'Diferencia', format: 'quantity' },
-      { key: 'reasonDetail', label: 'Observación' }
+      { key: 'reasonCode', label: 'Motivo' },
+      { key: 'reasonDetail', label: 'Observación' },
+      { key: 'adjustedBy', label: 'Registrado por' },
+      { key: 'adjustedAt', label: 'Fecha', format: 'date' }
     ])
   },
   fraud: {
@@ -143,8 +147,6 @@ export const ADMIN_OPERATION_CATALOG = {
       { key: 'sku', label: 'SKU' },
       { key: 'itemName', label: 'Producto' },
       { key: 'binCode', label: 'Ubicación' },
-      { key: 'expectedQuantity', label: 'Esperado', format: 'quantity' },
-      { key: 'countedQuantity', label: 'Contado', format: 'quantity' },
       { key: 'quantityChange', label: 'Variación', format: 'quantity' },
       { key: 'reasonCode', label: 'Motivo' },
       { key: 'reasonDetail', label: 'Detalle' },
@@ -206,7 +208,7 @@ export const ADMIN_OPERATION_CATALOG = {
     columns: columns<'purchase-orders'>([
       { key: 'purchaseOrderNumber', label: 'Orden' },
       { key: 'vendorName', label: 'Proveedor' },
-      { key: 'warehouseId', label: 'Almacén' },
+      { key: 'warehouseId', label: 'Almacén ID' },
       { key: 'status', label: 'Estado', format: 'status' },
       { key: 'expectedDate', label: 'Fecha prevista', format: 'date' },
       { key: 'createdAt', label: 'Creada', format: 'date' },
@@ -255,8 +257,8 @@ export const ADMIN_OPERATION_CATALOG = {
     warehouseIdFilters: true,
     columns: columns<'transfer-orders'>([
       { key: 'transferOrderNumber', label: 'Orden' },
-      { key: 'sourceWarehouseId', label: 'Origen' },
-      { key: 'destinationWarehouseId', label: 'Destino' },
+      { key: 'sourceWarehouseId', label: 'Almacén origen ID' },
+      { key: 'destinationWarehouseId', label: 'Almacén destino ID' },
       { key: 'status', label: 'Estado', format: 'status' },
       { key: 'createdBy', label: 'Creada por' },
       { key: 'notes', label: 'Notas' },
@@ -275,7 +277,7 @@ export const ADMIN_OPERATION_CATALOG = {
       { key: 'fullName', label: 'Nombre' },
       { key: 'role', label: 'Rol' },
       { key: 'active', label: 'Activo', format: 'boolean' },
-      { key: 'warehouseIds', label: 'Almacenes', format: 'list' },
+      { key: 'warehouseIds', label: 'Almacenes (ID)', format: 'list' },
       { key: 'allowedFunctions', label: 'Funciones permitidas', format: 'list' },
       { key: 'createdAt', label: 'Creado', format: 'date' },
       { key: 'lastLogin', label: 'Último acceso', format: 'date' }
