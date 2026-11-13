@@ -15,3 +15,10 @@ export type TransferOrderDto = { to_id: number; to_number: string; source_wareho
 export type UserDto = { user_id: number; username: string; full_name: string; role: string; warehouse_id: number | null; warehouse_ids: number[]; allowed_functions: string[]; is_active: boolean; created_at: string | null; last_login: string | null };
 export type VendorDto = { canonical_id: string; external_id: string; vendor_name: string | null; contact_name: string | null; email: string | null; phone: string | null; payment_terms: string | null; is_active: boolean | null };
 export type PaginatedListDto<T> = { total: number; page: number; per_page: number; pages: number; [key: string]: T[] | number };
+
+export type AdminOperationDto = BackorderDto | AdjustmentDto | SalesOrderDto | InterWarehouseTransferDto | PosActivityDto | PreferredBinDto | PurchaseOrderDto | TransferOrderDto | UserDto | VendorDto;
+export type AdminOperationRemoteResult = {
+  rows: AdminOperationDto[];
+  summary: PosActivitySummaryDto | null;
+  pagination: { page: number; per_page: number; total: number; pages: number } | null;
+};
