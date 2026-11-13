@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import AppIcon from '../../lib/components/AppIcon.svelte';
 	import LocaleSwitcher from '../../lib/components/LocaleSwitcher.svelte';
+	import ThemeToggle from '../../lib/components/ThemeToggle.svelte';
 	import type { I18nState } from '../../lib/i18n/i18n.svelte';
 	import { createAuthGuardState } from '../../core/feature/auth/ui/state/authGuardState.svelte';
 	import { createWarehouseSelectionState } from '../../core/feature/warehouses/ui/state/warehouseSelectionState.svelte';
@@ -175,6 +176,7 @@
 				<button class="menu-toggle" type="button" aria-label={i18n.t('Abrir menú')} aria-expanded={sidebarOpen} onclick={() => sidebarOpen = !sidebarOpen}><AppIcon name="menu" size={21} /></button>
 				<div class="page-context"><p>ABELLIS · SMART WMS</p><span>{i18n.t('Operaciones de almacén')}</span></div>
 				<div class="topbar-actions">
+					<ThemeToggle />
 					<LocaleSwitcher />
 					{#if warehouseSelection.canSelect && warehouseSelection.warehouses.length > 0}
 						<label class="warehouse-picker"><span>{i18n.t('Almacén activo')}</span>
@@ -187,7 +189,7 @@
 					<button class="logout" type="button" onclick={logout}><AppIcon name="logout" size={17} /><span>{i18n.t('Salir')}</span></button>
 				</div>
 			</header>
-			<main class="content motion-page-in">{@render children()}</main>
+			<main class="content motion-page-in app-content-transition">{@render children()}</main>
 		</div>
 	</div>
 {:else}
@@ -196,7 +198,7 @@
 
 <style>
 	.workspace { min-height:100vh; display:grid; grid-template-columns:252px minmax(0,1fr); background:var(--bg); color:var(--ink); }
-	.sidebar { position:sticky; top:0; height:100vh; min-height:100vh; display:flex; flex-direction:column; overflow:hidden; background:var(--navy-deep); color:#f5f8fc; border-right:1px solid rgba(255,255,255,.08); z-index:30; }
+	.sidebar { view-transition-name: none; position:sticky; top:0; height:100vh; min-height:100vh; display:flex; flex-direction:column; overflow:hidden; background:var(--navy-deep); color:#f5f8fc; border-right:1px solid rgba(255,255,255,.08); z-index:30; }
 	.brand { min-height:84px; display:flex; align-items:center; gap:12px; padding:18px 22px; color:#fff; text-decoration:none; border-bottom:1px solid rgba(255,255,255,.12); }
 	.brand img { display:block; flex:none; }
 	.brand-text { display:flex; flex-direction:column; gap:4px; line-height:1; }
@@ -216,7 +218,7 @@
 	.account strong { max-width:168px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#fff; font-size:.82rem; font-weight:600; }
 	.account span { color:rgba(224,235,247,.62); font-size:.72rem; }
 	.app-main { min-width:0; display:flex; flex-direction:column; }
-	.topbar { position:sticky; top:0; z-index:20; min-height:82px; display:flex; align-items:center; gap:16px; padding:14px clamp(18px,2.5vw,34px); background:var(--surface); border-bottom:1px solid var(--line); }
+	.topbar { view-transition-name: none; position:sticky; top:0; z-index:20; min-height:82px; display:flex; align-items:center; gap:16px; padding:14px clamp(18px,2.5vw,34px); background:var(--surface); border-bottom:1px solid var(--line); }
 	.page-context { min-width:0; }
 	.page-context p { margin:0 0 3px; color:var(--slate); font:600 .63rem var(--disp); letter-spacing:.16em; }
 	.page-context span { color:var(--ink); font:600 .86rem var(--body); }
