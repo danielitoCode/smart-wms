@@ -1,4 +1,4 @@
-import type { AdminOperationKey } from '../domain/entity/AdminOperation.ts';
+import type { AdminOperationKey, AdminOperationProjectionMap } from '../domain/entity/AdminOperation.ts';
 
 export type AdminOperationColumnFormat =
   | 'text'
@@ -11,13 +11,13 @@ export type AdminOperationColumnFormat =
   | 'list'
   | 'backorder-items';
 
-export type AdminOperationColumn = {
-  key: string;
+export type AdminOperationColumn<K extends AdminOperationKey> = {
+  key: keyof AdminOperationProjectionMap[K];
   label: string;
   format?: AdminOperationColumnFormat;
-} satisfies Record<AdminOperationKey, AdminOperationDefinition>;
+} satisfies AdminOperationCatalog;
 
-export type AdminOperationDefinition = {
+export type AdminOperationDefinition<K extends AdminOperationKey> = {
   key: AdminOperationKey;
   title: string;
   description: string;
@@ -33,10 +33,14 @@ export type AdminOperationDefinition = {
   warehouseIdFilters?: boolean;
   activeFilter?: boolean;
   statusOptions?: string[];
-  columns: AdminOperationColumn[];
+  columns: AdminOperationColumn<K>[];
 };
 
-function columns(entries: AdminOperationColumn[]): AdminOperationColumn[] {
+type AdminOperationCatalog = {
+  [K in AdminOperationKey]: AdminOperationDefinition<K>;
+};
+
+function columns<K extends AdminOperationKey>(entries: AdminOperationColumn<K>[]): AdminOperationColumn<K>[] {
   return entries;
 }
 
@@ -57,7 +61,7 @@ export const ADMIN_OPERATION_CATALOG = {
     pageKey: 'backorders',
     apiPermission: 'backorders',
     warehouseScoped: true,
-    columns: columns([
+    columns: columns<'backorders'>([
       { key: 'salesOrderNumber', label: 'Pedido' },
       { key: 'parentSalesOrderNumber', label: 'Pedido original' },
       { key: 'customerName', label: 'Cliente' },
@@ -72,7 +76,7 @@ export const ADMIN_OPERATION_CATALOG = {
     description: 'Diferencias generadas por conteos cíclicos.',
     pageKey: 'count-approvals',
     apiPermission: 'adjustments',
-    columns: columns([
+    columns: columns<'count-approvals'>([
       { key: 'cycleCountId', label: 'Conteo' },
       { key: 'sku', label: 'SKU' },
       { key: 'itemName', label: 'Producto' },
@@ -90,7 +94,7 @@ export const ADMIN_OPERATION_CATALOG = {
     pageKey: 'sales-orders',
     apiPermission: 'sales-orders',
     searchable: true,
-    columns: columns([
+    columns: columns<'fraud'>([
       { key: 'salesOrderNumber', label: 'Pedido' },
       { key: 'customerName', label: 'Cliente' },
       { key: 'customerPhone', label: 'Teléfono' },
@@ -106,7 +110,7 @@ export const ADMIN_OPERATION_CATALOG = {
     description: 'Movimientos físicos confirmados entre almacenes.',
     pageKey: 'transfer-orders',
     apiPermission: 'transfer-orders',
-    columns: columns([
+    columns: columns<'inter-warehouse-transfers'>([
       { key: 'transferId', label: 'Movimiento' },
       { key: 'sku', label: 'SKU' },
       { key: 'itemName', label: 'Producto' },
@@ -129,7 +133,7 @@ export const ADMIN_OPERATION_CATALOG = {
     pageKey: 'adjustments',
     apiPermission: 'adjustments',
     warehouseScoped: true,
-    columns: columns([
+    columns: columns<'adjustments'>([
       { key: 'adjustmentId', label: 'Ajuste' },
       { key: 'sku', label: 'SKU' },
       { key: 'itemName', label: 'Producto' },
@@ -155,7 +159,7 @@ export const ADMIN_OPERATION_CATALOG = {
     terminalFilter: true,
     cashierFilter: true,
     statusOptions: salesOrderStatuses,
-    columns: columns([
+    columns: columns<'pos-activity'>([
       { key: 'salesOrderNumber', label: 'Pedido' },
       { key: 'orderType', label: 'Tipo' },
       { key: 'createdAt', label: 'Fecha', format: 'date' },
@@ -175,7 +179,7 @@ export const ADMIN_OPERATION_CATALOG = {
     pageKey: 'preferred-bins',
     apiPermission: 'preferred-bins',
     searchable: true,
-    columns: columns([
+    columns: columns<'preferred-bins'>([
       { key: 'sku', label: 'SKU' },
       { key: 'itemName', label: 'Producto' },
       { key: 'binCode', label: 'Ubicación' },
@@ -194,7 +198,7 @@ export const ADMIN_OPERATION_CATALOG = {
     warehouseScoped: true,
     searchable: true,
     statusOptions: ['OPEN', 'PARTIAL', 'RECEIVED', 'CLOSED', 'ARCHIVED'],
-    columns: columns([
+    columns: columns<'purchase-orders'>([
       { key: 'purchaseOrderNumber', label: 'Orden' },
       { key: 'vendorName', label: 'Proveedor' },
       { key: 'warehouseId', label: 'Almacén' },
@@ -212,7 +216,7 @@ export const ADMIN_OPERATION_CATALOG = {
     pageKey: 'sales-orders',
     apiPermission: 'sales-orders',
     searchable: true,
-    columns: columns([
+    columns: columns<'refunds'>([
       { key: 'salesOrderNumber', label: 'Documento' },
       { key: 'parentSalesOrderId', label: 'ID venta original' },
       { key: 'customerName', label: 'Cliente' },
@@ -227,7 +231,7 @@ export const ADMIN_OPERATION_CATALOG = {
     pageKey: 'sales-orders',
     apiPermission: 'sales-orders',
     searchable: true,
-    columns: columns([
+    columns: columns<'returns'>([
       { key: 'salesOrderNumber', label: 'RMA' },
       { key: 'parentSalesOrderId', label: 'ID venta original' },
       { key: 'customerName', label: 'Cliente' },
@@ -244,7 +248,7 @@ export const ADMIN_OPERATION_CATALOG = {
     apiPermission: 'transfer-orders',
     statusOptions: ['OPEN', 'PARTIALLY_PICKED', 'AWAITING_APPROVAL', 'APPROVED', 'CLOSED', 'CANCELLED'],
     warehouseIdFilters: true,
-    columns: columns([
+    columns: columns<'transfer-orders'>([
       { key: 'transferOrderNumber', label: 'Orden' },
       { key: 'sourceWarehouseId', label: 'Origen' },
       { key: 'destinationWarehouseId', label: 'Destino' },
@@ -261,7 +265,7 @@ export const ADMIN_OPERATION_CATALOG = {
     description: 'Cuentas, roles y alcance operativo.',
     pageKey: 'users',
     apiPermission: 'users',
-    columns: columns([
+    columns: columns<'users'>([
       { key: 'username', label: 'Usuario' },
       { key: 'fullName', label: 'Nombre' },
       { key: 'role', label: 'Rol' },
@@ -280,7 +284,7 @@ export const ADMIN_OPERATION_CATALOG = {
     apiPermission: 'vendors',
     searchable: true,
     activeFilter: true,
-    columns: columns([
+    columns: columns<'vendors'>([
       { key: 'vendorName', label: 'Proveedor' },
       { key: 'contactName', label: 'Contacto' },
       { key: 'email', label: 'Correo' },
