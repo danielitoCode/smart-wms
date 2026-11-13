@@ -25,6 +25,7 @@ export interface SalesOrderRepository {
   updateLine(id: number, lineId: number, quantity: number): Promise<void>;
   deleteLine(id: number, lineId: number): Promise<void>;
   adminShip(id: number): Promise<void>;
+  getAvailableBins(id: number, lineId: number): Promise<import('../entity/SalesOrder').AvailableSalesOrderBin[]>;
   adminPick(id: number, lines: Array<{ soLineId: number; binId: number; quantity: number }>): Promise<void>;
   partialFulfill(id: number, input: PartialFulfillInput): Promise<void>;
   revertStatus(id: number, input: RevertSalesOrderInput): Promise<void>;
