@@ -52,15 +52,12 @@ export type SalesOrderDto = {
   so_number: string;
   status: string;
   order_type: string;
-  order_source?: string | null;
-  order_origin?: string | null;
+  parent_so_id: number | null;
   warehouse_id: number;
   customer_name: string | null;
-  customer_phone?: string | null;
-  parent_so_number?: string | null;
-  memo?: string | null;
+  customer_phone: string | null;
+  memo: string | null;
   created_at: string | null;
-  order_total?: number | null;
 };
 
 export type InterWarehouseTransferDto = {
