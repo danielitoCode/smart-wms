@@ -117,5 +117,7 @@ export class AdminOperationsRepositoryImpl implements AdminOperationsRepository 
           pagination: pagination(response.pagination)
         };
     }
+
+    throw new Error('Unsupported administrative operation result');
   }
 }
