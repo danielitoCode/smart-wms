@@ -188,6 +188,51 @@
     if (ok) feedback = i18n.t('Despacho registrado.');
   }
 
+
+  let showAdminPick = $state(false);
+  let pickBinByLine = $state<Record<number, string>>({});
+  let pickQuantityByLine = $state<Record<number, string>>({});
+
+  async function openAdminPick(order: SalesOrder): Promise<void> {
+    if (order.status !== 'OPEN') return;
+    showAdminPick = true;
+    pickBinByLine = {};
+    pickQuantityByLine = {};
+    const eligibleLines = order.lines.filter(
+      (line) => line.quantityOrdered > line.quantityPicked
+    );
+    await Promise.all(eligibleLines.map((line) => vm.loadAvailableBins(line.soLineId)));
+    for (const line of eligibleLines) {
+      const firstBin = vm.availableBinsByLine[line.soLineId]?.[0];
+      if (!firstBin) continue;
+      pickBinByLine[line.soLineId] = String(firstBin.binId);
+      pickQuantityByLine[line.soLineId] = String(Math.min(
+        line.quantityOrdered - line.quantityPicked,
+        firstBin.quantityAvailable
+      ));
+    }
+  }
+
+  async function submitAdminPick(order: SalesOrder): Promise<void> {
+    const picks = order.lines.flatMap((line) => {
+      const binId = Number(pickBinByLine[line.soLineId]);
+      const quantity = Number(pickQuantityByLine[line.soLineId]);
+      if (!Number.isInteger(binId) || binId < 1 || !Number.isInteger(quantity) || quantity < 1) {
+        return [];
+      }
+      return [{ soLineId: line.soLineId, binId, quantity }];
+    });
+    if (!picks.length) {
+      feedback = i18n.t('Selecciona al menos una ubicación y una cantidad válida.');
+      return;
+    }
+    const ok = await vm.adminPick(picks);
+    if (ok) {
+      showAdminPick = false;
+      feedback = i18n.t('Picking administrativo registrado.');
+    }
+  }
+
   function displayDate(value: string | null): string {
     if (!value) return '—';
     const date = new Date(value);
@@ -418,7 +463,95 @@
         {#if order.status === 'PICKED' || order.status === 'PACKED'}
           <button class="primary" type="button" onclick={() => void shipOrder(order)} disabled={vm.saving}>{i18n.t('Registrar despacho')}</button>
         {/if}
+        {#if order.status === 'OPEN'}
+          <button type="button" onclick={() => void openAdminPick(order)} disabled={vm.saving}>
+            {i18n.t('Picking administrativo')}
+          </button>
+        {/if}
         <button type="button" onclick={() => vm.close()}>{i18n.t('Cerrar')}</button>
+      </footer>
+    </section>
+  </div>
+{/if}
+
+
+{#if showAdminPick && vm.selected}
+  {@const pickingOrder = vm.selected}
+  <div class="overlay">
+    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="admin-pick-title">
+      <header class="detail-header">
+        <div>
+          <p class="eyebrow">{i18n.t('Operaciones de almacén')}</p>
+          <h2 id="admin-pick-title">{i18n.t('Picking administrativo')} · {pickingOrder.salesOrderNumber}</h2>
+        </div>
+        <button type="button" aria-label={i18n.t('Cerrar')} onclick={() => showAdminPick = false}>×</button>
+      </header>
+      <p class="subtitle">
+        {i18n.t('Selecciona la ubicación de origen y la cantidad que se ha recogido físicamente. El servidor volverá a validar las existencias antes de confirmar.')}
+      </p>
+      {#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>{i18n.t('Artículo')}</th><th>{i18n.t('Pendiente')}</th>
+            <th>{i18n.t('Ubicación')}</th><th>{i18n.t('Cantidad')}</th>
+          </tr></thead>
+          <tbody>
+            {#each pickingOrder.lines.filter((line) => line.quantityOrdered > line.quantityPicked) as line (line.soLineId)}
+              <tr>
+                <td>{line.sku} · {line.itemName}</td>
+                <td>{line.quantityOrdered - line.quantityPicked}</td>
+                <td>
+                  {#if vm.loadingBinsByLine[line.soLineId]}
+                    {i18n.t('Consultando ubicaciones…')}
+                  {:else if vm.availableBinsByLine[line.soLineId]?.length}
+                    <select
+                      value={pickBinByLine[line.soLineId] ?? ''}
+                      onchange={(event) => {
+                        const selectedBin = vm.availableBinsByLine[line.soLineId].find((bin) => bin.binId === Number(event.currentTarget.value));
+                        pickBinByLine[line.soLineId] = event.currentTarget.value;
+                        if (selectedBin) {
+                          pickQuantityByLine[line.soLineId] = String(Math.min(
+                            line.quantityOrdered - line.quantityPicked,
+                            selectedBin.quantityAvailable
+                          ));
+                        }
+                      }}
+                    >
+                      {#each vm.availableBinsByLine[line.soLineId] as bin (bin.binId)}
+                        <option value={bin.binId}>
+                          {bin.binCode} · {bin.zoneName} · {i18n.t('Disponibles')}: {bin.quantityAvailable}
+                        </option>
+                      {/each}
+                    </select>
+                  {:else}
+                    <span class="error">{i18n.t('Sin existencias disponibles')}</span>
+                  {/if}
+                </td>
+                <td>
+                  <input
+                    class="qty"
+                    type="number"
+                    min="1"
+                    max={Math.min(
+                      line.quantityOrdered - line.quantityPicked,
+                      vm.availableBinsByLine[line.soLineId]?.find((bin) => bin.binId === Number(pickBinByLine[line.soLineId]))?.quantityAvailable ?? 0
+                    )}
+                    value={pickQuantityByLine[line.soLineId] ?? ''}
+                    oninput={(event) => pickQuantityByLine[line.soLineId] = event.currentTarget.value}
+                    disabled={!vm.availableBinsByLine[line.soLineId]?.length}
+                  />
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+      <footer class="dialog-actions">
+        <button type="button" onclick={() => showAdminPick = false} disabled={vm.saving}>{i18n.t('Cerrar')}</button>
+        <button class="primary" type="button" onclick={() => void submitAdminPick(pickingOrder)} disabled={vm.saving}>
+          {vm.saving ? i18n.t('Guardando…') : i18n.t('Confirmar picking')}
+        </button>
       </footer>
     </section>
   </div>
