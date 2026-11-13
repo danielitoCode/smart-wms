@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getContext, onMount, setContext } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { goto, onNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import AppIcon from '../../lib/components/AppIcon.svelte';
 	import LocaleSwitcher from '../../lib/components/LocaleSwitcher.svelte';
@@ -16,6 +16,16 @@
 	setContext('authGuard', guard);
 	const warehouseSelection = createWarehouseSelectionState();
 	setContext('warehouseSelection', warehouseSelection);
+
+	onNavigate((navigation) => {
+		if (typeof document === 'undefined' || !document.startViewTransition) return;
+		return new Promise((resolve) => {
+			document.startViewTransition(async () => {
+				resolve();
+				await navigation.complete;
+			});
+		});
+	});
 
 	type IconName = 'inbox' | 'map-pin' | 'clipboard-list' | 'package-check' | 'truck' | 'boxes' | 'scan' | 'package' | 'warehouse' | 'database' | 'user' | 'globe' | 'lock' | 'menu' | 'logout';
 	type NavItem = { href: string; label: string; icon: IconName; pageKey?: string };
@@ -76,7 +86,6 @@
 	});
 
 	const hasRouteAccess = $derived(guard.status !== 'authenticated' || canAccessPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], requiredPageKeysForPath(page.url.pathname)));
-
 
 	function canSeeNavItem(item: NavItem): boolean {
 		if (item.pageKey) return canAccessPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], requiredPageKeysForPath(item.href));
@@ -178,7 +187,7 @@
 					<button class="logout" type="button" onclick={logout}><AppIcon name="logout" size={17} /><span>{i18n.t('Salir')}</span></button>
 				</div>
 			</header>
-			<main class="content">{@render children()}</main>
+			<main class="content motion-page-in">{@render children()}</main>
 		</div>
 	</div>
 {:else}
@@ -196,8 +205,8 @@
 	.main-nav { flex:1; overflow:auto; padding:22px 14px 18px; }
 	.nav-group { margin:0 0 22px; }
 	.group-label { margin:0 0 8px; padding:0 11px; color:rgba(224,235,247,.54); font:600 .65rem var(--disp); letter-spacing:.16em; text-transform:uppercase; }
-	.nav-link { min-height:44px; display:flex; align-items:center; gap:12px; margin:2px 0; padding:10px 12px; border-radius:10px; color:rgba(245,248,252,.78); text-decoration:none; font:500 .9rem var(--body); transition:background 160ms ease,color 160ms ease; }
-	.nav-link :global(svg) { flex:none; color:rgba(190,211,234,.8); }
+	.nav-link { min-height:44px; display:flex; align-items:center; gap:12px; margin:2px 0; padding:10px 12px; border-radius:10px; color:rgba(245,248,252,.78); text-decoration:none; font:500 .9rem var(--body); transition:background var(--motion-fast,160ms) var(--ease-out,ease), color var(--motion-fast,160ms) var(--ease-out,ease), box-shadow var(--motion-fast,160ms) var(--ease-out,ease); }
+	.nav-link :global(svg) { flex:none; color:rgba(190,211,234,.8); transition: color var(--motion-fast,160ms) var(--ease-out,ease); }
 	.nav-link:hover { color:#fff; background:rgba(255,255,255,.07); }
 	.nav-link.active { color:#fff; background:rgba(143,180,218,.16); box-shadow:inset 3px 0 0 var(--gold); font-weight:600; }
 	.nav-link.active :global(svg) { color:var(--gold); }
@@ -214,13 +223,13 @@
 	.topbar-actions { display:flex; align-items:center; gap:12px; margin-left:auto; }
 	.warehouse-picker { display:flex; flex-direction:column; gap:3px; min-width:180px; color:var(--slate); font-size:.68rem; font-weight:600; }
 	.warehouse-picker select { width:100%; min-height:38px; padding:6px 30px 6px 10px; border:1px solid var(--line); border-radius:10px; background:var(--surface); color:var(--ink); font:500 .82rem var(--body); }
-	.account-action,.logout { min-height:40px; display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:8px 11px; border:1px solid var(--line); border-radius:10px; background:transparent; color:var(--link,var(--navy)); text-decoration:none; font:600 .78rem var(--body); cursor:pointer; }
+	.account-action,.logout { min-height:40px; display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:8px 11px; border:1px solid var(--line); border-radius:10px; background:transparent; color:var(--link,var(--navy)); text-decoration:none; font:600 .78rem var(--body); cursor:pointer; transition: background var(--motion-fast,160ms) var(--ease-out,ease), border-color var(--motion-fast,160ms) var(--ease-out,ease); }
 	.account-action:hover,.logout:hover { background:var(--surface-2); border-color:var(--lightblue); }
 	.logout { color:var(--slate); }
 	.menu-toggle { display:none; width:42px; min-width:42px; height:42px; place-items:center; padding:0; border:1px solid var(--line); border-radius:10px; background:var(--surface); color:var(--link,var(--navy)); }
-	.content { flex:1; min-width:0; padding:26px clamp(18px,2.5vw,34px) 42px; animation:fade-in 160ms ease-out; }
+	.content { flex:1; min-width:0; padding:26px clamp(18px,2.5vw,34px) 42px; }
 	.scrim { display:none; }
-	.boot { padding:3rem 1.25rem; text-align:center; color:var(--slate); animation:fade-in 160ms ease-out; }
+	.boot { padding:3rem 1.25rem; text-align:center; color:var(--slate); animation: fade-in var(--motion-base,200ms) var(--ease-out,ease) both; }
 	.panel { max-width:26rem; margin:2.5rem auto; text-align:left; background:var(--card); border:1px solid var(--line); border-radius:var(--radius-card); padding:1.25rem; box-shadow:var(--shadow-1); }
 	.panel .title { margin:0 0 .35rem; font:600 1rem var(--disp); color:var(--ink); }
 	.panel .detail { margin:0; color:var(--danger); font-size:.9rem; }
@@ -228,9 +237,9 @@
 	@media (max-width:1080px) { .workspace { grid-template-columns:224px minmax(0,1fr); } .topbar { gap:10px; } .warehouse-picker { min-width:150px; } }
 	@media (max-width:800px) {
 		.workspace { display:block; }
-		.sidebar { position:fixed; left:0; top:0; width:min(84vw,290px); transform:translateX(-102%); transition:transform 180ms ease-out; box-shadow:none; }
+		.sidebar { position:fixed; left:0; top:0; width:min(84vw,290px); transform:translateX(-102%); transition:transform var(--motion-base,200ms) var(--ease-out,ease); box-shadow:none; }
 		.sidebar.open { transform:translateX(0); box-shadow:var(--shadow-3); }
-		.scrim { display:block; position:fixed; inset:0; z-index:25; border:0; border-radius:0; background:rgba(1,18,34,.48); }
+		.scrim { display:block; position:fixed; inset:0; z-index:25; border:0; border-radius:0; background:rgba(1,18,34,.48); animation: fade-in var(--motion-fast,140ms) var(--ease-out,ease) both; }
 		.menu-toggle { display:grid; flex:none; }
 		.topbar { min-height:72px; padding:12px 16px; }
 		.page-context span { font-size:.82rem; }
@@ -241,5 +250,5 @@
 		.content { padding:20px 16px 32px; }
 	}
 	@media (max-width:520px) { .topbar { gap:9px; } .page-context p { font-size:.56rem; } .page-context span { max-width:38vw; font-size:.76rem; } .warehouse-picker { max-width:132px; } .warehouse-picker span { display:none; } }
-	@media (prefers-reduced-motion:reduce) { .sidebar,.nav-link,.content { transition:none; animation:none; } }
+	@media (prefers-reduced-motion:reduce) { .sidebar,.nav-link,.content,.scrim,.boot { transition:none; animation:none; } }
 </style>
