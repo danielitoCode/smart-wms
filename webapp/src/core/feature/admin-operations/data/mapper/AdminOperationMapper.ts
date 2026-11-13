@@ -49,11 +49,8 @@ function mapBackorder(value: BackorderDto): Extract<AdminOperationRow, { feature
   return { feature: 'backorders', id: value.so_id, data };
 }
 
-function mapAdjustment(
-  feature: 'count-approvals' | 'adjustments',
-  value: AdjustmentDto
-): Extract<AdminOperationRow, { feature: 'count-approvals' }> | Extract<AdminOperationRow, { feature: 'adjustments' }> {
-  const data: AdjustmentProjection = {
+function mapAdjustment(value: AdjustmentDto): AdjustmentProjection {
+  return {
     adjustmentId: value.adjustment_id,
     cycleCountId: value.cycle_count_id,
     sku: value.sku,
@@ -68,17 +65,10 @@ function mapAdjustment(
     adjustedBy: value.username ?? value.adjusted_by,
     adjustedAt: value.adjusted_at
   };
-
-  return feature === 'count-approvals'
-    ? { feature, id: value.adjustment_id, data }
-    : { feature, id: value.adjustment_id, data };
 }
 
-function mapSalesOrder(
-  feature: 'fraud' | 'refunds' | 'returns',
-  value: SalesOrderDto
-): Extract<AdminOperationRow, { feature: 'fraud' }> | Extract<AdminOperationRow, { feature: 'refunds' }> | Extract<AdminOperationRow, { feature: 'returns' }> {
-  const data: SalesOrderProjection = {
+function mapSalesOrder(value: SalesOrderDto): SalesOrderProjection {
+  return {
     salesOrderNumber: value.so_number,
     parentSalesOrderId: value.parent_so_id,
     orderType: value.order_type,
@@ -86,16 +76,8 @@ function mapSalesOrder(
     customerPhone: value.customer_phone ?? null,
     status: value.status,
     createdAt: value.created_at,
-    memo: value.memo ?? null,
+    memo: value.memo ?? null
   };
-
-  switch (feature) {
-    case 'fraud': return { feature, id: value.so_id, data };
-    case 'refunds': return { feature, id: value.so_id, data };
-    case 'returns': return { feature, id: value.so_id, data };
-  }
-
-  throw new Error('Unsupported sales order projection');
 }
 
 function mapInterWarehouseTransfer(value: InterWarehouseTransferDto): Extract<AdminOperationRow, { feature: 'inter-warehouse-transfers' }> {
@@ -212,19 +194,39 @@ export const AdminOperationMapper = {
     return values.map(mapBackorder);
   },
   countApprovals(values: AdjustmentDto[]) {
-    return values.map((value) => mapAdjustment('count-approvals', value));
+    return values.map((value) => ({
+      feature: 'count-approvals' as const,
+      id: value.adjustment_id,
+      data: mapAdjustment(value)
+    }));
   },
   adjustments(values: AdjustmentDto[]) {
-    return values.map((value) => mapAdjustment('adjustments', value));
+    return values.map((value) => ({
+      feature: 'adjustments' as const,
+      id: value.adjustment_id,
+      data: mapAdjustment(value)
+    }));
   },
   fraud(values: SalesOrderDto[]) {
-    return values.map((value) => mapSalesOrder('fraud', value));
+    return values.map((value) => ({
+      feature: 'fraud' as const,
+      id: value.so_id,
+      data: mapSalesOrder(value)
+    }));
   },
   refunds(values: SalesOrderDto[]) {
-    return values.map((value) => mapSalesOrder('refunds', value));
+    return values.map((value) => ({
+      feature: 'refunds' as const,
+      id: value.so_id,
+      data: mapSalesOrder(value)
+    }));
   },
   returns(values: SalesOrderDto[]) {
-    return values.map((value) => mapSalesOrder('returns', value));
+    return values.map((value) => ({
+      feature: 'returns' as const,
+      id: value.so_id,
+      data: mapSalesOrder(value)
+    }));
   },
   interWarehouseTransfers(values: InterWarehouseTransferDto[]) {
     return values.map(mapInterWarehouseTransfer);
