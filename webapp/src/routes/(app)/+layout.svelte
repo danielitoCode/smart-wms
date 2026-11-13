@@ -218,14 +218,91 @@
 	.account strong { max-width:168px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#fff; font-size:.82rem; font-weight:600; }
 	.account span { color:rgba(224,235,247,.62); font-size:.72rem; }
 	.app-main { min-width:0; display:flex; flex-direction:column; }
-	.topbar { view-transition-name: none; position:sticky; top:0; z-index:20; min-height:82px; display:flex; align-items:center; gap:16px; padding:14px clamp(18px,2.5vw,34px); background:var(--surface); border-bottom:1px solid var(--line); }
-	.page-context { min-width:0; }
-	.page-context p { margin:0 0 3px; color:var(--slate); font:600 .63rem var(--disp); letter-spacing:.16em; }
-	.page-context span { color:var(--ink); font:600 .86rem var(--body); }
-	.topbar-actions { display:flex; align-items:center; gap:12px; margin-left:auto; }
-	.warehouse-picker { display:flex; flex-direction:column; gap:3px; min-width:180px; color:var(--slate); font-size:.68rem; font-weight:600; }
-	.warehouse-picker select { width:100%; min-height:38px; padding:6px 30px 6px 10px; border:1px solid var(--line); border-radius:10px; background:var(--surface); color:var(--ink); font:500 .82rem var(--body); }
-	.account-action,.logout { min-height:40px; display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:8px 11px; border:1px solid var(--line); border-radius:10px; background:transparent; color:var(--link,var(--navy)); text-decoration:none; font:600 .78rem var(--body); cursor:pointer; transition: background var(--motion-fast,160ms) var(--ease-out,ease), border-color var(--motion-fast,160ms) var(--ease-out,ease); }
+	.topbar {
+		view-transition-name: none;
+		position: sticky;
+		top: 0;
+		z-index: 20;
+		min-height: 64px;
+		display: flex;
+		align-items: center;
+		gap: 16px;
+		padding: 10px clamp(18px, 2.5vw, 34px);
+		background: var(--surface);
+		border-bottom: 1px solid var(--line);
+	}
+	.page-context { min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+	.page-context p { margin: 0 0 2px; color: var(--slate); font: 600 0.63rem var(--disp); letter-spacing: 0.16em; line-height: 1.2; }
+	.page-context span { color: var(--ink); font: 600 0.86rem var(--body); line-height: 1.2; }
+	.topbar-actions {
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		flex-wrap: nowrap;
+		gap: 10px;
+		margin-left: auto;
+		min-height: 40px;
+	}
+	.topbar-actions :global(.theme-toggle),
+	.topbar-actions :global(.locale .trigger),
+	.warehouse-picker,
+	.account-action,
+	.logout {
+		height: 40px;
+		min-height: 40px;
+		box-sizing: border-box;
+	}
+	.warehouse-picker {
+		display: inline-flex;
+		flex-direction: row;
+		align-items: center;
+		gap: 8px;
+		min-width: 0;
+		max-width: 280px;
+		padding: 0 4px 0 10px;
+		border: 1px solid var(--line);
+		border-radius: 10px;
+		background: var(--surface);
+		color: var(--slate);
+		font-size: 0.68rem;
+		font-weight: 600;
+	}
+	.warehouse-picker span {
+		flex: none;
+		white-space: nowrap;
+		line-height: 1;
+	}
+	.warehouse-picker select {
+		flex: 1 1 auto;
+		min-width: 120px;
+		max-width: 220px;
+		height: 100%;
+		min-height: 0;
+		padding: 0 28px 0 0;
+		border: 0;
+		border-radius: 0;
+		background: transparent;
+		color: var(--ink);
+		font: 500 0.82rem var(--body);
+		cursor: pointer;
+	}
+	.warehouse-picker select:focus { outline: none; }
+	.account-action,
+	.logout {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 7px;
+		padding: 0 12px;
+		border: 1px solid var(--line);
+		border-radius: 10px;
+		background: transparent;
+		color: var(--link, var(--navy));
+		text-decoration: none;
+		font: 600 0.78rem var(--body);
+		cursor: pointer;
+		transition: background var(--motion-fast, 160ms) var(--ease-out, ease), border-color var(--motion-fast, 160ms) var(--ease-out, ease);
+	}
 	.account-action:hover,.logout:hover { background:var(--surface-2); border-color:var(--lightblue); }
 	.logout { color:var(--slate); }
 	.menu-toggle { display:none; width:42px; min-width:42px; height:42px; place-items:center; padding:0; border:1px solid var(--line); border-radius:10px; background:var(--surface); color:var(--link,var(--navy)); }
@@ -243,14 +320,14 @@
 		.sidebar.open { transform:translateX(0); box-shadow:var(--shadow-3); }
 		.scrim { display:block; position:fixed; inset:0; z-index:25; border:0; border-radius:0; background:rgba(1,18,34,.48); animation: fade-in var(--motion-fast,140ms) var(--ease-out,ease) both; }
 		.menu-toggle { display:grid; flex:none; }
-		.topbar { min-height:72px; padding:12px 16px; }
+		.topbar { min-height:56px; padding:8px 16px; }
 		.page-context span { font-size:.82rem; }
 		.topbar-actions { gap:7px; }
-		.warehouse-picker { min-width:0; max-width:180px; }
+		.warehouse-picker { min-width:0; max-width:180px; padding-left:8px; }
 		.account-action span,.logout span { display:none; }
 		.account-action,.logout { width:40px; min-width:40px; padding:0; }
 		.content { padding:20px 16px 32px; }
 	}
-	@media (max-width:520px) { .topbar { gap:9px; } .page-context p { font-size:.56rem; } .page-context span { max-width:38vw; font-size:.76rem; } .warehouse-picker { max-width:132px; } .warehouse-picker span { display:none; } }
+	@media (max-width:520px) { .topbar { gap:9px; } .page-context p { font-size:.56rem; } .page-context span { max-width:38vw; font-size:.76rem; } .warehouse-picker { max-width:140px; padding-left:6px; } .warehouse-picker span { display:none; } }
 	@media (prefers-reduced-motion:reduce) { .sidebar,.nav-link,.content,.scrim,.boot { transition:none; animation:none; } }
 </style>
