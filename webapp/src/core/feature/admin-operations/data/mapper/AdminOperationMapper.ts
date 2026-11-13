@@ -1,13 +1,22 @@
 import type {
-  AdminOperationKey,
-  AdminOperationRow
+  AdjustmentProjection,
+  AdminOperationRow,
+  BackorderProjection,
+  InterWarehouseTransferProjection,
+  PosActivityProjection,
+  PreferredBinProjection,
+  PurchaseOrderProjection,
+  SalesOrderProjection,
+  TransferOrderProjection,
+  UserProjection,
+  VendorProjection
 } from '../../domain/entity/AdminOperation.ts';
 import type {
   AdjustmentDto,
-  AdminOperationDto,
   BackorderDto,
   InterWarehouseTransferDto,
   PosActivityDto,
+  PosActivitySummaryDto,
   PreferredBinDto,
   PurchaseOrderDto,
   SalesOrderDto,
@@ -16,181 +25,249 @@ import type {
   VendorDto
 } from '../dto/AdminOperationDto';
 
-function createRow(
-  id: string | number,
-  cells: AdminOperationRow['cells']
-): AdminOperationRow {
-  return { id, cells };
-}
-
-function mapBackorder(value: BackorderDto): AdminOperationRow {
-  const items = value.items
-    .map((item) => {
-      const purchaseOrder = item.open_po
-        ? ` · PO ${item.open_po.po_number} (${item.open_po.quantity_remaining})`
-        : '';
-
-      return `${item.sku} × ${item.qty}${purchaseOrder}`;
-    })
-    .join(', ');
-
-  return createRow(value.so_id, {
-    so_number: value.so_number,
-    parent_so_number: value.parent_so_number,
-    customer_name: value.customer_name,
+function mapBackorder(value: BackorderDto): Extract<AdminOperationRow, { feature: 'backorders' }> {
+  const data: BackorderProjection = {
+    salesOrderNumber: value.so_number,
+    parentSalesOrderNumber: value.parent_so_number,
+    customerName: value.customer_name,
     status: value.status,
-    days_waiting: value.days_waiting,
-    items
-  });
+    daysWaiting: value.days_waiting,
+    items: value.items.map((item) => ({
+      sku: item.sku,
+      itemName: item.item_name,
+      quantity: item.qty,
+      openPurchaseOrder: item.open_po
+        ? {
+            number: item.open_po.po_number,
+            expectedDate: item.open_po.expected_date,
+            quantityRemaining: item.open_po.quantity_remaining
+          }
+        : null
+    }))
+  };
+
+  return { feature: 'backorders', id: value.so_id, data };
 }
 
-function mapAdjustment(value: AdjustmentDto): AdminOperationRow {
-  return createRow(value.adjustment_id, {
-    adjustment_id: value.adjustment_id,
-    cycle_count_id: value.cycle_count_id,
+function mapAdjustment(
+  feature: 'count-approvals' | 'adjustments',
+  value: AdjustmentDto
+): Extract<AdminOperationRow, { feature: 'count-approvals' | 'adjustments' }> {
+  const data: AdjustmentProjection = {
+    adjustmentId: value.adjustment_id,
+    cycleCountId: value.cycle_count_id,
     sku: value.sku,
-    item_name: value.item_name,
-    bin_code: value.bin_code,
-    expected_quantity: value.expected_quantity ?? null,
-    counted_quantity: value.counted_quantity ?? null,
-    quantity_change: value.quantity_change,
-    reason_code: value.reason_code,
+    itemName: value.item_name,
+    binCode: value.bin_code,
+    expectedQuantity: value.expected_quantity ?? null,
+    countedQuantity: value.counted_quantity ?? null,
+    quantityChange: value.quantity_change,
+    reasonCode: value.reason_code,
+    reasonDetail: value.reason_detail,
     status: value.status,
-    adjusted_by: value.username ?? value.adjusted_by,
-    adjusted_at: value.adjusted_at
-  });
+    adjustedBy: value.username ?? value.adjusted_by,
+    adjustedAt: value.adjusted_at
+  };
+
+  return feature === 'count-approvals'
+    ? { feature, id: value.adjustment_id, data }
+    : { feature, id: value.adjustment_id, data };
 }
 
-function mapSalesOrder(value: SalesOrderDto): AdminOperationRow {
-  return createRow(value.so_id, {
-    so_number: value.so_number,
-    parent_so_number: value.parent_so_number ?? null,
-    customer_name: value.customer_name,
-    customer_phone: value.customer_phone ?? null,
-    order_source: value.order_source ?? value.order_origin ?? null,
+function mapSalesOrder(
+  feature: 'fraud' | 'refunds' | 'returns',
+  value: SalesOrderDto
+): Extract<AdminOperationRow, { feature: 'fraud' | 'refunds' | 'returns' }> {
+  const data: SalesOrderProjection = {
+    salesOrderNumber: value.so_number,
+    parentSalesOrderNumber: value.parent_so_number ?? null,
+    customerName: value.customer_name,
+    customerPhone: value.customer_phone ?? null,
+    orderSource: value.order_source ?? value.order_origin ?? null,
     status: value.status,
-    created_at: value.created_at,
+    createdAt: value.created_at,
     memo: value.memo ?? null,
-    order_total: value.order_total ?? null
-  });
+    orderTotal: value.order_total ?? null
+  };
+
+  switch (feature) {
+    case 'fraud': return { feature, id: value.so_id, data };
+    case 'refunds': return { feature, id: value.so_id, data };
+    case 'returns': return { feature, id: value.so_id, data };
+  }
 }
 
-function mapInterWarehouseTransfer(
-  value: InterWarehouseTransferDto
-): AdminOperationRow {
-  return createRow(value.transfer_id, {
-    transfer_id: value.transfer_id,
+function mapInterWarehouseTransfer(value: InterWarehouseTransferDto): Extract<AdminOperationRow, { feature: 'inter-warehouse-transfers' }> {
+  const data: InterWarehouseTransferProjection = {
+    transferId: value.transfer_id,
     sku: value.sku,
-    item_name: value.item_name,
+    itemName: value.item_name,
     quantity: value.quantity,
-    from_warehouse_name: value.from_warehouse_name,
-    from_bin_code: value.from_bin_code,
-    to_warehouse_name: value.to_warehouse_name,
-    to_bin_code: value.to_bin_code,
-    transferred_by: value.transferred_by,
-    transferred_at: value.transferred_at,
+    sourceWarehouseName: value.from_warehouse_name,
+    sourceWarehouseCode: value.from_warehouse_code,
+    sourceBinCode: value.from_bin_code,
+    destinationWarehouseName: value.to_warehouse_name,
+    destinationWarehouseCode: value.to_warehouse_code,
+    destinationBinCode: value.to_bin_code,
+    transferredBy: value.transferred_by,
+    transferredAt: value.transferred_at,
     status: value.status
-  });
+  };
+
+  return { feature: 'inter-warehouse-transfers', id: value.transfer_id, data };
 }
 
-function mapPosActivity(value: PosActivityDto): AdminOperationRow {
-  return createRow(value.so_id, {
-    so_number: value.so_number,
-    created_at: value.created_at,
+function mapPosActivity(value: PosActivityDto): Extract<AdminOperationRow, { feature: 'pos-activity' }> {
+  const data: PosActivityProjection = {
+    salesOrderNumber: value.so_number,
+    createdAt: value.created_at,
     channel: value.channel,
     status: value.status,
-    terminal_id: value.terminal_id,
-    customer_name: value.customer_name,
-    total_cents: value.total_cents,
-    payment_method: value.payment_method,
-    external_txn_ref: value.external_txn_ref
-  });
+    terminalId: value.terminal_id,
+    customerName: value.customer_name,
+    totalCents: value.total_cents,
+    paymentMethod: value.payment_method,
+    externalTransactionReference: value.external_txn_ref,
+    orderType: value.order_type
+  };
+
+  return { feature: 'pos-activity', id: value.so_id, data };
 }
 
-function mapPreferredBin(value: PreferredBinDto): AdminOperationRow {
-  return createRow(value.preferred_bin_id, {
+function mapPreferredBin(value: PreferredBinDto): Extract<AdminOperationRow, { feature: 'preferred-bins' }> {
+  const data: PreferredBinProjection = {
     sku: value.sku,
-    item_name: value.item_name,
-    bin_code: value.bin_code,
-    zone_name: value.zone_name,
+    itemName: value.item_name,
+    binCode: value.bin_code,
+    zoneName: value.zone_name,
     priority: value.priority,
-    updated_at: value.updated_at
-  });
+    notes: value.notes,
+    updatedAt: value.updated_at
+  };
+
+  return { feature: 'preferred-bins', id: value.preferred_bin_id, data };
 }
 
-function mapPurchaseOrder(value: PurchaseOrderDto): AdminOperationRow {
-  return createRow(value.po_id, {
-    po_number: value.po_number,
-    vendor_name: value.vendor_name,
-    warehouse_id: value.warehouse_id,
+function mapPurchaseOrder(value: PurchaseOrderDto): Extract<AdminOperationRow, { feature: 'purchase-orders' }> {
+  const data: PurchaseOrderProjection = {
+    purchaseOrderNumber: value.po_number,
+    vendorName: value.vendor_name,
+    warehouseId: value.warehouse_id,
     status: value.status,
-    expected_date: value.expected_date,
-    created_at: value.created_at
-  });
+    expectedDate: value.expected_date,
+    createdAt: value.created_at,
+    receivedAt: value.received_at ?? null,
+    createdBy: value.created_by ?? null
+  };
+
+  return { feature: 'purchase-orders', id: value.po_id, data };
 }
 
-function mapTransferOrder(value: TransferOrderDto): AdminOperationRow {
-  return createRow(value.to_id, {
-    to_number: value.to_number,
-    source_warehouse_id: value.source_warehouse_id,
-    destination_warehouse_id: value.destination_warehouse_id,
+function mapTransferOrder(value: TransferOrderDto): Extract<AdminOperationRow, { feature: 'transfer-orders' }> {
+  const data: TransferOrderProjection = {
+    transferOrderNumber: value.to_number,
+    sourceWarehouseId: value.source_warehouse_id,
+    destinationWarehouseId: value.destination_warehouse_id,
     status: value.status,
-    created_by: value.created_by,
-    created_at: value.created_at
-  });
+    createdBy: value.created_by,
+    notes: value.notes,
+    createdAt: value.created_at,
+    updatedAt: value.updated_at
+  };
+
+  return { feature: 'transfer-orders', id: value.to_id, data };
 }
 
-function mapUser(value: UserDto): AdminOperationRow {
-  return createRow(value.user_id, {
+function mapUser(value: UserDto): Extract<AdminOperationRow, { feature: 'users' }> {
+  const data: UserProjection = {
     username: value.username,
-    full_name: value.full_name,
+    fullName: value.full_name,
     role: value.role,
-    is_active: value.is_active,
-    warehouse_ids: value.warehouse_ids.join(', '),
-    created_at: value.created_at
-  });
+    active: value.is_active,
+    warehouseIds: value.warehouse_ids,
+    allowedFunctions: value.allowed_functions,
+    createdAt: value.created_at,
+    lastLogin: value.last_login
+  };
+
+  return { feature: 'users', id: value.user_id, data };
 }
 
-function mapVendor(value: VendorDto): AdminOperationRow {
-  return createRow(value.canonical_id, {
-    vendor_name: value.vendor_name,
-    contact_name: value.contact_name,
+function mapVendor(value: VendorDto): Extract<AdminOperationRow, { feature: 'vendors' }> {
+  const data: VendorProjection = {
+    vendorName: value.vendor_name,
+    contactName: value.contact_name,
     email: value.email,
     phone: value.phone,
-    payment_terms: value.payment_terms,
-    is_active: value.is_active
-  });
+    paymentTerms: value.payment_terms,
+    active: value.is_active
+  };
+
+  return { feature: 'vendors', id: value.canonical_id, data };
 }
 
 export const AdminOperationMapper = {
-  rows(
-    feature: AdminOperationKey,
-    values: AdminOperationDto[]
-  ): AdminOperationRow[] {
-    switch (feature) {
-      case 'backorders':
-        return (values as BackorderDto[]).map(mapBackorder);
-      case 'count-approvals':
-      case 'adjustments':
-        return (values as AdjustmentDto[]).map(mapAdjustment);
-      case 'fraud':
-      case 'refunds':
-      case 'returns':
-        return (values as SalesOrderDto[]).map(mapSalesOrder);
-      case 'inter-warehouse-transfers':
-        return (values as InterWarehouseTransferDto[]).map(mapInterWarehouseTransfer);
-      case 'pos-activity':
-        return (values as PosActivityDto[]).map(mapPosActivity);
-      case 'preferred-bins':
-        return (values as PreferredBinDto[]).map(mapPreferredBin);
-      case 'purchase-orders':
-        return (values as PurchaseOrderDto[]).map(mapPurchaseOrder);
-      case 'transfer-orders':
-        return (values as TransferOrderDto[]).map(mapTransferOrder);
-      case 'users':
-        return (values as UserDto[]).map(mapUser);
-      case 'vendors':
-        return (values as VendorDto[]).map(mapVendor);
-    }
+  backorders(values: BackorderDto[]) {
+    return values.map(mapBackorder);
+  },
+  countApprovals(values: AdjustmentDto[]) {
+    return values.map((value) => mapAdjustment('count-approvals', value));
+  },
+  adjustments(values: AdjustmentDto[]) {
+    return values.map((value) => mapAdjustment('adjustments', value));
+  },
+  fraud(values: SalesOrderDto[]) {
+    return values.map((value) => mapSalesOrder('fraud', value));
+  },
+  refunds(values: SalesOrderDto[]) {
+    return values.map((value) => mapSalesOrder('refunds', value));
+  },
+  returns(values: SalesOrderDto[]) {
+    return values.map((value) => mapSalesOrder('returns', value));
+  },
+  interWarehouseTransfers(values: InterWarehouseTransferDto[]) {
+    return values.map(mapInterWarehouseTransfer);
+  },
+  posActivity(values: PosActivityDto[]) {
+    return values.map(mapPosActivity);
+  },
+  preferredBins(values: PreferredBinDto[]) {
+    return values.map(mapPreferredBin);
+  },
+  purchaseOrders(values: PurchaseOrderDto[]) {
+    return values.map(mapPurchaseOrder);
+  },
+  transferOrders(values: TransferOrderDto[]) {
+    return values.map(mapTransferOrder);
+  },
+  users(values: UserDto[]) {
+    return values.map(mapUser);
+  },
+  vendors(values: VendorDto[]) {
+    return values.map(mapVendor);
+  },
+  posSummary(value: PosActivitySummaryDto) {
+    return {
+      date: value.date,
+      isToday: value.is_today,
+      today: {
+        salesCount: value.today.sales_count,
+        refundCount: value.today.refund_count,
+        netCents: value.today.net_cents,
+        salesTotalCents: value.today.sales_total_cents,
+        refundTotalCents: value.today.refund_total_cents,
+        averageSaleCents: value.today.avg_sale_cents,
+        counterCents: value.today.counter_cents,
+        counterCount: value.today.counter_count,
+        phoneCents: value.today.phone_cents,
+        phoneCount: value.today.phone_count
+      },
+      week: {
+        thisTotalCents: value.week.this_total_cents,
+        lastTotalCents: value.week.last_total_cents
+      },
+      activeTerminals: value.active_terminals,
+      differenceFromYesterdayCents: value.vs_yesterday_cents
+    };
   }
 };
