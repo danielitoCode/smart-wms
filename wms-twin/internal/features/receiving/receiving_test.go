@@ -20,7 +20,7 @@ func TestReceiveAndPutaway(t *testing.T) {
 	}
 	svc := New(k.Store, k.Master, poRepo, k.Ledger)
 	_, _, err = svc.Receive(ReceiveInput{
-		POID: po.POID,
+		POID:  po.POID,
 		Items: []ReceiveItem{{ItemID: item.ItemID, Quantity: 5, BinID: staging.BinID}},
 	}, "tester", nil, true)
 	if err != nil {
