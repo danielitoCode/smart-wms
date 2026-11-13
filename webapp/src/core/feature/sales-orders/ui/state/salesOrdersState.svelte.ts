@@ -8,7 +8,8 @@ import type {
   RevertSalesOrderInput,
   SalesOrder,
   SalesOrderPage,
-  UpdateSalesOrder
+  UpdateSalesOrder,
+  UpdateSalesOrderAddressInput
 } from '../../domain/entity/SalesOrder';
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 
@@ -139,6 +140,13 @@ export function createSalesOrdersState() {
     return runMutation(
       () => deps.updateSalesOrder.execute(id, input),
       'No se pudo actualizar el pedido'
+    );
+  }
+
+  async function updateAddress(id: number, input: UpdateSalesOrderAddressInput): Promise<boolean> {
+    return runMutation(
+      () => deps.updateSalesOrderAddress.execute(id, input),
+      'No se pudieron actualizar las direcciones del pedido'
     );
   }
 
@@ -302,6 +310,7 @@ export function createSalesOrdersState() {
     open,
     close,
     update,
+    updateAddress,
     addLine,
     updateLine,
     deleteLine,

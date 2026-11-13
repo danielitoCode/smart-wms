@@ -36,6 +36,13 @@ export interface SalesOrderAddress {
   phone: string | null;
 }
 
+export type SalesOrderAddressInput = Partial<SalesOrderAddress>;
+
+export interface UpdateSalesOrderAddressInput {
+  billingAddress?: SalesOrderAddressInput;
+  shippingAddress?: SalesOrderAddressInput;
+}
+
 export interface SalesOrderPickTask {
   pickTaskId: number;
   soLineId: number;
