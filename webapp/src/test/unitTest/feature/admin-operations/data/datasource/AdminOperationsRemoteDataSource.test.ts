@@ -77,4 +77,85 @@ describe('AdminOperationsRemoteDataSource Flask contracts', () => {
     expect(listUrl.searchParams.get('status')).toBe('OPEN');
     expect(get.mock.calls[1][0]).toBe('/api/admin/pos/summary?date=2026-11-12');
   });
+
+  it('sends POS channel, terminal and cashier filters supported by Flask', async () => {
+    const { dataSource, get } = createDataSource({
+      sales_orders: [],
+      total: 0,
+      page: 1,
+      per_page: 50,
+      pages: 0
+    });
+
+    await dataSource.list('pos-activity', {
+      channel: 'phone',
+      terminalId: 'TERM-4',
+      cashierId: 'operator-2'
+    });
+
+    const listUrl = new URL(get.mock.calls[0][0], 'http://localhost');
+    expect(listUrl.searchParams.get('channel')).toBe('phone');
+    expect(listUrl.searchParams.get('terminal_id')).toBe('TERM-4');
+    expect(listUrl.searchParams.get('cashier_id')).toBe('operator-2');
+  });
+
+  it('sends only the supported transfer-order header filters', async () => {
+    const { dataSource, get } = createDataSource({
+      transfer_orders: [],
+      total: 0,
+      page: 1,
+      per_page: 50,
+      pages: 0
+    });
+
+    await dataSource.list('transfer-orders', {
+      sourceWarehouseId: 2,
+      destinationWarehouseId: 5,
+      status: 'AWAITING_APPROVAL'
+    });
+
+    const url = new URL(get.mock.calls[0][0], 'http://localhost');
+    expect(url.searchParams.get('source_warehouse_id')).toBe('2');
+    expect(url.searchParams.get('destination_warehouse_id')).toBe('5');
+    expect(url.searchParams.get('status')).toBe('AWAITING_APPROVAL');
+    expect(url.searchParams.has('q')).toBe(false);
+  });
+
+  it('sends vendor active filtering with false as a meaningful value', async () => {
+    const { dataSource, get } = createDataSource({
+      vendors: [],
+      total: 0,
+      page: 1,
+      per_page: 50,
+      pages: 0
+    });
+
+    await dataSource.list('vendors', { active: false, search: 'retired' });
+
+    const url = new URL(get.mock.calls[0][0], 'http://localhost');
+    expect(url.searchParams.get('active')).toBe('false');
+    expect(url.searchParams.get('q')).toBe('retired');
+  });
+
+  it('sends the purchase-order search, status and warehouse filters', async () => {
+    const { dataSource, get } = createDataSource({
+      purchase_orders: [],
+      total: 0,
+      page: 1,
+      per_page: 50,
+      pages: 0
+    });
+
+    await dataSource.list('purchase-orders', {
+      warehouseId: 4,
+      status: 'PARTIAL',
+      search: 'PO-4'
+    });
+
+    const url = new URL(get.mock.calls[0][0], 'http://localhost');
+    expect(url.searchParams.get('warehouse_id')).toBe('4');
+    expect(url.searchParams.get('status')).toBe('PARTIAL');
+    expect(url.searchParams.get('q')).toBe('PO-4');
+  });
+
 });
