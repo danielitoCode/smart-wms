@@ -15,7 +15,7 @@ export type AdminOperationColumnFor<K extends AdminOperationKey> = {
   key: keyof AdminOperationProjectionMap[K];
   label: string;
   format?: AdminOperationColumnFormat;
-} satisfies AdminOperationCatalog;
+};
 
 export type AdminOperationDefinition<K extends AdminOperationKey> = {
   key: K;
@@ -298,4 +298,4 @@ export const ADMIN_OPERATION_CATALOG = {
       { key: 'active', label: 'Activo', format: 'boolean' }
     ])
   }
-};
+} satisfies AdminOperationCatalog;
