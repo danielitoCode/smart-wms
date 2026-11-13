@@ -184,18 +184,6 @@ export type VendorDto = {
   is_active: boolean | null;
 };
 
-export type AdminOperationDto =
-  | BackorderDto
-  | AdjustmentDto
-  | SalesOrderDto
-  | InterWarehouseTransferDto
-  | PosActivityDto
-  | PreferredBinDto
-  | PurchaseOrderDto
-  | TransferOrderDto
-  | UserDto
-  | VendorDto;
-
 
 export type AdminOperationRemotePagination = {
   page: number;
