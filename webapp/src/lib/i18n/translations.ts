@@ -268,7 +268,11 @@ const featureTranslations: Record<'it'|'en', Record<string,string>> = {
   "Tipo": "Tipo",
   "Buscar por SKU o nombre": "Cerca per SKU o nome",
   "Buscar SKU o nombre": "Cerca SKU o nome",
-  "Buscar SKU o producto": "Cerca SKU o prodotto"
+  "Buscar SKU o producto": "Cerca SKU o prodotto",
+  "Método de envío": "Metodo di spedizione",
+  "Dirección de envío": "Indirizzo di spedizione",
+  "ID de artículo": "ID articolo",
+  "Seguimiento": "Numero di tracciamento"
 },
  en: {
   "Clientes": "Customers",
@@ -497,7 +501,11 @@ const featureTranslations: Record<'it'|'en', Record<string,string>> = {
   "Tipo": "Type",
   "Buscar por SKU o nombre": "Search by SKU or name",
   "Buscar SKU o nombre": "Search SKU or name",
-  "Buscar SKU o producto": "Search SKU or item"
+  "Buscar SKU o producto": "Search SKU or item",
+  "Método de envío": "Shipping method",
+  "Dirección de envío": "Shipping address",
+  "ID de artículo": "Item ID",
+  "Seguimiento": "Tracking number"
 }
 };
 
