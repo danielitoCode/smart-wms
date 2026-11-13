@@ -103,6 +103,20 @@
 		return page.url.pathname === href || page.url.pathname.startsWith(href + '/');
 	}
 
+	function scrollActiveNavIntoView() {
+		if (typeof document === 'undefined') return;
+		const active = document.querySelector('.main-nav a.nav-link.active');
+		if (active instanceof HTMLElement) {
+			active.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+		}
+	}
+
+	$effect(() => {
+		void page.url.pathname;
+		if (guard.status !== 'authenticated') return;
+		queueMicrotask(() => scrollActiveNavIntoView());
+	});
+
 	async function bootstrap() {
 		await guard.verify();
 		if (guard.status === 'authenticated' && !guard.user?.mustChangePassword) {
@@ -201,8 +215,20 @@
 	.brand-text { display:flex; flex-direction:column; gap:4px; line-height:1; }
 	.brand-text strong { font:700 1.12rem var(--disp); letter-spacing:-.02em; }
 	.brand-text small { color:var(--gold); font:600 .62rem var(--disp); letter-spacing:.14em; text-transform:uppercase; }
-	.main-nav { flex:1; overflow:auto; padding:22px 14px 18px; }
-	.nav-group { margin:0 0 22px; }
+	.main-nav {
+		flex: 1;
+		overflow: auto;
+		padding: 22px 14px 18px;
+		scroll-snap-type: y proximity;
+		scroll-padding-block: 12px 18px;
+		scroll-behavior: smooth;
+		overscroll-behavior: contain;
+	}
+	.nav-group {
+		margin: 0 0 22px;
+		scroll-snap-align: start;
+		scroll-snap-stop: normal;
+	}
 	.group-label { margin:0 0 8px; padding:0 11px; color:rgba(224,235,247,.54); font:600 .65rem var(--disp); letter-spacing:.16em; text-transform:uppercase; }
 	.nav-link { min-height:44px; display:flex; align-items:center; gap:12px; margin:2px 0; padding:10px 12px; border-radius:10px; color:rgba(245,248,252,.78); text-decoration:none; font:500 .9rem var(--body); transition:background var(--motion-fast,160ms) var(--ease-out,ease), color var(--motion-fast,160ms) var(--ease-out,ease), box-shadow var(--motion-fast,160ms) var(--ease-out,ease); }
 	.nav-link :global(svg) { flex:none; color:rgba(190,211,234,.8); transition: color var(--motion-fast,160ms) var(--ease-out,ease); }
@@ -290,5 +316,8 @@
 		.content { padding:20px 16px 32px; }
 	}
 	@media (max-width:520px) { .topbar { gap:9px; } .page-context p { font-size:.56rem; } .page-context span { max-width:38vw; font-size:.76rem; } }
-	@media (prefers-reduced-motion:reduce) { .sidebar,.nav-link,.content,.scrim,.boot { transition:none; animation:none; } }
+	@media (prefers-reduced-motion:reduce) {
+		.sidebar,.nav-link,.content,.scrim,.boot { transition:none; animation:none; }
+		.main-nav { scroll-behavior: auto; scroll-snap-type: none; }
+	}
 </style>
