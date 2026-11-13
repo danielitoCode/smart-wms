@@ -80,14 +80,13 @@ function mapSalesOrder(
 ): Extract<AdminOperationRow, { feature: 'fraud' }> | Extract<AdminOperationRow, { feature: 'refunds' }> | Extract<AdminOperationRow, { feature: 'returns' }> {
   const data: SalesOrderProjection = {
     salesOrderNumber: value.so_number,
-    parentSalesOrderNumber: value.parent_so_number ?? null,
+    parentSalesOrderId: value.parent_so_id,
+    orderType: value.order_type,
     customerName: value.customer_name,
     customerPhone: value.customer_phone ?? null,
-    orderSource: value.order_source ?? value.order_origin ?? null,
     status: value.status,
     createdAt: value.created_at,
     memo: value.memo ?? null,
-    orderTotal: value.order_total ?? null
   };
 
   switch (feature) {
