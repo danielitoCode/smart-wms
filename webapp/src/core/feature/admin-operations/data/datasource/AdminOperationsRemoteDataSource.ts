@@ -150,6 +150,7 @@ export class AdminOperationsRemoteDataSource {
         const params = createPaginationParams(query);
         params.set('order_type', feature === 'refunds' ? 'refund' : 'return');
         appendSearch(params, query);
+        appendWarehouse(params, query);
         const response = await this.api.get<{ sales_orders: SalesOrderDto[] } & PaginatedResponse>(
           `/api/admin/sales-orders?${params.toString()}`
         );
