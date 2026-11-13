@@ -2,21 +2,34 @@ import { describe, expect, it } from 'vitest';
 import { CustomerMapper } from '../../../../../../core/feature/customers/data/mapper/CustomerMapper';
 
 describe('CustomerMapper', () => {
-  it('maps the customer projection and its order count', () => {
-    expect(CustomerMapper.fromSearchResult({
-      type: 'customer',
-      id: 'Acme Ltd',
-      label: 'Acme Ltd',
-      sublabel: '12 orders'
-    })).toEqual({ id: 'Acme Ltd', name: 'Acme Ltd', orderCount: 12 });
-  });
+	it('projects distinct customers from SO rows and counts orders', () => {
+		const result = CustomerMapper.fromSalesOrderProjection([
+			{ customer_id: 'c1', customer_name: 'Acme', customer_email: 'a@x.com', warehouse_id: 1 },
+			{ customer_id: 'c1', customer_name: 'Acme', customer_phone: '555', warehouse_id: 1 },
+			{ customer_id: 'c2', customer_name: 'Beta', warehouse_id: 2 }
+		]);
 
-  it('supports singular order labels and rejects unrelated results', () => {
-    expect(CustomerMapper.fromSearchResult({
-      type: 'customer', id: 'A', label: 'A', sublabel: '1 order'
-    }).orderCount).toBe(1);
-    expect(() => CustomerMapper.fromSearchResult({
-      type: 'item', id: 1, label: 'SKU-1', sublabel: 'Item'
-    })).toThrow(/no válido/);
-  });
+		expect(result).toHaveLength(2);
+		const acme = result.find((c) => c.id === 'c1');
+		expect(acme?.orderCount).toBe(2);
+		expect(acme?.email).toBe('a@x.com');
+		expect(acme?.phone).toBe('555');
+	});
+
+	it('maps search hits and parses order count from sublabel', () => {
+		const customer = CustomerMapper.fromSearchHit({
+			type: 'customer',
+			label: 'Search Test Customer',
+			sublabel: '3 orders',
+			customer_id: 'cust-001'
+		});
+		expect(customer).toEqual({
+			id: 'cust-001',
+			name: 'Search Test Customer',
+			email: null,
+			phone: null,
+			orderCount: 3,
+			warehouseId: null
+		});
+	});
 });
