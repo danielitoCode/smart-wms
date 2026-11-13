@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/catalog"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/identity"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/purchaseorders"
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 )
 
 func (s *Server) purchaseOrderRoutes(w http.ResponseWriter, r *http.Request, user identity.User, parts []string) {

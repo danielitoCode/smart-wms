@@ -3,11 +3,11 @@ package inbound
 import (
 	"testing"
 
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/catalog"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/inventoryledger"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/purchaseorders"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/salesorders"
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 	"github.com/yecharlot/PrismaTec-Core/core"
 )
 

@@ -1,8 +1,8 @@
 package persistence
 
 import (
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/admindata"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/admindata"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/ports"
 )
 

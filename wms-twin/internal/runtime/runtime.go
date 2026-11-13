@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/identity"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/identity"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/httpapi"
 	wmsreplication "github.com/danielitoCode/smart-wms/wms-twin/internal/replication"
 	"github.com/yecharlot/PrismaTec-Core/api/aip"

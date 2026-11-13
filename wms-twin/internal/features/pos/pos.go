@@ -11,11 +11,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/catalog"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/fulfillment"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/inventoryledger"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/salesorders"
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 )
 
 var (
