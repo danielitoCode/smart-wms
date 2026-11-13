@@ -4,16 +4,22 @@
 
 	const i18n = getContext<I18nState>('i18n');
 
+	/** ISO 3166-1 alpha-2 de la bandera asociada a cada idioma de la app. */
 	const locales = [
-		{ code: 'it', label: 'Italiano', flag: '🇮🇹' },
-		{ code: 'es', label: 'Español', flag: '🇪🇸' },
-		{ code: 'en', label: 'English', flag: '🇬🇧' }
+		{ code: 'it', label: 'Italiano', country: 'it', alt: 'Italia' },
+		{ code: 'es', label: 'Español', country: 'es', alt: 'España' },
+		{ code: 'en', label: 'English', country: 'gb', alt: 'United Kingdom' }
 	] as const;
 
 	let open = $state(false);
 	let rootEl: HTMLDivElement | undefined = $state();
 
 	const current = $derived(locales.find((l) => l.code === i18n.locale) ?? locales[0]);
+
+	function flagSrc(country: string, size: 16 | 32 | 48 = 16) {
+		const h = size === 16 ? 12 : size === 32 ? 24 : 36;
+		return `https://flagcdn.com/${size}x${h}/${country}.png`;
+	}
 
 	function select(code: string) {
 		i18n.setLocale(code);
@@ -48,7 +54,16 @@
 		aria-label={i18n.t('Idioma')}
 		onclick={() => (open = !open)}
 	>
-		<span class="flag" aria-hidden="true">{current.flag}</span>
+		<img
+			class="flag"
+			src={flagSrc(current.country, 16)}
+			srcset={`${flagSrc(current.country, 32)} 2x, ${flagSrc(current.country, 48)} 3x`}
+			width="16"
+			height="12"
+			alt={current.alt}
+			loading="lazy"
+			decoding="async"
+		/>
 		<span class="code">{current.code.toUpperCase()}</span>
 		<span class="chev" aria-hidden="true">▾</span>
 	</button>
@@ -63,7 +78,16 @@
 						class:active={loc.code === i18n.locale}
 						onclick={() => select(loc.code)}
 					>
-						<span class="flag" aria-hidden="true">{loc.flag}</span>
+						<img
+							class="flag"
+							src={flagSrc(loc.country, 16)}
+							srcset={`${flagSrc(loc.country, 32)} 2x, ${flagSrc(loc.country, 48)} 3x`}
+							width="16"
+							height="12"
+							alt={loc.alt}
+							loading="lazy"
+							decoding="async"
+						/>
 						<span class="name">{loc.label}</span>
 						{#if loc.code === i18n.locale}
 							<span class="check" aria-hidden="true">✓</span>
@@ -85,7 +109,7 @@
 		min-height: 40px;
 		display: inline-flex;
 		align-items: center;
-		gap: 0.4rem;
+		gap: 0.45rem;
 		padding: 0 0.65rem;
 		border: 1px solid var(--line);
 		border-radius: 10px;
@@ -105,8 +129,13 @@
 	}
 
 	.flag {
-		font-size: 1rem;
-		line-height: 1;
+		flex: none;
+		display: block;
+		width: 16px;
+		height: 12px;
+		border-radius: 2px;
+		object-fit: cover;
+		box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 70%, transparent);
 	}
 
 	.code {
@@ -133,7 +162,7 @@
 		border-radius: 12px;
 		background: var(--surface);
 		box-shadow: var(--shadow-2);
-	animation: menu-in var(--motion-base, 200ms) var(--ease-out, ease) both;
+		animation: menu-in var(--motion-base, 200ms) var(--ease-out, ease) both;
 	}
 
 	.option {
