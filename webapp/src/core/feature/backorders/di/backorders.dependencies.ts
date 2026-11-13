@@ -1,2 +1,11 @@
-import {apiClient} from '../../../infrastructure/api/ApiClient';import {BackordersRemoteDataSource} from '../data/datasource/BackordersRemoteDataSource';import {BackordersRepositoryImpl} from '../data/repository/BackordersRepositoryImpl';import {ListBackordersUseCase,CancelBackorderUseCase} from '../domain/usecase/BackorderUseCases';
-export function createBackordersDependencies(){const r=new BackordersRepositoryImpl(new BackordersRemoteDataSource(apiClient));return {list:new ListBackordersUseCase(r),cancel:new CancelBackorderUseCase(r)};}
+import {apiClient} from '../../../infrastructure/api/ApiClient';
+import {BackordersRemoteDataSource} from '../data/datasource/BackordersRemoteDataSource'
+import {BackordersRepositoryImpl} from '../data/repository/BackordersRepositoryImpl'
+import {ListBackordersUseCase,CancelBackorderUseCase} from '../domain/usecase/BackorderUseCases';
+export function createBackordersDependencies(){
+    const r=new BackordersRepositoryImpl(new BackordersRemoteDataSource(apiClient))
+    return {
+        list:new ListBackordersUseCase(r),
+        cancel:new CancelBackorderUseCase(r)
+    }
+}

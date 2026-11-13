@@ -1,5 +1,5 @@
 import {createAdminOperationsDependencies} from '../../di/adminOperations.dependencies';
-import type {AdminOperationKey,AdminOperationQuery,AdminOperationResult} from '../../domain/AdminOperation';
+import type {AdminOperationKey,AdminOperationQuery,AdminOperationResult} from '../../domain/entity/AdminOperation.ts';
 import {toUserMessage} from '../../../../infrastructure/errors/ApiError';
 const deps=createAdminOperationsDependencies();
 export function createAdminOperationState(feature:AdminOperationKey){

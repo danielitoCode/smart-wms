@@ -1,2 +1,7 @@
 import type {Backorder,BackorderQueueTab} from '../entity/Backorder';
-export interface BackordersRepository{list(warehouseId:number|null,tab:BackorderQueueTab):Promise<Backorder[]>;cancel(backorderId:number,reason:string):Promise<void>;}
+
+export interface BackordersRepository{
+    list(warehouseId:number|null, tab:BackorderQueueTab):Promise<Backorder[]>
+
+    cancel(backorderId:number,reason:string):Promise<void>
+}

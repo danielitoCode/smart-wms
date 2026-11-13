@@ -3,7 +3,7 @@
  import {page} from '$app/state';
  import type {I18nState} from '../../../../../lib/i18n/i18n.svelte';
  import {ADMIN_OPERATION_CATALOG} from '../AdminOperationCatalog';
- import type {AdminOperationKey} from '../../domain/AdminOperation';
+ import type {AdminOperationKey} from '../../domain/entity/AdminOperation.ts';
  import {createAdminOperationState} from '../state/adminOperationState.svelte';
  const i18n=getContext<I18nState>('i18n');
  const selection=getContext<{warehouseId:number|null}>('warehouseSelection');

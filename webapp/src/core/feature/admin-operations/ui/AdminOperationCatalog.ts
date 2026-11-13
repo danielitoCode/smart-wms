@@ -1,4 +1,4 @@
-import type {AdminOperationKey} from '../domain/AdminOperation';
+import type {AdminOperationKey} from '../domain/entity/AdminOperation.ts';
 export type AdminOperationDefinition={key:AdminOperationKey;title:string;description:string;pageKey:string;warehouseScoped?:boolean;columns:{key:string;label:string}[]};
 const cols=(p:[string,string][])=>p.map(([key,label])=>({key,label}));
 export const ADMIN_OPERATION_CATALOG:Record<string,AdminOperationDefinition>={
