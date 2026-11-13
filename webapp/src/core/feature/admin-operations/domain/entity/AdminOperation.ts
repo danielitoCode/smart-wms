@@ -19,6 +19,12 @@ export type AdminOperationQuery = {
   tab?: 'waiting' | 'ready-to-ship';
   date?: string;
   status?: string;
+  channel?: 'counter' | 'phone';
+  terminalId?: string;
+  cashierId?: string;
+  sourceWarehouseId?: number;
+  destinationWarehouseId?: number;
+  active?: boolean;
   page?: number;
   perPage?: number;
 };
