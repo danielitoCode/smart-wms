@@ -14,6 +14,7 @@ export function requiredPageKeysForPath(pathname: string): string[] {
 	if (pathname.startsWith('/management/backorders')) return ['backorders'];
 	if (pathname.startsWith('/management/count-approvals')) return ['count-approvals'];
 	if (pathname.startsWith('/management/fraud')) return ['sales-orders'];
+	if (pathname.startsWith('/management/sales-orders')) return ['sales-orders'];
 	if (pathname.startsWith('/management/inter-warehouse-transfers')) return ['transfer-orders'];
 	if (pathname.startsWith('/management/adjustments')) return ['adjustments'];
 	if (pathname.startsWith('/management/pos-activity')) return ['pos-activity'];
