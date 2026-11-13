@@ -1,9 +1,71 @@
-import {createAdminOperationsDependencies} from '../../di/adminOperations.dependencies';
-import type {AdminOperationKey,AdminOperationQuery,AdminOperationResult} from '../../domain/entity/AdminOperation.ts';
-import {toUserMessage} from '../../../../infrastructure/errors/ApiError';
-const deps=createAdminOperationsDependencies();
-export function createAdminOperationState(feature:AdminOperationKey){
- let result=$state<AdminOperationResult>({rows:[],summary:null,total:null}),loading=$state(false),error=$state<string|null>(null),search=$state(''),tab=$state('waiting'),date=$state(new Date().toISOString().slice(0,10)),status=$state('');
- async function load(extra:Partial<AdminOperationQuery>={}){if(loading)return false;loading=true;error=null;try{result=await deps.list.execute(feature,{search,tab,date,status,...extra});return true;}catch(e){error=toUserMessage(e,'No se pudieron cargar los datos del módulo');result={rows:[],summary:null,total:null};return false;}finally{loading=false;}}
- return {get rows(){return result.rows;},get summary(){return result.summary;},get total(){return result.total;},get loading(){return loading;},get error(){return error;},get search(){return search;},get tab(){return tab;},get date(){return date;},get status(){return status;},setSearch(v:string){search=v;},setTab(v:string){tab=v;},setDate(v:string){date=v;},setStatus(v:string){status=v;},load};
+import { createAdminOperationsDependencies } from '../../di/adminOperations.dependencies';
+import type { AdminOperationKey, AdminOperationQuery, AdminOperationResult } from '../../domain/entity/AdminOperation.ts';
+import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
+
+const deps = createAdminOperationsDependencies();
+
+export function createAdminOperationState(feature: AdminOperationKey) {
+  let result = $state<AdminOperationResult>({ rows: [], summary: null, pagination: null });
+  let loading = $state(false);
+  let error = $state<string | null>(null);
+  let search = $state('');
+  let tab = $state<'waiting' | 'ready-to-ship'>('waiting');
+  let date = $state('');
+  let status = $state('');
+  let page = $state(1);
+  const perPage = 50;
+  let requestSequence = 0;
+
+  async function load(extra: Partial<AdminOperationQuery> = {}): Promise<boolean> {
+    const requestId = ++requestSequence;
+    loading = true;
+    error = null;
+
+    try {
+      const nextResult = await deps.list.execute(feature, {
+        search,
+        tab,
+        date,
+        status,
+        page,
+        perPage,
+        ...extra
+      });
+
+      if (requestId !== requestSequence) return false;
+      result = nextResult;
+      return true;
+    } catch (cause) {
+      if (requestId !== requestSequence) return false;
+      error = toUserMessage(cause, 'No se pudieron cargar los datos del módulo');
+      result = { rows: [], summary: null, pagination: null };
+      return false;
+    } finally {
+      if (requestId === requestSequence) loading = false;
+    }
+  }
+
+  function resetPage(): void {
+    page = 1;
+  }
+
+  return {
+    get rows() { return result.rows; },
+    get summary() { return result.summary; },
+    get pagination() { return result.pagination; },
+    get loading() { return loading; },
+    get error() { return error; },
+    get search() { return search; },
+    get tab() { return tab; },
+    get date() { return date; },
+    get status() { return status; },
+    get page() { return page; },
+    setSearch(value: string) { search = value; resetPage(); },
+    setTab(value: 'waiting' | 'ready-to-ship') { tab = value; resetPage(); },
+    setDate(value: string) { date = value; resetPage(); },
+    setStatus(value: string) { status = value; resetPage(); },
+    setPage(value: number) { page = Math.max(1, value); },
+    resetPage,
+    load
+  };
 }
