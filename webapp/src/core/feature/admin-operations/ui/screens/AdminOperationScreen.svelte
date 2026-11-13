@@ -93,7 +93,7 @@
         return typeof value === 'number' ? formatNumber(value) : '—';
       case 'money':
         return typeof value === 'number'
-          ? new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)
+          ? new Intl.NumberFormat(i18n.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)
           : '—';
       case 'cents':
         return typeof value === 'number'
