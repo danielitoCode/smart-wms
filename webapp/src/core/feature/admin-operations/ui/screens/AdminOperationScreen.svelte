@@ -97,7 +97,7 @@
           : '—';
       case 'cents':
         return typeof value === 'number'
-          ? new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value / 100)
+          ? new Intl.NumberFormat(i18n.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value / 100)
           : '—';
       case 'list':
         return Array.isArray(value) ? value.join(', ') : '—';
