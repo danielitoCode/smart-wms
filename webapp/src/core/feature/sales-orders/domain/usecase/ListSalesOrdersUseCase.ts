@@ -1,16 +1,26 @@
-import type { SalesOrderListQuery, SalesOrderPage } from '../entity/SalesOrder';
-import type { SalesOrderRepository } from '../repository/SalesOrderRepository';
+import type { SalesOrder } from '../entity/SalesOrder';
+import type { ListSalesOrdersParams, SalesOrderRepository } from '../repository/SalesOrderRepository';
 
 export class ListSalesOrdersUseCase {
-  constructor(private readonly repository: SalesOrderRepository) {}
+	constructor(private readonly repository: SalesOrderRepository) {}
 
-  execute(query: SalesOrderListQuery = {}): Promise<SalesOrderPage> {
-    const page = query.page ?? 1;
-    const perPage = query.perPage ?? 50;
-    if (!Number.isInteger(page) || page < 1) throw new Error('La página debe ser un entero positivo');
-    if (!Number.isInteger(perPage) || perPage < 1 || perPage > 1000) {
-      throw new Error('El tamaño de página debe estar entre 1 y 1000');
-    }
-    return this.repository.list({ ...query, search: query.search?.trim(), page, perPage });
-  }
+	execute(input: ListSalesOrdersParams = {}): Promise<SalesOrder[]> {
+		if (input.page != null && (!Number.isInteger(input.page) || input.page < 1)) {
+			throw new Error('page must be an integer >= 1 when provided');
+		}
+		if (input.perPage != null && (!Number.isInteger(input.perPage) || input.perPage < 1)) {
+			throw new Error('perPage must be an integer >= 1 when provided');
+		}
+		if (input.warehouseId != null && (!Number.isInteger(input.warehouseId) || input.warehouseId < 1)) {
+			throw new Error('warehouseId must be an integer >= 1 when provided');
+		}
+
+		return this.repository.list({
+			status: input.status?.trim() || undefined,
+			warehouseId: input.warehouseId,
+			page: input.page,
+			perPage: input.perPage,
+			q: input.q?.trim() || undefined
+		});
+	}
 }
