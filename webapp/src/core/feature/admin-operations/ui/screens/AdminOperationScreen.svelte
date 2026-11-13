@@ -49,14 +49,14 @@
   function formatDate(value: string): string {
     const parsed = new Date(value.includes('T') ? value : `${value}T00:00:00`);
     if (Number.isNaN(parsed.getTime())) return value;
-    return new Intl.DateTimeFormat(undefined, {
+    return new Intl.DateTimeFormat(i18n.locale, {
       dateStyle: 'medium',
       timeStyle: value.includes('T') ? 'short' : undefined
     }).format(parsed);
   }
 
   function formatNumber(value: number): string {
-    return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value);
+    return new Intl.NumberFormat(i18n.locale, { maximumFractionDigits: 2 }).format(value);
   }
 
   function formatBackorderItems(items: BackorderItemProjection[]): string {
