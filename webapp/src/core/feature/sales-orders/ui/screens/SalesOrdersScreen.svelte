@@ -53,6 +53,7 @@
   let newItemQuantity = $state('1');
   let lineQuantity = $state<Record<number, string>>({});
   let feedback = $state<string | null>(null);
+  let relatedTrail = $state<number[]>([]);
 
   onMount(() => {
     const initialSearch = route.url.searchParams.get('q') ?? '';
@@ -109,8 +110,28 @@
   }
 
   async function openOrder(orderId: number): Promise<void> {
+    relatedTrail = [];
     await vm.open(orderId);
     if (vm.selected) beginEdit(vm.selected);
+  }
+
+  async function openRelatedOrder(orderId: number): Promise<void> {
+    if (!vm.selected || vm.selected.salesOrderId === orderId) return;
+    const previousId = vm.selected.salesOrderId;
+    const opened = await vm.open(orderId);
+    if (!opened || !vm.selected) return;
+    relatedTrail = [...relatedTrail, previousId];
+    beginEdit(vm.selected);
+  }
+
+  async function returnToRelatedOrder(): Promise<void> {
+    const previousId = relatedTrail.at(-1);
+    if (!previousId) return;
+    const opened = await vm.open(previousId);
+    if (!opened || !vm.selected) return;
+    relatedTrail = relatedTrail.slice(0, -1);
+    beginEdit(vm.selected);
+    await vm.loadRelated();
   }
 
   async function saveHeader(order: SalesOrder): Promise<void> {
@@ -268,8 +289,15 @@
   <div class="overlay" role="presentation" onclick={(event) => { if (event.target === event.currentTarget) vm.close(); }}>
     <section class="dialog detail-dialog" role="dialog" aria-modal="true" aria-labelledby="detail-title">
       <header class="detail-header">
-        <div><p class="eyebrow">{i18n.t('Detalle del pedido')}</p><h2 id="detail-title">{order.salesOrderNumber}</h2><span class="status">{order.status}</span></div>
-        <button type="button" aria-label={i18n.t('Cerrar')} onclick={() => vm.close()}>×</button>
+        <div>
+          {#if relatedTrail.length}
+            <button type="button" onclick={() => void returnToRelatedOrder()}>{i18n.t('Volver')}</button>
+          {/if}
+          <p class="eyebrow">{i18n.t('Detalle del pedido')}</p>
+          <h2 id="detail-title">{order.salesOrderNumber}</h2>
+          <span class="status">{order.status}</span>
+        </div>
+        <button type="button" aria-label={i18n.t('Cerrar')} onclick={() => { relatedTrail = []; vm.close(); }}>×</button>
       </header>
 
       <section class="detail-section">
@@ -315,6 +343,32 @@
         <button class="primary" type="button" onclick={() => void saveAddresses(order)} disabled={vm.saving}>
           {i18n.t('Guardar direcciones')}
         </button>
+      </section>
+
+      <section class="detail-section">
+        <div class="section-heading">
+          <h3>{i18n.t('Pedido original')}</h3>
+          <button type="button" onclick={() => void vm.loadRelated()} disabled={vm.loadingRelated}>
+            {vm.loadingRelated ? i18n.t('Cargando…') : i18n.t('Ver pedidos')}
+          </button>
+        </div>
+        {#if vm.relatedOrders.length}
+          <ul class="related-list">
+            {#each vm.relatedOrders as related (related.soId)}
+              <li>
+                <button
+                  type="button"
+                  class:current={related.isCurrent}
+                  onclick={() => void openRelatedOrder(related.soId)}
+                  disabled={related.isCurrent}
+                >
+                  {related.soNumber} · {related.status} · {related.orderType ?? '—'}
+                </button>
+                <span>{related.customerName ?? '—'}</span>
+              </li>
+            {/each}
+          </ul>
+        {/if}
       </section>
 
       <section class="detail-section">
@@ -408,6 +462,12 @@
   .detail-dialog { width: min(100%, 74rem); }
   .detail-header { margin-bottom: 1.2rem; }
   .detail-section { margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+  .section-heading { display: flex; align-items: center; justify-content: space-between; gap: .8rem; }
+  .related-list { display: grid; gap: .45rem; padding: 0; margin: .7rem 0 0; list-style: none; }
+  .related-list li { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .55rem .7rem; border: 1px solid var(--line); border-radius: 8px; }
+  .related-list button { border: 0; padding: 0; color: var(--navy); background: transparent; text-align: left; font-weight: 700; }
+  .related-list button.current { color: var(--ink); cursor: default; }
+  .related-list span { color: var(--slate); font-size: .8rem; }
   .form-grid, .address-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
   .address-grid fieldset { min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; padding: .8rem; border: 1px solid var(--line); border-radius: 10px; }
   .address-grid legend { padding: 0 .35rem; color: var(--slate); font-size: .8rem; font-weight: 700; }
