@@ -11,7 +11,7 @@ export type AdminOperationColumnFormat =
   | 'list'
   | 'backorder-items';
 
-export type AdminOperationColumn<K extends AdminOperationKey> = {
+export type AdminOperationColumnFor<K extends AdminOperationKey> = {
   key: keyof AdminOperationProjectionMap[K];
   label: string;
   format?: AdminOperationColumnFormat;
@@ -33,14 +33,18 @@ export type AdminOperationDefinition<K extends AdminOperationKey> = {
   warehouseIdFilters?: boolean;
   activeFilter?: boolean;
   statusOptions?: string[];
-  columns: AdminOperationColumn<K>[];
+  columns: AdminOperationColumnFor<K>[];
 };
 
 type AdminOperationCatalog = {
   [K in AdminOperationKey]: AdminOperationDefinition<K>;
 };
 
-function columns<K extends AdminOperationKey>(entries: AdminOperationColumn<K>[]): AdminOperationColumn<K>[] {
+export type AdminOperationColumn = {
+  [K in AdminOperationKey]: AdminOperationColumnFor<K>;
+}[AdminOperationKey];
+
+function columns<K extends AdminOperationKey>(entries: AdminOperationColumnFor<K>[]): AdminOperationColumnFor<K>[] {
   return entries;
 }
 
