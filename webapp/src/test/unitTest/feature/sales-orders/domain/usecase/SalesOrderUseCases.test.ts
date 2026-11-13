@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CreateSalesOrderUseCase } from '../../../../../../core/feature/sales-orders/domain/usecase/CreateSalesOrderUseCase';
+import { GetAvailableSalesOrderBinsUseCase } from '../../../../../../core/feature/sales-orders/domain/usecase/FulfillSalesOrderUseCases';
 import { ListSalesOrdersUseCase } from '../../../../../../core/feature/sales-orders/domain/usecase/ListSalesOrdersUseCase';
 import type { SalesOrderRepository } from '../../../../../../core/feature/sales-orders/domain/repository/SalesOrderRepository';
 import type { SalesOrderPage } from '../../../../../../core/feature/sales-orders/domain/entity/SalesOrder';
@@ -27,6 +28,18 @@ describe('Sales order use cases', () => {
       perPage: undefined,
       excludePostFulfillment: false
     });
+  });
+
+  it('validates identifiers before looking up available picking bins', async () => {
+    const getAvailableBins = vi.fn().mockResolvedValue([]);
+    const useCase = new GetAvailableSalesOrderBinsUseCase({
+      getAvailableBins
+    } as unknown as SalesOrderRepository);
+
+    expect(() => useCase.execute(0, 10)).toThrow(/identificador del pedido/);
+    expect(() => useCase.execute(10, 0)).toThrow(/identificador de la línea/);
+    await useCase.execute(10, 20);
+    expect(getAvailableBins).toHaveBeenCalledWith(10, 20);
   });
 
   it('requires a number, warehouse and unique positive item lines', () => {

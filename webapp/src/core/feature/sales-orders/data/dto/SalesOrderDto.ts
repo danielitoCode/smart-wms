@@ -67,6 +67,22 @@ export interface SalesOrderPickTaskDto {
   status: string;
 }
 
+export interface AvailableSalesOrderBinDto {
+  bin_id: number;
+  bin_code: string;
+  zone_name: string;
+  quantity_on_hand: number;
+  quantity_allocated: number;
+  quantity_available: number;
+  preferred_priority: number | null;
+}
+
+export interface AvailableSalesOrderBinsResponseDto {
+  warehouse_id: number;
+  item_id: number;
+  bins: AvailableSalesOrderBinDto[];
+}
+
 export interface SalesOrderListResponseDto {
   sales_orders: SalesOrderDto[];
   total: number;

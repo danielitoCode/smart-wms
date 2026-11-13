@@ -1,7 +1,7 @@
 import type { ApiClient } from '#core/infrastructure/api/ApiClient.ts';
 import type {
   SalesOrderDetailResponseDto, SalesOrderDto, SalesOrderListResponseDto,
-  RelatedSalesOrdersResponseDto
+  RelatedSalesOrdersResponseDto, AvailableSalesOrderBinsResponseDto
 } from '../dto/SalesOrderDto';
 import type {
   CreateRmaInput,
@@ -70,6 +70,12 @@ export class SalesOrderRemoteDataSource {
   async adminShip(id: number): Promise<void> {
     await this.api.post(`/api/admin/sales-orders/${id}/admin-ship`);
   }
+  async getAvailableBins(id: number, lineId: number): Promise<AvailableSalesOrderBinsResponseDto> {
+    return this.api.get<AvailableSalesOrderBinsResponseDto>(
+      `/api/admin/sales-orders/${id}/lines/${lineId}/available-bins`
+    );
+  }
+
   async adminPick(id: number, lines: Array<{ soLineId: number; binId: number; quantity: number }>): Promise<void> {
     await this.api.post(`/api/admin/sales-orders/${id}/admin-pick`, {
       lines: lines.map(({ soLineId, binId, quantity }) => ({

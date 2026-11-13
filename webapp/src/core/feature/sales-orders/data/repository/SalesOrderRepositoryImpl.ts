@@ -1,7 +1,7 @@
 import type {
   CreateSalesOrderInput, SalesOrder, SalesOrderPage, UpdateSalesOrder,
   PartialFulfillInput, RevertSalesOrderInput, CreateRmaInput, ReceiveReturnInput,
-  RelatedSalesOrder, UpdateSalesOrderAddressInput
+  RelatedSalesOrder, UpdateSalesOrderAddressInput, AvailableSalesOrderBin
 } from '../../domain/entity/SalesOrder';
 import type { ListSalesOrdersParams, SalesOrderRepository } from '../../domain/repository/SalesOrderRepository';
 import type { SalesOrderRemoteDataSource } from '../datasource/SalesOrderRemoteDataSource';
@@ -107,6 +107,18 @@ export class SalesOrderRepositoryImpl implements SalesOrderRepository {
   }
   deleteLine(id: number, lineId: number): Promise<void> { return this.datasource.deleteLine(id, lineId); }
   adminShip(id: number): Promise<void> { return this.datasource.adminShip(id); }
+  async getAvailableBins(id: number, lineId: number): Promise<AvailableSalesOrderBin[]> {
+    const response = await this.datasource.getAvailableBins(id, lineId);
+    return response.bins.map((bin) => ({
+      binId: bin.bin_id,
+      binCode: bin.bin_code,
+      zoneName: bin.zone_name,
+      quantityOnHand: bin.quantity_on_hand,
+      quantityAllocated: bin.quantity_allocated,
+      quantityAvailable: bin.quantity_available,
+      preferredPriority: bin.preferred_priority
+    }));
+  }
   adminPick(id: number, lines: Array<{ soLineId: number; binId: number; quantity: number }>): Promise<void> {
     return this.datasource.adminPick(id, lines);
   }

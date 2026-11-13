@@ -12,7 +12,7 @@ import {
   AddSalesOrderLineUseCase, UpdateSalesOrderLineUseCase, DeleteSalesOrderLineUseCase
 } from '../domain/usecase/ManageSalesOrderLinesUseCase';
 import {
-  AdminPickSalesOrderUseCase, AdminShipSalesOrderUseCase,
+  AdminPickSalesOrderUseCase, AdminShipSalesOrderUseCase, GetAvailableSalesOrderBinsUseCase,
   PartialFulfillSalesOrderUseCase, RevertSalesOrderStatusUseCase
 } from '../domain/usecase/FulfillSalesOrderUseCases';
 import {
@@ -36,6 +36,7 @@ export function createSalesOrdersDependencies() {
     updateSalesOrderLine: new UpdateSalesOrderLineUseCase(repository),
     deleteSalesOrderLine: new DeleteSalesOrderLineUseCase(repository),
     adminPickSalesOrder: new AdminPickSalesOrderUseCase(repository),
+    getAvailableSalesOrderBins: new GetAvailableSalesOrderBinsUseCase(repository),
     adminShipSalesOrder: new AdminShipSalesOrderUseCase(repository),
     partialFulfillSalesOrder: new PartialFulfillSalesOrderUseCase(repository),
     revertSalesOrderStatus: new RevertSalesOrderStatusUseCase(repository),
