@@ -1,4 +1,4 @@
-import type { AdminOperationKey, AdminOperationProjectionMap } from '../domain/entity/AdminOperation.ts';
+import type { AdminOperationKey, AdminOperationProjectionMap, BackorderItemProjection } from '../domain/entity/AdminOperation.ts';
 
 export type AdminOperationColumnFormat =
   | 'text'
@@ -11,11 +11,21 @@ export type AdminOperationColumnFormat =
   | 'list'
   | 'backorder-items';
 
+type ColumnFormatFor<Value> =
+  [NonNullable<Value>] extends [BackorderItemProjection[]] ? 'backorder-items'
+    : [NonNullable<Value>] extends [string[] | number[]] ? 'list'
+      : [NonNullable<Value>] extends [boolean] ? 'boolean'
+        : [NonNullable<Value>] extends [number] ? 'quantity' | 'money' | 'cents'
+          : [NonNullable<Value>] extends [string] ? 'text' | 'date' | 'status'
+            : 'text';
+
 export type AdminOperationColumnFor<K extends AdminOperationKey> = {
-  key: keyof AdminOperationProjectionMap[K];
-  label: string;
-  format?: AdminOperationColumnFormat;
-};
+  [P in keyof AdminOperationProjectionMap[K]]: {
+    key: P;
+    label: string;
+    format?: ColumnFormatFor<AdminOperationProjectionMap[K][P]>;
+  };
+}[keyof AdminOperationProjectionMap[K]];
 
 export type AdminOperationDefinition<K extends AdminOperationKey> = {
   key: K;
