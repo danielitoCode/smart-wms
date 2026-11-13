@@ -278,11 +278,12 @@
     {/if}
 
     {#if vm.pagination && vm.pagination.total > 0}
+      {@const pagination = vm.pagination}
       <nav class="pagination" aria-label={i18n.t('Paginación')}>
-        <span>{i18n.t('Página')} {vm.pagination.page} {i18n.t('de')} {vm.pagination.pages} · {vm.pagination.total} {i18n.t('registros')}</span>
+        <span>{i18n.t('Página')} {pagination.page} {i18n.t('de')} {pagination.pages} · {pagination.total} {i18n.t('registros')}</span>
         <div>
-            <button type="button" onclick={() => changePage(vm.pagination.page - 1)} disabled={vm.loading || vm.pagination.page <= 1}>{i18n.t('Anterior')}</button>
-          <button type="button" onclick={() => changePage(vm.pagination.page + 1)} disabled={vm.loading || vm.pagination.page >= vm.pagination.pages}>{i18n.t('Siguiente')}</button>
+            <button type="button" onclick={() => changePage(pagination.page - 1)} disabled={vm.loading || pagination.page <= 1}>{i18n.t('Anterior')}</button>
+          <button type="button" onclick={() => changePage(pagination.page + 1)} disabled={vm.loading || pagination.page >= pagination.pages}>{i18n.t('Siguiente')}</button>
         </div>
       </nav>
     {/if}
