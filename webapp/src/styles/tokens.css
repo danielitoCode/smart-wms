@@ -1,46 +1,160 @@
 /**
- * Identidad Abellis — Manual v1.0
- * Paleta y sistema visual compartidos por la interfaz interna de Smart WMS.
+ * Identidad Abellis — Manual v1.0 + sistema de motion / tipografía operativa.
+ * WMS enterprise: feedback claro, contraste WCAG, reduced-motion primero.
  */
 :root {
 	color-scheme: light;
-	--navy-deep: #012a50; --navy: #004c8b; --navy-2: #013a6b; --head-ink: #012a50;
-	--gold: #e9a50b; --gold-soft: #f6e4b8; --gold-ink: #8a5e00;
-	--lightblue: #8fb4da; --green: #1e7a46;
-	--ink: #132234; --slate: #5c6b7d; --muted: #7e8b9b; --link: #004c8b;
-	--line: #d9e2ec; --line-soft: #e4eaf1; --bg: #edf2f8;
-	--card: #ffffff; --surface: #ffffff; --surface-2: #f5f8fc; --surface-3: #e7eef6; --surface-subtle: #f7fafc; --surface-selected: #eaf2fa;
-	--success: #1e7a46; --success-bg: #eaf5ee;
-	--warning: #9a6a00; --warning-bg: #fff6df;
-	--danger: #b3322b; --danger-bg: #fdf0ef;
+
+	/* Marca */
+	--navy-deep: #012a50;
+	--navy: #004c8b;
+	--navy-2: #013a6b;
+	--head-ink: #012a50;
+	--gold: #e9a50b;
+	--gold-soft: #f6e4b8;
+	--gold-ink: #8a5e00;
+	--lightblue: #8fb4da;
+	--green: #1e7a46;
+
+	/* Contenido */
+	--ink: #132234;
+	--slate: #5c6b7d;
+	--muted: #7e8b9b;
+	--link: #004c8b;
+	--line: #d9e2ec;
+	--line-soft: #e4eaf1;
+	--bg: #edf2f8;
+	--card: #ffffff;
+	--surface: #ffffff;
+	--surface-2: #f5f8fc;
+	--surface-3: #e7eef6;
+	--surface-subtle: #f7fafc;
+	--surface-selected: #eaf2fa;
+
+	/* Estado (siempre acompañado de texto) */
+	--success: #1e7a46;
+	--success-bg: #eaf5ee;
+	--warning: #9a6a00;
+	--warning-bg: #fff6df;
+	--danger: #b3322b;
+	--danger-bg: #fdf0ef;
+
+	/* Foco */
 	--focus: 0 0 0 3px rgba(233, 165, 11, 0.38);
+	--focus-ring: 3px solid var(--gold);
+
+	/* Tipografía */
 	--disp: 'Space Grotesk', system-ui, sans-serif;
 	--body: 'Inter', system-ui, sans-serif;
-	--radius-field: 10px; --radius-btn: 12px; --radius-card: 16px;
-	--shadow-1: 0 1px 2px rgba(16,38,64,.06), 0 1px 3px rgba(16,38,64,.07);
-	--shadow-2: 0 6px 18px rgba(16,38,64,.09), 0 2px 6px rgba(16,38,64,.06);
-	--shadow-3: 0 22px 48px rgba(10,30,60,.16), 0 6px 14px rgba(10,30,60,.08);
+	--fs-xs: 0.72rem;
+	--fs-sm: 0.8125rem;
+	--fs-md: 0.9375rem;
+	--fs-base: 1rem;
+	--fs-lg: 1.125rem;
+	--fs-xl: 1.35rem;
+	--fs-2xl: clamp(1.5rem, 2.2vw, 1.85rem);
+	--fs-3xl: clamp(1.75rem, 2.6vw, 2.15rem);
+	--lh-tight: 1.2;
+	--lh-snug: 1.35;
+	--lh-body: 1.55;
+	--tracking-display: -0.025em;
+	--tracking-label: 0.12em;
+
+	/* Radios y elevación */
+	--radius-field: 10px;
+	--radius-btn: 12px;
+	--radius-card: 16px;
+	--radius-pill: 999px;
+	--shadow-1: 0 1px 2px rgba(16, 38, 64, 0.06), 0 1px 3px rgba(16, 38, 64, 0.07);
+	--shadow-2: 0 6px 18px rgba(16, 38, 64, 0.09), 0 2px 6px rgba(16, 38, 64, 0.06);
+	--shadow-3: 0 22px 48px rgba(10, 30, 60, 0.16), 0 6px 14px rgba(10, 30, 60, 0.08);
+
+	/* Motion — enterprise: 100–250ms, sin bounce teatral */
+	--motion-instant: 80ms;
+	--motion-fast: 140ms;
+	--motion-base: 200ms;
+	--motion-slow: 280ms;
+	--motion-page: 320ms;
+	--ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+	--ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+	--ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme='light']) {
-		color-scheme: dark; --bg:#07131f; --card:#0c1d30; --surface:#0c1d30;
-		--surface-2:#0a1828; --surface-3:#12283e; --surface-subtle:#12283e; --surface-selected:#17344e; --ink:#e6edf6;
-		--slate:#a9b9cb; --muted:#8194a9; --line:#1e334c; --line-soft:#182b42;
-		--navy-deep:#07182b; --head-ink:#e6edf6; --gold-ink:#f2b733; --link:#8cbcec;
-		--success:#5bbe86; --success-bg:#123a2a; --warning:#e0a83a; --warning-bg:#3b3019;
-		--danger:#ec7c74; --danger-bg:#3c2023;
-		--shadow-1:0 1px 2px rgba(0,0,0,.35); --shadow-2:0 6px 18px rgba(0,0,0,.4); --shadow-3:0 22px 48px rgba(0,0,0,.5);
+		color-scheme: dark;
+		--bg: #07131f;
+		--card: #0c1d30;
+		--surface: #0c1d30;
+		--surface-2: #0a1828;
+		--surface-3: #12283e;
+		--surface-subtle: #12283e;
+		--surface-selected: #17344e;
+		--ink: #e6edf6;
+		--slate: #a9b9cb;
+		--muted: #8194a9;
+		--line: #1e334c;
+		--line-soft: #182b42;
+		--navy-deep: #07182b;
+		--head-ink: #e6edf6;
+		--gold-ink: #f2b733;
+		--link: #8cbcec;
+		--success: #5bbe86;
+		--success-bg: #123a2a;
+		--warning: #e0a83a;
+		--warning-bg: #3b3019;
+		--danger: #ec7c74;
+		--danger-bg: #3c2023;
+		--shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+		--shadow-2: 0 6px 18px rgba(0, 0, 0, 0.4);
+		--shadow-3: 0 22px 48px rgba(0, 0, 0, 0.5);
 	}
 }
+
 :root[data-theme='dark'] {
-	color-scheme:dark; --bg:#07131f; --card:#0c1d30; --surface:#0c1d30;
-	--surface-2:#0a1828; --surface-3:#12283e; --surface-subtle:#12283e; --surface-selected:#17344e; --ink:#e6edf6;
-	--slate:#a9b9cb; --muted:#8194a9; --line:#1e334c; --line-soft:#182b42;
-	--navy-deep:#07182b; --head-ink:#e6edf6; --gold-ink:#f2b733; --link:#8cbcec;
-	--success:#5bbe86; --success-bg:#123a2a; --warning:#e0a83a; --warning-bg:#3b3019;
-	--danger:#ec7c74; --danger-bg:#3c2023;
-	--shadow-1:0 1px 2px rgba(0,0,0,.35); --shadow-2:0 6px 18px rgba(0,0,0,.4); --shadow-3:0 22px 48px rgba(0,0,0,.5);
+	color-scheme: dark;
+	--bg: #07131f;
+	--card: #0c1d30;
+	--surface: #0c1d30;
+	--surface-2: #0a1828;
+	--surface-3: #12283e;
+	--surface-subtle: #12283e;
+	--surface-selected: #17344e;
+	--ink: #e6edf6;
+	--slate: #a9b9cb;
+	--muted: #8194a9;
+	--line: #1e334c;
+	--line-soft: #182b42;
+	--navy-deep: #07182b;
+	--head-ink: #e6edf6;
+	--gold-ink: #f2b733;
+	--link: #8cbcec;
+	--success: #5bbe86;
+	--success-bg: #123a2a;
+	--warning: #e0a83a;
+	--warning-bg: #3b3019;
+	--danger: #ec7c74;
+	--danger-bg: #3c2023;
+	--shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+	--shadow-2: 0 6px 18px rgba(0, 0, 0, 0.4);
+	--shadow-3: 0 22px 48px rgba(0, 0, 0, 0.5);
 }
+
 @media (prefers-reduced-motion: reduce) {
-	*,*::before,*::after { animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; scroll-behavior:auto!important; }
+	:root {
+		--motion-instant: 1ms;
+		--motion-fast: 1ms;
+		--motion-base: 1ms;
+		--motion-slow: 1ms;
+		--motion-page: 1ms;
+	}
+
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
 }
