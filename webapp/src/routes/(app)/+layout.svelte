@@ -17,7 +17,7 @@
 	const warehouseSelection = createWarehouseSelectionState();
 	setContext('warehouseSelection', warehouseSelection);
 
-	type IconName = 'inbox' | 'map-pin' | 'clipboard-list' | 'package-check' | 'truck' | 'boxes' | 'scan' | 'package' | 'warehouse' | 'database' | 'user' | 'globe';
+	type IconName = 'inbox' | 'map-pin' | 'clipboard-list' | 'package-check' | 'truck' | 'boxes' | 'scan' | 'package' | 'warehouse' | 'database' | 'user' | 'globe' | 'lock' | 'menu' | 'logout';
 	type NavItem = { href: string; label: string; icon: IconName; pageKey?: string };
 	const navGroups: { label: string; items: NavItem[] }[] = $derived([
 		{ label: i18n.t('Operaciones'), items: [
@@ -47,6 +47,18 @@
 			{ href: '/management/refunds', label: i18n.t('Reembolsos'), icon: 'package', pageKey: 'sales-orders' },
 			{ href: '/management/returns', label: i18n.t('Devoluciones'), icon: 'package', pageKey: 'sales-orders' },
 			{ href: '/management/users', label: i18n.t('Usuarios'), icon: 'user', pageKey: 'users' }
+		]},
+		{ label: i18n.t('Plataforma'), items: [
+			{ href: '/management/settings', label: i18n.t('Ajustes'), icon: 'database', pageKey: 'settings' },
+			{ href: '/management/api-tokens', label: i18n.t('Tokens API'), icon: 'lock', pageKey: 'api-tokens' },
+			{ href: '/management/channels', label: i18n.t('Canales'), icon: 'globe', pageKey: 'channels' },
+			{ href: '/management/webhooks', label: i18n.t('Webhooks'), icon: 'globe', pageKey: 'webhooks' },
+			{ href: '/management/notifications', label: i18n.t('Notificaciones'), icon: 'globe', pageKey: 'notifications' },
+			{ href: '/management/integrations', label: i18n.t('Integraciones'), icon: 'database', pageKey: 'integrations' },
+			{ href: '/management/consumer-groups', label: i18n.t('Consumer groups'), icon: 'user', pageKey: 'consumer-groups' },
+			{ href: '/management/inbound-activity', label: i18n.t('Actividad inbound'), icon: 'inbox', pageKey: 'inbound' },
+			{ href: '/management/imports', label: i18n.t('Importaciones'), icon: 'database', pageKey: 'imports' },
+			{ href: '/management/audit-log', label: i18n.t('Auditoría'), icon: 'clipboard-list', pageKey: 'audit-log' }
 		]},
 		{ label: i18n.t('Catálogos'), items: [
 			{ href: '/items', label: i18n.t('Productos'), icon: 'package', pageKey: 'items' },
