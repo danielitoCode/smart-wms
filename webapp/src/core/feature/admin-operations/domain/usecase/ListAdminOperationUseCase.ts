@@ -1,10 +1,17 @@
-import type {AdminOperationKey,AdminOperationQuery,AdminOperationResult} from '../entity/AdminOperation.ts';
-import type {AdminOperationsRepositoryImpl} from '../../data/repository/AdminOperationsRepositoryImpl';
+import type {
+  AdminOperationKey,
+  AdminOperationQuery,
+  AdminOperationResult
+} from '../entity/AdminOperation.ts';
+import type { AdminOperationsRepository } from '../repository/AdminOperationsRepository';
 
 export class ListAdminOperationUseCase {
-    constructor(private readonly repo:AdminOperationsRepositoryImpl){}
+  constructor(private readonly repository: AdminOperationsRepository) {}
 
-    execute(f:AdminOperationKey,q?:AdminOperationQuery):Promise<AdminOperationResult>{
-        return this.repo.list(f,q)
-    }
+  execute(
+    feature: AdminOperationKey,
+    query?: AdminOperationQuery
+  ): Promise<AdminOperationResult> {
+    return this.repository.list(feature, query);
+  }
 }
