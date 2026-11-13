@@ -27,6 +27,11 @@ export type AdminOperationDefinition = {
   warehouseScoped?: boolean;
   searchable?: boolean;
   dateFilter?: boolean;
+  channelFilter?: boolean;
+  terminalFilter?: boolean;
+  cashierFilter?: boolean;
+  warehouseIdFilters?: boolean;
+  activeFilter?: boolean;
   statusOptions?: string[];
   columns: AdminOperationColumn[];
 };
@@ -147,6 +152,9 @@ export const ADMIN_OPERATION_CATALOG: Record<string, AdminOperationDefinition> =
     pageKey: 'pos-activity',
     apiPermission: 'pos-activity',
     dateFilter: true,
+    channelFilter: true,
+    terminalFilter: true,
+    cashierFilter: true,
     statusOptions: salesOrderStatuses,
     columns: columns([
       { key: 'salesOrderNumber', label: 'Pedido' },
@@ -237,6 +245,7 @@ export const ADMIN_OPERATION_CATALOG: Record<string, AdminOperationDefinition> =
     pageKey: 'transfer-orders',
     apiPermission: 'transfer-orders',
     statusOptions: ['DRAFT', 'PENDING', 'AWAITING_APPROVAL', 'APPROVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
+    warehouseIdFilters: true,
     columns: columns([
       { key: 'transferOrderNumber', label: 'Orden' },
       { key: 'sourceWarehouseId', label: 'Origen' },
@@ -272,6 +281,7 @@ export const ADMIN_OPERATION_CATALOG: Record<string, AdminOperationDefinition> =
     pageKey: 'vendors',
     apiPermission: 'vendors',
     searchable: true,
+    activeFilter: true,
     columns: columns([
       { key: 'vendorName', label: 'Proveedor' },
       { key: 'contactName', label: 'Contacto' },
