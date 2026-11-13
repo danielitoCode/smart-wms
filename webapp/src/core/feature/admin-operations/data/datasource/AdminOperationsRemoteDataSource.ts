@@ -1,5 +1,5 @@
-import type { ApiClient } from '#core/infrastructure/api/ApiClient.ts';
-import type { AdminOperationKey, AdminOperationQuery } from '../../domain/entity/AdminOperation.ts';
+import type { ApiClient } from '#core/infrastructure/api/ApiClient';
+import type { AdminOperationKey, AdminOperationQuery } from '../../domain/entity/AdminOperation';
 import type {
   AdjustmentDto,
   AdminOperationRemotePagination,
@@ -190,8 +190,8 @@ export class AdminOperationsRemoteDataSource {
       }
       case 'vendors': {
         const params = createPaginationParams(query);
-        appendSearch(params, query);
         if (query.active != null) params.set('active', String(query.active));
+        appendSearch(params, query);
         const response = await this.api.get<{ vendors: VendorDto[] } & PaginatedResponse>(
           `/api/admin/vendors?${params.toString()}`
         );
