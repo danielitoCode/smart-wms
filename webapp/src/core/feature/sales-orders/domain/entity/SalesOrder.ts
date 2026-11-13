@@ -46,7 +46,7 @@ export type SalesOrderLine = {
   lineNumber: number;
   sku: string | null;
   itemName: string | null;
-  upc: string | null;
+  upc?: string | null;
   quantityOrdered: number;
   quantityAllocated: number;
   quantityPicked: number;
@@ -80,8 +80,9 @@ export type SalesOrder = SalesOrderSummary & {
   orderOrigin: string | null;
   sourceSystem: string | null;
   memo: string | null;
-  orderTotal: string | null;
-  customerShippingPaid: string | null;
+  orderTotal: number | null;
+  customerShippingPaid: number | null;
+  orderSource?: string | null;
   shippedDateLocal: string | null;
   shippedAt: string | null;
   orderType: SalesOrderType;
