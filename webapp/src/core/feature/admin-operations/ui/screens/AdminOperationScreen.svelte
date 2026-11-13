@@ -75,6 +75,8 @@
     if (value == null || value === '') return '—';
 
     switch (column.format) {
+      case 'status':
+        return typeof value === 'string' ? i18n.t(value) : '—';
       case 'boolean':
         return value === true ? i18n.t('Sí') : value === false ? i18n.t('No') : '—';
       case 'date':
@@ -207,7 +209,7 @@
         {/if}
         {#if definition.activeFilter}
           <label>
-            <span>{i18n.t('Estado')}</span>
+            <span>{i18n.t('Activo')}</span>
             <select value={vm.active} onchange={(event) => { vm.setActive(event.currentTarget.value as '' | 'true' | 'false'); load(); }}>
               <option value="">{i18n.t('Todos')}</option>
               <option value="true">{i18n.t('Activos')}</option>
