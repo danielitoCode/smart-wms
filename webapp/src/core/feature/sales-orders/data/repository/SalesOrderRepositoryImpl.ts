@@ -19,8 +19,7 @@ export class SalesOrderRepositoryImpl implements SalesOrderRepository {
   }
 
   async listPage(params?: ListSalesOrdersParams): Promise<SalesOrderPage> {
-    const page = await this.datasource.list(params);
-    return SalesOrderMapper.toPage(page);
+    return SalesOrderMapper.toPage(await this.datasource.list(params));
   }
 
   async getById(id: number): Promise<SalesOrder> {
@@ -66,7 +65,8 @@ export class SalesOrderRepositoryImpl implements SalesOrderRepository {
   }
 
   async cancel(id: number): Promise<SalesOrder> {
-    return toDetail(await this.datasource.cancel(id));
+    await this.datasource.cancel(id);
+    return this.getById(id);
   }
 
   addLine(id: number, input: { itemId: number; quantityOrdered: number }): Promise<void> {
@@ -82,7 +82,7 @@ export class SalesOrderRepositoryImpl implements SalesOrderRepository {
   }
   partialFulfill(id: number, input: PartialFulfillInput): Promise<void> { return this.datasource.partialFulfill(id, input); }
   revertStatus(id: number, input: RevertSalesOrderInput): Promise<void> { return this.datasource.revertStatus(id, input); }
-  async related(id: number): Promise<unknown> { return this.datasource.related(id); }
+  related(id: number): Promise<unknown> { return this.datasource.related(id); }
   createRma(id: number, input: CreateRmaInput): Promise<void> { return this.datasource.createRma(id, input); }
   receiveReturn(id: number, input: ReceiveReturnInput): Promise<void> { return this.datasource.receiveReturn(id, input); }
   voidReturn(id: number): Promise<void> { return this.datasource.voidReturn(id); }
