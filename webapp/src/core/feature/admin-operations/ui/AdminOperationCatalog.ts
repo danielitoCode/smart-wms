@@ -1,61 +1,64 @@
-import type { AdminOperationKey, AdminOperationProjectionMap, BackorderItemProjection } from '../domain/entity/AdminOperation.ts';
+import type {
+	AdminOperationKey,
+	AdminOperationProjectionMap
+} from '#core/feature/admin-operations/domain/entity/AdminOperation';
 
+/**
+ * Presentation formats for admin operation table cells.
+ * Kept as a flat union so column definitions stay assignable under strict
+ * checking (per-field format inference via conditional types collapses when
+ * domain imports fail or when array elements are checked against a large
+ * discriminated union).
+ */
 export type AdminOperationColumnFormat =
-  | 'text'
-  | 'date'
-  | 'status'
-  | 'boolean'
-  | 'quantity'
-  | 'money'
-  | 'cents'
-  | 'list'
-  | 'backorder-items';
+	| 'text'
+	| 'date'
+	| 'status'
+	| 'boolean'
+	| 'quantity'
+	| 'money'
+	| 'cents'
+	| 'list'
+	| 'backorder-items';
 
-type ColumnFormatFor<Value> =
-  [NonNullable<Value>] extends [BackorderItemProjection[]] ? 'backorder-items'
-    : [NonNullable<Value>] extends [string[] | number[]] ? 'list'
-      : [NonNullable<Value>] extends [boolean] ? 'boolean'
-        : [NonNullable<Value>] extends [number] ? 'quantity' | 'money' | 'cents'
-          : [NonNullable<Value>] extends [string] ? 'text' | 'date' | 'status'
-            : 'text';
-
+/** Column bound to a specific feature projection key. */
 export type AdminOperationColumnFor<K extends AdminOperationKey> = {
-  [P in keyof AdminOperationProjectionMap[K]]: {
-    key: P;
-    label: string;
-    format?: ColumnFormatFor<AdminOperationProjectionMap[K][P]>;
-  };
-}[keyof AdminOperationProjectionMap[K]];
+	key: keyof AdminOperationProjectionMap[K] & string;
+	label: string;
+	format?: AdminOperationColumnFormat;
+};
 
 export type AdminOperationDefinition<K extends AdminOperationKey> = {
-  key: K;
-  title: string;
-  description: string;
-  pageKey: string;
-  /** Permission checked by the corresponding Flask endpoint. */
-  apiPermission: string;
-  warehouseScoped?: boolean;
-  searchable?: boolean;
-  dateFilter?: boolean;
-  channelFilter?: boolean;
-  terminalFilter?: boolean;
-  cashierFilter?: boolean;
-  warehouseIdFilters?: boolean;
-  activeFilter?: boolean;
-  statusOptions?: string[];
-  columns: AdminOperationColumnFor<K>[];
+	key: K;
+	title: string;
+	description: string;
+	pageKey: string;
+	/** Permission checked by the corresponding Flask endpoint. */
+	apiPermission: string;
+	warehouseScoped?: boolean;
+	searchable?: boolean;
+	dateFilter?: boolean;
+	channelFilter?: boolean;
+	terminalFilter?: boolean;
+	cashierFilter?: boolean;
+	warehouseIdFilters?: boolean;
+	activeFilter?: boolean;
+	statusOptions?: string[];
+	columns: AdminOperationColumnFor<K>[];
 };
 
 type AdminOperationCatalog = {
-  [K in AdminOperationKey]: AdminOperationDefinition<K>;
+	[K in AdminOperationKey]: AdminOperationDefinition<K>;
 };
 
 export type AdminOperationColumn = {
-  [K in AdminOperationKey]: AdminOperationColumnFor<K>;
+	[K in AdminOperationKey]: AdminOperationColumnFor<K>;
 }[AdminOperationKey];
 
-function columns<K extends AdminOperationKey>(entries: AdminOperationColumnFor<K>[]): AdminOperationColumnFor<K>[] {
-  return entries;
+function columns<K extends AdminOperationKey>(
+	entries: AdminOperationColumnFor<K>[]
+): AdminOperationColumnFor<K>[] {
+	return entries;
 }
 
 const salesOrderStatuses = [
