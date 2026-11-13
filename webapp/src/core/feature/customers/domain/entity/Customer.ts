@@ -1,16 +1,17 @@
 /**
- * Read-only customer projection exposed by the admin global-search API.
+ * Customer master / projection used in admin surfaces.
  *
- * The current WMS admin contract does not expose customer CRUD: customer
- * identity and contact snapshots are stored on sales_orders. Keep this
- * model honest instead of treating inbound canonical IDs as editable rows.
+ * Canonical table `customers` is fed mainly by inbound (v1.7+).
+ * Admin list is not exposed as a dedicated CRUD endpoint; the UI
+ * projects distinct customers from sales orders and global search.
  */
 export type Customer = {
-  id: string;
-  name: string;
-  orderCount: number;
-};
-
-export type CustomerSearchQuery = {
-  search: string;
+	/** Stable key: customer_id when present, else name-based key */
+	id: string;
+	name: string;
+	email: string | null;
+	phone: string | null;
+	orderCount: number | null;
+	/** Optional warehouse scope when projected from SO list */
+	warehouseId: number | null;
 };

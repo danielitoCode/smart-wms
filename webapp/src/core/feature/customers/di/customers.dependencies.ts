@@ -1,11 +1,15 @@
 import { apiClient } from '../../../infrastructure/api/ApiClient';
 import { CustomerRemoteDataSource } from '../data/datasource/CustomerRemoteDataSource';
 import { CustomerRepositoryImpl } from '../data/repository/CustomerRepositoryImpl';
-import { SearchCustomersUseCase } from '../domain/usecase/SearchCustomersUseCase';
+import { ListCustomersUseCase } from '../domain/usecase/ListCustomersUseCase';
 
-export function createCustomerDependencies() {
-  const repository = new CustomerRepositoryImpl(new CustomerRemoteDataSource(apiClient));
-  return {
-    search: new SearchCustomersUseCase(repository)
-  };
+export function createCustomersDependencies() {
+	const datasource = new CustomerRemoteDataSource(apiClient);
+	const repository = new CustomerRepositoryImpl(datasource);
+
+	return {
+		listCustomers: new ListCustomersUseCase(repository)
+	};
 }
+
+export type CustomersDependencies = ReturnType<typeof createCustomersDependencies>;
