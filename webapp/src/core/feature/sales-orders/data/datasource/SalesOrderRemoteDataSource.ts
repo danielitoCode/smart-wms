@@ -1,4 +1,4 @@
-import type { ApiClient } from '../../../../infrastructure/api/ApiClient';
+import type { ApiClient } from '#core/infrastructure/api/ApiClient.ts';
 import type {
   SalesOrderDetailResponseDto, SalesOrderDto, SalesOrderListResponseDto,
   RelatedSalesOrdersResponseDto
