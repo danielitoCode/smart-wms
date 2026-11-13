@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
 	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
+	import PageHeader from '../../../../../lib/components/PageHeader.svelte';
+	import UiBanner from '../../../../../lib/components/UiBanner.svelte';
+	import { pushToast } from '../../../../../lib/ui/toast.svelte';
 	const i18n = getContext<I18nState>('i18n');
 	import { createReceivingState } from '../state/receivingState.svelte';
 
@@ -11,22 +14,26 @@
 		void state.lookup();
 	}
 
-	function onReceive(event: Event) {
+	async function onReceive(event: Event) {
 		event.preventDefault();
-		void state.submitReceive();
+		await state.submitReceive();
+		if (state.lastResult) pushToast(state.lastResult.message, 'success');
+		else if (state.error) pushToast(state.error, 'error');
 	}
 
-	function onCancel(event: Event) {
+	async function onCancel(event: Event) {
 		event.preventDefault();
-		void state.cancelReceipts();
+		await state.cancelReceipts();
+		if (state.lastCancel) pushToast(state.lastCancel.message, 'success');
+		else if (state.error) pushToast(state.error, 'error');
 	}
 </script>
 
 <section class="page">
-	<header>
-		<h1>{i18n.t('Recepción')}</h1>
-		<p class="subtitle">{i18n.t('Consulta órdenes de compra, registra las cantidades recibidas y gestiona anulaciones.')}</p>
-	</header>
+	<PageHeader
+		title={i18n.t('Recepción')}
+		subtitle={i18n.t('Registra entradas de mercancía y confirma recepciones pendientes.')}
+	/>
 
 	<form class="lookup" onsubmit={onLookup}>
 		<input
@@ -42,23 +49,21 @@
 	</form>
 
 	{#if state.error}
-		<p class="status error" role="alert">{state.error}</p>
+		<UiBanner tone="error" message={state.error} />
 	{/if}
 
 	{#if state.lastResult}
-		<p class="status ok" role="status">
-			{state.lastResult.message}
-			{#if state.lastResult.receiptIds.length}
-				· recepciones: {state.lastResult.receiptIds.join(', ')}
-			{/if}
-			· estado de la orden: {state.lastResult.poStatus}
-		</p>
+		<UiBanner
+			tone="success"
+			message={`${state.lastResult.message}${state.lastResult.receiptIds.length ? ' · recepciones: ' + state.lastResult.receiptIds.join(', ') : ''} · estado: ${state.lastResult.poStatus}`}
+		/>
 	{/if}
 
 	{#if state.lastCancel}
-		<p class="status ok" role="status">
-			{state.lastCancel.message} · recepciones anuladas: {state.lastCancel.reversed}
-		</p>
+		<UiBanner
+			tone="success"
+			message={`${state.lastCancel.message} · recepciones anuladas: ${state.lastCancel.reversed}`}
+		/>
 	{/if}
 
 	{#if state.detail}
@@ -67,98 +72,106 @@
 			<p class="meta">
 				{state.detail.purchaseOrder.vendorName}
 				· {state.detail.purchaseOrder.status}
-				· Almacén #{state.detail.purchaseOrder.warehouseId}
+				· {i18n.t('Almacén')} {state.detail.purchaseOrder.warehouseId}
 			</p>
 
-			{#if state.drafts.length === 0}
-				<p class="status">{i18n.t('No quedan líneas pendientes de recibir.')}</p>
-			{:else}
-				<form onsubmit={onReceive}>
-					<div class="table-wrap">
-						<table>
-							<thead>
-								<tr>
-									<th>{i18n.t('SKU')}</th>
-									<th>{i18n.t('Nombre')}</th>
-									<th>{i18n.t('Pendiente')}</th>
-									<th>{i18n.t('Cantidad')}</th>
-									<th>{i18n.t('ID de ubicación')}</th>
-									<th>{i18n.t('Lote')}</th>
-								</tr>
-							</thead>
-							<tbody>
-								{#each state.drafts as draft, index (draft.itemId)}
-									<tr>
-										<td>{draft.sku}</td>
-										<td>{draft.itemName}</td>
-										<td>{draft.remaining}</td>
-										<td>
-											<input type="number" min="0" max={draft.remaining} value={draft.quantity}
-												oninput={(e) => state.updateDraft(index, { quantity: Number(e.currentTarget.value) })}
-												disabled={state.submitting} />
-										</td>
-										<td>
-											<input type="number" min="1" placeholder={i18n.t('ID de ubicación')} value={draft.binId}
-												oninput={(e) => state.updateDraft(index, { binId: e.currentTarget.value })}
-												disabled={state.submitting} required />
-										</td>
-										<td>
-											<input type="text" placeholder={i18n.t('opcional')} value={draft.lotNumber}
-												oninput={(e) => state.updateDraft(index, { lotNumber: e.currentTarget.value })}
-												disabled={state.submitting} />
-										</td>
-									</tr>
-								{/each}
-							</tbody>
-						</table>
-					</div>
-					<button type="submit" class="accent" disabled={state.submitting}>
-						{state.submitting ? 'Registrando…' : i18n.t('Registrar recepción')}
-					</button>
-				</form>
-			{/if}
-
-			<section class="cancel-panel">
-				<h3>{i18n.t('Anular recepciones')}</h3>
-				<p class="meta">{i18n.t('Introduce los identificadores de las recepciones separados por comas.')}</p>
-				<form class="cancel-form" onsubmit={onCancel}>
+			<form class="receive" onsubmit={onReceive}>
+				<label>
+					{i18n.t('Cantidad a recibir')}
 					<input
-						type="text"
-						placeholder="ej. 1, 2, 3"
-						value={state.receiptIdsInput}
-						oninput={(e) => state.setReceiptIdsInput(e.currentTarget.value)}
-						disabled={state.cancelling}
+						type="number"
+						min="1"
+						value={state.receiveQty}
+						oninput={(e) => state.setReceiveQty(Number(e.currentTarget.value))}
+						disabled={state.submitting}
 					/>
-					<button type="submit" class="danger" disabled={state.cancelling || !state.receiptIdsInput.trim()}>
-						{state.cancelling ? i18n.t('Anulando…') : i18n.t('Anular recepciones')}
-					</button>
-				</form>
-			</section>
+				</label>
+				<button type="submit" class="primary" disabled={state.submitting}>
+					{state.submitting ? i18n.t('Registrando…') : i18n.t('Confirmar recepción')}
+				</button>
+			</form>
+
+			<form class="cancel" onsubmit={onCancel}>
+				<button type="submit" class="danger" disabled={state.cancelling}>
+					{state.cancelling ? i18n.t('Anulando…') : i18n.t('Anular recepciones')}
+				</button>
+			</form>
+
+			<div class="table-wrap">
+				<table>
+					<thead>
+						<tr>
+							<th>{i18n.t('SKU')}</th>
+							<th>{i18n.t('Descripción')}</th>
+							<th>{i18n.t('Pedida')}</th>
+							<th>{i18n.t('Recibida')}</th>
+							<th>{i18n.t('Pendiente')}</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each state.detail.lines as line (line.poLineId)}
+							<tr>
+								<td>{line.sku ?? line.itemId}</td>
+								<td>{line.description ?? '—'}</td>
+								<td>{line.qtyOrdered}</td>
+								<td>{line.qtyReceived}</td>
+								<td>{line.qtyOrdered - line.qtyReceived}</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
 		</section>
+	{:else if !state.loading && !state.error}
+		<p class="empty">{i18n.t('Busca una orden de compra para comenzar la recepción.')}</p>
 	{/if}
 </section>
 
 <style>
-	.page { font-family: system-ui, -apple-system, sans-serif; max-width: 56rem; margin: 1.5rem auto; padding: 0 1.25rem; }
-	header { margin-bottom: 1.25rem; }
-	h1 { margin: 0 0 0.25rem; font-size: 1.75rem; }
-	h2 { margin: 0 0 0.35rem; font-size: 1.25rem; }
-	h3 { margin: 0 0 0.35rem; font-size: 1.05rem; }
-	.subtitle, .meta { margin: 0; color: #64748b; }
-	.lookup, .cancel-form { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
-	.lookup input, .cancel-form input { flex: 1; padding: 0.5rem 0.7rem; border: 1px solid #cbd5e1; border-radius: 6px; }
-	button { padding: 0.45rem 0.9rem; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; }
-	button.primary { margin-top: 1rem; background: #0f172a; color: #fff; border-color: #0f172a; }
-	button.danger { background: #b91c1c; color: #fff; border-color: #b91c1c; }
-	button:disabled { opacity: 0.6; cursor: not-allowed; }
-	.status { color: #475569; }
-	.status.error { color: #b91c1c; }
-	.status.ok { color: #166534; }
-	.po { margin-top: 1.5rem; }
-	.cancel-panel { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; }
-	.table-wrap { overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; margin-top: 1rem; }
-	table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-	th, td { text-align: left; padding: 0.55rem 0.75rem; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
-	th { background: #f8fafc; font-weight: 600; }
-	td input { width: 5.5rem; padding: 0.35rem 0.45rem; border: 1px solid #cbd5e1; border-radius: 4px; }
+	.lookup {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.6rem;
+		margin-bottom: 1rem;
+	}
+	.lookup input {
+		flex: 1 1 16rem;
+		min-height: 42px;
+		padding: 0.5rem 0.75rem;
+		border: 1px solid var(--line);
+		border-radius: var(--radius-field);
+	}
+	.po {
+		padding: 1.1rem 1.15rem;
+		border: 1px solid var(--line);
+		border-radius: var(--radius-card);
+		background: var(--surface);
+		box-shadow: var(--shadow-1);
+	}
+	.po h2 {
+		margin: 0 0 0.35rem;
+	}
+	.meta {
+		margin: 0 0 1rem;
+		color: var(--slate);
+		font-size: var(--fs-sm, 0.8125rem);
+	}
+	.receive {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-end;
+		gap: 0.65rem;
+		margin-bottom: 0.75rem;
+	}
+	.receive label {
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+	}
+	.cancel {
+		margin-bottom: 1rem;
+	}
+	.empty {
+		color: var(--slate);
+	}
 </style>
