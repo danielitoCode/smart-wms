@@ -3,7 +3,7 @@
   import { page } from '$app/state';
   import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
   import { ADMIN_OPERATION_CATALOG, type AdminOperationColumn } from '../AdminOperationCatalog';
-  import type { AdminOperationKey, AdminOperationRow } from '../../domain/entity/AdminOperation.ts';
+  import type { AdminOperationKey, AdminOperationRow, BackorderItemProjection } from '../../domain/entity/AdminOperation.ts';
   import { createAdminOperationState } from '../state/adminOperationState.svelte';
 
   const i18n = getContext<I18nState>('i18n');
@@ -38,8 +38,19 @@
     return property === undefined ? undefined : projection[property];
   }
 
-  function projectionValue(row: AdminOperationRow, key: string): unknown {
-    return readProjectionValue(row.data, key);
+  type AdminOperationCellValue =
+    | string
+    | number
+    | boolean
+    | string[]
+    | number[]
+    | BackorderItemProjection[]
+    | null
+    | undefined;
+
+  function projectionValue(row: AdminOperationRow, key: string): AdminOperationCellValue {
+    if (!(key in row.data)) return undefined;
+    return row.data[key as keyof typeof row.data] as AdminOperationCellValue;
   }
 
   function formatDate(value: string): string {
@@ -55,21 +66,15 @@
     return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value);
   }
 
-  function formatBackorderItems(value: unknown): string {
-    if (!Array.isArray(value)) return '—';
+  function formatBackorderItems(items: BackorderItemProjection[]): string {
+    if (items.length === 0) return '—';
 
-    return value.map((item: unknown) => {
-      if (typeof item !== 'object' || item === null || !('sku' in item)) return '';
-      const line = item as {
-        sku: string;
-        quantity: number;
-        openPurchaseOrder: { number: string; quantityRemaining: number } | null;
-      };
-      const purchaseOrder = line.openPurchaseOrder
-        ? ` · PO ${line.openPurchaseOrder.number} (${formatNumber(line.openPurchaseOrder.quantityRemaining)} pendientes)`
+    return items.map((item) => {
+      const purchaseOrder = item.openPurchaseOrder
+        ? ` · PO ${item.openPurchaseOrder.number} (${formatNumber(item.openPurchaseOrder.quantityRemaining)} pendientes)`
         : '';
-      return `${line.sku} × ${formatNumber(line.quantity)}${purchaseOrder}`;
-    }).filter(Boolean).join(' · ');
+      return `${item.sku} × ${formatNumber(item.quantity)}${purchaseOrder}`;
+    }).join(' · ');
   }
 
   function display(row: AdminOperationRow, column: AdminOperationColumn): string {
@@ -94,7 +99,7 @@
       case 'list':
         return Array.isArray(value) ? value.join(', ') : '—';
       case 'backorder-items':
-        return formatBackorderItems(value);
+        return row.feature === 'backorders' ? formatBackorderItems(row.data.items) : '—';
       default:
         return typeof value === 'string' || typeof value === 'number' ? String(value) : '—';
     }
