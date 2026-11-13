@@ -1,5 +1,4 @@
-import type { ApiClient } from '../../../infrastructure/api/ApiClient';
-import { apiClient } from '../../../infrastructure/api/ApiClient';
+import { apiClient, type ApiClient } from '../../../infrastructure/api/ApiClient';
 import { AdminOperationsRemoteDataSource } from '../data/datasource/AdminOperationsRemoteDataSource';
 import { AdminOperationsRepositoryImpl } from '../data/repository/AdminOperationsRepositoryImpl';
 import { ListAdminOperationUseCase } from '../domain/usecase/ListAdminOperationUseCase';
