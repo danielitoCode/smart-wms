@@ -104,6 +104,9 @@ export class AdminOperationsRemoteDataSource {
         params.set('order_type', 'all');
         if (query.date) params.set('date', query.date);
         if (query.status) params.set('status', query.status);
+        if (query.channel) params.set('channel', query.channel);
+        if (query.terminalId?.trim()) params.set('terminal_id', query.terminalId.trim());
+        if (query.cashierId?.trim()) params.set('cashier_id', query.cashierId.trim());
         const response = await this.api.get<{ sales_orders: PosActivityDto[] } & PaginatedResponse>(
           `/api/admin/pos/sales-orders?${params.toString()}`
         );
@@ -160,6 +163,8 @@ export class AdminOperationsRemoteDataSource {
       case 'transfer-orders': {
         const params = createPaginationParams(query);
         if (query.status) params.set('status', query.status);
+        if (query.sourceWarehouseId != null) params.set('source_warehouse_id', String(query.sourceWarehouseId));
+        if (query.destinationWarehouseId != null) params.set('destination_warehouse_id', String(query.destinationWarehouseId));
         const response = await this.api.get<{ transfer_orders: TransferOrderDto[] } & PaginatedResponse>(
           `/api/admin/transfer-orders?${params.toString()}`
         );
@@ -185,6 +190,7 @@ export class AdminOperationsRemoteDataSource {
       case 'vendors': {
         const params = createPaginationParams(query);
         appendSearch(params, query);
+        if (query.active != null) params.set('active', String(query.active));
         const response = await this.api.get<{ vendors: VendorDto[] } & PaginatedResponse>(
           `/api/admin/vendors?${params.toString()}`
         );
@@ -196,5 +202,7 @@ export class AdminOperationsRemoteDataSource {
         };
       }
     }
+
+    throw new Error('Unsupported administrative operation');
   }
 }
