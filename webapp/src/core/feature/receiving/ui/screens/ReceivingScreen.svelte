@@ -16,15 +16,15 @@
 
 	async function onReceive(event: Event) {
 		event.preventDefault();
-		await state.submitReceive();
-		if (state.lastResult) pushToast(state.lastResult.message, 'success');
+		const ok = await state.submitReceive();
+		if (ok && state.lastResult) pushToast(state.lastResult.message, 'success');
 		else if (state.error) pushToast(state.error, 'error');
 	}
 
 	async function onCancel(event: Event) {
 		event.preventDefault();
-		await state.cancelReceipts();
-		if (state.lastCancel) pushToast(state.lastCancel.message, 'success');
+		const ok = await state.cancelReceipts();
+		if (ok && state.lastCancel) pushToast(state.lastCancel.message, 'success');
 		else if (state.error) pushToast(state.error, 'error');
 	}
 </script>
@@ -32,7 +32,7 @@
 <section class="page">
 	<PageHeader
 		title={i18n.t('Recepción')}
-		subtitle={i18n.t('Registra entradas de mercancía y confirma recepciones pendientes.')}
+		subtitle={i18n.t('Consulta órdenes de compra, registra las cantidades recibidas y gestiona anulaciones.')}
 	/>
 
 	<form class="lookup" onsubmit={onLookup}>
@@ -60,10 +60,7 @@
 	{/if}
 
 	{#if state.lastCancel}
-		<UiBanner
-			tone="success"
-			message={`${state.lastCancel.message} · recepciones anuladas: ${state.lastCancel.reversed}`}
-		/>
+		<UiBanner tone="success" message={`${state.lastCancel.message} · recepciones anuladas: ${state.lastCancel.reversed}`} />
 	{/if}
 
 	{#if state.detail}
@@ -72,55 +69,83 @@
 			<p class="meta">
 				{state.detail.purchaseOrder.vendorName}
 				· {state.detail.purchaseOrder.status}
-				· {i18n.t('Almacén')} {state.detail.purchaseOrder.warehouseId}
+				· Almacén #{state.detail.purchaseOrder.warehouseId}
 			</p>
 
-			<form class="receive" onsubmit={onReceive}>
-				<label>
-					{i18n.t('Cantidad a recibir')}
-					<input
-						type="number"
-						min="1"
-						value={state.receiveQty}
-						oninput={(e) => state.setReceiveQty(Number(e.currentTarget.value))}
-						disabled={state.submitting}
-					/>
-				</label>
-				<button type="submit" class="primary" disabled={state.submitting}>
-					{state.submitting ? i18n.t('Registrando…') : i18n.t('Confirmar recepción')}
-				</button>
-			</form>
+			{#if state.drafts.length === 0}
+				<p class="status">{i18n.t('No quedan líneas pendientes de recibir.')}</p>
+			{:else}
+				<form onsubmit={onReceive}>
+					<div class="table-wrap">
+						<table>
+							<thead>
+								<tr>
+									<th>{i18n.t('SKU')}</th>
+									<th>{i18n.t('Producto')}</th>
+									<th>{i18n.t('Pendiente')}</th>
+									<th>{i18n.t('Cantidad')}</th>
+									<th>{i18n.t('Bin ID')}</th>
+									<th>{i18n.t('Lote')}</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each state.drafts as draft, index (draft.itemId)}
+									<tr>
+										<td>{draft.sku}</td>
+										<td>{draft.itemName}</td>
+										<td>{draft.remaining}</td>
+										<td>
+											<input
+												type="number"
+												min="0"
+												max={draft.remaining}
+												value={draft.quantity}
+												oninput={(e) => state.updateDraft(index, { quantity: Number(e.currentTarget.value) })}
+												disabled={state.submitting}
+											/>
+										</td>
+										<td>
+											<input
+												type="text"
+												value={draft.binId}
+												oninput={(e) => state.updateDraft(index, { binId: e.currentTarget.value })}
+												disabled={state.submitting}
+											/>
+										</td>
+										<td>
+											<input
+												type="text"
+												value={draft.lotNumber}
+												oninput={(e) => state.updateDraft(index, { lotNumber: e.currentTarget.value })}
+												disabled={state.submitting}
+											/>
+										</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+					<button type="submit" class="primary" disabled={state.submitting}>
+						{state.submitting ? i18n.t('Registrando…') : i18n.t('Confirmar recepción')}
+					</button>
+				</form>
+			{/if}
 
 			<form class="cancel" onsubmit={onCancel}>
+				<label>
+					{i18n.t('IDs de recepción a anular')}
+					<input
+						type="text"
+						placeholder="1,2,3"
+						value={state.receiptIdsInput}
+						oninput={(e) => state.setReceiptIdsInput(e.currentTarget.value)}
+						disabled={state.cancelling}
+					/>
+				</label>
 				<button type="submit" class="danger" disabled={state.cancelling}>
 					{state.cancelling ? i18n.t('Anulando…') : i18n.t('Anular recepciones')}
 				</button>
 			</form>
-
-			<div class="table-wrap">
-				<table>
-					<thead>
-						<tr>
-							<th>{i18n.t('SKU')}</th>
-							<th>{i18n.t('Descripción')}</th>
-							<th>{i18n.t('Pedida')}</th>
-							<th>{i18n.t('Recibida')}</th>
-							<th>{i18n.t('Pendiente')}</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each state.detail.lines as line (line.poLineId)}
-							<tr>
-								<td>{line.sku ?? line.itemId}</td>
-								<td>{line.description ?? '—'}</td>
-								<td>{line.qtyOrdered}</td>
-								<td>{line.qtyReceived}</td>
-								<td>{line.qtyOrdered - line.qtyReceived}</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
 		</section>
 	{:else if !state.loading && !state.error}
 		<p class="empty">{i18n.t('Busca una orden de compra para comenzar la recepción.')}</p>
@@ -156,22 +181,34 @@
 		color: var(--slate);
 		font-size: var(--fs-sm, 0.8125rem);
 	}
-	.receive {
+	.cancel {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: flex-end;
 		gap: 0.65rem;
-		margin-bottom: 0.75rem;
+		margin-top: 1rem;
 	}
-	.receive label {
+	.cancel label {
 		display: flex;
 		flex-direction: column;
 		gap: 0.3rem;
+		flex: 1 1 12rem;
 	}
-	.cancel {
-		margin-bottom: 1rem;
+	.status {
+		color: var(--slate);
 	}
 	.empty {
 		color: var(--slate);
+	}
+	.table-wrap {
+		margin-bottom: 0.85rem;
+		overflow: auto;
+	}
+	table input {
+		width: 100%;
+		min-width: 4.5rem;
+		padding: 0.35rem 0.45rem;
+		border: 1px solid var(--line);
+		border-radius: 8px;
 	}
 </style>
