@@ -1,11 +1,33 @@
 import { createAdminOperationsDependencies } from '../../di/adminOperations.dependencies';
-import type { AdminOperationKey, AdminOperationQuery, AdminOperationResult } from '../../domain/entity/AdminOperation.ts';
+import type {
+  AdminOperationKey,
+  AdminOperationQuery,
+  AdminOperationResult
+} from '../../domain/entity/AdminOperation.ts';
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 
 const deps = createAdminOperationsDependencies();
 
+function emptyResult(feature: AdminOperationKey): AdminOperationResult {
+  switch (feature) {
+    case 'backorders': return { feature, rows: [], summary: null, pagination: null };
+    case 'count-approvals': return { feature, rows: [], summary: null, pagination: null };
+    case 'fraud': return { feature, rows: [], summary: null, pagination: null };
+    case 'inter-warehouse-transfers': return { feature, rows: [], summary: null, pagination: null };
+    case 'adjustments': return { feature, rows: [], summary: null, pagination: null };
+    case 'pos-activity': return { feature, rows: [], summary: null, pagination: null };
+    case 'preferred-bins': return { feature, rows: [], summary: null, pagination: null };
+    case 'purchase-orders': return { feature, rows: [], summary: null, pagination: null };
+    case 'refunds': return { feature, rows: [], summary: null, pagination: null };
+    case 'returns': return { feature, rows: [], summary: null, pagination: null };
+    case 'transfer-orders': return { feature, rows: [], summary: null, pagination: null };
+    case 'users': return { feature, rows: [], summary: null, pagination: null };
+    case 'vendors': return { feature, rows: [], summary: null, pagination: null };
+  }
+}
+
 export function createAdminOperationState(feature: AdminOperationKey) {
-  let result = $state<AdminOperationResult>({ rows: [], summary: null, pagination: null });
+  let result = $state<AdminOperationResult>(emptyResult(feature));
   let loading = $state(false);
   let error = $state<string | null>(null);
   let search = $state('');
@@ -38,7 +60,7 @@ export function createAdminOperationState(feature: AdminOperationKey) {
     } catch (cause) {
       if (requestId !== requestSequence) return false;
       error = toUserMessage(cause, 'No se pudieron cargar los datos del módulo');
-      result = { rows: [], summary: null, pagination: null };
+      result = emptyResult(feature);
       return false;
     } finally {
       if (requestId === requestSequence) loading = false;
@@ -50,6 +72,7 @@ export function createAdminOperationState(feature: AdminOperationKey) {
   }
 
   return {
+    get feature() { return result.feature; },
     get rows() { return result.rows; },
     get summary() { return result.summary; },
     get pagination() { return result.pagination; },
