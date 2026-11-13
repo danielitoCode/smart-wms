@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/fulfillment"
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inbound"
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/pos"
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/rma"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/fulfillment"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/inbound"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/inventoryledger"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/pos"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/rma"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/security/wmstoken"
 )
 

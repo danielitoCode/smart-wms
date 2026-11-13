@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/identity"
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/catalog"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/identity"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/inventoryledger"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 )
 

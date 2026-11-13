@@ -9,12 +9,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/fulfillment"
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/identity"
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/picking"
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/receiving"
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/salesorders"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/catalog"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/fulfillment"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/identity"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/picking"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/receiving"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/salesorders"
 )
 
 func userFrom(r *http.Request) *identity.User {

@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/cyclecounts"
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/lookup"
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/transfers"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/cyclecounts"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/lookup"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/transfers"
 )
 
 func (s *Server) lookupRoute(w http.ResponseWriter, r *http.Request) {

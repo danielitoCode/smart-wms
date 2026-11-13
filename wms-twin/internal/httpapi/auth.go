@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/identity"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/identity"
 	securityauth "github.com/danielitoCode/smart-wms/wms-twin/internal/security/auth"
 )
 

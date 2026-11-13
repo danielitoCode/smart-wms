@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/identity"
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/identity"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/inventoryledger"
 )
 
 // adminExtendedResources maps Flask admin resource segments to PrismaTec organism kinds.

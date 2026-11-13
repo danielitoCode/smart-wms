@@ -1,6 +1,6 @@
 package ports
 
-import "github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
+import "github.com/danielitoCode/smart-wms/wms-twin/internal/features/catalog"
 
 // CatalogRepository is the port for master data. The concrete type today is
 // *catalog.Repository (PrismaTec organisms). Features depend on the port so

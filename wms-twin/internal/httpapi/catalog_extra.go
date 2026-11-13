@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/catalog"
 )
 
 func (s *Server) itemRoutes(w http.ResponseWriter, r *http.Request, parts []string) {

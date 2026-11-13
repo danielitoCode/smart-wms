@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/catalog"
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/identity"
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/purchaseorders"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/catalog"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/identity"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/purchaseorders"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 )
 

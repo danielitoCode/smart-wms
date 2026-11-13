@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/identity"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/identity"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 	"github.com/yecharlot/PrismaTec-Core/core"
 )

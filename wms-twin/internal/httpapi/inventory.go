@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/danielitoCode/smart-wms/wms-twin/internal/application/inventoryledger"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/inventoryledger"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/domain/inventory"
 )
