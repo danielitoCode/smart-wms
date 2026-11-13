@@ -3,7 +3,26 @@
   import { page as route } from '$app/state';
   import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
   import { createSalesOrdersState } from '../state/salesOrdersState.svelte';
-  import type { CreateSalesOrder, SalesOrder } from '../../domain/entity/SalesOrder';
+  import type {
+    CreateSalesOrder,
+    SalesOrder,
+    SalesOrderAddress
+  } from '../../domain/entity/SalesOrder';
+
+  type AddressForm = { [Key in keyof SalesOrderAddress]: string };
+
+  function createAddressForm(address?: SalesOrderAddress): AddressForm {
+    return {
+      name: address?.name ?? '',
+      line1: address?.line1 ?? '',
+      line2: address?.line2 ?? '',
+      city: address?.city ?? '',
+      state: address?.state ?? '',
+      postalCode: address?.postalCode ?? '',
+      country: address?.country ?? '',
+      phone: address?.phone ?? ''
+    };
+  }
 
   const i18n = getContext<I18nState>('i18n');
   const vm = createSalesOrdersState();
@@ -28,6 +47,8 @@
   let editShipAddress = $state('');
   let editShipByDate = $state('');
   let editMemo = $state('');
+  let billingAddress = $state<AddressForm>(createAddressForm());
+  let shippingAddress = $state<AddressForm>(createAddressForm());
   let newItemId = $state('');
   let newItemQuantity = $state('1');
   let lineQuantity = $state<Record<number, string>>({});
@@ -82,6 +103,8 @@
     editShipAddress = order.shipAddress ?? '';
     editShipByDate = order.shipByDate ?? '';
     editMemo = order.memo ?? '';
+    billingAddress = createAddressForm(order.billingAddress);
+    shippingAddress = createAddressForm(order.shippingAddress);
     feedback = null;
   }
 
@@ -101,6 +124,14 @@
       memo: editMemo || null
     });
     if (ok) feedback = i18n.t('Pedido actualizado correctamente.');
+  }
+
+  async function saveAddresses(order: SalesOrder): Promise<void> {
+    const ok = await vm.updateAddress(order.salesOrderId, {
+      billingAddress,
+      shippingAddress
+    });
+    if (ok) feedback = i18n.t('Direcciones actualizadas correctamente.');
   }
 
   async function addLine(): Promise<void> {
@@ -256,6 +287,37 @@
       </section>
 
       <section class="detail-section">
+        <h3>{i18n.t('Direcciones de facturación y envío')}</h3>
+        <div class="address-grid">
+          <fieldset>
+            <legend>{i18n.t('Dirección de facturación')}</legend>
+            <label>{i18n.t('Nombre')}<input bind:value={billingAddress.name} maxlength="200" /></label>
+            <label>{i18n.t('Dirección')}<input bind:value={billingAddress.line1} maxlength="200" /></label>
+            <label>{i18n.t('Complemento')}<input bind:value={billingAddress.line2} maxlength="200" /></label>
+            <label>{i18n.t('Ciudad')}<input bind:value={billingAddress.city} maxlength="100" /></label>
+            <label>{i18n.t('Provincia / Estado')}<input bind:value={billingAddress.state} maxlength="100" /></label>
+            <label>{i18n.t('Código postal')}<input bind:value={billingAddress.postalCode} maxlength="32" /></label>
+            <label>{i18n.t('País')}<input bind:value={billingAddress.country} maxlength="64" /></label>
+            <label>{i18n.t('Teléfono')}<input bind:value={billingAddress.phone} maxlength="64" /></label>
+          </fieldset>
+          <fieldset>
+            <legend>{i18n.t('Dirección de envío')}</legend>
+            <label>{i18n.t('Nombre')}<input bind:value={shippingAddress.name} maxlength="200" /></label>
+            <label>{i18n.t('Dirección')}<input bind:value={shippingAddress.line1} maxlength="200" /></label>
+            <label>{i18n.t('Complemento')}<input bind:value={shippingAddress.line2} maxlength="200" /></label>
+            <label>{i18n.t('Ciudad')}<input bind:value={shippingAddress.city} maxlength="100" /></label>
+            <label>{i18n.t('Provincia / Estado')}<input bind:value={shippingAddress.state} maxlength="100" /></label>
+            <label>{i18n.t('Código postal')}<input bind:value={shippingAddress.postalCode} maxlength="32" /></label>
+            <label>{i18n.t('País')}<input bind:value={shippingAddress.country} maxlength="64" /></label>
+            <label>{i18n.t('Teléfono')}<input bind:value={shippingAddress.phone} maxlength="64" /></label>
+          </fieldset>
+        </div>
+        <button class="primary" type="button" onclick={() => void saveAddresses(order)} disabled={vm.saving}>
+          {i18n.t('Guardar direcciones')}
+        </button>
+      </section>
+
+      <section class="detail-section">
         <h3>{i18n.t('Líneas del pedido')}</h3>
         <div class="table-wrap">
           <table>
@@ -346,7 +408,11 @@
   .detail-dialog { width: min(100%, 74rem); }
   .detail-header { margin-bottom: 1.2rem; }
   .detail-section { margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid var(--line); }
-  .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
+  .form-grid, .address-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
+  .address-grid fieldset { min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; padding: .8rem; border: 1px solid var(--line); border-radius: 10px; }
+  .address-grid legend { padding: 0 .35rem; color: var(--slate); font-size: .8rem; font-weight: 700; }
+  .address-grid label { min-width: 0; }
+  .address-grid label:nth-child(3), .address-grid label:nth-child(4) { grid-column: 1 / -1; }
   .wide, .dialog-actions { grid-column: 1 / -1; }
   .dialog-actions { justify-content: flex-end; }
   .inline-form label { min-width: 130px; }
@@ -358,7 +424,8 @@
   @keyframes pulse { to { opacity: .45; } }
   @media (max-width: 650px) {
     .page-header { align-items: flex-start; flex-direction: column; }
-    .form-grid, dl { grid-template-columns: 1fr; }
+    .form-grid, .address-grid, .address-grid fieldset, dl { grid-template-columns: 1fr; }
+    .address-grid label { grid-column: auto; }
     .filters { align-items: stretch; flex-direction: column; }
     .search-field { min-width: 100%; }
     .pagination { align-items: flex-start; flex-direction: column; }

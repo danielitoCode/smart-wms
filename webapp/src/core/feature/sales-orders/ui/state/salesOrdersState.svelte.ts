@@ -8,8 +8,7 @@ import type {
   RevertSalesOrderInput,
   SalesOrder,
   SalesOrderPage,
-  UpdateSalesOrder,
-  UpdateSalesOrderAddressInput
+  UpdateSalesOrder
 } from '../../domain/entity/SalesOrder';
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 
@@ -58,7 +57,7 @@ export function createSalesOrdersState() {
     loading = true;
     error = null;
     try {
-      pageData = await deps.listSalesOrders.execute({
+      pageData = await deps.repository.listPage({
         status: status || undefined,
         warehouseId: warehouseId ?? undefined,
         q: search || undefined,
@@ -140,13 +139,6 @@ export function createSalesOrdersState() {
     return runMutation(
       () => deps.updateSalesOrder.execute(id, input),
       'No se pudo actualizar el pedido'
-    );
-  }
-
-  async function updateAddress(id: number, input: UpdateSalesOrderAddressInput): Promise<boolean> {
-    return runMutation(
-      () => deps.updateSalesOrderAddress.execute(id, input),
-      'No se pudieron actualizar las direcciones del pedido'
     );
   }
 
@@ -310,7 +302,6 @@ export function createSalesOrdersState() {
     open,
     close,
     update,
-    updateAddress,
     addLine,
     updateLine,
     deleteLine,

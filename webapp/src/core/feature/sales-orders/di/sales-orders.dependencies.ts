@@ -7,7 +7,6 @@ import { GetSalesOrderUseCase } from '../domain/usecase/GetSalesOrderUseCase';
 import { GetRelatedSalesOrdersUseCase } from '../domain/usecase/GetRelatedSalesOrdersUseCase';
 import { ListSalesOrdersUseCase } from '../domain/usecase/ListSalesOrdersUseCase';
 import { UpdateSalesOrderUseCase } from '../domain/usecase/UpdateSalesOrderUseCase';
-import { UpdateSalesOrderAddressUseCase } from '../domain/usecase/UpdateSalesOrderAddressUseCase';
 import {
   AddSalesOrderLineUseCase, UpdateSalesOrderLineUseCase, DeleteSalesOrderLineUseCase
 } from '../domain/usecase/ManageSalesOrderLinesUseCase';
@@ -30,7 +29,6 @@ export function createSalesOrdersDependencies() {
     getRelatedSalesOrders: new GetRelatedSalesOrdersUseCase(repository),
     createSalesOrder: new CreateSalesOrderUseCase(repository),
     updateSalesOrder: new UpdateSalesOrderUseCase(repository),
-    updateSalesOrderAddress: new UpdateSalesOrderAddressUseCase(repository),
     cancelSalesOrder: new CancelSalesOrderUseCase(repository),
     addSalesOrderLine: new AddSalesOrderLineUseCase(repository),
     updateSalesOrderLine: new UpdateSalesOrderLineUseCase(repository),

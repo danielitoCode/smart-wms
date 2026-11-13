@@ -3,11 +3,7 @@ import type {
   SalesOrderDetailResponseDto, SalesOrderDto, SalesOrderListResponseDto,
   RelatedSalesOrdersResponseDto
 } from '../dto/SalesOrderDto';
-import type {
-  CreateRmaInput,
-  ReceiveReturnInput,
-  UpdateSalesOrderAddressInput
-} from '../../domain/entity/SalesOrder';
+import type { CreateRmaInput, ReceiveReturnInput } from '../../domain/entity/SalesOrder';
 
 function normalizePage(body: SalesOrderDto[] | SalesOrderListResponseDto | null | undefined): SalesOrderListResponseDto {
   if (Array.isArray(body)) {
@@ -47,13 +43,6 @@ export class SalesOrderRemoteDataSource {
   async update(id: number, payload: Record<string, unknown>): Promise<void> {
     await this.api.put(`/api/admin/sales-orders/${id}`, payload);
   }
-  async updateAddress(id: number, payload: Record<string, string>): Promise<void> {
-    await this.api.request(`/api/admin/sales-orders/${id}/address`, {
-      method: 'PATCH',
-      body: payload
-    });
-  }
-
   async cancel(id: number): Promise<void> {
     await this.api.post(`/api/admin/sales-orders/${id}/cancel`);
   }
