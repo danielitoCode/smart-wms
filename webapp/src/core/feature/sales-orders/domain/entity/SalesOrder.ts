@@ -5,15 +5,8 @@
  * screens. Wire-format names stay in data/dto and are translated by the mapper.
  */
 export type SalesOrderStatus =
-  | 'OPEN'
-  | 'FRAUD_REVIEW'
-  | 'WAITING_STOCK'
-  | 'PICKED'
-  | 'PACKED'
-  | 'SHIPPED'
-  | 'CANCELLED'
-  | 'REFUNDED'
-  | string;
+  | 'OPEN' | 'FRAUD_REVIEW' | 'WAITING_STOCK' | 'PICKED' | 'PACKED'
+  | 'SHIPPED' | 'CANCELLED' | 'REFUNDED' | string;
 
 export interface SalesOrderLine {
   soLineId: number;
@@ -58,12 +51,10 @@ export interface SalesOrderPickTask {
 }
 
 export interface SalesOrder {
-  /** Canonical identifiers used by the Svelte screens. */
   salesOrderId: number;
   salesOrderNumber: string;
   soNumber: string;
   id: number;
-
   barcode: string | null;
   status: SalesOrderStatus;
   priority: number;
@@ -96,9 +87,6 @@ export interface SalesOrder {
   shippingAddress: SalesOrderAddress;
   lines: SalesOrderLine[];
   pickTasks: SalesOrderPickTask[];
-
-  /** Legacy aliases retained for the existing detail route. */
-  customerAddressLegacy?: string | null;
 }
 
 export interface RelatedSalesOrderLine {
@@ -156,7 +144,6 @@ export interface CreateSalesOrderInput {
   lines: CreateSalesOrderLineInput[];
 }
 
-/** Shape used by the current Svelte create form. */
 export type CreateSalesOrder = {
   salesOrderNumber: string;
   warehouseId: number;
@@ -201,7 +188,7 @@ export interface RevertSalesOrderInput {
 }
 
 export interface CreateRmaInput {
-  lines: Array<{ itemId: number; quantity: number }>;
+  lines: Array<{ itemId: number; quantity: number; originalSoLineId?: number | null }>;
   reason?: string | null;
 }
 
@@ -210,4 +197,6 @@ export interface ReceiveReturnInput {
   quantity: number;
   warehouseId: number;
   binId: number;
+  notes?: string | null;
+  idempotencyKey?: string | null;
 }

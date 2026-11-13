@@ -1,12 +1,7 @@
 import type {
-  CreateSalesOrderInput,
-  PartialFulfillInput,
-  ReceiveReturnInput,
-  RevertSalesOrderInput,
-  CreateRmaInput,
-  SalesOrder,
-  SalesOrderPage,
-  UpdateSalesOrder
+  CreateSalesOrderInput, PartialFulfillInput, ReceiveReturnInput,
+  RevertSalesOrderInput, CreateRmaInput, RelatedSalesOrder,
+  SalesOrder, SalesOrderPage, UpdateSalesOrder
 } from '../entity/SalesOrder';
 
 export type ListSalesOrdersParams = {
@@ -32,7 +27,7 @@ export interface SalesOrderRepository {
   adminPick(id: number, lines: Array<{ soLineId: number; binId: number; quantity: number }>): Promise<void>;
   partialFulfill(id: number, input: PartialFulfillInput): Promise<void>;
   revertStatus(id: number, input: RevertSalesOrderInput): Promise<void>;
-  related(id: number): Promise<unknown>;
+  related(id: number): Promise<RelatedSalesOrder[]>;
   createRma(id: number, input: CreateRmaInput): Promise<void>;
   receiveReturn(id: number, input: ReceiveReturnInput): Promise<void>;
   voidReturn(id: number): Promise<void>;
