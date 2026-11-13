@@ -110,7 +110,6 @@ describe('AdminOperationMapper typed projections', () => {
       warehouse_id: 3,
       customer_name: 'Ada',
       customer_phone: '555-0100',
-      parent_so_number: 'SO-1',
       memo: 'Review requested',
       created_at: '2026-11-12T09:00:00Z',
     };
@@ -165,7 +164,7 @@ describe('AdminOperationMapper typed projections', () => {
       so_number: 'POS-22',
       status: 'SHIPPED',
       order_type: 'refund',
-      channel: 'COUNTER',
+      channel: 'POS',
       created_at: '2026-11-12T12:00:00Z',
       customer_name: 'Ada',
       customer_phone: null,
