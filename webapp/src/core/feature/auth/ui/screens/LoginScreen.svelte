@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { getContext, onMount } from 'svelte';
 	import LocaleSwitcher from '../../../../../lib/components/LocaleSwitcher.svelte';
+	import UiBanner from '../../../../../lib/components/UiBanner.svelte';
 	import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { createLoginState } from '../state/loginState.svelte';
 	import { createAuthDependencies } from '../../di/auth.dependencies';
 	import { resolveHomePath } from '../../domain/policy/AccessPolicy';
+	import { pushToast } from '../../../../../lib/ui/toast.svelte';
 
 	const i18n = getContext<I18nState>('i18n');
 	const state = createLoginState();
@@ -32,7 +34,12 @@
 	async function onSubmit(event: Event) {
 		event.preventDefault();
 		const ok = await state.submit();
-		if (!ok) return;
+		if (!ok) {
+			if (state.error) pushToast(state.error, 'error');
+			return;
+		}
+
+		pushToast(i18n.t('Sesión iniciada'), 'success');
 
 		if (state.user?.mustChangePassword) {
 			await goto('/change-password', { replaceState: true });
@@ -53,7 +60,7 @@
 	}
 </script>
 
-<section class="login">
+<section class="login motion-page-in">
 	<div class="card">
 		<header>
 			<img src="/brand/abellis_mark_principal.svg" width="40" height="40" alt="Abellis" />
@@ -64,11 +71,18 @@
 			<LocaleSwitcher />
 		</header>
 		<p class="lead">{i18n.t('Inicia sesión para operar el almacén.')}</p>
+
 		{#if passwordChanged}
-			<p class="success" role="status">
-				{i18n.t('Contraseña actualizada. Inicia sesión con tu nueva contraseña.')}
-			</p>
+			<UiBanner
+				tone="success"
+				message={i18n.t('Contraseña actualizada. Inicia sesión con tu nueva contraseña.')}
+			/>
 		{/if}
+
+		{#if state.error}
+			<UiBanner tone="error" message={state.error} />
+		{/if}
+
 		<form onsubmit={onSubmit}>
 			<label>
 				<span>{i18n.t('Usuario')}</span>
@@ -80,6 +94,7 @@
 					value={state.username}
 					oninput={(e) => state.setUsername(e.currentTarget.value)}
 					disabled={state.loading}
+					aria-invalid={state.error ? 'true' : undefined}
 				/>
 			</label>
 			<label>
@@ -92,11 +107,9 @@
 					value={state.password}
 					oninput={(e) => state.setPassword(e.currentTarget.value)}
 					disabled={state.loading}
+					aria-invalid={state.error ? 'true' : undefined}
 				/>
 			</label>
-			{#if state.error}
-				<p class="error" role="alert">{state.error}</p>
-			{/if}
 			<button class="primary" type="submit" disabled={state.loading}>
 				{state.loading ? i18n.t('Entrando…') : i18n.t('Entrar')}
 			</button>
@@ -186,18 +199,5 @@
 	button.primary:disabled {
 		opacity: 0.7;
 		cursor: wait;
-	}
-	.error {
-		margin: 0;
-		color: var(--danger, #b42318);
-		font-size: 0.88rem;
-	}
-	.success {
-		margin: 0 0 0.75rem;
-		padding: 0.55rem 0.7rem;
-		border-radius: 8px;
-		background: color-mix(in srgb, var(--success, #0f5132) 12%, #fff);
-		color: var(--success, #0f5132);
-		font-size: 0.86rem;
 	}
 </style>
