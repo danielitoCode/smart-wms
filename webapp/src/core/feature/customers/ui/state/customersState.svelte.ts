@@ -1,43 +1,66 @@
-import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
-import { createCustomerDependencies } from '../../di/customers.dependencies';
+import { createCustomersDependencies } from '../../di/customers.dependencies';
 import type { Customer } from '../../domain/entity/Customer';
+import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 
-const dependencies = createCustomerDependencies();
+const deps = createCustomersDependencies();
 
 export function createCustomersState() {
-  let customers = $state<Customer[]>([]);
-  let search = $state('');
-  let loading = $state(false);
-  let searched = $state(false);
-  let error = $state<string | null>(null);
+	let customers = $state<Customer[]>([]);
+	let query = $state('');
+	let warehouseId = $state<number | null>(null);
+	let loading = $state(false);
+	let error = $state<string | null>(null);
+	let loadedOnce = $state(false);
 
-  async function find(): Promise<void> {
-    if (search.trim().length < 2) {
-      customers = [];
-      searched = false;
-      error = 'Escribe al menos dos caracteres para buscar clientes';
-      return;
-    }
+	async function load() {
+		if (loading) return false;
+		loading = true;
+		error = null;
+		try {
+			customers = await deps.listCustomers.execute({
+				q: query || undefined,
+				warehouseId: warehouseId ?? undefined
+			});
+			loadedOnce = true;
+			return true;
+		} catch (err) {
+			error = toUserMessage(err, 'No se pudieron cargar los clientes');
+			customers = [];
+			return false;
+		} finally {
+			loading = false;
+		}
+	}
 
-    loading = true;
-    error = null;
-    try {
-      customers = await dependencies.search.execute({ search });
-      searched = true;
-    } catch (cause) {
-      error = toUserMessage(cause, 'No se pudo realizar la búsqueda de clientes');
-    } finally {
-      loading = false;
-    }
-  }
+	function setQuery(value: string) {
+		query = value;
+	}
 
-  return {
-    get customers() { return customers; },
-    get search() { return search; },
-    get loading() { return loading; },
-    get searched() { return searched; },
-    get error() { return error; },
-    setSearch(value: string) { search = value; },
-    find
-  };
+	function setWarehouseId(value: number | null) {
+		warehouseId = value;
+	}
+
+	return {
+		get customers() {
+			return customers;
+		},
+		get query() {
+			return query;
+		},
+		get warehouseId() {
+			return warehouseId;
+		},
+		get loading() {
+			return loading;
+		},
+		get error() {
+			return error;
+		},
+		get loadedOnce() {
+			return loadedOnce;
+		},
+		setQuery,
+		setWarehouseId,
+		load
+	};
 }
