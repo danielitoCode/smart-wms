@@ -18,7 +18,7 @@ export type AdminOperationColumnFor<K extends AdminOperationKey> = {
 } satisfies AdminOperationCatalog;
 
 export type AdminOperationDefinition<K extends AdminOperationKey> = {
-  key: AdminOperationKey;
+  key: K;
   title: string;
   description: string;
   pageKey: string;
@@ -54,6 +54,7 @@ const salesOrderStatuses = [
   'PACKED',
   'SHIPPED',
   'CANCELLED',
+  'FRAUD_REVIEW',
   'REFUNDED'
 ];
 
