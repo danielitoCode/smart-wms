@@ -68,7 +68,7 @@ const salesOrderStatuses = [
   'REFUNDED'
 ];
 
-export const ADMIN_OPERATION_CATALOG = {
+export const ADMIN_OPERATION_CATALOG: AdminOperationCatalog = {
   backorders: {
     key: 'backorders',
     title: 'Pedidos pendientes',
@@ -313,4 +313,4 @@ export const ADMIN_OPERATION_CATALOG = {
       { key: 'active', label: 'Activo', format: 'boolean' }
     ])
   }
-} satisfies AdminOperationCatalog;
+};
