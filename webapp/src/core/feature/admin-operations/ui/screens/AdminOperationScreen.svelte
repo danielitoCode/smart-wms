@@ -269,7 +269,7 @@
       </div>
     {/if}
 
-    {#if vm.pagination}
+    {#if vm.pagination && vm.pagination.total > 0}
       <nav class="pagination" aria-label={i18n.t('Paginación')}>
         <span>{i18n.t('Página')} {vm.pagination.page} {i18n.t('de')} {vm.pagination.pages} · {vm.pagination.total} {i18n.t('registros')}</span>
         <div>
