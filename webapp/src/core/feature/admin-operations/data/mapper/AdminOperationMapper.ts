@@ -1,4 +1,5 @@
 import type { AdminOperationKey, AdminOperationRow } from '../../domain/entity/AdminOperation.ts';
+import type { AdminOperationDto } from '../dto/AdminOperationDto';
 import type { AdjustmentDto, BackorderDto, InterWarehouseTransferDto, PosActivityDto, PreferredBinDto, PurchaseOrderDto, SalesOrderDto, TransferOrderDto, UserDto, VendorDto } from '../dto/AdminOperationDto';
 
 const row = (id: string | number, cells: AdminOperationRow['cells']): AdminOperationRow => ({ id, cells });
@@ -48,7 +49,7 @@ function mapVendor(value: VendorDto): AdminOperationRow {
 }
 
 export const AdminOperationMapper = {
-  rows(feature: AdminOperationKey, values: unknown[]): AdminOperationRow[] {
+  rows(feature: AdminOperationKey, values: AdminOperationDto[]): AdminOperationRow[] {
     switch (feature) {
       case 'backorders': return (values as BackorderDto[]).map(mapBackorder);
       case 'count-approvals':
