@@ -7,7 +7,7 @@
 	onMount(() => { void vm.load(); });
 </script>
 <section class="page">
-	header>
+	<header>
 		<div>
 			<p class="eyebrow">ABELLIS · SMART WMS</p>
 			<h1>{i18n.t('Actividad inbound')}</h1>
