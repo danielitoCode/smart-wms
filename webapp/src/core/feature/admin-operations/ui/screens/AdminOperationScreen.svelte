@@ -43,7 +43,7 @@
   }
 
   function formatDate(value: string): string {
-    const parsed = new Date(value);
+    const parsed = new Date(value.includes('T') ? value : `${value}T00:00:00`);
     if (Number.isNaN(parsed.getTime())) return value;
     return new Intl.DateTimeFormat(undefined, {
       dateStyle: 'medium',
