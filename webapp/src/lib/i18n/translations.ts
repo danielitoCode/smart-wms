@@ -44,6 +44,12 @@ export const translations: Record<Locale, Record<string, string>> = {
 
 const featureTranslations: Record<'it'|'en', Record<string,string>> = {
  it: {
+  "Estado de pedidos pendientes": "Stato degli ordini in sospeso",
+  "Cajero": "Cassiere",
+  "Almacén origen (ID)": "Magazzino di origine (ID)",
+  "Almacén destino (ID)": "Magazzino di destinazione (ID)",
+  "Inactivos": "Inattivi",
+  "Aplicar": "Applica",
   "Clientes": "Clienti",
   "Consulta los clientes identificados en el historial de pedidos.": "Consulta i clienti identificati nella cronologia degli ordini.",
   "Buscar cliente por nombre": "Cerca cliente per nome",
@@ -305,6 +311,12 @@ const featureTranslations: Record<'it'|'en', Record<string,string>> = {
   "Seguimiento": "Numero di tracciamento"
 },
  en: {
+  "Estado de pedidos pendientes": "Backorder status",
+  "Cajero": "Cashier",
+  "Almacén origen (ID)": "Source warehouse (ID)",
+  "Almacén destino (ID)": "Destination warehouse (ID)",
+  "Inactivos": "Inactive",
+  "Aplicar": "Apply",
   "Clientes": "Customers",
   "Consulta los clientes identificados en el historial de pedidos.": "Browse customers identified in order history.",
   "Buscar cliente por nombre": "Search customers by name",
