@@ -233,6 +233,7 @@ export const ADMIN_OPERATION_CATALOG = {
     description: 'Documentos de crédito asociados a ventas originales.',
     pageKey: 'sales-orders',
     apiPermission: 'sales-orders',
+    warehouseScoped: true,
     searchable: true,
     columns: columns<'refunds'>([
       { key: 'salesOrderNumber', label: 'Documento' },
@@ -248,6 +249,7 @@ export const ADMIN_OPERATION_CATALOG = {
     description: 'Devoluciones y estado de recepción de mercancía.',
     pageKey: 'sales-orders',
     apiPermission: 'sales-orders',
+    warehouseScoped: true,
     searchable: true,
     columns: columns<'returns'>([
       { key: 'salesOrderNumber', label: 'RMA' },
