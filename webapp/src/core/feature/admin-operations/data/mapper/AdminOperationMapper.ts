@@ -94,6 +94,8 @@ function mapSalesOrder(
     case 'refunds': return { feature, id: value.so_id, data };
     case 'returns': return { feature, id: value.so_id, data };
   }
+
+  throw new Error('Unsupported sales order projection');
 }
 
 function mapInterWarehouseTransfer(value: InterWarehouseTransferDto): Extract<AdminOperationRow, { feature: 'inter-warehouse-transfers' }> {
