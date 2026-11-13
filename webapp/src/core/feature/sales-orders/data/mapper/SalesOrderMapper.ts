@@ -40,7 +40,7 @@ function toAddress(dto: SalesOrderDto, prefix: 'billing' | 'shipping'): SalesOrd
   };
 }
 
-function toLine(dto: SalesOrderLineDto, orderId: number): SalesOrderLine {
+function toLine(dto: SalesOrderLineDto): SalesOrderLine {
   const lineId = dto.so_line_id ?? dto.line_id ?? dto.id ?? null;
   return {
     soLineId: lineId ?? 0,
@@ -115,7 +115,7 @@ export const SalesOrderMapper = {
       shippedDateLocal: dto.shipped_date_local ?? null,
       billingAddress: toAddress(dto, 'billing'),
       shippingAddress: toAddress(dto, 'shipping'),
-      lines: Array.isArray(dto.lines) ? dto.lines.map((line) => toLine(line, id)) : [],
+      lines: Array.isArray(dto.lines) ? dto.lines.map(toLine) : [],
       pickTasks: []
     };
   },
@@ -134,7 +134,7 @@ export const SalesOrderMapper = {
     const order = this.toDomain(dto.sales_order);
     return {
       ...order,
-      lines: dto.lines.map((line) => toLine(line, order.salesOrderId)),
+      lines: dto.lines.map(toLine),
       pickTasks: dto.pick_tasks.map(toPickTask)
     };
   },

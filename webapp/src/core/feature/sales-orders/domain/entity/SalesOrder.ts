@@ -61,7 +61,6 @@ export interface SalesOrder {
   /** Canonical identifiers used by the Svelte screens. */
   salesOrderId: number;
   salesOrderNumber: string;
-  soLineId?: never;
   soNumber: string;
   id: number;
 
