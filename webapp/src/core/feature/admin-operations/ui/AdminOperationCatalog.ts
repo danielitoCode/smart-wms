@@ -15,7 +15,7 @@ export type AdminOperationColumn = {
   key: string;
   label: string;
   format?: AdminOperationColumnFormat;
-};
+} satisfies Record<AdminOperationKey, AdminOperationDefinition>;
 
 export type AdminOperationDefinition = {
   key: AdminOperationKey;
@@ -42,7 +42,6 @@ function columns(entries: AdminOperationColumn[]): AdminOperationColumn[] {
 
 const salesOrderStatuses = [
   'OPEN',
-  'ALLOCATED',
   'PICKED',
   'PACKED',
   'SHIPPED',
@@ -50,7 +49,7 @@ const salesOrderStatuses = [
   'REFUNDED'
 ];
 
-export const ADMIN_OPERATION_CATALOG: Record<string, AdminOperationDefinition> = {
+export const ADMIN_OPERATION_CATALOG = {
   backorders: {
     key: 'backorders',
     title: 'Pedidos pendientes',
@@ -230,7 +229,7 @@ export const ADMIN_OPERATION_CATALOG: Record<string, AdminOperationDefinition> =
     searchable: true,
     columns: columns([
       { key: 'salesOrderNumber', label: 'RMA' },
-      { key: 'parentSalesOrderNumber', label: 'Venta original' },
+      { key: 'parentSalesOrderId', label: 'ID venta original' },
       { key: 'customerName', label: 'Cliente' },
       { key: 'status', label: 'Estado', format: 'status' },
       { key: 'createdAt', label: 'Fecha', format: 'date' },
