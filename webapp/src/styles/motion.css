@@ -1,7 +1,6 @@
 /**
  * Motion system — Smart WMS / Abellis
- * Propósito: orientación, confirmación de estado, feedback de error.
- * No decorativo. Respeto total a prefers-reduced-motion (tokens).
+ * Navegación interna: solo fade del contenido (no la barra lateral).
  */
 
 @keyframes fade-in {
@@ -9,32 +8,20 @@
 	to { opacity: 1; }
 }
 
-@keyframes page-in {
-	from {
-		opacity: 0;
-		transform: translateY(6px);
-	}
-	to {
-		opacity: 1;
-		transform: none;
-	}
+@keyframes fade-out {
+	from { opacity: 1; }
+	to { opacity: 0; }
 }
 
-@keyframes slide-in-right {
-	from {
-		opacity: 0;
-		transform: translateX(12px);
-	}
-	to {
-		opacity: 1;
-		transform: none;
-	}
+@keyframes page-in {
+	from { opacity: 0; }
+	to { opacity: 1; }
 }
 
 @keyframes rise-in {
 	from {
 		opacity: 0;
-		transform: translateY(10px) scale(0.98);
+		transform: translateY(8px);
 	}
 	to {
 		opacity: 1;
@@ -67,7 +54,7 @@
 @keyframes toast-in {
 	from {
 		opacity: 0;
-		transform: translateY(8px) scale(0.98);
+		transform: translateY(8px);
 	}
 	to {
 		opacity: 1;
@@ -75,9 +62,8 @@
 	}
 }
 
-/* Utilidades de entrada */
 .motion-page-in {
-	animation: page-in var(--motion-page) var(--ease-out) both;
+	animation: fade-in var(--motion-page) var(--ease-out) both;
 }
 
 .motion-fade-in {
@@ -96,7 +82,6 @@
 	animation: toast-in var(--motion-base) var(--ease-out) both;
 }
 
-/* Loading */
 .ui-spinner {
 	width: 1.35rem;
 	height: 1.35rem;
@@ -118,22 +103,31 @@
 	animation: shimmer 1.2s var(--ease-in-out) infinite;
 }
 
-/* View Transitions API (navegación entre rutas) */
+/* View Transitions: solo el contenido principal hace fade; shell estable */
 @supports (view-transition-name: none) {
 	::view-transition-old(root),
 	::view-transition-new(root) {
+		animation: none;
+		mix-blend-mode: normal;
+	}
+
+	::view-transition-group(app-content) {
 		animation-duration: var(--motion-page);
 		animation-timing-function: var(--ease-out);
 	}
 
-	::view-transition-old(root) {
-		animation-name: fade-in;
-		animation-direction: reverse;
+	::view-transition-old(app-content) {
+		animation: fade-out var(--motion-page) var(--ease-out) both;
 	}
 
-	::view-transition-new(root) {
-		animation-name: page-in;
+	::view-transition-new(app-content) {
+		animation: fade-in var(--motion-page) var(--ease-out) both;
 	}
+}
+
+/* Región nombrada para la transición (sidebar/topbar fuera) */
+.app-content-transition {
+	view-transition-name: app-content;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -145,5 +139,12 @@
 	.ui-spinner,
 	.ui-skeleton {
 		animation: none !important;
+	}
+
+	@supports (view-transition-name: none) {
+		::view-transition-old(app-content),
+		::view-transition-new(app-content) {
+			animation: none !important;
+		}
 	}
 }
