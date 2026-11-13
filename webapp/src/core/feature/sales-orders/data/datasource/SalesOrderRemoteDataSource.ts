@@ -71,7 +71,7 @@ export class SalesOrderRemoteDataSource {
     await this.api.post(`/api/admin/sales-orders/${id}/admin-ship`);
   }
   async getAvailableBins(id: number, lineId: number): Promise<AvailableSalesOrderBinsResponseDto> {
-    return this.api.get(
+    return this.api.get<AvailableSalesOrderBinsResponseDto>(
       `/api/admin/sales-orders/${id}/lines/${lineId}/available-bins`
     );
   }
