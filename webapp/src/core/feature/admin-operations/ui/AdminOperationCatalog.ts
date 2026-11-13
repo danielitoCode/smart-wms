@@ -1,5 +1,22 @@
 import type { AdminOperationKey } from '../domain/entity/AdminOperation.ts';
 
+export type AdminOperationColumnFormat =
+  | 'text'
+  | 'date'
+  | 'status'
+  | 'boolean'
+  | 'quantity'
+  | 'money'
+  | 'cents'
+  | 'list'
+  | 'backorder-items';
+
+export type AdminOperationColumn = {
+  key: string;
+  label: string;
+  format?: AdminOperationColumnFormat;
+};
+
 export type AdminOperationDefinition = {
   key: AdminOperationKey;
   title: string;
@@ -9,12 +26,24 @@ export type AdminOperationDefinition = {
   apiPermission: string;
   warehouseScoped?: boolean;
   searchable?: boolean;
-  columns: { key: string; label: string }[];
+  dateFilter?: boolean;
+  statusOptions?: string[];
+  columns: AdminOperationColumn[];
 };
 
-function columns(entries: [string, string][]) {
-  return entries.map(([key, label]) => ({ key, label }));
+function columns(entries: AdminOperationColumn[]): AdminOperationColumn[] {
+  return entries;
 }
+
+const salesOrderStatuses = [
+  'OPEN',
+  'ALLOCATED',
+  'PICKED',
+  'PACKED',
+  'SHIPPED',
+  'CANCELLED',
+  'REFUNDED'
+];
 
 export const ADMIN_OPERATION_CATALOG: Record<string, AdminOperationDefinition> = {
   backorders: {
@@ -25,12 +54,12 @@ export const ADMIN_OPERATION_CATALOG: Record<string, AdminOperationDefinition> =
     apiPermission: 'backorders',
     warehouseScoped: true,
     columns: columns([
-      ['so_number', 'Pedido'],
-      ['parent_so_number', 'Pedido original'],
-      ['customer_name', 'Cliente'],
-      ['status', 'Estado'],
-      ['days_waiting', 'Días pendientes'],
-      ['items', 'Artículos']
+      { key: 'salesOrderNumber', label: 'Pedido' },
+      { key: 'parentSalesOrderNumber', label: 'Pedido original' },
+      { key: 'customerName', label: 'Cliente' },
+      { key: 'status', label: 'Estado', format: 'status' },
+      { key: 'daysWaiting', label: 'Días pendientes', format: 'quantity' },
+      { key: 'items', label: 'Artículos', format: 'backorder-items' }
     ])
   },
   'count-approvals': {
@@ -40,14 +69,14 @@ export const ADMIN_OPERATION_CATALOG: Record<string, AdminOperationDefinition> =
     pageKey: 'count-approvals',
     apiPermission: 'adjustments',
     columns: columns([
-      ['adjustment_id', 'Ajuste'],
-      ['cycle_count_id', 'Conteo'],
-      ['sku', 'SKU'],
-      ['item_name', 'Producto'],
-      ['bin_code', 'Ubicación'],
-      ['expected_quantity', 'Cantidad esperada'],
-      ['counted_quantity', 'Cantidad contada'],
-      ['quantity_change', 'Diferencia']
+      { key: 'cycleCountId', label: 'Conteo' },
+      { key: 'sku', label: 'SKU' },
+      { key: 'itemName', label: 'Producto' },
+      { key: 'binCode', label: 'Ubicación' },
+      { key: 'expectedQuantity', label: 'Esperado', format: 'quantity' },
+      { key: 'countedQuantity', label: 'Contado', format: 'quantity' },
+      { key: 'quantityChange', label: 'Diferencia', format: 'quantity' },
+      { key: 'reasonDetail', label: 'Observación' }
     ])
   },
   fraud: {
@@ -58,13 +87,13 @@ export const ADMIN_OPERATION_CATALOG: Record<string, AdminOperationDefinition> =
     apiPermission: 'sales-orders',
     searchable: true,
     columns: columns([
-      ['so_number', 'Pedido'],
-      ['customer_name', 'Cliente'],
-      ['customer_phone', 'Teléfono'],
-      ['order_source', 'Origen'],
-      ['status', 'Estado'],
-      ['created_at', 'Fecha'],
-      ['memo', 'Observaciones']
+      { key: 'salesOrderNumber', label: 'Pedido' },
+      { key: 'customerName', label: 'Cliente' },
+      { key: 'customerPhone', label: 'Teléfono' },
+      { key: 'orderSource', label: 'Origen' },
+      { key: 'status', label: 'Estado', format: 'status' },
+      { key: 'createdAt', label: 'Fecha', format: 'date' },
+      { key: 'memo', label: 'Observaciones' }
     ])
   },
   'inter-warehouse-transfers': {
@@ -74,17 +103,19 @@ export const ADMIN_OPERATION_CATALOG: Record<string, AdminOperationDefinition> =
     pageKey: 'transfer-orders',
     apiPermission: 'transfer-orders',
     columns: columns([
-      ['transfer_id', 'Movimiento'],
-      ['sku', 'SKU'],
-      ['item_name', 'Producto'],
-      ['quantity', 'Cantidad'],
-      ['from_warehouse_name', 'Almacén origen'],
-      ['from_bin_code', 'Ubicación origen'],
-      ['to_warehouse_name', 'Almacén destino'],
-      ['to_bin_code', 'Ubicación destino'],
-      ['transferred_by', 'Responsable'],
-      ['transferred_at', 'Fecha'],
-      ['status', 'Estado']
+      { key: 'transferId', label: 'Movimiento' },
+      { key: 'sku', label: 'SKU' },
+      { key: 'itemName', label: 'Producto' },
+      { key: 'quantity', label: 'Cantidad', format: 'quantity' },
+      { key: 'sourceWarehouseName', label: 'Almacén origen' },
+      { key: 'sourceWarehouseCode', label: 'Código origen' },
+      { key: 'sourceBinCode', label: 'Ubicación origen' },
+      { key: 'destinationWarehouseName', label: 'Almacén destino' },
+      { key: 'destinationWarehouseCode', label: 'Código destino' },
+      { key: 'destinationBinCode', label: 'Ubicación destino' },
+      { key: 'transferredBy', label: 'Responsable' },
+      { key: 'transferredAt', label: 'Fecha', format: 'date' },
+      { key: 'status', label: 'Estado', format: 'status' }
     ])
   },
   adjustments: {
@@ -95,15 +126,18 @@ export const ADMIN_OPERATION_CATALOG: Record<string, AdminOperationDefinition> =
     apiPermission: 'adjustments',
     warehouseScoped: true,
     columns: columns([
-      ['adjustment_id', 'Ajuste'],
-      ['sku', 'SKU'],
-      ['item_name', 'Producto'],
-      ['bin_code', 'Ubicación'],
-      ['quantity_change', 'Variación'],
-      ['reason_code', 'Motivo'],
-      ['status', 'Estado'],
-      ['adjusted_by', 'Registrado por'],
-      ['adjusted_at', 'Fecha']
+      { key: 'adjustmentId', label: 'Ajuste' },
+      { key: 'sku', label: 'SKU' },
+      { key: 'itemName', label: 'Producto' },
+      { key: 'binCode', label: 'Ubicación' },
+      { key: 'expectedQuantity', label: 'Esperado', format: 'quantity' },
+      { key: 'countedQuantity', label: 'Contado', format: 'quantity' },
+      { key: 'quantityChange', label: 'Variación', format: 'quantity' },
+      { key: 'reasonCode', label: 'Motivo' },
+      { key: 'reasonDetail', label: 'Detalle' },
+      { key: 'status', label: 'Estado', format: 'status' },
+      { key: 'adjustedBy', label: 'Registrado por' },
+      { key: 'adjustedAt', label: 'Fecha', format: 'date' }
     ])
   },
   'pos-activity': {
@@ -112,16 +146,19 @@ export const ADMIN_OPERATION_CATALOG: Record<string, AdminOperationDefinition> =
     description: 'Ventas y devoluciones registradas en terminales POS.',
     pageKey: 'pos-activity',
     apiPermission: 'pos-activity',
+    dateFilter: true,
+    statusOptions: salesOrderStatuses,
     columns: columns([
-      ['so_number', 'Pedido'],
-      ['created_at', 'Fecha'],
-      ['channel', 'Canal'],
-      ['status', 'Estado'],
-      ['terminal_id', 'Terminal'],
-      ['customer_name', 'Cliente'],
-      ['total_cents', 'Total (centavos)'],
-      ['payment_method', 'Pago'],
-      ['external_txn_ref', 'Referencia']
+      { key: 'salesOrderNumber', label: 'Pedido' },
+      { key: 'orderType', label: 'Tipo' },
+      { key: 'createdAt', label: 'Fecha', format: 'date' },
+      { key: 'channel', label: 'Canal' },
+      { key: 'status', label: 'Estado', format: 'status' },
+      { key: 'terminalId', label: 'Terminal' },
+      { key: 'customerName', label: 'Cliente' },
+      { key: 'totalCents', label: 'Total', format: 'cents' },
+      { key: 'paymentMethod', label: 'Pago' },
+      { key: 'externalTransactionReference', label: 'Referencia' }
     ])
   },
   'preferred-bins': {
@@ -132,12 +169,13 @@ export const ADMIN_OPERATION_CATALOG: Record<string, AdminOperationDefinition> =
     apiPermission: 'preferred-bins',
     searchable: true,
     columns: columns([
-      ['sku', 'SKU'],
-      ['item_name', 'Producto'],
-      ['bin_code', 'Ubicación'],
-      ['zone_name', 'Zona'],
-      ['priority', 'Prioridad'],
-      ['updated_at', 'Actualizado']
+      { key: 'sku', label: 'SKU' },
+      { key: 'itemName', label: 'Producto' },
+      { key: 'binCode', label: 'Ubicación' },
+      { key: 'zoneName', label: 'Zona' },
+      { key: 'priority', label: 'Prioridad', format: 'quantity' },
+      { key: 'notes', label: 'Notas' },
+      { key: 'updatedAt', label: 'Actualizado', format: 'date' }
     ])
   },
   'purchase-orders': {
@@ -148,13 +186,16 @@ export const ADMIN_OPERATION_CATALOG: Record<string, AdminOperationDefinition> =
     apiPermission: 'purchase-orders',
     warehouseScoped: true,
     searchable: true,
+    statusOptions: ['OPEN', 'PARTIAL', 'RECEIVED', 'CLOSED', 'ARCHIVED'],
     columns: columns([
-      ['po_number', 'Orden'],
-      ['vendor_name', 'Proveedor'],
-      ['warehouse_id', 'Almacén'],
-      ['status', 'Estado'],
-      ['expected_date', 'Fecha prevista'],
-      ['created_at', 'Creada']
+      { key: 'purchaseOrderNumber', label: 'Orden' },
+      { key: 'vendorName', label: 'Proveedor' },
+      { key: 'warehouseId', label: 'Almacén' },
+      { key: 'status', label: 'Estado', format: 'status' },
+      { key: 'expectedDate', label: 'Fecha prevista', format: 'date' },
+      { key: 'createdAt', label: 'Creada', format: 'date' },
+      { key: 'receivedAt', label: 'Recibida', format: 'date' },
+      { key: 'createdBy', label: 'Creada por' }
     ])
   },
   refunds: {
@@ -165,12 +206,12 @@ export const ADMIN_OPERATION_CATALOG: Record<string, AdminOperationDefinition> =
     apiPermission: 'sales-orders',
     searchable: true,
     columns: columns([
-      ['so_number', 'Documento'],
-      ['parent_so_number', 'Venta original'],
-      ['customer_name', 'Cliente'],
-      ['status', 'Estado'],
-      ['order_total', 'Importe'],
-      ['created_at', 'Fecha']
+      { key: 'salesOrderNumber', label: 'Documento' },
+      { key: 'parentSalesOrderNumber', label: 'Venta original' },
+      { key: 'customerName', label: 'Cliente' },
+      { key: 'status', label: 'Estado', format: 'status' },
+      { key: 'orderTotal', label: 'Importe', format: 'money' },
+      { key: 'createdAt', label: 'Fecha', format: 'date' }
     ])
   },
   returns: {
@@ -181,12 +222,12 @@ export const ADMIN_OPERATION_CATALOG: Record<string, AdminOperationDefinition> =
     apiPermission: 'sales-orders',
     searchable: true,
     columns: columns([
-      ['so_number', 'RMA'],
-      ['parent_so_number', 'Venta original'],
-      ['customer_name', 'Cliente'],
-      ['status', 'Estado'],
-      ['created_at', 'Fecha'],
-      ['memo', 'Observaciones']
+      { key: 'salesOrderNumber', label: 'RMA' },
+      { key: 'parentSalesOrderNumber', label: 'Venta original' },
+      { key: 'customerName', label: 'Cliente' },
+      { key: 'status', label: 'Estado', format: 'status' },
+      { key: 'createdAt', label: 'Fecha', format: 'date' },
+      { key: 'memo', label: 'Observaciones' }
     ])
   },
   'transfer-orders': {
@@ -195,13 +236,16 @@ export const ADMIN_OPERATION_CATALOG: Record<string, AdminOperationDefinition> =
     description: 'Reposición de mercancía entre almacenes.',
     pageKey: 'transfer-orders',
     apiPermission: 'transfer-orders',
+    statusOptions: ['DRAFT', 'PENDING', 'AWAITING_APPROVAL', 'APPROVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
     columns: columns([
-      ['to_number', 'Orden'],
-      ['source_warehouse_id', 'Origen'],
-      ['destination_warehouse_id', 'Destino'],
-      ['status', 'Estado'],
-      ['created_by', 'Creada por'],
-      ['created_at', 'Creada']
+      { key: 'transferOrderNumber', label: 'Orden' },
+      { key: 'sourceWarehouseId', label: 'Origen' },
+      { key: 'destinationWarehouseId', label: 'Destino' },
+      { key: 'status', label: 'Estado', format: 'status' },
+      { key: 'createdBy', label: 'Creada por' },
+      { key: 'notes', label: 'Notas' },
+      { key: 'createdAt', label: 'Creada', format: 'date' },
+      { key: 'updatedAt', label: 'Actualizada', format: 'date' }
     ])
   },
   users: {
@@ -211,12 +255,14 @@ export const ADMIN_OPERATION_CATALOG: Record<string, AdminOperationDefinition> =
     pageKey: 'users',
     apiPermission: 'users',
     columns: columns([
-      ['username', 'Usuario'],
-      ['full_name', 'Nombre'],
-      ['role', 'Rol'],
-      ['is_active', 'Activo'],
-      ['warehouse_ids', 'Almacenes'],
-      ['created_at', 'Creado']
+      { key: 'username', label: 'Usuario' },
+      { key: 'fullName', label: 'Nombre' },
+      { key: 'role', label: 'Rol' },
+      { key: 'active', label: 'Activo', format: 'boolean' },
+      { key: 'warehouseIds', label: 'Almacenes', format: 'list' },
+      { key: 'allowedFunctions', label: 'Funciones permitidas', format: 'list' },
+      { key: 'createdAt', label: 'Creado', format: 'date' },
+      { key: 'lastLogin', label: 'Último acceso', format: 'date' }
     ])
   },
   vendors: {
@@ -227,12 +273,12 @@ export const ADMIN_OPERATION_CATALOG: Record<string, AdminOperationDefinition> =
     apiPermission: 'vendors',
     searchable: true,
     columns: columns([
-      ['vendor_name', 'Proveedor'],
-      ['contact_name', 'Contacto'],
-      ['email', 'Correo'],
-      ['phone', 'Teléfono'],
-      ['payment_terms', 'Condiciones de pago'],
-      ['is_active', 'Activo']
+      { key: 'vendorName', label: 'Proveedor' },
+      { key: 'contactName', label: 'Contacto' },
+      { key: 'email', label: 'Correo' },
+      { key: 'phone', label: 'Teléfono' },
+      { key: 'paymentTerms', label: 'Condiciones de pago' },
+      { key: 'active', label: 'Activo', format: 'boolean' }
     ])
   }
 };
