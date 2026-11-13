@@ -124,6 +124,8 @@ export function createSalesOrdersState() {
   async function open(id: number): Promise<boolean> {
     error = null;
     relatedOrders = [];
+    availableBinsByLine = {};
+    loadingBinsByLine = {};
     try {
       selected = await deps.getSalesOrder.execute(id);
       return true;
@@ -137,6 +139,8 @@ export function createSalesOrdersState() {
   function close(): void {
     selected = null;
     relatedOrders = [];
+    availableBinsByLine = {};
+    loadingBinsByLine = {};
   }
 
   async function update(id: number, input: UpdateSalesOrder): Promise<boolean> {
