@@ -1,6 +1,7 @@
 import { createSalesOrdersDependencies } from '../../di/sales-orders.dependencies';
 import type {
   CreateSalesOrder,
+  AvailableSalesOrderBin,
   CreateRmaInput,
   PartialFulfillInput,
   ReceiveReturnInput,
@@ -52,6 +53,8 @@ export function createSalesOrdersState() {
   let relatedOrders = $state<RelatedSalesOrder[]>([]);
   let loadingRelated = $state(false);
   let cancellingId = $state<number | null>(null);
+  let availableBinsByLine = $state<Record<number, AvailableSalesOrderBin[]>>({});
+  let loadingBinsByLine = $state<Record<number, boolean>>({});
 
   async function load(): Promise<boolean> {
     if (loading) return false;
@@ -301,6 +304,8 @@ export function createSalesOrdersState() {
     get relatedOrders() { return relatedOrders; },
     get loadingRelated() { return loadingRelated; },
     get cancellingId() { return cancellingId; },
+    get availableBinsByLine() { return availableBinsByLine; },
+    get loadingBinsByLine() { return loadingBinsByLine; },
     setSearch,
     setStatus,
     setPage,
@@ -317,6 +322,7 @@ export function createSalesOrdersState() {
     cancel,
     adminShip,
     loadRelated,
+    loadAvailableBins,
     adminPick,
     partialFulfill,
     revertStatus,
