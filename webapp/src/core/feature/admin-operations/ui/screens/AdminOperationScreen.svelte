@@ -175,7 +175,49 @@
             </select>
           </label>
         {/if}
-        {#if definition.searchable}
+        {#if definition.channelFilter}
+          <label>
+            <span>{i18n.t('Canal')}</span>
+            <select value={vm.channel} onchange={(event) => { vm.setChannel(event.currentTarget.value as '' | 'counter' | 'phone'); load(); }}>
+              <option value="">{i18n.t('Todos')}</option>
+              <option value="counter">{i18n.t('Mostrador')}</option>
+              <option value="phone">{i18n.t('Teléfono')}</option>
+            </select>
+          </label>
+        {/if}
+        {#if definition.terminalFilter}
+          <label>
+            <span>{i18n.t('Terminal')}</span>
+            <input type="text" value={vm.terminalId} oninput={(event) => vm.setTerminalId(event.currentTarget.value)} />
+          </label>
+        {/if}
+        {#if definition.cashierFilter}
+          <label>
+            <span>{i18n.t('Cajero')}</span>
+            <input type="text" value={vm.cashierId} oninput={(event) => vm.setCashierId(event.currentTarget.value)} />
+          </label>
+        {/if}
+        {#if definition.warehouseIdFilters}
+          <label>
+            <span>{i18n.t('Almacén origen (ID)')}</span>
+            <input type="number" min="1" value={vm.sourceWarehouseId} oninput={(event) => vm.setSourceWarehouseId(event.currentTarget.value)} />
+          </label>
+          <label>
+            <span>{i18n.t('Almacén destino (ID)')}</span>
+            <input type="number" min="1" value={vm.destinationWarehouseId} oninput={(event) => vm.setDestinationWarehouseId(event.currentTarget.value)} />
+          </label>
+        {/if}
+        {#if definition.activeFilter}
+          <label>
+            <span>{i18n.t('Estado')}</span>
+            <select value={vm.active} onchange={(event) => { vm.setActive(event.currentTarget.value as '' | 'true' | 'false'); load(); }}>
+              <option value="">{i18n.t('Todos')}</option>
+              <option value="true">{i18n.t('Activos')}</option>
+              <option value="false">{i18n.t('Inactivos')}</option>
+            </select>
+          </label>
+        {/if}
+        {#if definition.searchable || definition.terminalFilter || definition.cashierFilter || definition.warehouseIdFilters}
           <button class="accent" type="submit" disabled={vm.loading}>{i18n.t('Aplicar')}</button>
         {/if}
       </form>
