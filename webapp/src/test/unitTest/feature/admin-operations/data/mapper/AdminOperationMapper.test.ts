@@ -106,20 +106,19 @@ describe('AdminOperationMapper typed projections', () => {
       so_number: 'SO-8',
       status: 'FRAUD_REVIEW',
       order_type: 'sale',
-      order_source: 'POS',
-      order_origin: 'WEB',
+      parent_so_id: 3,
       warehouse_id: 3,
       customer_name: 'Ada',
       customer_phone: '555-0100',
       parent_so_number: 'SO-1',
       memo: 'Review requested',
       created_at: '2026-11-12T09:00:00Z',
-      order_total: 125.5
     };
 
     expect(AdminOperationMapper.fraud([dto])[0].data).toMatchObject({
       salesOrderNumber: 'SO-8',
-      orderSource: 'POS',
+      orderType: 'sale',
+      parentSalesOrderId: 3,
       customerPhone: '555-0100'
     });
     expect(AdminOperationMapper.refunds([dto])[0].feature).toBe('refunds');
