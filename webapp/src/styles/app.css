@@ -136,3 +136,39 @@ body .workspace .content .status { color:var(--slate); }
 	border: 2px solid transparent;
 	background-clip: padding-box;
 }
+
+/* ——— Scroll-snap: navegación fluida ——— */
+.content {
+	overscroll-behavior: contain;
+	scroll-behavior: smooth;
+}
+
+/* Secciones de página: marcar con .snap-section para anclar al topbar */
+.snap-y {
+	scroll-snap-type: y proximity;
+	scroll-padding-block: 72px 24px;
+}
+
+.snap-section {
+	scroll-snap-align: start;
+	scroll-snap-stop: normal;
+}
+
+/* Tablas anchas: snap suave horizontal opcional */
+.table-wrap.snap-x {
+	scroll-snap-type: x proximity;
+	scroll-padding-inline: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html,
+	.content,
+	.main-nav {
+		scroll-behavior: auto;
+	}
+	.snap-y,
+	.main-nav,
+	.table-wrap.snap-x {
+		scroll-snap-type: none;
+	}
+}
