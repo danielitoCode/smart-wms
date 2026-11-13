@@ -34,6 +34,12 @@ export function createAdminOperationState(feature: AdminOperationKey) {
   let tab = $state<'waiting' | 'ready-to-ship'>('waiting');
   let date = $state('');
   let status = $state('');
+  let channel = $state<'' | 'counter' | 'phone'>('');
+  let terminalId = $state('');
+  let cashierId = $state('');
+  let sourceWarehouseId = $state('');
+  let destinationWarehouseId = $state('');
+  let active = $state<'' | 'true' | 'false'>('');
   let page = $state(1);
   const perPage = 50;
   let requestSequence = 0;
@@ -49,6 +55,12 @@ export function createAdminOperationState(feature: AdminOperationKey) {
         tab,
         date,
         status,
+        channel: channel || undefined,
+        terminalId,
+        cashierId,
+        sourceWarehouseId: sourceWarehouseId ? Number(sourceWarehouseId) : undefined,
+        destinationWarehouseId: destinationWarehouseId ? Number(destinationWarehouseId) : undefined,
+        active: active === '' ? undefined : active === 'true',
         page,
         perPage,
         ...extra
@@ -82,11 +94,23 @@ export function createAdminOperationState(feature: AdminOperationKey) {
     get tab() { return tab; },
     get date() { return date; },
     get status() { return status; },
+    get channel() { return channel; },
+    get terminalId() { return terminalId; },
+    get cashierId() { return cashierId; },
+    get sourceWarehouseId() { return sourceWarehouseId; },
+    get destinationWarehouseId() { return destinationWarehouseId; },
+    get active() { return active; },
     get page() { return page; },
     setSearch(value: string) { search = value; resetPage(); },
     setTab(value: 'waiting' | 'ready-to-ship') { tab = value; resetPage(); },
     setDate(value: string) { date = value; resetPage(); },
     setStatus(value: string) { status = value; resetPage(); },
+    setChannel(value: '' | 'counter' | 'phone') { channel = value; resetPage(); },
+    setTerminalId(value: string) { terminalId = value; resetPage(); },
+    setCashierId(value: string) { cashierId = value; resetPage(); },
+    setSourceWarehouseId(value: string) { sourceWarehouseId = value; resetPage(); },
+    setDestinationWarehouseId(value: string) { destinationWarehouseId = value; resetPage(); },
+    setActive(value: '' | 'true' | 'false') { active = value; resetPage(); },
     setPage(value: number) { page = Math.max(1, value); },
     resetPage,
     load
