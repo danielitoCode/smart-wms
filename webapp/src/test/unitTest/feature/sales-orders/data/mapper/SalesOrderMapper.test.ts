@@ -16,11 +16,12 @@ describe('SalesOrderMapper', () => {
       sales_orders: [summary], total: 1, page: 1, per_page: 50, pages: 1
     };
     expect(SalesOrderMapper.toPage(dto)).toMatchObject({
-      total: 1, page: 1, perPage: 50, items: [{ salesOrderId: 7, salesOrderNumber: 'SO-007' }]
+      total: 1, page: 1, perPage: 50,
+      items: [{ salesOrderId: 7, salesOrderNumber: 'SO-007' }]
     });
   });
 
-  it('maps detail, nullable fields, structured addresses, lines and pick tasks', () => {
+  it('maps detail, nullable fields, addresses, lines and pick tasks', () => {
     const dto: SalesOrderDetailResponseDto = {
       sales_order: {
         ...summary, customer_email: null, order_total: '0.00',
@@ -50,17 +51,23 @@ describe('SalesOrderMapper', () => {
     const order = SalesOrderMapper.toDetail(dto);
     expect(order.customerId).toBeNull();
     expect(order.billingAddress).toMatchObject({ name: 'Acme', line1: '1 Main', city: 'Havana' });
-    expect(order.lines[0]).toMatchObject({ salesOrderId: 7, quantityOrdered: 5, quantityAllocated: 2 });
+    expect(order.lines[0]).toMatchObject({
+      soLineId: 9, lineNumber: 1, itemId: 3, quantityOrdered: 5, quantityAllocated: 2
+    });
     expect(order.pickTasks[0]).toMatchObject({ pickTaskId: 11, binCode: 'A-01' });
   });
 
-  it('maps all related family records including voided returns', () => {
+  it('maps the complete related-order record shape', () => {
     expect(SalesOrderMapper.toRelated([{
       so_id: 7, so_number: 'SO-007', status: 'OPEN', order_type: 'sale',
-      parent_so_id: null, depth: 0, voided_at: null
+      warehouse_id: 2, customer_name: 'Acme', parent_so_id: null,
+      depth: 0, is_current: true, is_voided: false, voided_at: null,
+      cancellation_reason: null, created_at: null, lines: []
     }])).toEqual([{
       soId: 7, soNumber: 'SO-007', status: 'OPEN', orderType: 'sale',
-      parentSoId: null, depth: 0, voidedAt: null
+      warehouseId: 2, customerName: 'Acme', parentSoId: null, depth: 0,
+      isCurrent: true, isVoided: false, voidedAt: null,
+      cancellationReason: null, createdAt: null, lines: []
     }]);
   });
 });

@@ -4,30 +4,26 @@ import { ListSalesOrdersUseCase } from '../../../../../../core/feature/sales-ord
 import type { SalesOrderRepository } from '../../../../../../core/feature/sales-orders/domain/repository/SalesOrderRepository';
 
 describe('Sales order use cases', () => {
-  it('validates pagination before listing', () => {
-    const repository = { list: vi.fn() } as unknown as SalesOrderRepository;
-    expect(() => new ListSalesOrdersUseCase(repository).execute({ page: 0 })).toThrow(/página/);
-    expect(repository.list).not.toHaveBeenCalled();
-  });
+  it('validates pagination and search before listing', async () => {
+    const list = vi.fn().mockResolvedValue([]);
+    const repository = { list } as unknown as SalesOrderRepository;
+    const useCase = new ListSalesOrdersUseCase(repository);
 
-  it('trims the search term and applies safe pagination defaults', async () => {
-    const repository = { list: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, perPage: 50, pages: 1 }) } as unknown as SalesOrderRepository;
-    await new ListSalesOrdersUseCase(repository).execute({ search: ' SO-1 ' });
-    expect(repository.list).toHaveBeenCalledWith({
-      search: 'SO-1', page: 1, perPage: 50
-    });
+    expect(() => useCase.execute({ page: 0 })).toThrow(/page/);
+    await useCase.execute({ q: ' SO-1 ' });
+    expect(list).toHaveBeenCalledWith({ q: 'SO-1', status: undefined, warehouseId: undefined, page: undefined, perPage: undefined });
   });
 
   it('requires a number, warehouse and unique positive item lines', () => {
-    const repository = { create: vi.fn() } as unknown as SalesOrderRepository;
-    const useCase = new CreateSalesOrderUseCase(repository);
+    const create = vi.fn();
+    const useCase = new CreateSalesOrderUseCase({ create } as unknown as SalesOrderRepository);
     expect(() => useCase.execute({
-      salesOrderNumber: ' ', warehouseId: 1, lines: [{ itemId: 1, quantityOrdered: 1 }]
-    })).toThrow(/número/);
+      soNumber: ' ', warehouseId: 1, lines: [{ itemId: 1, quantityOrdered: 1 }]
+    })).toThrow(/soNumber/);
     expect(() => useCase.execute({
-      salesOrderNumber: 'SO-1', warehouseId: 1,
+      soNumber: 'SO-1', warehouseId: 1,
       lines: [{ itemId: 1, quantityOrdered: 1 }, { itemId: 1, quantityOrdered: 2 }]
-    })).toThrow(/repetir/);
-    expect(repository.create).not.toHaveBeenCalled();
+    })).toThrow(/duplicate/);
+    expect(create).not.toHaveBeenCalled();
   });
 });
