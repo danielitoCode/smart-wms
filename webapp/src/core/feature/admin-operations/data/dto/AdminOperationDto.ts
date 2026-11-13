@@ -199,13 +199,25 @@ export type AdminOperationDto =
   | UserDto
   | VendorDto;
 
-export type AdminOperationRemoteResult = {
-  rows: AdminOperationDto[];
-  summary: PosActivitySummaryDto | null;
-  pagination: {
-    page: number;
-    per_page: number;
-    total: number;
-    pages: number;
-  } | null;
+
+export type AdminOperationRemotePagination = {
+  page: number;
+  per_page: number;
+  total: number;
+  pages: number;
 };
+
+export type AdminOperationRemoteResult =
+  | { feature: 'backorders'; rows: BackorderDto[]; summary: null; pagination: null }
+  | { feature: 'count-approvals'; rows: AdjustmentDto[]; summary: null; pagination: null }
+  | { feature: 'fraud'; rows: SalesOrderDto[]; summary: null; pagination: AdminOperationRemotePagination }
+  | { feature: 'inter-warehouse-transfers'; rows: InterWarehouseTransferDto[]; summary: null; pagination: null }
+  | { feature: 'adjustments'; rows: AdjustmentDto[]; summary: null; pagination: AdminOperationRemotePagination }
+  | { feature: 'pos-activity'; rows: PosActivityDto[]; summary: PosActivitySummaryDto; pagination: AdminOperationRemotePagination }
+  | { feature: 'preferred-bins'; rows: PreferredBinDto[]; summary: null; pagination: null }
+  | { feature: 'purchase-orders'; rows: PurchaseOrderDto[]; summary: null; pagination: AdminOperationRemotePagination }
+  | { feature: 'refunds'; rows: SalesOrderDto[]; summary: null; pagination: AdminOperationRemotePagination }
+  | { feature: 'returns'; rows: SalesOrderDto[]; summary: null; pagination: AdminOperationRemotePagination }
+  | { feature: 'transfer-orders'; rows: TransferOrderDto[]; summary: null; pagination: AdminOperationRemotePagination }
+  | { feature: 'users'; rows: UserDto[]; summary: null; pagination: AdminOperationRemotePagination }
+  | { feature: 'vendors'; rows: VendorDto[]; summary: null; pagination: AdminOperationRemotePagination };
