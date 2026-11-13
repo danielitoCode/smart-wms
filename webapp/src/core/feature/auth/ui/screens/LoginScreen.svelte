@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getContext, onMount } from 'svelte';
 	import LocaleSwitcher from '../../../../../lib/components/LocaleSwitcher.svelte';
+	import ThemeToggle from '../../../../../lib/components/ThemeToggle.svelte';
 	import UiBanner from '../../../../../lib/components/UiBanner.svelte';
 	import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
 	import { goto } from '$app/navigation';
@@ -68,7 +69,7 @@
 				<p class="eyebrow">Abellis</p>
 				<h1>Smart WMS</h1>
 			</div>
-			<LocaleSwitcher />
+			<div class="toolbar"><ThemeToggle /><LocaleSwitcher /></div>
 		</header>
 		<p class="lead">{i18n.t('Inicia sesión para operar el almacén.')}</p>
 
@@ -124,16 +125,17 @@
 		place-items: center;
 		padding: 1.5rem;
 		background:
-			radial-gradient(ellipse at 15% 0%, rgba(143, 180, 218, 0.2), transparent 55%),
-			var(--bg, #f4f7fb);
+			radial-gradient(ellipse at 15% 0%, color-mix(in srgb, var(--lightblue, #8fb4da) 28%, transparent), transparent 55%),
+			var(--bg);
 	}
 	.card {
 		width: min(24rem, 100%);
 		padding: 1.5rem 1.35rem 1.4rem;
-		border: 1px solid var(--line, #d5dee8);
+		border: 1px solid var(--line);
 		border-radius: 14px;
-		background: var(--surface, #fff);
-		box-shadow: var(--shadow-1, 0 8px 28px rgba(1, 18, 34, 0.08));
+		background: var(--surface);
+		box-shadow: var(--shadow-1);
+		color: var(--ink);
 	}
 	header {
 		display: flex;
@@ -144,25 +146,31 @@
 	header img {
 		flex: none;
 	}
-	header div {
+	header div:not(.toolbar) {
 		flex: 1;
 		min-width: 0;
+	}
+	.toolbar {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		margin-left: auto;
 	}
 	.eyebrow {
 		margin: 0;
 		font: 600 0.65rem var(--disp, system-ui);
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
-		color: var(--navy, #0b3a5b);
+		color: var(--navy);
 	}
 	h1 {
 		margin: 0.15rem 0 0;
 		font: 700 1.35rem var(--disp, system-ui);
-		color: var(--navy-deep, #011222);
+		color: var(--head-ink, var(--navy-deep));
 	}
 	.lead {
 		margin: 0 0 1rem;
-		color: var(--slate, #5b6b7c);
+		color: var(--slate);
 		font-size: 0.92rem;
 	}
 	form {
@@ -175,23 +183,23 @@
 		flex-direction: column;
 		gap: 0.35rem;
 		font-size: 0.88rem;
-		color: var(--ink, #0f1c2e);
+		color: var(--ink);
 	}
 	input {
 		min-height: 42px;
 		padding: 0.5rem 0.7rem;
-		border: 1px solid var(--line, #d5dee8);
+		border: 1px solid var(--line);
 		border-radius: var(--radius-field, 10px);
-		background: var(--surface, #fff);
-		color: var(--ink, #0f1c2e);
+		background: var(--surface);
+		color: var(--ink);
 		font: 500 0.92rem var(--body, system-ui);
 	}
 	button.primary {
 		min-height: 44px;
 		margin-top: 0.25rem;
-		border: 1px solid var(--navy, #0b3a5b);
+		border: 1px solid var(--navy);
 		border-radius: 10px;
-		background: var(--navy, #0b3a5b);
+		background: var(--navy);
 		color: #fff;
 		font: 600 0.92rem var(--body, system-ui);
 		cursor: pointer;
