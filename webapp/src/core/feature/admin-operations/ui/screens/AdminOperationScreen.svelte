@@ -19,6 +19,7 @@
       : undefined
   );
   let activeFeature = $state<AdminOperationKey | null>(null);
+  let previousWarehouseId: number | null | undefined = undefined;
   let vm = $state(createAdminOperationState('backorders'));
 
   $effect(() => {
@@ -34,9 +35,15 @@
     const current = definition;
     const warehouseId = selection?.warehouseId;
     if (state && current && (!current.warehouseScoped || selection.initialized)) {
-      untrack(() => void state.load({
-        warehouseId: current.warehouseScoped ? warehouseId : null
-      }));
+      untrack(() => {
+        if (current.warehouseScoped && previousWarehouseId !== warehouseId) {
+          state.resetPage();
+        }
+        previousWarehouseId = warehouseId;
+        void state.load({
+          warehouseId: current.warehouseScoped ? warehouseId : null
+        });
+      });
     }
   });
 
