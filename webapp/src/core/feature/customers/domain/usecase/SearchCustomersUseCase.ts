@@ -10,6 +10,6 @@ export class SearchCustomersUseCase {
       throw new Error('Escribe al menos dos caracteres para buscar clientes');
     }
 
-    return this.repository.search({ search });
+    return this.repository.list({ q: search });
   }
 }

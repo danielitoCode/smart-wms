@@ -4,14 +4,16 @@ import type { CustomerRepository } from '../../../../../../core/feature/customer
 
 describe('SearchCustomersUseCase', () => {
   it('trims the query before calling the repository', async () => {
-    const repository = { search: vi.fn().mockResolvedValue([]) } as unknown as CustomerRepository;
+    const list = vi.fn().mockResolvedValue([]);
+    const repository = { list } as unknown as CustomerRepository;
     await new SearchCustomersUseCase(repository).execute({ search: '  Acme  ' });
-    expect(repository.search).toHaveBeenCalledWith({ search: 'Acme' });
+    expect(list).toHaveBeenCalledWith({ q: 'Acme' });
   });
 
   it('rejects queries shorter than two characters without a request', () => {
-    const repository = { search: vi.fn() } as unknown as CustomerRepository;
+    const list = vi.fn();
+    const repository = { list } as unknown as CustomerRepository;
     expect(() => new SearchCustomersUseCase(repository).execute({ search: ' A ' })).toThrow(/dos caracteres/);
-    expect(repository.search).not.toHaveBeenCalled();
+    expect(list).not.toHaveBeenCalled();
   });
 });

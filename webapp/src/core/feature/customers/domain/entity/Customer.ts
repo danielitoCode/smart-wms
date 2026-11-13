@@ -6,12 +6,16 @@
  * projects distinct customers from sales orders and global search.
  */
 export type Customer = {
-	/** Stable key: customer_id when present, else name-based key */
-	id: string;
-	name: string;
-	email: string | null;
-	phone: string | null;
-	orderCount: number | null;
-	/** Optional warehouse scope when projected from SO list */
-	warehouseId: number | null;
+  /** Stable key: customer_id when present, else name-based key */
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  orderCount: number | null;
+  /** Optional warehouse scope when projected from SO list */
+  warehouseId: number | null;
+};
+
+export type CustomerSearchQuery = {
+  search: string;
 };
