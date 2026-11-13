@@ -158,4 +158,33 @@ describe('AdminOperationsRemoteDataSource Flask contracts', () => {
     expect(url.searchParams.get('q')).toBe('PO-4');
   });
 
+
+  it('applies the selected warehouse to fraud, return and refund sales-order queries', async () => {
+    const response = {
+      sales_orders: [],
+      total: 0,
+      page: 1,
+      per_page: 50,
+      pages: 0
+    };
+
+    const fraud = createDataSource(response);
+    await fraud.dataSource.list('fraud', { warehouseId: 3 });
+    const fraudUrl = new URL(fraud.get.mock.calls[0][0], 'http://localhost');
+    expect(fraudUrl.searchParams.get('warehouse_id')).toBe('3');
+    expect(fraudUrl.searchParams.get('status')).toBe('FRAUD_REVIEW');
+
+    const returns = createDataSource(response);
+    await returns.dataSource.list('returns', { warehouseId: 4 });
+    const returnUrl = new URL(returns.get.mock.calls[0][0], 'http://localhost');
+    expect(returnUrl.searchParams.get('warehouse_id')).toBe('4');
+    expect(returnUrl.searchParams.get('order_type')).toBe('return');
+
+    const refunds = createDataSource(response);
+    await refunds.dataSource.list('refunds', { warehouseId: 5 });
+    const refundUrl = new URL(refunds.get.mock.calls[0][0], 'http://localhost');
+    expect(refundUrl.searchParams.get('warehouse_id')).toBe('5');
+    expect(refundUrl.searchParams.get('order_type')).toBe('refund');
+  });
+
 });
