@@ -31,13 +31,6 @@
     }
   });
 
-  function readProjectionValue<T extends object>(projection: T, key: string): T[keyof T] | undefined {
-    const property = (Object.keys(projection) as Array<keyof T>)
-      .find((candidate) => String(candidate) === key);
-
-    return property === undefined ? undefined : projection[property];
-  }
-
   type AdminOperationCellValue =
     | string
     | number
