@@ -1,83 +1,192 @@
 <script lang="ts">
-  import { getContext } from 'svelte';
-  import { goto } from '$app/navigation';
-  import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
-  import { createCustomersState } from '../state/customersState.svelte';
+	import { onMount } from 'svelte';
+	import { createCustomersState } from '../state/customersState.svelte';
 
-  const i18n = getContext<I18nState>('i18n');
-  const vm = createCustomersState();
+	const state = createCustomersState();
 
-  function openOrders(customerName: string): void {
-    void goto(`/management/sales-orders?q=${encodeURIComponent(customerName)}`);
-  }
+	onMount(() => {
+		void state.load();
+	});
+
+	function onSearch(event: Event) {
+		event.preventDefault();
+		void state.load();
+	}
 </script>
 
 <section class="page">
-  <header>
-    <div>
-      <p class="eyebrow">ABELLIS · SMART WMS</p>
-      <h1>{i18n.t('Clientes')}</h1>
-      <p class="subtitle">{i18n.t('Consulta los clientes identificados en el historial de pedidos.')}</p>
-    </div>
-  </header>
+	<header>
+		<h1>Clientes</h1>
+		<p class="subtitle">
+			Proyección desde pedidos de venta y búsqueda global admin. No hay CRUD admin dedicado en el
+			backend actual.
+		</p>
+	</header>
 
-  <form class="search" onsubmit={(event) => { event.preventDefault(); void vm.find(); }}>
-    <input
-      type="search"
-      minlength="2"
-      required
-      placeholder={i18n.t('Buscar cliente por nombre')}
-      value={vm.search}
-      oninput={(event) => vm.setSearch(event.currentTarget.value)}
-    />
-    <button class="primary" type="submit" disabled={vm.loading}>
-      {vm.loading ? i18n.t('Buscando…') : i18n.t('Buscar')}
-    </button>
-  </form>
+	<form class="filters" onsubmit={onSearch}>
+		<label class="field grow">
+			<span>Buscar (≥ 2 caracteres usa search admin)</span>
+			<input
+				type="search"
+				placeholder="Nombre de cliente"
+				value={state.query}
+				oninput={(e) => state.setQuery(e.currentTarget.value)}
+			/>
+		</label>
+		<label class="field">
+			<span>Warehouse ID</span>
+			<input
+				type="number"
+				min="1"
+				placeholder="Opcional"
+				value={state.warehouseId ?? ''}
+				oninput={(e) => {
+					const v = e.currentTarget.value.trim();
+					state.setWarehouseId(v ? Number(v) : null);
+				}}
+			/>
+		</label>
+		<button type="submit" disabled={state.loading}>Buscar</button>
+	</form>
 
-  <p class="notice">{i18n.t('Los clientes son una vista de consulta derivada de los pedidos. El backend actual no ofrece operaciones administrativas independientes para crear, modificar o eliminar clientes.')}</p>
-
-  {#if vm.error}
-    <p class="error" role="alert">{vm.error}</p>
-  {:else if vm.loading}
-    <p>{i18n.t('Cargando…')}</p>
-  {:else if vm.searched && vm.customers.length === 0}
-    <p class="empty">{i18n.t('No se encontraron clientes.')}</p>
-  {:else if vm.customers.length > 0}
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>{i18n.t('Cliente')}</th><th>{i18n.t('Pedidos registrados')}</th><th>{i18n.t('Acciones')}</th></tr></thead>
-        <tbody>
-          {#each vm.customers as customer (customer.id)}
-            <tr>
-              <td>{customer.name}</td>
-              <td>{customer.orderCount}</td>
-              <td><button type="button" onclick={() => openOrders(customer.name)}>{i18n.t('Ver pedidos')}</button></td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-    </div>
-  {/if}
+	{#if state.loading}
+		<p class="status">Cargando…</p>
+	{:else if state.error}
+		<p class="status error" role="alert">{state.error}</p>
+		<button type="button" onclick={() => state.load()}>Reintentar</button>
+	{:else if state.customers.length === 0}
+		<p class="status">No hay clientes con estos criterios.</p>
+	{:else}
+		<div class="table-wrap">
+			<table>
+				<thead>
+					<tr>
+						<th>Nombre</th>
+						<th>Email</th>
+						<th>Teléfono</th>
+						<th>Pedidos</th>
+						<th>WH</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each state.customers as c (c.id)}
+						<tr>
+							<td>{c.name}</td>
+							<td>{c.email ?? '—'}</td>
+							<td>{c.phone ?? '—'}</td>
+							<td>{c.orderCount ?? '—'}</td>
+							<td>{c.warehouseId ?? '—'}</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+	{/if}
 </section>
 
 <style>
-  .page { max-width: 78rem; margin: 1.5rem auto; padding: 0 1.25rem; color: var(--ink); }
-  header { margin-bottom: 1.25rem; }
-  .eyebrow { margin: 0 0 .35rem; color: var(--slate); font: 600 .68rem var(--disp); letter-spacing: .14em; }
-  h1 { margin: 0; font: 700 1.65rem var(--disp); }
-  .subtitle { margin: .4rem 0 0; color: var(--slate); }
-  .search { display: flex; gap: .65rem; margin-bottom: 1rem; }
-  input { flex: 1; min-width: 0; min-height: 42px; padding: .6rem .75rem; border: 1px solid var(--line); border-radius: 9px; background: var(--card); color: var(--ink); font: inherit; }
-  button { min-height: 40px; padding: .55rem .85rem; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); cursor: pointer; }
-  button.primary { border-color: var(--navy); background: var(--navy); color: white; }
-  button:disabled { opacity: .55; cursor: wait; }
-  .notice { margin: 0 0 1rem; padding: .8rem 1rem; border-left: 3px solid var(--line); background: var(--surface-subtle); color: var(--slate); font-size: .85rem; line-height: 1.5; }
-  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { padding: .8rem .9rem; border-bottom: 1px solid var(--line); text-align: left; }
-  th { color: var(--slate); font-size: .72rem; text-transform: uppercase; }
-  .empty { padding: 1.5rem 0; color: var(--slate); }
-  .error { color: var(--danger); }
-  @media (max-width: 600px) { .search { flex-direction: column; } }
+	@keyframes page-in {
+		from {
+			opacity: 0;
+			transform: translateY(6px);
+		}
+		to {
+			opacity: 1;
+			transform: none;
+		}
+	}
+
+	.page {
+		font-family: var(--body);
+		max-width: 56rem;
+		margin: 2rem auto;
+		padding: 0 1.25rem 2.5rem;
+		animation: page-in 180ms ease-out;
+	}
+	header {
+		margin-bottom: 1.5rem;
+	}
+	h1 {
+		margin: 0 0 0.35rem;
+		font-family: var(--display, var(--body));
+		font-size: 1.75rem;
+		color: var(--ink, #132234);
+	}
+	.subtitle {
+		margin: 0;
+		color: var(--slate, #5c6b7d);
+		max-width: 40rem;
+		line-height: 1.45;
+		font-size: 0.95rem;
+	}
+	.filters {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem 1rem;
+		align-items: flex-end;
+		margin-bottom: 1.5rem;
+	}
+	.field {
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+		min-width: 8rem;
+	}
+	.field.grow {
+		flex: 1 1 14rem;
+	}
+	.field span {
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: var(--slate, #5c6b7d);
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+	}
+	.field input,
+	button {
+		padding: 0.5rem 0.75rem;
+		border: 1px solid var(--line, #e4eaf1);
+		border-radius: 6px;
+		background: #fff;
+		font: inherit;
+	}
+	button {
+		cursor: pointer;
+		align-self: flex-end;
+	}
+	button:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+	.status {
+		color: var(--slate, #5c6b7d);
+	}
+	.status.error {
+		color: var(--danger, #b42318);
+	}
+	.table-wrap {
+		ocursor: auto;
+		overflow-x: auto;
+		border: 1px solid var(--line, #e4eaf1);
+		border-radius: 8px;
+		background: var(--card, #fff);
+	}
+	table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 0.9rem;
+	}
+	th,
+	td {
+		text-align: left;
+		padding: 0.7rem 0.9rem;
+		border-bottom: 1px solid var(--line, #e4eaf1);
+	}
+	th {
+		background: #f7fafc;
+		font-weight: 600;
+	}
+	tr:last-child td {
+		border-bottom: none;
+	}
 </style>
