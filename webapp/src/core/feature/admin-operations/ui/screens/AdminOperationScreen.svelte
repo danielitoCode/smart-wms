@@ -8,7 +8,15 @@
 
   const i18n = getContext<I18nState>('i18n');
   const selection = getContext<{ warehouseId: number | null }>('warehouseSelection');
-  const definition = $derived(ADMIN_OPERATION_CATALOG[page.params.feature ?? '']);
+  function isAdminOperationKey(value: string | undefined): value is AdminOperationKey {
+    return value !== undefined && Object.prototype.hasOwnProperty.call(ADMIN_OPERATION_CATALOG, value);
+  }
+
+  const definition = $derived(
+    isAdminOperationKey(page.params.feature)
+      ? ADMIN_OPERATION_CATALOG[page.params.feature]
+      : undefined
+  );
   let activeFeature = $state<AdminOperationKey | null>(null);
   let vm = $state(createAdminOperationState('backorders'));
 
