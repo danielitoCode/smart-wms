@@ -72,8 +72,8 @@ def _plan_coverage(db, so_lines_by_item, warehouse_id):
                 FROM inventory inv
                 JOIN bins b ON b.bin_id = inv.bin_id
                 LEFT JOIN preferred_bins pb
-                                  ON pb.item_id = inv.item_id
-                                 AND pb.bin_id = inv.bin_id
+                  ON pb.item_id = inv.item_id
+                 AND pb.bin_id = inv.bin_id
                 WHERE inv.item_id = :item_id
                   AND inv.warehouse_id = :wh
                   AND (inv.quantity_on_hand - inv.quantity_allocated) > 0
