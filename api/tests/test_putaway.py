@@ -51,12 +51,15 @@ class TestPendingPutaway:
         assert row["suggested_bin"] == "A-01-01"
         assert row["suggested_bin_id"] == 3
         assert row["suggested_bin_priority"] is None
+        assert row["suggested_bin_barcode"] == "A-01-01"
+        assert row["suggested_bin_zone"] == "Pick Zone"
 
     def test_pending_items_prefer_preferred_bin_over_default(self, client, auth_headers):
         # priority-1 preferred_bins entry must win over items.default_bin_id.
         conn = get_raw_connection()
         cur = conn.cursor()
         cur.execute("INSERT INTO preferred_bins (item_id, bin_id, priority) VALUES (1, 4, 1)")
+        cur.execute("INSERT INTO preferred_bins (item_id, bin_id, priority) VALUES (1, 3, 2)")
         cur.close()
         _receive_to_staging(client, auth_headers, item_id=1, quantity=10)
 
@@ -67,6 +70,8 @@ class TestPendingPutaway:
         assert row["suggested_bin"] == "A-01-02"
         assert row["suggested_bin_id"] == 4
         assert row["suggested_bin_priority"] == 1
+        assert row["suggested_bin_barcode"] == "A-01-02"
+        assert row["suggested_bin_zone"] == "Pick Zone"
 
     def test_pending_items_ignores_preferred_bin_outside_requested_warehouse(self, client, auth_headers):
         # Warehouse 2 is the virtual warehouse in the seed. A preferred bin
