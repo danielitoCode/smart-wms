@@ -15,6 +15,13 @@ function loginErrorMessage(err: unknown): string {
 	return 'No se pudo iniciar sesión. Comprueba tus datos e inténtalo de nuevo.';
 }
 
+/**
+ * Login form state (Svelte 5 runes).
+ *
+ * username/password MUST expose both get and set so `bind:value={state.username}`
+ * can write back into the $state. Getter-only properties leave the DOM filled
+ * while the internal rune stays empty → false "Usuario requerido".
+ */
 export function createLoginState() {
 	let username = $state('');
 	let password = $state('');
@@ -51,13 +58,31 @@ export function createLoginState() {
 	}
 
 	return {
-		get username() { return username; },
-		get password() { return password; },
-		get loading() { return loading; },
-		get error() { return error; },
-		get user() { return user; },
-		setUsername(value: string) { username = value; },
-		setPassword(value: string) { password = value; },
+		get username() {
+			return username;
+		},
+		set username(value: string) {
+			username = value;
+		},
+		get password() {
+			return password;
+		},
+		set password(value: string) {
+			password = value;
+		},
+		get loading() {
+			return loading;
+		},
+		/** Alias used by LoginScreen (`state.submitting`). */
+		get submitting() {
+			return loading;
+		},
+		get error() {
+			return error;
+		},
+		get user() {
+			return user;
+		},
 		submit
 	};
 }
