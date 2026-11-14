@@ -36,6 +36,31 @@ export type PreferredBinListQuery = {
 	warehouseId?: number;
 };
 
+export type PreferredBinWarehouseOption = { id: number; code: string; name: string };
+export type PreferredBinLocationOption = {
+	id: number;
+	warehouseId: number;
+	zoneId: number | null;
+	zoneName: string | null;
+	code: string;
+	barcode: string | null;
+	active: boolean;
+};
+export type PreferredBinCatalog = {
+	warehouses: PreferredBinWarehouseOption[];
+	bins: PreferredBinLocationOption[];
+	total: number;
+	page: number;
+	perPage: number;
+	pages: number;
+};
+export type PreferredBinCatalogQuery = {
+	warehouseId?: number;
+	search?: string;
+	page?: number;
+	perPage?: number;
+};
+
 export function validatePreferredBinAssignment(context: PreferredBinAssignmentContext): void {
 	if (!Number.isInteger(context.warehouseId) || context.warehouseId <= 0) {
 		throw new Error('Debe seleccionar un almacén válido');

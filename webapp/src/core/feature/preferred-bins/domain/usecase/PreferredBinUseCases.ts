@@ -1,4 +1,4 @@
-import type { PreferredBinAssignmentContext, PreferredBinCandidate, PreferredBinListQuery } from '../entity/PreferredBin';
+import type { PreferredBinAssignmentContext, PreferredBinCandidate, PreferredBinCatalogQuery, PreferredBinListQuery } from '../entity/PreferredBin';
 import type { PreferredBinsRepository } from '../repository/PreferredBinsRepository';
 import { validatePreferredBinAssignment } from '../entity/PreferredBin';
 
@@ -20,6 +20,29 @@ export class ListPreferredBinsUseCase {
 		return this.repository.list({
 			...query,
 			...(query?.search != null ? { search: query.search.trim() } : {})
+		});
+	}
+}
+
+export class ListPreferredBinCatalogUseCase {
+	constructor(private readonly repository: PreferredBinsRepository) {}
+
+	execute(query: PreferredBinCatalogQuery = {}) {
+		if (query.warehouseId != null && (!Number.isInteger(query.warehouseId) || query.warehouseId <= 0)) {
+			throw new Error('El almacén seleccionado no es válido');
+		}
+		if (query.page != null && (!Number.isInteger(query.page) || query.page < 1)) {
+			throw new Error('La página debe ser un entero positivo');
+		}
+		if (query.perPage != null && (!Number.isInteger(query.perPage) || query.perPage < 1 || query.perPage > 1000)) {
+			throw new Error('El tamaño de página debe estar entre 1 y 1000');
+		}
+		if (query.search != null && query.search.trim().length > 128) {
+			throw new Error('La búsqueda no puede superar 128 caracteres');
+		}
+		return this.repository.listCatalog({
+			...query,
+			...(query.search != null ? { search: query.search.trim() } : {})
 		});
 	}
 }

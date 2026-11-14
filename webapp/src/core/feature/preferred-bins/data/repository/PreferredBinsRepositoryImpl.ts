@@ -1,4 +1,4 @@
-import type { PreferredBin, PreferredBinCandidate, PreferredBinListQuery } from '../../domain/entity/PreferredBin';
+import type { PreferredBin, PreferredBinCandidate, PreferredBinCatalog, PreferredBinCatalogQuery, PreferredBinListQuery } from '../../domain/entity/PreferredBin';
 import type { PreferredBinsRepository } from '../../domain/repository/PreferredBinsRepository';
 import type { PreferredBinsRemoteDataSource } from '../datasource/PreferredBinsRemoteDataSource';
 import { PreferredBinMapper as M } from '../mapper/PreferredBinMapper';
@@ -8,6 +8,10 @@ export class PreferredBinsRepositoryImpl implements PreferredBinsRepository {
 
 	async list(query?: PreferredBinListQuery): Promise<PreferredBin[]> {
 		return (await this.remote.list(query)).map(M.toDomain);
+	}
+
+	async listCatalog(query?: PreferredBinCatalogQuery): Promise<PreferredBinCatalog> {
+		return PreferredBinMapper.toCatalog(await this.remote.catalog(query));
 	}
 
 	create(value: PreferredBinCandidate) {

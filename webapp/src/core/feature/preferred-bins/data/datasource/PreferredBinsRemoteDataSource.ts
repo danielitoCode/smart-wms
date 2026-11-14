@@ -1,5 +1,6 @@
 import type { ApiClient } from '../../../../infrastructure/api/ApiClient';
 import type {
+	PreferredBinCatalogDto,
 	PreferredBinCreateDto,
 	PreferredBinDto,
 	PreferredBinListResponseDto,
@@ -18,6 +19,16 @@ export class PreferredBinsRemoteDataSource {
 		const suffix = params.size ? '?' + params.toString() : '';
 		const response = await this.api.get<PreferredBinListResponseDto>('/api/admin/preferred-bins' + suffix);
 		return response.preferred_bins ?? [];
+	}
+
+	catalog(query: { warehouseId?: number; search?: string; page?: number; perPage?: number } = {}): Promise<PreferredBinCatalogDto> {
+		const params = new URLSearchParams();
+		if (query.warehouseId != null) params.set('warehouse_id', String(query.warehouseId));
+		if (query.search?.trim()) params.set('q', query.search.trim());
+		if (query.page != null) params.set('page', String(query.page));
+		if (query.perPage != null) params.set('per_page', String(query.perPage));
+		const suffix = params.size ? '?' + params.toString() : '';
+		return this.api.get<PreferredBinCatalogDto>('/api/admin/preferred-bins/catalog' + suffix);
 	}
 
 	create(input: PreferredBinCreateDto): Promise<PreferredBinMessageDto> {

@@ -1,27 +1,24 @@
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 import { createItemsDependencies } from '../../../items/di/items.dependencies';
-import { createWarehousesDependencies } from '../../../warehouses/di/warehouses.dependencies';
 import { createPreferredBinsDependencies, type PreferredBinsDependencies } from '../../di/preferredBins.dependencies';
 import type { Item } from '../../../items/domain/entity/Item';
-import type { Bin, Warehouse } from '../../../warehouses/domain/entity/Warehouse';
+import type { PreferredBinLocationOption, PreferredBinWarehouseOption } from '../../domain/entity/PreferredBin';
 import type { PreferredBin } from '../../domain/entity/PreferredBin';
 
 type StateDependencies = {
 	preferred: PreferredBinsDependencies;
 	items: ReturnType<typeof createItemsDependencies>;
-	warehouses: ReturnType<typeof createWarehousesDependencies>;
 };
 
 const defaultDependencies: StateDependencies = {
 	preferred: createPreferredBinsDependencies(),
-	items: createItemsDependencies(),
-	warehouses: createWarehousesDependencies()
+	items: createItemsDependencies()
 };
 
 export function createPreferredBinsState(dependencies: StateDependencies = defaultDependencies) {
 	let rows = $state<PreferredBin[]>([]);
-	let warehouseOptions = $state<Warehouse[]>([]);
-	let binOptions = $state<Bin[]>([]);
+	let warehouseOptions = $state<PreferredBinWarehouseOption[]>([]);
+	let binOptions = $state<PreferredBinLocationOption[]>([]);
 	let itemOptions = $state<Item[]>([]);
 	let selectedItem = $state<Item | null>(null);
 	let selectedWarehouseId = $state<number | null>(null);
@@ -65,8 +62,8 @@ export function createPreferredBinsState(dependencies: StateDependencies = defau
 		loadingCatalogs = true;
 		error = null;
 		try {
-			const result = await dependencies.warehouses.listAdminWarehouses.execute();
-			warehouseOptions = result.filter(warehouse => warehouse.active);
+			const result = await dependencies.preferred.catalog.execute();
+			warehouseOptions = result.warehouses;
 			if (warehouseOptions.length === 1) selectedWarehouseId = warehouseOptions[0].id;
 			await loadRows();
 		} catch (cause) {
@@ -124,22 +121,22 @@ export function createPreferredBinsState(dependencies: StateDependencies = defau
 		loadingBins = true;
 		error = null;
 		try {
-			const all: Bin[] = [];
+			const all: PreferredBinLocationOption[] = [];
 			let page = 1;
 			let pages = 1;
 			do {
-				const result = await dependencies.warehouses.listBins.execute({
+				const result = await dependencies.preferred.catalog.execute({
 					warehouseId: selectedWarehouseId,
-					q: query.trim() || undefined,
+					search: query.trim() || undefined,
 					page,
 					perPage: 1000
 				});
 				if (requestId !== binSearchRequest) return;
-				all.push(...result.items);
+				all.push(...result.bins);
 				pages = result.pages;
 				page += 1;
 			} while (page <= pages);
-			binOptions = all.filter(bin => bin.active && bin.binType === 'Pickable' && bin.warehouseId === selectedWarehouseId);
+			binOptions = all.filter(bin => bin.active && bin.warehouseId === selectedWarehouseId);
 		} catch (cause) {
 			if (requestId === binSearchRequest) error = toUserMessage(cause, 'No se pudieron cargar las ubicaciones del almacén');
 		} finally {
