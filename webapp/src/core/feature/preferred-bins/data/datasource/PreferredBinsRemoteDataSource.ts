@@ -1,8 +1,34 @@
-import type {ApiClient} from '../../../../infrastructure/api/ApiClient';
-import type {PreferredBinDto} from '../dto/PreferredBinDto';
-export class PreferredBinsRemoteDataSource{constructor(private readonly api:ApiClient){}
- async list(q:{search?:string;itemId?:number}={}):Promise<PreferredBinDto[]>{const p=new URLSearchParams();if(q.search?.trim())p.set('q',q.search.trim());if(q.itemId)p.set('item_id',String(q.itemId));const r=await this.api.get<{preferred_bins:PreferredBinDto[]}>('/api/admin/preferred-bins'+(p.size?'?'+p.toString():''));return r.preferred_bins??[];}
- async create(v:unknown):Promise<void>{await this.api.post('/api/admin/preferred-bins',v);}
- async update(id:number,v:unknown):Promise<void>{await this.api.put('/api/admin/preferred-bins/'+id,v);}
- async remove(id:number):Promise<void>{await this.api.delete('/api/admin/preferred-bins/'+id);}
+import type { ApiClient } from '../../../../infrastructure/api/ApiClient';
+import type {
+	PreferredBinCreateDto,
+	PreferredBinDto,
+	PreferredBinListResponseDto,
+	PreferredBinMessageDto,
+	PreferredBinPriorityDto
+} from '../dto/PreferredBinDto';
+
+export class PreferredBinsRemoteDataSource {
+	constructor(private readonly api: ApiClient) {}
+
+	async list(query: { search?: string; itemId?: number; warehouseId?: number } = {}): Promise<PreferredBinDto[]> {
+		const params = new URLSearchParams();
+		if (query.search?.trim()) params.set('q', query.search.trim());
+		if (query.itemId != null) params.set('item_id', String(query.itemId));
+		if (query.warehouseId != null) params.set('warehouse_id', String(query.warehouseId));
+		const suffix = params.size ? '?' + params.toString() : '';
+		const response = await this.api.get<PreferredBinListResponseDto>('/api/admin/preferred-bins' + suffix);
+		return response.preferred_bins ?? [];
+	}
+
+	create(input: PreferredBinCreateDto): Promise<PreferredBinMessageDto> {
+		return this.api.post<PreferredBinMessageDto>('/api/admin/preferred-bins', input);
+	}
+
+	update(id: number, input: PreferredBinPriorityDto): Promise<PreferredBinMessageDto> {
+		return this.api.put<PreferredBinMessageDto>('/api/admin/preferred-bins/' + id, input);
+	}
+
+	remove(id: number): Promise<PreferredBinMessageDto> {
+		return this.api.delete<PreferredBinMessageDto>('/api/admin/preferred-bins/' + id);
+	}
 }

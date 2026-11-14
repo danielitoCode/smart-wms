@@ -1,3 +1,26 @@
-import type {PreferredBin,PreferredBinCandidate} from '../../domain/entity/PreferredBin';
-import type {PreferredBinDto} from '../dto/PreferredBinDto';
-export const PreferredBinMapper={toDomain(d:PreferredBinDto):PreferredBin{return {preferredBinId:d.preferred_bin_id,itemId:d.item_id,binId:d.bin_id,priority:d.priority,updatedAt:d.updated_at,sku:d.sku,itemName:d.item_name,binCode:d.bin_code,zoneName:d.zone_name,notes:d.notes??null};},toCreateDto(v:PreferredBinCandidate){return {item_id:v.itemId,bin_id:v.binId,priority:v.priority};},toUpdateDto(v:{priority:number}){return {priority:v.priority};}};
+import type { PreferredBin, PreferredBinCandidate } from '../../domain/entity/PreferredBin';
+import type { PreferredBinDto, PreferredBinCreateDto, PreferredBinPriorityDto } from '../dto/PreferredBinDto';
+
+export const PreferredBinMapper = {
+	toDomain(dto: PreferredBinDto): PreferredBin {
+		return {
+			preferredBinId: dto.preferred_bin_id,
+			itemId: dto.item_id,
+			binId: dto.bin_id,
+			warehouseId: dto.warehouse_id,
+			priority: dto.priority,
+			updatedAt: dto.updated_at,
+			sku: dto.sku,
+			itemName: dto.item_name,
+			binCode: dto.bin_code,
+			zoneName: dto.zone_name,
+			notes: dto.notes ?? null
+		};
+	},
+	toCreateDto(value: PreferredBinCandidate): PreferredBinCreateDto {
+		return { item_id: value.itemId, bin_id: value.binId, priority: value.priority };
+	},
+	toUpdateDto(value: { priority: number }): PreferredBinPriorityDto {
+		return { priority: value.priority };
+	}
+};

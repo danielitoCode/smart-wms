@@ -1,5 +1,5 @@
+import type { PreferredBinAssignmentContext, PreferredBinCandidate, PreferredBinListQuery } from '../entity/PreferredBin';
 import type { PreferredBinsRepository } from '../repository/PreferredBinsRepository';
-import type { PreferredBinAssignmentContext, PreferredBinCandidate } from '../entity/PreferredBin';
 import { validatePreferredBinAssignment } from '../entity/PreferredBin';
 
 export type AddPreferredBinInput = PreferredBinCandidate & PreferredBinAssignmentContext;
@@ -7,11 +7,20 @@ export type AddPreferredBinInput = PreferredBinCandidate & PreferredBinAssignmen
 export class ListPreferredBinsUseCase {
 	constructor(private readonly repository: PreferredBinsRepository) {}
 
-	execute(query?: { search?: string; itemId?: number }) {
+	execute(query?: PreferredBinListQuery) {
 		if (query?.itemId != null && (!Number.isInteger(query.itemId) || query.itemId <= 0)) {
 			throw new Error('El producto seleccionado no es válido');
 		}
-		return this.repository.list(query);
+		if (query?.warehouseId != null && (!Number.isInteger(query.warehouseId) || query.warehouseId <= 0)) {
+			throw new Error('El almacén seleccionado no es válido');
+		}
+		if (query?.search != null && query.search.trim().length > 128) {
+			throw new Error('La búsqueda no puede superar 128 caracteres');
+		}
+		return this.repository.list({
+			...query,
+			...(query?.search != null ? { search: query.search.trim() } : {})
+		});
 	}
 }
 

@@ -1,12 +1,12 @@
 /**
  * A preferred picking location assigned to an item.
- * The backend owns the persisted relation ID and re-sequences priorities
- * into a contiguous 1..N ordering after create/update/delete.
+ * Priorities are unique and contiguous per item, as enforced by Flask.
  */
 export type PreferredBin = {
 	preferredBinId: number;
 	itemId: number;
 	binId: number;
+	warehouseId: number;
 	priority: number;
 	updatedAt: string | null;
 	sku?: string | null;
@@ -28,6 +28,12 @@ export type PreferredBinAssignmentContext = {
 	warehouseId: number;
 	binWarehouseId: number;
 	binType: string;
+};
+
+export type PreferredBinListQuery = {
+	search?: string;
+	itemId?: number;
+	warehouseId?: number;
 };
 
 export function validatePreferredBinAssignment(context: PreferredBinAssignmentContext): void {

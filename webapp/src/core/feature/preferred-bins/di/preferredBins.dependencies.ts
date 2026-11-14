@@ -17,3 +17,5 @@ export function createPreferredBinsDependencies() {
 		remove: new RemovePreferredBinUseCase(repository)
 	};
 }
+
+export type PreferredBinsDependencies = ReturnType<typeof createPreferredBinsDependencies>;
