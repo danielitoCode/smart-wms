@@ -1,6 +1,6 @@
 import type { ApiClient } from '../../../../infrastructure/api/ApiClient';
 import type {
-	BinDetailResponseDto, BinDto, BinListResponseDto, MessageDto, OperationalBinLookupDto, OperationalBinSearchResultDto,
+	BinDetailResponseDto, BinDto, BinListResponseDto, MessageDto,
 	WarehouseDetailResponseDto, WarehouseListItemDto, WarehouseListResponseDto,
 	ZoneDto, ZoneListResponseDto
 } from '../dto/WarehouseDto';
@@ -85,11 +85,5 @@ export class WarehouseRemoteDataSource {
 	}
 	getBinById(id: number): Promise<BinDetailResponseDto> {
 		return this.api.get<BinDetailResponseDto>('/api/admin/bins/' + id);
-	}
-	searchOperationalBins(query: string): Promise<OperationalBinSearchResultDto[]> {
-		return this.api.get<OperationalBinSearchResultDto[]>('/api/lookup/bin/search?q=' + encodeURIComponent(query));
-	}
-	lookupOperationalBin(barcode: string): Promise<OperationalBinLookupDto> {
-		return this.api.get<OperationalBinLookupDto>('/api/lookup/bin/' + encodeURIComponent(barcode));
 	}
 }
