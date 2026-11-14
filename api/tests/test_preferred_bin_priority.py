@@ -91,3 +91,31 @@ class TestAdminPriorityResequence:
             headers=auth_headers,
         )
         assert resp.status_code == 404
+
+
+class TestPreferredBinRelationLifecycle:
+    def test_create_rejects_nonexistent_item_with_404(self, client, auth_headers):
+        resp = client.post(
+            "/api/admin/preferred-bins",
+            json={"item_id": 999999, "bin_id": 3, "priority": 1},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 404
+        assert resp.get_json()["error"] == "Item not found"
+
+    def test_delete_existing_relation_removes_only_that_relation(self, client, auth_headers):
+        assert _post(client, auth_headers, 3, 1).status_code in (200, 201)
+        relation_id = _pbid(1, 3)
+        resp = client.delete(
+            f"/api/admin/preferred-bins/{relation_id}",
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        assert _pbid(1, 3) is None
+
+    def test_delete_missing_relation_returns_404(self, client, auth_headers):
+        resp = client.delete(
+            "/api/admin/preferred-bins/999999",
+            headers=auth_headers,
+        )
+        assert resp.status_code == 404
