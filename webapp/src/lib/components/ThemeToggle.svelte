@@ -64,8 +64,8 @@
 	}
 
 	.theme-switch {
-		/* Compact for app topbar; bump --toggle-size to scale the whole control */
-		--toggle-size: 18px;
+		/* Compact for app topbar (~79×35px) to match locale/warehouse controls */
+		--toggle-size: 14px;
 		--container-width: 5.625em;
 		--container-height: 2.5em;
 		--container-radius: 6.25em;
@@ -277,7 +277,7 @@
 
 	.theme-switch:focus-within .theme-switch__container {
 		outline: 2px solid var(--gold, #c9a227);
-		outline-offset: 3px;
+		outline-offset: 2px;
 	}
 
 	@media (prefers-reduced-motion: reduce) {
