@@ -36,12 +36,13 @@ describe('WarehouseDetailScreen zones workspace', () => {
 		expect(body).toContain('Eliminar');
 	});
 
-	it('does not render a zone-to-bin filter action when the bins feature is unavailable', () => {
+	it('links each zone to the bins workspace using its zone_id', () => {
 		const i18n = { t: (message: string) => message };
 		const { body } = render(WarehouseDetailScreen, {
 			props: { warehouseId: 1, showZones: true, showBins: false, includeBins: false },
 			context: new Map<string, any>([['i18n', i18n]])
 		});
-		expect(body).not.toContain('>Ubicaciones</button>');
+		expect(body).toContain('href="/data/bins?zone_id=11"');
+		expect(body).toContain('Ver ubicaciones');
 	});
 });
