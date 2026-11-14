@@ -36,7 +36,7 @@ describe('warehouse selection state for zone workflows', () => {
 		expect(state.warehouses.map(item => item.id)).toEqual([1, 2]);
 	});
 
-	it('synchronizes the authenticated user after initial load without loading the catalogue twice', async () => {
+	it('preserves the selected warehouse when synchronizing the authenticated user without reloading the catalogue', async () => {
 		const state = createWarehouseSelectionState();
 		const user = {
 			userId: 4, username: 'zone-user', fullName: 'Zone User', role: 'USER',
@@ -48,7 +48,7 @@ describe('warehouse selection state for zone workflows', () => {
 
 		await state.syncFromUser(user);
 
-		expect(dependencies.listAdminWarehouses.execute).toHaveBeenCalledTimes(1);
+		expect(dependencies.listAdminWarehouses.execute).not.toHaveBeenCalled();
 		expect(state.warehouseId).toBe(2);
 		expect(state.selectableIds).toEqual([1, 2]);
 	});
