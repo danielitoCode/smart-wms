@@ -47,7 +47,7 @@ def pending_putaway(warehouse_id):
                    COALESCE(preferred.bin_id, default_bin.bin_id) AS suggested_bin_id,
                    preferred.priority AS suggested_bin_priority,
                    COALESCE(preferred.bin_barcode, default_bin.bin_barcode) AS suggested_bin_barcode,
-                   COALESCE(preferred.zone_name, default_bin.zone_name) AS suggested_bin_zone
+                   COALESCE(preferred.zone_name, default_zone.zone_name) AS suggested_bin_zone
             FROM inventory inv
             JOIN items i ON i.item_id = inv.item_id
             JOIN bins b ON b.bin_id = inv.bin_id
