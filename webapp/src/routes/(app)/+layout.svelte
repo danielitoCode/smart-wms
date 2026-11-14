@@ -213,10 +213,42 @@
 	.brand strong { display: block; font-size: 0.95rem; }
 	.brand small { color: var(--slate); }
 	.group-label { margin: 0.85rem 0.5rem 0.35rem; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--slate); }
-	.main-nav { overflow: visible; } .main-nav ul { list-style: none; margin: 0; padding: 0; overflow: visible; } .main-nav li { position: relative; }
-	.nav-link { display: flex; align-items: center; gap: 0.55rem; padding: 0.45rem 0.55rem; border-radius: 0.55rem; color: var(--ink); text-decoration: none; font-size: 0.9rem; }
+	.main-nav { overflow: visible; }
+	.main-nav ul { list-style: none; margin: 0; padding: 0; overflow: visible; }
+	.main-nav li { position: relative; }
+	.nav-link {
+		display: flex;
+		align-items: center;
+		gap: 0.55rem;
+		padding: 0.45rem 0.55rem;
+		border-radius: 0.55rem;
+		color: var(--ink);
+		text-decoration: none;
+		font-size: 0.9rem;
+		transition: filter 0.3s ease, transform 0.3s ease, background 0.2s ease, opacity 0.3s ease;
+		will-change: filter, transform;
+	}
 	.nav-link:hover { background: color-mix(in oklab, var(--navy) 8%, transparent); }
 	.nav-link.active { background: color-mix(in oklab, var(--navy) 14%, transparent); font-weight: 600; }
+	/* Efecto: al hover en un ítem, el resto se difumina y reduce (estilo barra demo) */
+	.main-nav:hover .nav-link:not(:hover) {
+		filter: blur(1px);
+		transform: scale(0.95);
+		opacity: 0.72;
+	}
+	.main-nav:hover .nav-link:hover {
+		filter: none;
+		transform: scale(1);
+		opacity: 1;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.nav-link { transition: background 0.2s ease; }
+		.main-nav:hover .nav-link:not(:hover) {
+			filter: none;
+			transform: none;
+			opacity: 0.85;
+		}
+	}
 	.main { min-width: 0; display: flex; flex-direction: column; position: relative; z-index: 1; }
 	.topbar { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; min-height: 3.25rem; padding: 0.55rem 1rem; border-bottom: 1px solid var(--line); background: var(--surface); position: relative; z-index: 30; }
 	.topbar-actions { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
