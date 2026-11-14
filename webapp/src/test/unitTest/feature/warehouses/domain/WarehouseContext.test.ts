@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
 	assertWarehouseAuthorized,
+	canSelectWarehouseContext,
 	authorizedWarehouseIds,
 	resolveActiveWarehouseId
 } from '../../../../../core/feature/warehouses/domain/context/WarehouseContext';
@@ -56,6 +57,18 @@ describe('WarehouseContext F0.3 / P-06..P-11', () => {
 	it('P-11 discards persisted 99 when assignment is [4,8]', () => {
 		const next = resolveActiveWarehouseId({ authorizedIds: [4, 8], savedId: 99 });
 		expect(next).toBe(4);
+	});
+
+	it('zones-only users can switch among assigned warehouses, never another tenant', () => {
+		const authority = { role: 'USER', assignedWarehouseIds: [2, 5], allowedPages: ['zones'] };
+		expect(canSelectWarehouseContext(authority)).toBe(true);
+		expect(authorizedWarehouseIds(authority, [1, 2, 3, 5])).toEqual([2, 5]);
+		expect(() => assertWarehouseAuthorized(authority, 3, [1, 2, 3, 5])).toThrow(/not authorized/i);
+		expect(() => assertWarehouseAuthorized(authority, 5, [1, 2, 3, 5])).not.toThrow();
+	});
+
+	it('unrelated page grants do not enable warehouse selection', () => {
+		expect(canSelectWarehouseContext({ role: 'USER', assignedWarehouseIds: [2], allowedPages: ['items'] })).toBe(false);
 	});
 
 	it('P-11 keeps valid saved id', () => {
