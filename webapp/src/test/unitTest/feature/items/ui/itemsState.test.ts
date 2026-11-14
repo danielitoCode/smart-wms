@@ -68,9 +68,9 @@ describe('Items UI state', () => {
 	});
 
 	it.each([
-		['active', true],
-		['archived', false],
-		['all', undefined]
+		['active'],
+		['archived'],
+		['all']
 	] as const)('passes the %s filter into the list query', async (filter) => {
 		const state = createItemsState(dependencies);
 		state.setFilter(filter);
