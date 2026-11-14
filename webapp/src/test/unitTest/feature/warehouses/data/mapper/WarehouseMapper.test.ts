@@ -44,4 +44,20 @@ describe('WarehouseMapper', () => {
 		expect(detail.occupancy).toEqual({ quantityOnHand: 10, quantityAllocated: 2, quantityAvailable: 8, inventoryLines: 1 });
 		expect(() => WarehouseMapper.toWarehouse({ warehouse_id: 0, warehouse_code: 'X', warehouse_name: 'Bad' })).toThrow(/warehouse id/);
 	});
+	it('maps operational search and barcode lookup projections without mixing them with admin detail', () => {
+		const search = WarehouseMapper.toOperationalBinSearchResult({
+			bin_id: 3, warehouse_id: 1, bin_code: 'A-01-01', bin_barcode: 'BC-01',
+			bin_type: 'Pickable', zone_name: 'Picking', aisle: 'A', row_num: 1, level_num: 2
+		});
+		expect(search).toEqual({
+			id: 3, warehouseId: 1, code: 'A-01-01', barcode: 'BC-01',
+			binType: 'Pickable', zoneName: 'Picking', aisle: 'A', rowNumber: 1, levelNumber: 2
+		});
+		const lookup = WarehouseMapper.toOperationalBinLookup({
+			bin: { bin_id: 3, warehouse_id: 1, bin_code: 'A-01-01', bin_barcode: 'BC-01', bin_type: 'Pickable', zone_name: 'Picking', aisle: 'A', row_num: 1, level_num: 2 },
+			items: [{ item_id: 9, sku: 'SKU-9', item_name: 'Item 9', upc: null, quantity_on_hand: 5, quantity_allocated: 1, quantity_available: 4, lot_number: null }]
+		});
+		expect(lookup.items[0]).toEqual({ itemId: 9, sku: 'SKU-9', itemName: 'Item 9', upc: null, quantityOnHand: 5, quantityAllocated: 1, quantityAvailable: 4, lotNumber: null });
+	});
+
 });
