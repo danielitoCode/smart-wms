@@ -13,10 +13,12 @@ describe('Items HTTP integration', () => {
 			per_page: 25,
 			pages: 5
 		};
-		const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(responseBody), {
-			status: 200,
-			headers: { 'Content-Type': 'application/json' }
-		}));
+		const fetchMock = vi.fn().mockImplementation(() =>
+			Promise.resolve(new Response(JSON.stringify(responseBody), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' }
+			}))
+		);
 		vi.stubGlobal('fetch', fetchMock);
 
 		const source = new ItemRemoteDataSource(new ApiClient('https://wms.test'));
