@@ -136,11 +136,10 @@ La migración se ejecutará en incrementos verticales pequeños. Cada incremento
 ```text
 Base transversal
    |
-   +--> Catálogos: Items + Vendors + Warehouses/Zones/Bins
+   +--> Catálogos: Items + Vendors + Warehouses/Zones/Bins + Preferred Bins
    |        |
-   |        +--> Purchase Orders --> Receiving --> Putaway
-   |        |                              |          |
-   |        |                              |          +--> Preferred Bins
+   |        +--> Purchase Orders --> Receiving --> Putaway (consume Preferred Bins)
+   |        |                              |
    |        |                              +--> Inbound Activity
    |        |
    |        +--> Inventory --> Adjustments
@@ -149,7 +148,7 @@ Base transversal
    |
    +--> Sales Orders --> Backorders
    |        |
-   |        +--> Picking Tickets --> Picking Batches
+   |        +--> Picking Tickets --> Picking Batches (consume Preferred Bins)
    |        |
    |        +--> Returns / RMA --> Refunds
    |
@@ -358,6 +357,24 @@ Dependencias: F1.3 Warehouses y F1.4 Zones.
 - [x] **CI Flask:** [run 43625127240](https://github.com/danielitoCode/smart-wms/actions/runs/43625127240), commit `ce1034fb`: **3043 tests passed**; incluye la nueva prueba de restricción por Preferred Bins. El commit posterior `4919805c` solo añadió cambios Svelte/i18n.
 - [~] **Cobertura:** el paso no bloqueante `test:coverage:feature` no generó reporte porque falta `@vitest/coverage-v8` en las dependencias de Webapp. La regresión completa sí pasó; queda como deuda de configuración transversal, no como bloqueo funcional de F1.5.
 
+#### F1.6 Preferred Bins / Ubicaciones preferidas — Completa
+
+Dependencias: F1.1 Items, F1.3 Warehouses y F1.5 Bins. Consumidores operativos: Picking y Putaway.
+
+- [x] **Domain:** relación `item_id`–`bin_id` con identidad canónica `preferred_bin_id`, almacén de la ubicación y prioridad. Validación de IDs, prioridad entera 1–100, pertenencia al almacén y tipo `Pickable`.
+- [x] **Application:** List con búsqueda por SKU/nombre y filtro de almacén; ListCatalog; Add; UpdatePriority; Remove. La lista mantiene el orden de prioridad y la jerarquía contigua se resuelve en backend.
+- [x] **Infrastructure / contrato Flask:** GET `/api/admin/preferred-bins`; GET `/api/admin/preferred-bins/catalog?warehouse_id=&q=&page=&per_page=`; POST `/api/admin/preferred-bins`; PUT/DELETE `/api/admin/preferred-bins/{preferred_bin_id}`. DTO y mapper conservan `preferred_bin_id`, `item_id`, `bin_id`, `warehouse_id`, prioridad y proyección de producto/ubicación.
+- [x] **Catálogo y permisos:** la pantalla obtiene almacenes autorizados y bins Pickable activos mediante el endpoint propio de Preferred Bins; no depende de permisos adicionales `warehouses` o `bins`. Listado y catálogo aplican `warehouse_scope_clause`; las mutaciones verifican el almacén del bin. Como la prioridad es global por producto, un usuario no administrador no puede resecuenciar si existen relaciones del mismo producto en almacenes fuera de su alcance. Se aplica la misma protección al flujo móvil de Putaway.
+- [x] **UI:** listado global, búsqueda por SKU/nombre, filtro por almacén autorizado, exportación CSV, búsqueda de producto, selector de almacén/bin Pickable, alta, edición de prioridad y eliminación con errores visibles. La ruta `/data/preferred-bins` está protegida por el page key `preferred-bins` y forma parte de la navegación y del aterrizaje para usuarios con ese único permiso.
+- [x] **Picking:** las ubicaciones preferidas ordenan el inventario disponible antes de `pick_sequence`, sin saltar disponibilidad ni el almacén activo. Solo una relación válida con bin `Pickable` aporta prioridad; una relación legacy con `PickableStaging` no desplaza a una ubicación Pickable válida.
+- [x] **Putaway:** las sugerencias usan solo Preferred Bins activos de tipo `Pickable` dentro del almacén de destino; si no hay uno válido, usan el bin por defecto solo si también es Pickable y activo. Relaciones legacy inactivas, de staging o de otro almacén no se convierten en destino sugerido. Se conserva la validación de almacén al confirmar.
+- [x] **Pruebas Flask:** permisos `preferred-bins`; catálogo limitado a almacenes asignados; 403 para almacén no asignado; 404 para relaciones fuera de alcance; prevención de resecuenciación global fuera de alcance; límites de prioridad y paginación; restricciones de tipo; Picking con múltiples prioridades, stock insuficiente y almacenes distintos; Putaway con Preferred Bin foreign/inactivo/staging y fallback al bin por defecto.
+- [x] **Pruebas Svelte:** Domain/Application, mapper, datasource, repository, contrato HTTP real con `ApiClient`, catálogo de almacenes/bins, estado de búsqueda/filtro/alta, renderizado SSR y autorización/navegación de ruta.
+- [x] **CI Webapp:** [run 43628306920](https://github.com/danielitoCode/smart-wms/actions/runs/43628306920), commit `9b482f5a`: typecheck, build, Domain, Application, Infrastructure, UI, i18n, Integration y regresión completa aprobados; **87 archivos de pruebas**.
+- [x] **CI Flask:** [run 43627919666](https://github.com/danielitoCode/smart-wms/actions/runs/43627919666), commit `5dc06ec2`: **3057 tests passed**. El commit posterior `9b482f5a` solo modificó navegación/política de ruta y pruebas de frontend; no cambió backend.
+- [~] **Cobertura:** el job opcional no generó reporte porque falta `@vitest/coverage-v8`; no bloqueó typecheck, build ni las suites de regresión aprobadas.
+
+
 ### Fase 2 — Inventario, ajustes y conteos
 
 **Objetivo:** garantizar una visión fiable de existencias y sus correcciones controladas.
@@ -446,16 +463,9 @@ Dependencias: F3.2, F1.3, F2.1.
 - [ ] Tests: movimientos, cantidades, estados, contrato y UI.
 - [ ] Integración: comprobar decremento/aumento en ubicaciones correctas.
 
-#### F3.4 Preferred Bins — Placeholder
+#### F3.4 Preferred Bins — Absorbida en F1.6
 
-Dependencias: F1.1, F1.3, F2.1.
-
-- [ ] Dominio: preferencia producto–ubicación, prioridad y estado.
-- [ ] Aplicación: consultar, asignar, modificar prioridad, eliminar y exportar si el backend lo permite.
-- [ ] Infraestructura: confirmar endpoints y reglas de unicidad.
-- [ ] UI: sustituir placeholder por gestión funcional, búsqueda de producto/ubicación y orden de prioridad.
-- [ ] Tests: prioridad, duplicados, asignación, eliminación, contrato y UI.
-- [ ] Paridad: comparar React PreferredBins.
+La gestión del catálogo Preferred Bins se reclasificó como F1.6 porque depende de Items, Warehouses y Bins y constituye un catálogo maestro. No queda una implementación separada en Fase 3. La integración con Picking y Putaway se valida como regresión cruzada en F1.6; los features completos de Picking y Putaway conservan su propio alcance en sus fases.
 
 #### F3.5 Inbound Activity — Ausente
 
@@ -756,6 +766,7 @@ Dependencias: F4.1, F7.1 y Settings de revisión.
 | F1.3 | Warehouses | Completo | 1 | Base |
 | F1.4 | Zones | Completo | 1 | Warehouses |
 | F1.5 | Bins | Completo | 1 | Warehouses, Zones |
+| F1.6 | Preferred Bins | Parcial | 1 | Items, Warehouses, Bins |
 | F2.1 | Inventory | Parcial | 2 | Items, ubicaciones |
 | F2.2 | Inventory Adjustments | Ausente | 2 | Inventory, Items, ubicaciones |
 | F2.3 | Cycle Counts | Parcial | 2 | Inventory, ubicaciones |
@@ -763,7 +774,7 @@ Dependencias: F4.1, F7.1 y Settings de revisión.
 | F3.1 | Purchase Orders | Ausente | 3 | Items, Vendors, almacenes |
 | F3.2 | Receiving | Parcial | 3 | Purchase Orders, Items, ubicaciones |
 | F3.3 | Putaway | Parcial | 3 | Receiving, Inventory, ubicaciones |
-| F3.4 | Preferred Bins | Placeholder | 3 | Items, Inventory, ubicaciones |
+| F3.4 | Preferred Bins | Absorbida en F1.6 | — | F1.6 |
 | F3.5 | Inbound Activity | Ausente | 3 | Receiving, Integrations |
 | F4.1 | Sales Orders | Ausente | 4 | Items, almacenes |
 | F4.2 | Backorders | Ausente | 4 | Sales Orders, Inventory |
@@ -868,6 +879,7 @@ Actualizar esta sección al cerrar cada PR/feature. Mantener una única fuente d
 | F1.3 Warehouses | [x] | [x] | [x] | [x] | [x] | [x] | Completa |
 | F1.4 Zones | [x] | [x] | [x] | [x] | [x] | [x] | Completa |
 | F1.5 Bins | [x] | [x] | [x] | [x] | [x] | [x] | Completa |
+| F1.6 Preferred Bins | [x] | [x] | [x] | [x] | [x] | [x] | Completa |
 | F2.1 Inventory | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
 | F2.2 Adjustments | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
 | F2.3 Cycle Counts | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
@@ -875,7 +887,7 @@ Actualizar esta sección al cerrar cada PR/feature. Mantener una única fuente d
 | F3.1 Purchase Orders | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
 | F3.2 Receiving | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
 | F3.3 Putaway | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
-| F3.4 Preferred Bins | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
+| F3.4 Preferred Bins | — | — | — | — | — | — | Absorbida en F1.6 |
 | F3.5 Inbound Activity | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
 | F4.1 Sales Orders | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
 | F4.2 Backorders | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
