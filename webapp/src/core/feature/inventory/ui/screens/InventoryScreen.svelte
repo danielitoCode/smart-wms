@@ -17,10 +17,11 @@
 
 	const sortedItems = $derived.by(() => {
 		const rows = [...vm.items];
-		if (!sortKey) return rows;
+		const key = sortKey;
+		if (key === null) return rows;
 		return rows.sort((left, right) => {
-			const a = left[sortKey];
-			const b = right[sortKey];
+			const a = left[key];
+			const b = right[key];
 			const comparison = typeof a === 'number' && typeof b === 'number'
 				? a - b
 				: String(a ?? '').localeCompare(String(b ?? ''), undefined, { numeric: true });

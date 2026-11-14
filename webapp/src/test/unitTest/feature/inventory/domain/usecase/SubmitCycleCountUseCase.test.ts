@@ -5,6 +5,7 @@ import type { InventoryRepository } from '../../../../../../core/feature/invento
 function createRepo(overrides: Partial<InventoryRepository> = {}): InventoryRepository {
 	return {
 		getOverview: vi.fn(),
+		getItemInventory: vi.fn(),
 		createCycleCounts: vi.fn(),
 		getCycleCount: vi.fn(),
 		submitCycleCount: vi.fn(),

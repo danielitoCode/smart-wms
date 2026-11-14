@@ -6,6 +6,7 @@ import type { CycleCountSummary } from '../../../../../../core/feature/inventory
 function createRepo(overrides: Partial<InventoryRepository> = {}): InventoryRepository {
 	return {
 		getOverview: vi.fn(),
+		getItemInventory: vi.fn(),
 		createCycleCounts: vi.fn(),
 		getCycleCount: vi.fn(),
 		submitCycleCount: vi.fn(),
