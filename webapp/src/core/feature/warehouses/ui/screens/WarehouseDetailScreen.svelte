@@ -3,11 +3,14 @@
 	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
 	import { createWarehouseDetailState } from '../state/warehouseDetailState.svelte';
 	import type { Bin, BinType, Zone, ZoneType } from '../../domain/entity/Warehouse';
+	import { authSession } from '../../../../infrastructure/auth/AuthSession';
 
 	const i18n = getContext<I18nState>('i18n');
 	let { warehouseId, showZones = true, showBins = true, includeBins = true, initialZoneId = null, backHref = '/warehouses' }: { warehouseId: number; showZones?: boolean; showBins?: boolean; includeBins?: boolean; initialZoneId?: number | null; backHref?: string } = $props();
 	// svelte-ignore state_referenced_locally
 	const vm = createWarehouseDetailState(warehouseId, includeBins);
+	const currentUser = authSession.getUser();
+	const canViewBins = currentUser?.role === 'ADMIN' || (currentUser?.allowedPages ?? []).includes('bins');
 
 	type ZoneForm = { code: string; name: string; zoneType: ZoneType; active: boolean };
 	type BinForm = { zoneId: number | null; code: string; barcode: string; binType: BinType; aisle: string; pickSequence: number; active: boolean };
@@ -107,7 +110,7 @@
 			{#if vm.zones.length === 0}<p class="status">{i18n.t('Sin zonas.')}</p>
 			{:else}<div class="table-wrap"><table><thead><tr><th>{i18n.t('Código')}</th><th>{i18n.t('Nombre')}</th><th>{i18n.t('Tipo')}</th><th>{i18n.t('Ubicaciones asociadas')}</th><th>{i18n.t('Estado')}</th><th>{i18n.t('Acciones')}</th></tr></thead><tbody>
 				{#each vm.zones as zone (zone.id)}<tr class:selected={vm.selectedZoneId === zone.id}><td class="mono">{zone.code}</td><td>{zone.name}</td><td>{zoneTypeLabel(zone.zoneType)}</td><td>{zone.binsCount ?? 0}</td><td>{zone.active ? i18n.t('Activo') : i18n.t('Inactivo')}</td>
-					<td class="actions"><a class="quiet" href={'/data/bins?zone_id=' + zone.id}>{i18n.t('Ver ubicaciones')}</a><button class="quiet" type="button" onclick={() => openEditZone(zone)}>{i18n.t('Editar')}</button><button class="danger" type="button" onclick={() => deleteZoneTarget = zone}>{i18n.t('Eliminar')}</button></td></tr>{/each}
+					<td class="actions">{#if canViewBins}<a class="quiet" href={'/data/bins?zone_id=' + zone.id}>{i18n.t('Ver ubicaciones')}</a>{/if}<button class="quiet" type="button" onclick={() => openEditZone(zone)}>{i18n.t('Editar')}</button><button class="danger" type="button" onclick={() => deleteZoneTarget = zone}>{i18n.t('Eliminar')}</button></td></tr>{/each}
 			</tbody></table></div>
 			{/if}
 		</section>{/if}
