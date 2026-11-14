@@ -82,7 +82,7 @@ export function createInventoryOverviewState() {
 		if (Object.prototype.hasOwnProperty.call(overrides, 'warehouseId')) {
 			warehouseId = overrides.warehouseId;
 		} else if (warehouseSelection?.warehouseId != null) {
-			warehouseId = warehouseSelection.warehouseId;
+			warehouseId = warehouseSelection.warehouseId ?? undefined;
 		}
 		if (overrides.page !== undefined) page = overrides.page;
 

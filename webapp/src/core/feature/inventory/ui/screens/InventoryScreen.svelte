@@ -43,9 +43,10 @@
 		if (generation !== lastGeneration) {
 			lastGeneration = generation;
 			vm.invalidate();
-			warehouseInput = vm.warehouseId == null ? '' : String(vm.warehouseId);
 			binInput = '';
-			void vm.load();
+			void vm.load().then(() => {
+				warehouseInput = vm.warehouseId == null ? '' : String(vm.warehouseId);
+			});
 		}
 	});
 
