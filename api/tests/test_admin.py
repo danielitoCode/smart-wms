@@ -304,6 +304,61 @@ class TestZones:
 # ── Bins ──────────────────────────────────────────────────────────────────────
 
 class TestBins:
+    def test_admin_bin_catalogue_detail_and_mutations_are_warehouse_scoped(self, client):
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO warehouses (warehouse_code, warehouse_name) VALUES ('ADMIN-BIN-SCOPE', 'Admin Bin Scope') RETURNING warehouse_id"
+        )
+        other_id = cur.fetchone()[0]
+        cur.execute(
+            "INSERT INTO zones (warehouse_id, zone_code, zone_name, zone_type) VALUES (%s, 'SCOPE', 'Scope zone', 'STORAGE') RETURNING zone_id",
+            (other_id,),
+        )
+        zone_id = cur.fetchone()[0]
+        cur.execute(
+            """INSERT INTO bins (zone_id, warehouse_id, bin_code, bin_barcode, bin_type, external_id)
+               VALUES (%s, %s, 'OUTSIDE-BIN', 'OUTSIDE-BIN', 'Pickable', gen_random_uuid()) RETURNING bin_id""",
+            (zone_id, other_id),
+        )
+        bin_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+
+        _, headers = _web_user_with_pages(client, ["bins"], username="admin_bin_scope_user")
+        listed = client.get("/api/admin/bins", headers=headers)
+        assert listed.status_code == 200
+        assert all(row["warehouse_id"] == 1 for row in listed.get_json()["bins"])
+
+        filtered = client.get(f"/api/admin/bins?warehouse_id={other_id}", headers=headers)
+        assert filtered.status_code == 200
+        assert filtered.get_json()["total"] == 0
+
+        assert client.get(f"/api/admin/bins/{bin_id}", headers=headers).status_code == 404
+        assert client.put(f"/api/admin/bins/{bin_id}", json={"bin_code": "CHANGED"}, headers=headers).status_code == 404
+        assert client.delete(f"/api/admin/bins/{bin_id}", headers=headers).status_code == 404
+
+    def test_admin_bin_creation_requires_assigned_warehouse(self, client):
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO warehouses (warehouse_code, warehouse_name) VALUES ('ADMIN-BIN-CREATE-SCOPE', 'Admin Bin Create Scope') RETURNING warehouse_id"
+        )
+        other_id = cur.fetchone()[0]
+        cur.execute(
+            "INSERT INTO zones (warehouse_id, zone_code, zone_name, zone_type) VALUES (%s, 'SCOPE', 'Scope zone', 'STORAGE') RETURNING zone_id",
+            (other_id,),
+        )
+        zone_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+
+        _, headers = _web_user_with_pages(client, ["bins"], username="admin_bin_create_scope_user")
+        response = client.post("/api/admin/bins", json={
+            "zone_id": zone_id, "warehouse_id": other_id, "bin_code": "OUTSIDE-CREATE",
+            "bin_barcode": "OUTSIDE-CREATE", "bin_type": "Pickable"
+        }, headers=headers)
+        assert response.status_code == 403
 
     def test_operational_bin_search_applies_warehouse_scope_before_limit(self, client):
         conn = get_raw_connection()
