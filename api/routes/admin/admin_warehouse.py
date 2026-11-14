@@ -496,8 +496,9 @@ def create_bin(validated):
     if dup:
         return jsonify({"error": f"Duplicate bin_code '{data['bin_code']}' in warehouse {data['warehouse_id']}"}), 400
 
-    result = g.db.execute(
-        text("""
+    try:
+        result = g.db.execute(
+            text("""
             INSERT INTO bins (zone_id, warehouse_id, bin_code, bin_barcode, bin_type, aisle, row_num, level_num, position_num, pick_sequence, putaway_sequence, max_weight_lbs, max_volume_cuft, external_id)
             VALUES (:zone_id, :wid, :code, :barcode, :type, :aisle, :row, :level, :pos, :pick_seq, :put_seq, :max_weight, :max_volume, :ext_id)
             RETURNING bin_id, zone_id, warehouse_id, bin_code, bin_barcode, bin_type, aisle, row_num, level_num, position_num, pick_sequence, putaway_sequence, max_weight_lbs, max_volume_cuft, is_active
@@ -511,8 +512,11 @@ def create_bin(validated):
             "ext_id": str(uuid.uuid4()),
         },
     )
-    row = result.fetchone()
-    g.db.commit()
+        row = result.fetchone()
+        g.db.commit()
+    except IntegrityError:
+        g.db.rollback()
+        return jsonify({"error": f"Duplicate bin_code '{data['bin_code']}' in warehouse {data['warehouse_id']}"}), 400
     return jsonify({
         "bin_id": row.bin_id, "zone_id": row.zone_id, "warehouse_id": row.warehouse_id,
         "bin_code": row.bin_code, "bin_barcode": row.bin_barcode, "bin_type": row.bin_type,
