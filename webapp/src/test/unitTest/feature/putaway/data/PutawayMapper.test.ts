@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PutawayMapper } from '../../../../../../core/feature/putaway/data/mapper/PutawayMapper';
+import { PutawayMapper } from '../../../../../core/feature/putaway/data/mapper/PutawayMapper';
 
 describe('PutawayMapper', () => {
 	it('preserves the suggested bin returned by the pending endpoint', () => {
