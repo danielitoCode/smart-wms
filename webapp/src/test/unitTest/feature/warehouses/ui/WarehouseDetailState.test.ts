@@ -75,4 +75,33 @@ describe('WarehouseDetailState zone and bins interactions', () => {
 		expect(state.error).toContain('does not belong');
 		expect(deps.updateZone.execute).not.toHaveBeenCalled();
 	});
+	it('searches bins within the active warehouse and selected zone', async () => {
+		const state = createWarehouseDetailState(1, true);
+		await state.load(11);
+		await state.searchBins(' A-01 ');
+		expect(deps.listBins.execute).toHaveBeenLastCalledWith({
+			warehouseId: 1, zoneId: 11, page: 1, perPage: 50, q: 'A-01'
+		});
+	});
+
+	it('creates a bin with the active warehouse and optional capacity', async () => {
+		const state = createWarehouseDetailState(1, true);
+		await state.load(11);
+		await state.createBin({
+			zoneId: 11, code: 'A-02', barcode: 'BC-02', binType: 'Pickable',
+			maxWeightLbs: 120.5, maxVolumeCuft: 18
+		});
+		expect(deps.createBin.execute).toHaveBeenCalledWith(expect.objectContaining({
+			warehouseId: 1, zoneId: 11, code: 'A-02', maxWeightLbs: 120.5, maxVolumeCuft: 18
+		}));
+	});
+
+	it('keeps stock and preferred-bin deletion conflicts visible', async () => {
+		deps.deleteBin.execute.mockRejectedValueOnce(new Error('Bin cannot be deleted because inventory remains'));
+		const state = createWarehouseDetailState(1, true);
+		await state.load();
+		expect(await state.removeBin(3)).toBe(false);
+		expect(state.error).toContain('inventory remains');
+	});
+
 });
