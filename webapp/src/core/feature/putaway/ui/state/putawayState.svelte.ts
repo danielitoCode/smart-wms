@@ -32,7 +32,11 @@ export function createPutawayState() {
 		lastResult = null;
 		try {
 			items = await deps.listPending.execute(warehouseId);
-			toBinByKey = {};
+			toBinByKey = Object.fromEntries(
+				items
+					.filter((item) => item.suggestedBin != null)
+					.map((item) => [keyOf(item), String(item.suggestedBin!.binId)])
+			);
 			loadedOnce = true;
 			return true;
 		} catch (err) {
