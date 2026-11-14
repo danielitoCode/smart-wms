@@ -35,6 +35,29 @@ describe('PutawayMapper', () => {
 		});
 	});
 
+	it('maps preferred-bin priority and keeps the suggested bin distinct', () => {
+		const suggestion = PutawayMapper.toSuggestion({
+			item_id: 4,
+			sku: 'SKU-004',
+			item_name: 'Test item',
+			preferred_bin: {
+				bin_id: 9,
+				bin_code: 'PICK-04',
+				bin_barcode: 'PICK-04-BC',
+				zone_name: 'Pick Zone',
+				priority: 1
+			},
+			suggested_bin: {
+				bin_id: 9,
+				bin_code: 'PICK-04',
+				priority: 1
+			}
+		});
+
+		expect(suggestion.preferredBin?.priority).toBe(1);
+		expect(suggestion.suggestedBin?.binCode).toBe('PICK-04');
+	});
+
 	it('normalizes a missing suggested bin to null', () => {
 		const item = PutawayMapper.toPending({
 			inventory_id: 18,
