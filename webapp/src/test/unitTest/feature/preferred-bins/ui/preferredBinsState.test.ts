@@ -58,6 +58,23 @@ describe('Preferred Bins UI state', () => {
 		});
 	});
 
+	it('discards an in-flight bin search when the selected warehouse is cleared', async () => {
+		const state = createPreferredBinsState(dependencies as never);
+		await state.loadCatalogs();
+		let resolveBins!: (value: { warehouses: never[]; bins: Array<{ id: number; warehouseId: number; zoneId: number; zoneName: string; code: string; barcode: null; binType: 'Pickable'; active: true }>; total: number; page: number; perPage: number; pages: number }) => void;
+		dependencies.preferred.catalog.execute.mockImplementationOnce(() => new Promise(resolve => { resolveBins = resolve; }));
+		const pending = state.chooseWarehouse(3);
+		await state.chooseWarehouse(null);
+		resolveBins({
+			warehouses: [],
+			bins: [{ id: 99, warehouseId: 3, zoneId: 8, zoneName: 'Picking', code: 'STALE', barcode: null, binType: 'Pickable', active: true }],
+			total: 1, page: 1, perPage: 1000, pages: 1
+		});
+		await pending;
+		expect(state.binOptions).toEqual([]);
+		expect(state.loadingBins).toBe(false);
+	});
+
 	it('adds a relation with warehouse and bin-type context, then reloads the list', async () => {
 		const state = createPreferredBinsState(dependencies as never);
 		await state.loadCatalogs();

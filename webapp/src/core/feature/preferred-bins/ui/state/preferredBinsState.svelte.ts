@@ -145,6 +145,9 @@ export function createPreferredBinsState(dependencies: StateDependencies = defau
 	}
 
 	async function chooseWarehouse(id: number | null) {
+		// Invalidate an in-flight search before clearing the previous warehouse.
+		binSearchRequest += 1;
+		loadingBins = false;
 		selectedWarehouseId = id;
 		selectedBinId = null;
 		binOptions = [];
