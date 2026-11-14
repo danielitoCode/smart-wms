@@ -5,6 +5,7 @@ import uuid
 
 from flask import g, jsonify, request
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 
 from constants import ACTION_TRANSFER
 from middleware.auth_middleware import check_warehouse_access, require_admin_or_page_permission, require_auth, warehouse_scope_clause
@@ -183,14 +184,19 @@ def delete_warehouse(warehouse_id):
 @require_admin_or_page_permission("zones")
 @with_db
 def list_zones():
-    page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 50, type=int)
+    try:
+        page = int(request.args.get("page", "1"))
+        per_page = int(request.args.get("per_page", "50"))
+        warehouse_arg = request.args.get("warehouse_id")
+        warehouse_id = int(warehouse_arg) if warehouse_arg is not None else None
+    except (TypeError, ValueError):
+        return jsonify({"error": "page, per_page and warehouse_id must be integers"}), 400
     if page < 1:
         return jsonify({"error": "page must be a positive integer"}), 400
     if per_page < 1 or per_page > 1000:
         return jsonify({"error": "per_page must be between 1 and 1000"}), 400
-
-    warehouse_id = request.args.get("warehouse_id", type=int)
+    if warehouse_id is not None and warehouse_id <= 0:
+        return jsonify({"error": "warehouse_id must be a positive integer"}), 400
     if warehouse_id is not None:
         allowed, denial = check_warehouse_access(warehouse_id)
         if not allowed:
@@ -298,8 +304,16 @@ def update_zone(zone_id, validated):
     if not fields:
         return jsonify({"error": "No valid fields provided"}), 400
 
-    g.db.execute(text(f"UPDATE zones SET {', '.join(fields)} WHERE zone_id = :zid"), params)
-    g.db.commit()
+    try:
+        g.db.execute(text(f"UPDATE zones SET {', '.join(fields)} WHERE zone_id = :zid"), params)
+        g.db.commit()
+    except IntegrityError:
+        g.db.rollback()
+        if "zone_code" in data:
+            return jsonify({
+                "error": f"Duplicate zone_code '{data['zone_code']}' in warehouse {existing.warehouse_id}"
+            }), 400
+        raise
 
     row = g.db.execute(
         text("SELECT zone_id, warehouse_id, zone_code, zone_name, zone_type, is_active FROM zones WHERE zone_id = :zid"),
