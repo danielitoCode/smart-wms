@@ -23,7 +23,7 @@
 	{:else if selection.error && selection.warehouseId == null}<p class="error" role="alert">{selection.error}</p>
 	{:else if selection.warehouseId == null}<p class="error" role="alert">{i18n.t('No hay un almacén seleccionado. Un usuario con permiso de Almacenes debe establecer la selección primero.')}</p>
 	{:else}
-		{#key selection.warehouseId}
+		{#key selection.warehouseId + ':' + (mode === 'bins' ? initialZoneId ?? '' : '')}
 			<WarehouseDetailScreen warehouseId={selection.warehouseId} showZones={mode === 'zones'} showBins={mode === 'bins'} includeBins={mode === 'bins'} initialZoneId={mode === 'bins' ? initialZoneId : null} backHref={mode === 'zones' ? '/data/zones' : '/data/bins'} />
 		{/key}
 	{/if}
