@@ -239,6 +239,24 @@ class TestZones:
         allowed = client.get("/api/admin/zones?warehouse_id=1", headers=zones_headers)
         assert allowed.status_code == 200
 
+    def test_zone_list_without_warehouse_filter_is_scoped_to_assignments(self, client):
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO warehouses (warehouse_code, warehouse_name) VALUES ('ZONE-LIST-OTHER', 'Other Zone Warehouse') RETURNING warehouse_id"
+        )
+        other_id = cur.fetchone()[0]
+        cur.execute(
+            "INSERT INTO zones (warehouse_id, zone_code, zone_name, zone_type) VALUES (%s, 'OTHER-Z', 'Other zone', 'STORAGE')",
+            (other_id,),
+        )
+        cur.close()
+
+        _, headers = _web_user_with_pages(client, ["zones"], username="zones_scoped_list_user")
+        response = client.get("/api/admin/zones", headers=headers)
+        assert response.status_code == 200
+        assert all(zone["warehouse_id"] == 1 for zone in response.get_json()["zones"])
+
 
 # ── Bins ──────────────────────────────────────────────────────────────────────
 
