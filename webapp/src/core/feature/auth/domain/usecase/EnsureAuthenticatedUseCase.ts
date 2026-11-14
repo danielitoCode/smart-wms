@@ -1,21 +1,24 @@
 import type { AuthRepository } from '../repository/AuthRepository';
-import type { User } from '../entity/User';
+import type { EnsureAuthenticatedResult, User } from '../entity/User';
 import { authSession } from '#core/infrastructure/auth/AuthSession.ts';
 import { ApiError } from '#core/infrastructure/errors/ApiError.ts';
-
-export type EnsureAuthenticatedResult =
-	| { ok: true; user: User }
-	| { ok: false; reason: 'unauthorized' | 'unavailable'; message: string };
 
 export class EnsureAuthenticatedUseCase {
 	constructor(private readonly repository: AuthRepository) {}
 
 	async execute(): Promise<EnsureAuthenticatedResult> {
 		try {
-			const user = await this.repository.getCurrentUser();
+			const user = await this.loadUserWithOptionalRefresh();
+			if (!user.isActive) {
+				authSession.clear();
+				return {
+					ok: false,
+					reason: 'inactive',
+					message: 'Usuario inactivo. Contacta al administrador.'
+				};
+			}
 			return { ok: true, user };
 		} catch (err) {
-			// A 403 may represent a policy/permission rejection, not a missing session.
 			if (err instanceof ApiError && err.status === 401) {
 				authSession.clear();
 				return { ok: false, reason: 'unauthorized', message: 'Sesión expirada o no válida' };
@@ -25,6 +28,29 @@ export class EnsureAuthenticatedUseCase {
 				reason: 'unavailable',
 				message: this.describeUnavailable(err)
 			};
+		}
+	}
+
+	/**
+	 * 1) /me
+	 * 2) on 401 → refresh once → /me again
+	 * Network/5xx leave in-memory user intact (caller sees unavailable).
+	 */
+	private async loadUserWithOptionalRefresh(): Promise<User> {
+		try {
+			return await this.repository.getCurrentUser();
+		} catch (err) {
+			if (!(err instanceof ApiError) || err.status !== 401) throw err;
+			try {
+				await this.repository.refreshToken();
+			} catch (refreshErr) {
+				if (refreshErr instanceof ApiError && refreshErr.status === 401) throw refreshErr;
+				if (refreshErr instanceof ApiError && (refreshErr.isNetwork || refreshErr.code === 'timeout')) {
+					throw refreshErr;
+				}
+				throw err;
+			}
+			return await this.repository.getCurrentUser();
 		}
 	}
 

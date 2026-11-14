@@ -9,6 +9,11 @@ export class LoginUseCase {
 		const password = credentials.password ?? '';
 		if (!username) throw new Error('username is required');
 		if (!password) throw new Error('password is required');
-		return this.repository.login({ username, password });
+
+		const result = await this.repository.login({ username, password });
+		if (!result.user.isActive) {
+			throw new Error('Usuario inactivo. Contacta al administrador.');
+		}
+		return result;
 	}
 }
