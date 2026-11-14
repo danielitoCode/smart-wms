@@ -302,16 +302,18 @@ Dependencias: base transversal.
 
 **Cierre F1.1 (2026-11-14):** la comparación directa con `admin/src/pages/Items.jsx` confirmó paridad funcional y de presentación en columnas, detalle, filtros, búsqueda, paginación y operaciones soportadas. La tabla Svelte presenta UPC, MPN, bin por defecto, categoría, peso y estado; el detalle conserva UPC, MPN, categoría, peso, estado, bin por defecto, preferred bins e inventario. Se verificaron las proyecciones en el repositorio y se añadieron pruebas SSR específicas para impedir regresiones de la UI. Evidencias de código: `cb2c6ac` (proyecciones), `23b5588` (paridad UI) y `b17962c` (proyecciones explícitas adicionales). La validación final de Webapp CI para el commit `0635e34` terminó en verde: check, build, suites Domain/Application/Infrastructure/UI/i18n/Integration y regresión completa con 61 archivos y 233 tests aprobados. Run: [Webapp CI #544](https://github.com/danielitoCode/smart-wms/actions/runs/43562508000). No se modificó backend, permisos ni contratos Flask.
 
-#### F1.2 Vendors / Proveedores — Ausente
+#### F1.2 Vendors / Proveedores — En curso
 
-Dependencias: F1.1 solo si el contrato de proveedor referencia productos; confirmar relación real.
+Dependencias: F1.1 no introduce una relación de proveedor-producto en el contrato Flask actual; `vendors.canonical_id` es la identidad administrativa de referencia.
 
-- [ ] Dominio: proveedor y reglas de identificación/estado.
-- [ ] Aplicación: listar, detalle, crear, editar y eliminar/desactivar según backend.
-- [ ] Infraestructura: DTO, mapper y repositorio.
-- [ ] UI: listado, búsqueda, formularios y confirmaciones.
-- [ ] Tests: dominio, CRUD, contrato y UI.
-- [ ] Paridad: comparar CRUD y filtros de React Vendors.
+- [x] Domain: entidad, campos de contacto/direcciones, estado nullable y UUID canónico.
+- [x] Application: List (filtros/paginación), Detail, Create, Update y Delete.
+- [x] Data: GET/POST `/api/admin/vendors`; GET/PUT/DELETE `/api/admin/vendors/{canonical_id}`; mapeo explícito `canonical_id` y `external_id`.
+- [x] UI: tabla, búsqueda, Active/Inactive/All, paginación, formulario completo, detalle y confirmaciones de desactivación/eliminación.
+- [x] Pruebas: filtros/paginación, IDs canónicos, duplicados de nombre conservados como registros distintos, errores 403/404/409/422, estado y permisos `vendors`.
+- [ ] Regresión final: ejecutar Webapp CI sobre el commit candidato y corregir todos los fallos antes de cerrar F1.2.
+
+**Notas contractuales:** Flask filtra con `active=true|false`; omitir `active` significa All. La desactivación es `PUT is_active=false`; DELETE es eliminación física y devuelve `{deleted: true}`. `vendor_name` no tiene restricción única en el esquema actual, por lo que nombres repetidos son válidos y la UI los identifica por `canonical_id`. La ruta Flask protege GET/POST/PUT/DELETE con `require_admin_or_page_permission("vendors")`; el frontend replica el gate de página sin sustituir la autorización del servidor.
 
 #### F1.3 Warehouses / Zones / Bins — Parcial
 
