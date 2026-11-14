@@ -159,6 +159,36 @@ class TestZones:
         assert resp.status_code == 200
         assert resp.get_json()["zone_name"] == "Updated Receiving"
 
+    def test_update_zone_rejects_duplicate_code_in_same_warehouse(self, client, auth_headers):
+        resp = client.put(
+            "/api/admin/zones/2",
+            json={"zone_code": "RCV"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 400
+        assert "Duplicate zone_code" in resp.get_json()["error"]
+
+    def test_zone_pagination_rejects_non_positive_values(self, client, auth_headers):
+        for query in ("page=0", "page=-1", "per_page=0", "per_page=1001"):
+            response = client.get(f"/api/admin/zones?warehouse_id=1&{query}", headers=auth_headers)
+            assert response.status_code == 400, query
+
+    def test_create_zone_rejects_lengths_exceeding_postgres_columns(self, client, auth_headers):
+        too_long_code = client.post("/api/admin/zones", json={
+            "warehouse_id": 1, "zone_code": "C" * 21, "zone_name": "Valid", "zone_type": "STORAGE"
+        }, headers=auth_headers)
+        too_long_name = client.post("/api/admin/zones", json={
+            "warehouse_id": 1, "zone_code": "VALID-NAME", "zone_name": "N" * 101, "zone_type": "STORAGE"
+        }, headers=auth_headers)
+        assert too_long_code.status_code == 400
+        assert too_long_name.status_code == 400
+
+    def test_update_zone_rejects_lengths_exceeding_postgres_columns(self, client, auth_headers):
+        too_long_code = client.put("/api/admin/zones/1", json={"zone_code": "C" * 21}, headers=auth_headers)
+        too_long_name = client.put("/api/admin/zones/1", json={"zone_name": "N" * 101}, headers=auth_headers)
+        assert too_long_code.status_code == 400
+        assert too_long_name.status_code == 400
+
     def test_zone_detail_get_is_not_a_supported_endpoint(self, client, auth_headers):
         resp = client.get("/api/admin/zones/1", headers=auth_headers)
         assert resp.status_code == 405
