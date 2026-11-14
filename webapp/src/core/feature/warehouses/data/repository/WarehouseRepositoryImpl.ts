@@ -1,6 +1,6 @@
 import type { WarehouseManagementRepository } from '../../domain/repository/WarehouseManagementRepository';
 import type {
-	Bin, BinDetail, BinPage, WarehousePage, CreateBinInput, CreateWarehouseInput, CreateZoneInput,
+	Bin, BinDetail, BinListQuery, BinPage, WarehousePage, CreateBinInput, CreateWarehouseInput, CreateZoneInput,
 	UpdateBinInput, UpdateWarehouseInput, UpdateZoneInput, Warehouse, Zone
 } from '../../domain/entity/Warehouse';
 import type { WarehouseRemoteDataSource } from '../datasource/WarehouseRemoteDataSource';
@@ -30,7 +30,7 @@ export class WarehouseRepositoryImpl implements WarehouseManagementRepository {
 	}
 	async getById(id: number): Promise<Warehouse> { return WarehouseMapper.toWarehouse(await this.datasource.getById(id)); }
 	async listZones(warehouseId: number): Promise<Zone[]> { return (await this.datasource.listZones(warehouseId)).map(WarehouseMapper.toZone); }
-	async listBins(params?: { warehouseId?: number; zoneId?: number; page?: number; perPage?: number; q?: string }): Promise<BinPage> {
+	async listBins(params?: BinListQuery): Promise<BinPage> {
 		const response = await this.datasource.listBins(params);
 		return { items: (response.bins ?? []).map(WarehouseMapper.toBin), total: response.total ?? 0, page: response.page ?? 1, pages: response.pages ?? 1, perPage: response.per_page ?? 50 };
 	}

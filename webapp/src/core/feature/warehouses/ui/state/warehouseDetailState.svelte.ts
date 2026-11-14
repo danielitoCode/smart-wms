@@ -1,6 +1,6 @@
 import { createWarehousesDependencies } from '../../di/warehouses.dependencies';
 import type {
-	Bin, BinDetail, BinPage, CreateBinInput, CreateZoneInput, UpdateBinInput,
+	Bin, BinDetail, BinPage, BinType, CreateBinInput, CreateZoneInput, UpdateBinInput,
 	UpdateZoneInput, Warehouse, Zone
 } from '../../domain/entity/Warehouse';
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
@@ -18,6 +18,7 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 	let binTotal = $state(0);
 	let binPerPage = $state(50);
 	let binSearch = $state('');
+	let binTypeFilter = $state<BinType | null>(null);
 	let selectedZoneId = $state<number | null>(null);
 	let selectedBinDetail = $state<BinDetail | null>(null);
 	let loading = $state(false);
@@ -69,7 +70,7 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 		error = null;
 		try {
 			const result: BinPage = await deps.listBins.execute({
-				warehouseId, ...(zoneId != null ? { zoneId } : {}), page, perPage: binPerPage,
+				warehouseId, ...(zoneId != null ? { zoneId } : {}), ...(binTypeFilter ? { binType: binTypeFilter } : {}), page, perPage: binPerPage,
 				...(binSearch.trim() ? { q: binSearch.trim() } : {})
 			});
 			if (requestVersion !== binsRequestVersion) return false;
@@ -87,6 +88,10 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 	}
 
 	async function searchBins(value: string) { binSearch = value; return loadBinsForZone(selectedZoneId, 1); }
+	async function filterBinsByType(value: string) {
+		binTypeFilter = value === 'Staging' || value === 'PickableStaging' || value === 'Pickable' ? value : null;
+		return loadBinsForZone(selectedZoneId, 1);
+	}
 	async function createZone(input: Omit<CreateZoneInput, 'warehouseId'>) {
 		return mutate(async () => { await deps.createZone.execute({ ...input, warehouseId }); zones = await deps.listZones.execute(warehouseId); }, 'No se pudo crear la zona');
 	}
@@ -123,6 +128,7 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 		do {
 			const result = await deps.listBins.execute({
 				warehouseId, ...(selectedZoneId != null ? { zoneId: selectedZoneId } : {}),
+				...(binTypeFilter ? { binType: binTypeFilter } : {}),
 				page, perPage: 50, ...(binSearch.trim() ? { q: binSearch.trim() } : {})
 			});
 			all.push(...result.items); pages = result.pages; page += 1;
@@ -140,12 +146,12 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 	return {
 		get warehouse() { return warehouse; }, get zones() { return zones; }, get bins() { return bins; },
 		get binPage() { return binPage; }, get binPages() { return binPages; }, get binTotal() { return binTotal; },
-		get binPerPage() { return binPerPage; }, get binSearch() { return binSearch; },
+		get binPerPage() { return binPerPage; }, get binSearch() { return binSearch; }, get binTypeFilter() { return binTypeFilter; },
 		get selectedZoneId() { return selectedZoneId; }, get selectedBinDetail() { return selectedBinDetail; },
 		get loading() { return loading; }, get binsLoading() { return binsLoading; },
 		get mutating() { return mutating; }, get error() { return error; },
 		clearError() { error = null; }, setError(message: string) { error = message; }, closeBinDetail() { selectedBinDetail = null; },
-		load, loadBinsForZone, searchBins, createZone, updateZone, removeZone,
+		load, loadBinsForZone, searchBins, filterBinsByType, createZone, updateZone, removeZone,
 		createBin, updateBin, removeBin, viewBin, exportAllBins
 	};
 }

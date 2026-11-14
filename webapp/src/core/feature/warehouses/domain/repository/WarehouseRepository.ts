@@ -1,4 +1,4 @@
-import type { BinPage, Warehouse, WarehousePage, Zone } from '../entity/Warehouse';
+import type { BinListQuery, BinPage, Warehouse, WarehousePage, Zone } from '../entity/Warehouse';
 
 export interface WarehouseRepository {
 	listActive(): Promise<Warehouse[]>;
@@ -6,5 +6,5 @@ export interface WarehouseRepository {
 	listAdminPage(params?: { page?: number; perPage?: number }): Promise<WarehousePage>;
 	getById(id: number): Promise<Warehouse>;
 	listZones(warehouseId: number): Promise<Zone[]>;
-	listBins(params?: { warehouseId?: number; zoneId?: number; page?: number; perPage?: number; q?: string }): Promise<BinPage>;
+	listBins(params?: BinListQuery): Promise<BinPage>;
 }

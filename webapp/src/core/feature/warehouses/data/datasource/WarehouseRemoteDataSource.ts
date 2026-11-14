@@ -46,10 +46,11 @@ export class WarehouseRemoteDataSource {
 		} while (page <= pages);
 		return all;
 	}
-	async listBins(params?: { warehouseId?: number; zoneId?: number; page?: number; perPage?: number; q?: string }): Promise<BinListResponseDto> {
+	async listBins(params?: { warehouseId?: number; zoneId?: number; binType?: string; page?: number; perPage?: number; q?: string }): Promise<BinListResponseDto> {
 		const query = new URLSearchParams();
 		if (params?.warehouseId != null) query.set('warehouse_id', String(params.warehouseId));
 		if (params?.zoneId != null) query.set('zone_id', String(params.zoneId));
+		if (params?.binType) query.set('bin_type', params.binType);
 		if (params?.page != null) query.set('page', String(params.page));
 		if (params?.perPage != null) query.set('per_page', String(params.perPage));
 		if (params?.q) query.set('q', params.q);

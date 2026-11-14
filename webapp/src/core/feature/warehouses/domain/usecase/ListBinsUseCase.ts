@@ -1,13 +1,9 @@
-import type { BinPage } from '../entity/Warehouse';
+import type { BinListQuery, BinPage, BinType } from '../entity/Warehouse';
 import type { WarehouseRepository } from '../repository/WarehouseRepository';
 
-export type ListBinsInput = {
-	warehouseId?: number;
-	zoneId?: number;
-	page?: number;
-	perPage?: number;
-	q?: string;
-};
+export type ListBinsInput = BinListQuery;
+
+const BIN_TYPES: BinType[] = ['Staging', 'PickableStaging', 'Pickable'];
 
 export class ListBinsUseCase {
 	constructor(private readonly repository: WarehouseRepository) {}
@@ -25,6 +21,12 @@ export class ListBinsUseCase {
 		if (params.perPage != null && (!Number.isInteger(params.perPage) || params.perPage < 1 || params.perPage > 1000)) {
 			throw new Error('perPage must be an integer between 1 and 1000 when provided');
 		}
-		return this.repository.listBins(params);
+		if (params.binType != null && !BIN_TYPES.includes(params.binType)) {
+			throw new Error('binType must be a supported bin type when provided');
+		}
+		if (params.q != null && params.q.trim().length > 128) {
+			throw new Error('q cannot exceed 128 characters');
+		}
+		return this.repository.listBins({ ...params, ...(params.q != null ? { q: params.q.trim() } : {}) });
 	}
 }

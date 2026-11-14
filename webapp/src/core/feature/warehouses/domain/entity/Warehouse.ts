@@ -33,4 +33,5 @@ export type BinInventoryRow = { inventoryId: number; itemId: number; sku: string
 export type BinDetail = { bin: Bin; inventory: BinInventoryRow[]; occupancy: { quantityOnHand: number; quantityAllocated: number; quantityAvailable: number; inventoryLines: number } };
 export type OperationalBinSearchResult = { id: number; warehouseId: number | null; code: string; barcode: string | null; binType: BinType; zoneName: string | null; aisle: string | null; rowNumber: number | null; levelNumber: number | null };
 export type OperationalBinLookup = { bin: OperationalBinSearchResult; items: Array<{ itemId: number; sku: string; itemName: string; upc: string | null; quantityOnHand: number; quantityAllocated: number; quantityAvailable: number; lotNumber: string | null }> };
+export type BinListQuery = { warehouseId?: number; zoneId?: number; binType?: BinType; page?: number; perPage?: number; q?: string };
 export type BinPage = { items: Bin[]; total: number; page: number; pages: number; perPage: number };
