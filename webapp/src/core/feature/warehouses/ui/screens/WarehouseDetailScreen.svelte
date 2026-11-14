@@ -124,7 +124,7 @@
 </section>
 
 {#if showZoneForm}<div class="backdrop"><section class="dialog" role="dialog" aria-modal="true"><h2>{editingZone ? i18n.t('Editar zona') : i18n.t('Nueva zona')}</h2><form onsubmit={saveZone}>
-	<label>{i18n.t('Código')}<input bind:value={zoneForm.code} maxlength="32" required disabled={vm.mutating} /></label><label>{i18n.t('Nombre')}<input bind:value={zoneForm.name} maxlength="128" required disabled={vm.mutating} /></label>
+	<label>{i18n.t('Código')}<input bind:value={zoneForm.code} maxlength="20" required disabled={vm.mutating} /></label><label>{i18n.t('Nombre')}<input bind:value={zoneForm.name} maxlength="100" required disabled={vm.mutating} /></label>
 	<label>{i18n.t('Tipo')}<select bind:value={zoneForm.zoneType} disabled={vm.mutating}>{#each ['RECEIVING','STORAGE','PICKING','STAGING','SHIPPING'] as type}<option value={type}>{zoneTypeLabel(type as ZoneType)}</option>{/each}</select></label>
 	{#if editingZone}<label class="check"><input type="checkbox" bind:checked={zoneForm.active} /> {i18n.t("Activa")}</label>{/if}
 	{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}<footer><button class="quiet" type="button" onclick={() => showZoneForm = false}>{i18n.t('Cancelar')}</button><button class="accent" type="submit" disabled={vm.mutating}>{i18n.t('Guardar')}</button></footer>
