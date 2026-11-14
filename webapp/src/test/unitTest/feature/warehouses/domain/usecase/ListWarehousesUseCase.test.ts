@@ -9,6 +9,7 @@ describe('ListWarehousesUseCase', () => {
 				{ id: 1, code: 'APT-LAB', name: 'Apartment Lab', active: true }
 			]),
 			listAdmin: vi.fn(),
+			listAdminPage: vi.fn(),
 			getById: vi.fn(),
 			listZones: vi.fn(),
 			listBins: vi.fn()
