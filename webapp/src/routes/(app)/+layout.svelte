@@ -69,17 +69,37 @@
 			{ href: '/management/integrations', label: i18n.t('Integraciones'), icon: 'database', pageKey: 'integrations' },
 			{ href: '/management/consumer-groups', label: i18n.t('Consumer groups'), icon: 'user', pageKey: 'consumer-groups' },
 			{ href: '/management/inbound-activity', label: i18n.t('Actividad inbound'), icon: 'inbox', pageKey: 'inbound' },
-			{ href: '/management/imports', label: i18n.t('Importaciones'), icon: 'database', pageKey: 'imports' },
-			{ href: '/management/audit-log', label: i18n.t('Auditoría'), icon: 'clipboard-list', pageKey: 'audit-log' }
+			{ href: '/management/imports', label: i18n.t('Imports'), icon: 'database', pageKey: 'imports' },
+			{ href: '/management/audit-log', label: i18n.t('Audit log'), icon: 'clipboard-list', pageKey: 'audit-log' }
 		]},
-		{ label: i18n.t('Catálogos'), items: [
-			{ href: '/items', label: i18n.t('Productos'), icon: 'package', pageKey: 'items' },
-			{ href: '/warehouses', label: i18n.t('Almacenes'), icon: 'warehouse', pageKey: 'warehouses' },
-			{ href: '/data', label: i18n.t('Datos maestros'), icon: 'database' }
+		{ label: i18n.t('Datos'), items: [
+			{ href: '/data', label: i18n.t('Maestros'), icon: 'database' },
+			{ href: '/warehouses', label: i18n.t('Almacenes'), icon: 'warehouse', pageKey: 'warehouses' }
 		]}
 	]);
 
 	onMount(() => { void bootstrap(); });
+
+	$effect(() => {
+		void page.url.pathname;
+		if (guard.status !== 'authenticated') return;
+		void guard.revalidatePermissions();
+	});
+
+	$effect(() => {
+		if (guard.status !== 'authenticated' || !guard.user) return;
+		void warehouseSelection.syncFromUser({
+			userId: guard.user.userId,
+			username: guard.user.username,
+			fullName: guard.user.fullName,
+			role: guard.user.role,
+			warehouseIds: guard.user.warehouseIds,
+			allowedPages: guard.user.allowedPages,
+			allowedFunctions: guard.user.allowedFunctions,
+			allowedOverrides: guard.user.allowedOverrides ?? [],
+			mustChangePassword: guard.user.mustChangePassword
+		});
+	});
 
 	$effect(() => {
 		if (guard.status === 'authenticated' && guard.user?.mustChangePassword && page.url.pathname !== '/change-password') {
@@ -124,7 +144,8 @@
 				userId: guard.user.userId, username: guard.user.username, fullName: guard.user.fullName,
 				role: guard.user.role, warehouseIds: guard.user.warehouseIds,
 				allowedPages: guard.user.allowedPages, allowedFunctions: guard.user.allowedFunctions,
-				mustChangePassword: guard.user.mustChangePassword
+				mustChangePassword: guard.user.mustChangePassword,
+				allowedOverrides: guard.user.allowedOverrides ?? []
 			} : null);
 		}
 		if (guard.status === 'anonymous') {
@@ -145,51 +166,42 @@
 	<p class="boot" role="status">{i18n.t('Validando sesión…')}</p>
 {:else if guard.status === 'error'}
 	<section class="boot panel" role="alert">
-		<p class="title">{i18n.t('No se pudo conectar con el servidor')}</p>
-		{#if guard.message}<p class="detail">{guard.message}</p>{/if}
-		<div class="actions"><button type="button" class="primary" onclick={retry}>{i18n.t('Reintentar')}</button><button type="button" onclick={logout}>{i18n.t('Cerrar sesión')}</button></div>
-	</section>
-{:else if guard.status === 'authenticated' && !hasRouteAccess}
-	<section class="boot panel" role="alert">
-		<p class="title">{i18n.t('Acceso no autorizado')}</p>
-		<p class="detail">{i18n.t('Tu cuenta no tiene permiso para abrir este módulo.')}</p>
-		<button type="button" class="primary" onclick={() => goto('/inventory')}>{i18n.t('Ir al inventario')}</button>
+		<p>{guard.message ?? i18n.t('No se pudo validar la sesión')}</p>
+		<button type="button" onclick={retry}>{i18n.t('Reintentar')}</button>
 	</section>
 {:else if guard.status === 'authenticated'}
-	<div class="workspace">
-		<aside class="sidebar" class:open={sidebarOpen} aria-label={i18n.t('Navegación de Abellis')}>
-			<a class="brand" href="/inventory" aria-label="Abellis WMS, ir al inventario">
-				<img src="/brand/abellis_mark_blanco.svg" width="36" height="36" alt="" />
-				<span class="brand-text"><strong>Abellis</strong><small>Smart WMS</small></span>
-			</a>
-			{#if !guard.user?.mustChangePassword}
-				<nav class="main-nav" aria-label="Navegación principal">
-					{#each navGroups as group}
-						{@const visibleItems = group.items.filter(canSeeNavItem)}
-						{#if visibleItems.length > 0}
-							<section class="nav-group">
-								<p class="group-label">{group.label}</p>
-								{#each visibleItems as item}
-									<a class="nav-link" class:active={isActive(item.href)} href={item.href}
-										aria-current={isActive(item.href) ? 'page' : undefined} onclick={() => sidebarOpen = false}>
-										<AppIcon name={item.icon} size={19} /><span>{item.label}</span>
-									</a>
-								{/each}
-							</section>
-						{/if}
-					{/each}
-				</nav>
-			{/if}
-			<div class="sidebar-footer">
-				<div class="avatar"><AppIcon name="user" size={18} /></div>
-				<div class="account"><strong>{guard.user?.fullName || guard.user?.username || i18n.t('Usuario')}</strong><span>{guard.user?.role === 'ADMIN' ? i18n.t('Administrador') : i18n.t('Usuario de almacén')}</span></div>
+	<div class="shell" class:sidebar-open={sidebarOpen}>
+		<aside class="sidebar" aria-label={i18n.t('Navegación principal')}>
+			<div class="brand">
+				<span class="mark">A</span>
+				<div>
+					<strong>ABELLIS</strong>
+					<small>Smart WMS</small>
+				</div>
 			</div>
+			<nav class="main-nav">
+				{#each navGroups as group}
+					{#if group.items.some(canSeeNavItem)}
+						<p class="group-label">{group.label}</p>
+						<ul>
+							{#each group.items.filter(canSeeNavItem) as item}
+								<li>
+									<a class="nav-link" class:active={isActive(item.href)} href={item.href} onclick={() => (sidebarOpen = false)}>
+										<AppIcon name={item.icon} size={18} />
+										<span>{item.label}</span>
+									</a>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				{/each}
+			</nav>
 		</aside>
-		{#if sidebarOpen}<button class="scrim" type="button" aria-label={i18n.t('Cerrar menú')} onclick={() => sidebarOpen = false}></button>{/if}
-		<div class="app-main">
+		<div class="main">
 			<header class="topbar">
-				<button class="menu-toggle" type="button" aria-label={i18n.t('Abrir menú')} aria-expanded={sidebarOpen} onclick={() => sidebarOpen = !sidebarOpen}><AppIcon name="menu" size={21} /></button>
-				<div class="page-context"><p>ABELLIS · SMART WMS</p><span>{i18n.t('Operaciones de almacén')}</span></div>
+				<button type="button" class="menu-btn" onclick={() => (sidebarOpen = !sidebarOpen)} aria-label={i18n.t('Menú')}>
+					<AppIcon name="menu" size={20} />
+				</button>
 				<div class="topbar-actions">
 					<ThemeToggle />
 					<LocaleSwitcher />
@@ -197,60 +209,54 @@
 						<WarehousePicker />
 					{/if}
 					{#if !guard.user?.mustChangePassword}<a class="account-action" href="/change-password" aria-label={i18n.t('Cambiar contraseña')} title={i18n.t('Cambiar contraseña')}><AppIcon name="lock" size={17} /><span>{i18n.t('Contraseña')}</span></a>{/if}
-					<button class="logout" type="button" onclick={logout}><AppIcon name="logout" size={17} /><span>{i18n.t('Salir')}</span></button>
+					<button type="button" class="account-action" onclick={logout} aria-label={i18n.t('Cerrar sesión')}>
+						<AppIcon name="logout" size={17} /><span>{i18n.t('Salir')}</span>
+					</button>
 				</div>
 			</header>
-			<main class="content motion-page-in app-content-transition">{@render children()}</main>
+			<main class="content">
+				{#if !hasRouteAccess}
+					<section class="denied" role="alert">
+						<p>{i18n.t('No tienes permiso para ver esta página.')}</p>
+					</section>
+				{:else}
+					{@render children()}
+				{/if}
+			</main>
 		</div>
+		{#if sidebarOpen}
+			<button type="button" class="scrim" aria-label={i18n.t('Cerrar menú')} onclick={() => (sidebarOpen = false)}></button>
+		{/if}
 	</div>
-{:else}
-	<p class="boot">{i18n.t('Redirigiendo…')}</p>
 {/if}
 
 <style>
-	.workspace { min-height:100vh; display:grid; grid-template-columns:252px minmax(0,1fr); background:var(--bg); color:var(--ink); }
-	.sidebar { view-transition-name: none; position:sticky; top:0; height:100vh; min-height:100vh; display:flex; flex-direction:column; overflow:hidden; background:var(--navy-deep); color:#f5f8fc; border-right:1px solid rgba(255,255,255,.08); z-index:30; }
-	.brand { min-height:84px; display:flex; align-items:center; gap:12px; padding:18px 22px; color:#fff; text-decoration:none; border-bottom:1px solid rgba(255,255,255,.12); }
-	.brand img { display:block; flex:none; }
-	.brand-text { display:flex; flex-direction:column; gap:4px; line-height:1; }
-	.brand-text strong { font:700 1.12rem var(--disp); letter-spacing:-.02em; }
-	.brand-text small { color:var(--gold); font:600 .62rem var(--disp); letter-spacing:.14em; text-transform:uppercase; }
-	.main-nav { flex:1; overflow:auto; padding:22px 14px 18px; scroll-snap-type:y proximity; scroll-padding-block:12px 18px; scroll-behavior:smooth; overscroll-behavior:contain; }
-	.nav-group { margin:0 0 22px; scroll-snap-align:start; }
-	.group-label { margin:0 0 8px; padding:0 11px; color:rgba(224,235,247,.54); font:600 .65rem var(--disp); letter-spacing:.16em; text-transform:uppercase; }
-	.nav-link { min-height:44px; display:flex; align-items:center; gap:12px; margin:2px 0; padding:10px 12px; border-radius:10px; color:rgba(245,248,252,.78); text-decoration:none; font:500 .9rem var(--body); }
-	.nav-link:hover { color:#fff; background:rgba(255,255,255,.07); }
-	.nav-link.active { color:#fff; background:rgba(143,180,218,.16); box-shadow:inset 3px 0 0 var(--gold); font-weight:600; }
-	.nav-link.active :global(svg) { color:var(--gold); }
-	.sidebar-footer { display:flex; align-items:center; gap:10px; padding:16px 18px; border-top:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.08); }
-	.avatar { width:34px; height:34px; display:grid; place-items:center; flex:none; border:1px solid rgba(255,255,255,.18); border-radius:50%; color:var(--gold); }
-	.account { min-width:0; display:flex; flex-direction:column; gap:3px; }
-	.account strong { max-width:168px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#fff; font-size:.82rem; font-weight:600; }
-	.account span { color:rgba(224,235,247,.62); font-size:.72rem; }
-	.app-main { min-width:0; display:flex; flex-direction:column; }
-	.topbar { view-transition-name:none; position:sticky; top:0; z-index:20; min-height:64px; display:flex; align-items:center; gap:16px; padding:10px clamp(18px,2.5vw,34px); background:var(--surface); border-bottom:1px solid var(--line); }
-	.page-context { min-width:0; display:flex; flex-direction:column; justify-content:center; }
-	.page-context p { margin:0 0 2px; color:var(--slate); font:600 0.63rem var(--disp); letter-spacing:0.16em; line-height:1.2; }
-	.page-context span { color:var(--ink); font:600 0.86rem var(--body); line-height:1.2; }
-	.topbar-actions { display:flex; align-items:center; gap:10px; margin-left:auto; min-height:40px; }
-	.account-action,.logout { height:40px; min-height:40px; display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:0 12px; border:1px solid var(--line); border-radius:10px; background:transparent; color:var(--link,var(--navy)); text-decoration:none; font:600 0.78rem var(--body); cursor:pointer; }
-	.logout { color:var(--slate); }
-	.menu-toggle { display:none; width:42px; min-width:42px; height:42px; place-items:center; padding:0; border:1px solid var(--line); border-radius:10px; background:var(--surface); color:var(--link,var(--navy)); }
-	.content { flex:1; min-width:0; padding:26px clamp(18px,2.5vw,34px) 42px; }
-	.scrim { display:none; }
-	.boot { padding:3rem 1.25rem; text-align:center; color:var(--slate); }
-	.panel { max-width:26rem; margin:2.5rem auto; text-align:left; background:var(--card); border:1px solid var(--line); border-radius:var(--radius-card); padding:1.25rem; box-shadow:var(--shadow-1); }
-	.panel .title { margin:0 0 .35rem; font:600 1rem var(--disp); color:var(--ink); }
-	.panel .detail { margin:0; color:var(--danger); font-size:.9rem; }
-	.actions { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:1rem; }
-	@media (max-width:800px) {
-		.workspace { display:block; }
-		.sidebar { position:fixed; left:0; top:0; width:min(84vw,290px); transform:translateX(-102%); transition:transform 200ms ease; }
-		.sidebar.open { transform:translateX(0); }
-		.scrim { display:block; position:fixed; inset:0; z-index:25; border:0; background:rgba(1,18,34,.48); }
-		.menu-toggle { display:grid; }
-	}
-	@media (prefers-reduced-motion:reduce) {
-		.main-nav { scroll-behavior:auto; scroll-snap-type:none; }
+	.shell { display: grid; grid-template-columns: 16.5rem 1fr; min-height: 100dvh; background: var(--bg); color: var(--ink); }
+	.sidebar { position: sticky; top: 0; height: 100dvh; overflow: auto; border-right: 1px solid var(--line); background: var(--surface); padding: 1rem 0.75rem; }
+	.brand { display: flex; gap: 0.65rem; align-items: center; padding: 0.35rem 0.5rem 1rem; }
+	.mark { width: 2rem; height: 2rem; border-radius: 0.55rem; display: grid; place-items: center; background: var(--navy); color: white; font-weight: 700; }
+	.brand strong { display: block; font-size: 0.95rem; }
+	.brand small { color: var(--slate); }
+	.group-label { margin: 0.85rem 0.5rem 0.35rem; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--slate); }
+	.main-nav ul { list-style: none; margin: 0; padding: 0; }
+	.nav-link { display: flex; align-items: center; gap: 0.55rem; padding: 0.45rem 0.55rem; border-radius: 0.55rem; color: var(--ink); text-decoration: none; font-size: 0.9rem; }
+	.nav-link:hover { background: color-mix(in oklab, var(--navy) 8%, transparent); }
+	.nav-link.active { background: color-mix(in oklab, var(--navy) 14%, transparent); font-weight: 600; }
+	.main { min-width: 0; display: flex; flex-direction: column; }
+	.topbar { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; min-height: 3.25rem; padding: 0.55rem 1rem; border-bottom: 1px solid var(--line); background: var(--surface); }
+	.topbar-actions { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
+	.menu-btn { display: none; border: 1px solid var(--line); background: var(--surface); border-radius: 0.5rem; padding: 0.35rem; }
+	.account-action { display: inline-flex; align-items: center; gap: 0.35rem; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 0.5rem; padding: 0.35rem 0.55rem; text-decoration: none; font-size: 0.82rem; cursor: pointer; }
+	.content { padding: 0.25rem 0 2rem; }
+	.boot { display: grid; place-items: center; min-height: 100dvh; gap: 0.75rem; color: var(--slate); }
+	.boot.panel { padding: 2rem; }
+	.denied { max-width: 32rem; margin: 2rem auto; padding: 1.25rem; border: 1px solid var(--line); border-radius: 0.75rem; background: var(--surface); }
+	.scrim { display: none; }
+	@media (max-width: 900px) {
+		.shell { grid-template-columns: 1fr; }
+		.sidebar { position: fixed; inset: 0 auto 0 0; width: min(18rem, 88vw); z-index: 40; transform: translateX(-105%); transition: transform 0.2s ease; }
+		.shell.sidebar-open .sidebar { transform: translateX(0); }
+		.menu-btn { display: inline-grid; place-items: center; }
+		.scrim { display: block; position: fixed; inset: 0; border: 0; background: rgb(0 0 0 / 0.35); z-index: 30; }
 	}
 </style>
