@@ -27,9 +27,16 @@ class UpdateZoneRequest(BaseModel):
     zone_type: Optional[str] = Field(None, min_length=1, max_length=32)
     is_active: Optional[bool] = None
 
+    @field_validator("zone_code", "zone_name")
+    @classmethod
+    def validate_non_null_text(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            raise ValueError("field cannot be null")
+        return v
+
     @field_validator("zone_type")
     @classmethod
     def validate_zone_type(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None and v not in VALID_ZONE_TYPES:
+        if v is None or v not in VALID_ZONE_TYPES:
             raise ValueError(f"zone_type must be one of: {', '.join(VALID_ZONE_TYPES)}")
         return v
