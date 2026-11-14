@@ -858,7 +858,9 @@ Actualizar esta sección al cerrar cada PR/feature. Mantener una única fuente d
 |---|---|---|---|---|---|---|---|
 | F1.1 Items | [x] | [x] | [x] | [x] | [x] | [x] | Completa |
 | F1.2 Vendors | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
-| F1.3 Warehouses | [x] | [x] | [x] | [x] | [x] | [x] | Completa |\n| F1.4 Zones | [x] | [x] | [x] | [x] | [x] | [x] | Completa |\n| F1.5 Bins | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
+| F1.3 Warehouses | [x] | [x] | [x] | [x] | [x] | [x] | Completa |
+| F1.4 Zones | [x] | [x] | [x] | [x] | [x] | [x] | Completa |
+| F1.5 Bins | [~] | [~] | [~] | [~] | [~] | [~] | En verificación |
 | F2.1 Inventory | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
 | F2.2 Adjustments | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
 | F2.3 Cycle Counts | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
@@ -889,6 +891,16 @@ Actualizar esta sección al cerrar cada PR/feature. Mantener una única fuente d
 | F6.6 Imports | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
 | F7.1 POS Activity | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
 | F7.2 Fraud | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
+
+### F1.5 Bins / Ubicaciones — implementación en curso
+
+- **Domain:** entidad Bin con zona, almacén, tipo, estado, capacidad de peso/volumen y ocupación por existencias.
+- **Application:** CRUD administrativo y casos de uso separados para búsqueda operativa y consulta por barcode.
+- **Data:** CRUD real de `/api/admin/bins`; lookup real de `/api/lookup/bin/search?q=` y `/api/lookup/bin/{barcode}`, con DTO y repositorios independientes.
+- **UI:** catálogo paginado, filtros por almacén y zona, búsqueda por código/barcode, formularios de capacidad, existencias y restricciones de eliminación.
+- **Seguridad:** catálogo y lookups limitados en servidor a los almacenes autorizados; detalle, actualización y eliminación ocultan ubicaciones de otros almacenes.
+- **Verificación pendiente:** ejecución final de Webapp CI y suite backend; no marcar F1.5 completa hasta revisar ambos resultados.
+
 
 ## 11. Protocolo de trabajo para cada incremento
 
