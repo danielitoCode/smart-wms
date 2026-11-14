@@ -37,9 +37,11 @@ def test_warehouse_list_fields(client, auth_headers):
     """Response contains only id, name, code."""
     resp = client.get("/api/warehouses/list", headers=auth_headers)
     data = resp.get_json()
-    wh = data["warehouses"][0]
-    assert set(wh.keys()) == {"id", "name", "code"}
-    assert wh["code"] == "APT-LAB"
+    assert data["warehouses"]
+    assert all(set(wh.keys()) == {"id", "name", "code"} for wh in data["warehouses"])
+    # The endpoint orders by warehouse_name; don't couple the contract to
+    # whichever extra warehouse happens to exist in the test database.
+    assert any(wh["code"] == "APT-LAB" for wh in data["warehouses"])
 
 
 # ── Auth /me with allowed_functions ───────────────────────────
