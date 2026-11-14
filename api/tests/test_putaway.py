@@ -237,6 +237,42 @@ class TestConfirmPutaway:
         assert resp.status_code == 400
         assert "Insufficient" in resp.get_json()["error"]
 
+    def test_confirm_rejects_destination_in_another_warehouse(self, client, auth_headers):
+        _receive_to_staging(client, auth_headers, item_id=1, quantity=10)
+
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """INSERT INTO zones (warehouse_id, zone_code, zone_name, zone_type)
+               VALUES (2, 'PUT-CONFIRM-OTHER', 'Other Warehouse', 'STORAGE')
+               RETURNING zone_id"""
+        )
+        zone_id = cur.fetchone()[0]
+        cur.execute(
+            """INSERT INTO bins
+                   (zone_id, warehouse_id, bin_code, bin_barcode, bin_type,
+                    pick_sequence, putaway_sequence, external_id)
+               VALUES (%s, 2, 'OTHER-WH-CONFIRM', 'OTHER-WH-CONFIRM', 'Pickable',
+                       1, 1, gen_random_uuid())
+               RETURNING bin_id""",
+            (zone_id,),
+        )
+        other_bin_id = cur.fetchone()[0]
+        cur.close()
+
+        resp = client.post(
+            "/api/putaway/confirm",
+            json={
+                "item_id": 1,
+                "from_bin_id": 1,
+                "to_bin_id": other_bin_id,
+                "quantity": 5,
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 400
+        assert "source warehouse" in resp.get_json()["error"]
+
     def test_confirm_same_bin(self, client, auth_headers):
         resp = client.post(
             "/api/putaway/confirm",
