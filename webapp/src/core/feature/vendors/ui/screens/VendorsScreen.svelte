@@ -20,7 +20,36 @@
 	let paymentTerms = $state('');
 	let isActive = $state(true);
 
-	onMount(() => { void vm.load(); });
+	let searchTimer: ReturnType<typeof setTimeout> | undefined;
+
+	onMount(() => {
+		void vm.load();
+		return () => {
+			if (searchTimer) clearTimeout(searchTimer);
+		};
+	});
+
+	function scheduleSearch(value: string) {
+		vm.setSearch(value);
+		if (searchTimer) clearTimeout(searchTimer);
+		searchTimer = setTimeout(() => {
+			searchTimer = undefined;
+			void vm.load();
+		}, 300);
+	}
+
+	function submitSearch() {
+		if (searchTimer) clearTimeout(searchTimer);
+		searchTimer = undefined;
+		void vm.load();
+	}
+
+	function changeFilter(value: 'active' | 'archived' | 'all') {
+		if (searchTimer) clearTimeout(searchTimer);
+		searchTimer = undefined;
+		vm.setFilter(value);
+		void vm.load();
+	}
 
 	function resetForm() {
 		showForm = false;
@@ -137,14 +166,14 @@
 		</form>
 	{/if}
 
-	<form class="filters" onsubmit={(event) => { event.preventDefault(); void vm.load(); }}>
+	<form class="filters" onsubmit={(event) => { event.preventDefault(); submitSearch(); }}>
 		<label class="search-field">
 			<span>{i18n.t('Buscar proveedor')}</span>
-			<input type="search" placeholder={i18n.t('Nombre, contacto o correo')} value={vm.search} oninput={(event) => vm.setSearch(event.currentTarget.value)} />
+			<input type="search" placeholder={i18n.t('Nombre, contacto o correo')} value={vm.search} oninput={(event) => scheduleSearch(event.currentTarget.value)} />
 		</label>
 		<label class="filter-field">
 			<span>{i18n.t('Estado')}</span>
-			<select value={vm.filter} onchange={(event) => { vm.setFilter(event.currentTarget.value as 'active' | 'archived' | 'all'); void vm.load(); }}>
+			<select value={vm.filter} onchange={(event) => changeFilter(event.currentTarget.value as 'active' | 'archived' | 'all')}>
 				<option value="active">{i18n.t('Activos')}</option>
 				<option value="archived">{i18n.t('Inactivos')}</option>
 				<option value="all">{i18n.t('Todos')}</option>
@@ -196,7 +225,7 @@
 
 {#if vm.detailLoading || vm.detail || vm.detailError}
 	<div class="overlay" role="presentation">
-		<section class="dialog panel" role="dialog" aria-modal="true" aria-labelledby="vendor-detail-title">
+		<div class="dialog panel" role="dialog" aria-modal="true" aria-labelledby="vendor-detail-title">
 			<div class="panel-heading"><h2 id="vendor-detail-title">{i18n.t('Detalle del proveedor')}</h2><button type="button" onclick={() => vm.closeDetail()} aria-label={i18n.t('Cerrar')}>×</button></div>
 			{#if vm.detailLoading}<p>{i18n.t('Cargando…')}</p>
 			{:else if vm.detailError}<p class="error" role="alert">{vm.detailError}</p>
@@ -218,13 +247,13 @@
 				</dl>
 			{/if}
 			<div class="form-actions"><button type="button" onclick={() => vm.closeDetail()}>{i18n.t('Cerrar')}</button></div>
-		</section>
+		</div>
 	</div>
 {/if}
 
 {#if confirmTarget && confirmMode}
 	<div class="overlay" role="presentation">
-		<section class="dialog panel" role="alertdialog" aria-modal="true" aria-labelledby="vendor-confirm-title">
+		<div class="dialog panel" role="alertdialog" aria-modal="true" aria-labelledby="vendor-confirm-title">
 			<h2 id="vendor-confirm-title">{confirmMode === 'deactivate' ? i18n.t('Desactivar proveedor') : i18n.t('Eliminar proveedor')}</h2>
 			<p>{confirmMode === 'deactivate'
 				? i18n.t('El proveedor dejará de aparecer como activo. Podrás consultarlo en el filtro Inactivos y reactivarlo editándolo.')
@@ -234,7 +263,7 @@
 				<button type="button" onclick={closeConfirm}>{i18n.t('Cancelar')}</button>
 				<button class:danger={confirmMode === 'delete'} class="primary" type="button" onclick={() => void confirmAction()} disabled={vm.saving}>{vm.saving ? i18n.t('Procesando…') : confirmMode === 'deactivate' ? i18n.t('Desactivar') : i18n.t('Eliminar')}</button>
 			</div>
-		</section>
+		</div>
 	</div>
 {/if}
 
