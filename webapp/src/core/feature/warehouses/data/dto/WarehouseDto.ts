@@ -10,7 +10,7 @@ export type WarehouseListResponseDto = {
 export type WarehouseDetailResponseDto = { warehouse: WarehouseListItemDto; zones?: ZoneDto[] };
 export type ZoneDto = {
 	id?: number; zone_id?: number; warehouse_id: number; zone_code?: string; code?: string;
-	zone_name?: string; name?: string; zone_type: string; is_active?: boolean; active?: boolean;
+	zone_name?: string; name?: string; zone_type: string; is_active?: boolean; active?: boolean; bins_count?: number;
 };
 export type ZoneListResponseDto = {
 	zones?: ZoneDto[]; items?: ZoneDto[]; data?: ZoneDto[];
