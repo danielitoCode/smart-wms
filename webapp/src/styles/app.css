@@ -3,6 +3,7 @@
 @import './motion.css';
 @import './cards.css';
 @import './tables.css';
+@import './buttons.css';
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
 
 *,*::before,*::after { box-sizing:border-box; }
@@ -24,11 +25,11 @@ button:disabled { cursor:not-allowed; opacity:.58; }
 ::selection { background:var(--gold-soft); color:var(--navy-deep); }
 
 /* Base de las pantallas operativas. */
-body .workspace .content .page,body .workspace .content .inventory { width:100%; max-width:1180px; margin:0 auto; padding:0; font-family:var(--body); animation: page-in var(--motion-page) var(--ease-out) both; }
-body .workspace .content .page > header,body .workspace .content .inventory > header { margin:0 0 24px; }
-body .workspace .content .page h1,body .workspace .content .inventory h1 { margin:0 0 5px; font:600 var(--fs-3xl)/var(--lh-tight) var(--disp); letter-spacing:var(--tracking-display); color:var(--head-ink,var(--navy-deep)); }
-body .workspace .content .page h2,body .workspace .content .page h3,body .workspace .content .inventory h2 { font-family:var(--disp); color:var(--head-ink,var(--ink)); font-size:var(--fs-xl); line-height:var(--lh-snug); }
-body .workspace .content .subtitle,body .workspace .content .meta { margin:0; color:var(--slate); font-size:var(--fs-md); line-height:var(--lh-body); }
+body .shell .content .page,body .shell .content .inventory { width:100%; max-width:1180px; margin:0 auto; padding:0; font-family:var(--body); animation: page-in var(--motion-page) var(--ease-out) both; }
+body .shell .content .page > header,body .shell .content .inventory > header { margin:0 0 24px; }
+body .shell .content .page h1,body .shell .content .inventory h1 { margin:0 0 5px; font:600 var(--fs-3xl)/var(--lh-tight) var(--disp); letter-spacing:var(--tracking-display); color:var(--head-ink,var(--navy-deep)); }
+body .shell .content .page h2,body .shell .content .page h3,body .shell .content .inventory h2 { font-family:var(--disp); color:var(--head-ink,var(--ink)); font-size:var(--fs-xl); line-height:var(--lh-snug); }
+body .shell .content .subtitle,body .shell .content .meta { margin:0; color:var(--slate); font-size:var(--fs-md); line-height:var(--lh-body); }
 
 /* Formularios y tablas operativas compartidos */
 
