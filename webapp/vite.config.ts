@@ -33,6 +33,13 @@ export default defineConfig({
 		}
 	},
 	test: {
+		coverage: {
+			provider: 'v8',
+			reporter: ['text', 'text-summary', 'json-summary'],
+			reportsDirectory: './coverage',
+			include: ['src/core/feature/**', 'src/core/infrastructure/**', 'src/lib/i18n/**'],
+			exclude: ['**/*.{test,spec}.*', '**/di/**', '**/*.svelte']
+		},
 		include: ['src/test/**/*.{test,spec}.{js,ts}', 'src/lib/i18n/**/*.{test,spec}.{js,ts}'],
 		environment: 'node'
 	}

@@ -88,6 +88,11 @@ jobs:
         working-directory: webapp
         run: npm run test:ui
 
+      - name: i18n suite (IT primary, ES identity, EN complete)
+        if: steps.webapp.outputs.exists == 'true'
+        working-directory: webapp
+        run: npm run test:i18n
+
       - name: Integration suite
         if: steps.webapp.outputs.exists == 'true'
         working-directory: webapp
@@ -97,3 +102,9 @@ jobs:
         if: steps.webapp.outputs.exists == 'true'
         working-directory: webapp
         run: npm run test:all
+
+      - name: Coverage by feature paths
+        if: steps.webapp.outputs.exists == 'true'
+        working-directory: webapp
+        run: npm run test:coverage:feature
+        continue-on-error: true
