@@ -6,6 +6,7 @@ import { CreateZoneUseCase } from '../../../../../../core/feature/warehouses/dom
 import { UpdateZoneUseCase } from '../../../../../../core/feature/warehouses/domain/usecase/UpdateZoneUseCase';
 import { DeleteZoneUseCase } from '../../../../../../core/feature/warehouses/domain/usecase/DeleteZoneUseCase';
 import { CreateBinUseCase } from '../../../../../../core/feature/warehouses/domain/usecase/CreateBinUseCase';
+import { UpdateBinUseCase } from '../../../../../../core/feature/warehouses/domain/usecase/UpdateBinUseCase';
 import type { WarehouseManagementRepository } from '../../../../../../core/feature/warehouses/domain/repository/WarehouseManagementRepository';
 
 function createRepository(): WarehouseManagementRepository {
@@ -66,10 +67,19 @@ describe('Warehouse management use cases', () => {
 		vi.mocked(repository.createBin).mockResolvedValue({
 			id: 12, warehouseId: 8, zoneId: 4, zoneName: 'Picking', code: 'A-01', barcode: 'BC-01',
 			binType: 'Pickable', aisle: null, rowNumber: null, levelNumber: null, positionNumber: null,
-			pickSequence: 0, putawaySequence: 0, active: true
+			pickSequence: 0, putawaySequence: 0, active: true, maxWeightLbs: null, maxVolumeCuft: null,
+			quantityOnHand: 0, quantityAllocated: 0, inventoryLines: 0
 		});
 		await new CreateBinUseCase(repository).execute({ warehouseId: 8, zoneId: 4, code: 'A-01', barcode: 'BC-01', binType: 'Pickable' });
 		expect(repository.createBin).toHaveBeenCalledWith(expect.objectContaining({ warehouseId: 8, zoneId: 4, code: 'A-01', barcode: 'BC-01' }));
+	});
+		it('validates bin capacity updates and rejects empty patches', async () => {
+		const repository = createRepository();
+		const useCase = new UpdateBinUseCase(repository);
+		await expect(useCase.execute({ id: 12 })).rejects.toThrow(/at least one/);
+		await expect(useCase.execute({ id: 12, maxWeightLbs: -0.5 })).rejects.toThrow(/maxWeightLbs/);
+		await expect(useCase.execute({ id: 12, maxVolumeCuft: Number.POSITIVE_INFINITY })).rejects.toThrow(/maxVolumeCuft/);
+		expect(repository.updateBin).not.toHaveBeenCalled();
 	});
 	it('normalizes zone updates without allowing warehouse reassignment', async () => {
 		const repository = createRepository();
