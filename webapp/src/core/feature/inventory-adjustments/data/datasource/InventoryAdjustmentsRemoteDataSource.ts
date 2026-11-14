@@ -1,6 +1,45 @@
-import type {ApiClient} from '../../../../infrastructure/api/ApiClient';import type {InventoryAdjustmentDto,AdjustmentListDto} from '../dto/InventoryAdjustmentDto';
-export class InventoryAdjustmentsRemoteDataSource{constructor(private api:ApiClient){}
- async list(q:{warehouseId?:number|null;pending?:boolean}={}){const p=new URLSearchParams({per_page:'200'});if(q.warehouseId)p.set('warehouse_id',String(q.warehouseId));const path=q.pending?'/api/admin/adjustments/pending':'/api/admin/adjustments/list';const r=await this.api.get<AdjustmentListDto>(path+(q.pending?'':'?'+p));return r.adjustments??[];}
- async create(body:unknown){return this.api.post<unknown>('/api/admin/adjustments/direct',body);}
- async review(body:unknown){return this.api.post<unknown>('/api/admin/adjustments/review',body);}
+import type { ApiClient } from '../../../../infrastructure/api/ApiClient';
+import type { AdjustmentListDto } from '../dto/InventoryAdjustmentDto';
+
+export type AdjustmentQueryDto = {
+	warehouseId?: number | null;
+	status?: string | null;
+	page?: number;
+	perPage?: number;
+};
+
+export class InventoryAdjustmentsRemoteDataSource {
+	constructor(private readonly api: ApiClient) {}
+
+	private toQuery(query: AdjustmentQueryDto = {}): string {
+		const params = new URLSearchParams({
+			page: String(query.page ?? 1),
+			per_page: String(query.perPage ?? 200)
+		});
+		if (query.warehouseId != null) params.set('warehouse_id', String(query.warehouseId));
+		if (query.status) params.set('status', query.status);
+		return params.toString();
+	}
+
+	async list(query: AdjustmentQueryDto = {}) {
+		const response = await this.api.get<AdjustmentListDto>(
+			`/api/admin/adjustments/list?${this.toQuery(query)}`
+		);
+		return response.adjustments ?? [];
+	}
+
+	async pending(query: Omit<AdjustmentQueryDto, 'status'> = {}) {
+		const response = await this.api.get<AdjustmentListDto>(
+			`/api/admin/adjustments/pending?${this.toQuery(query)}`
+		);
+		return response.adjustments ?? [];
+	}
+
+	async createDirect(body: unknown) {
+		return this.api.post<unknown>('/api/admin/adjustments/direct', body);
+	}
+
+	async review(body: unknown) {
+		return this.api.post<unknown>('/api/admin/adjustments/review', body);
+	}
 }

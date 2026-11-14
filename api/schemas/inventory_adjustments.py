@@ -1,6 +1,6 @@
 """Inventory adjustment request schemas."""
 
-from typing import List, Literal, Optional
+from typing import List
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -28,6 +28,14 @@ class DirectAdjustmentRequest(BaseModel):
     adjustment_type: str = Field(..., min_length=1, max_length=10)
     quantity: int = Field(..., gt=0, le=1000000)
     reason: str = Field(..., min_length=1, max_length=500)
+
+    @field_validator("reason")
+    @classmethod
+    def validate_reason(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("reason must not be blank")
+        return v
 
     @field_validator("adjustment_type")
     @classmethod
