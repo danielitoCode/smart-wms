@@ -49,6 +49,8 @@ class TestPendingPutaway:
         data = resp.get_json()
         row = next(p for p in data["pending_items"] if p["sku"] == "TST-001")
         assert row["suggested_bin"] == "A-01-01"
+        assert row["suggested_bin_id"] == 3
+        assert row["suggested_bin_priority"] is None
 
     def test_pending_items_prefer_preferred_bin_over_default(self, client, auth_headers):
         # priority-1 preferred_bins entry must win over items.default_bin_id.
@@ -63,6 +65,43 @@ class TestPendingPutaway:
         row = next(p for p in data["pending_items"] if p["sku"] == "TST-001")
         # Bin 4 in seed data is A-01-02; default would have been A-01-01.
         assert row["suggested_bin"] == "A-01-02"
+        assert row["suggested_bin_id"] == 4
+        assert row["suggested_bin_priority"] == 1
+
+    def test_pending_items_ignores_preferred_bin_outside_requested_warehouse(self, client, auth_headers):
+        # Warehouse 2 is the virtual warehouse in the seed. A preferred bin
+        # there must not override the valid default in warehouse 1.
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """INSERT INTO zones (warehouse_id, zone_code, zone_name, zone_type)
+               VALUES (2, 'PUT-OTHER', 'Other Warehouse', 'STORAGE')
+               RETURNING zone_id"""
+        )
+        zone_id = cur.fetchone()[0]
+        cur.execute(
+            """INSERT INTO bins
+                   (zone_id, warehouse_id, bin_code, bin_barcode, bin_type,
+                    pick_sequence, putaway_sequence, external_id)
+               VALUES (%s, 2, 'OTHER-WH-01', 'OTHER-WH-01', 'Pickable',
+                       1, 1, gen_random_uuid())
+               RETURNING bin_id""",
+            (zone_id,),
+        )
+        other_bin_id = cur.fetchone()[0]
+        cur.execute(
+            "INSERT INTO preferred_bins (item_id, bin_id, priority) VALUES (1, %s, 1)",
+            (other_bin_id,),
+        )
+        cur.close()
+        _receive_to_staging(client, auth_headers, item_id=1, quantity=10)
+
+        resp = client.get("/api/putaway/pending/1", headers=auth_headers)
+        assert resp.status_code == 200
+        row = next(p for p in resp.get_json()["pending_items"] if p["sku"] == "TST-001")
+        assert row["suggested_bin"] == "A-01-01"
+        assert row["suggested_bin_id"] == 3
+        assert row["suggested_bin_priority"] is None
 
     def test_pending_items_suggested_bin_null_when_no_hint(self, client, auth_headers):
         # No preferred_bins, no default_bin_id -> suggested_bin is null
@@ -78,6 +117,8 @@ class TestPendingPutaway:
         data = resp.get_json()
         row = next(p for p in data["pending_items"] if p["sku"] == "TST-001")
         assert row["suggested_bin"] is None
+        assert row["suggested_bin_id"] is None
+        assert row["suggested_bin_priority"] is None
 
 
 class TestStagingSummary:
