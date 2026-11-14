@@ -343,15 +343,20 @@ Dependencias: base transversal.
 - [x] **CI Webapp:** [run 43605775989](https://github.com/danielitoCode/smart-wms/actions/runs/43605775989), commit `1eb69038`: typecheck, build, Domain, Application, Infrastructure, UI, i18n, Integration y regresión aprobados; **297 tests en 74 archivos**.
 - [~] **CI Backend:** ejecución [run 43605775972](https://github.com/danielitoCode/smart-wms/actions/runs/43605775972) en curso para el commit `1eb69038`; se espera la confirmación de la suite completa antes de cerrar la evidencia.
 
-#### F1.5 Bins / Ubicaciones — Pendiente
+#### F1.5 Bins / Ubicaciones — Completo
 
 Dependencias: F1.3 Warehouses y F1.4 Zones.
 
-- [ ] **Domain:** entidad Bin, pertenencia obligatoria a Warehouse y Zone, código/barcode, tipo, dimensiones de ubicación, secuencias y estado.
-- [ ] **Application:** List, Detail, Create, Update, Delete y consulta por almacén/zona.
-- [ ] **Data:** contrastar GET/POST `/admin/bins` y GET/PUT/DELETE por `bin_id`; verificar inventario y restricciones antes de eliminar.
-- [ ] **UI:** listado paginado, búsqueda, filtro por almacén/zona, alta/edición, detalle con inventario y confirmación de eliminación.
-- [ ] **Pruebas:** almacén/zona inexistente o ajena, tipos inválidos, bins con existencias, referencias preferidas, permisos `bins` y cambio de almacén activo.
+- [x] **Domain:** entidad Bin con identidad canónica `bin_id`, pertenencia a Warehouse y Zone, código/barcode, tipo, pasillo/fila/nivel/posición, secuencias, estado y capacidades de peso/volumen.
+- [x] **Application:** List paginado y filtrable, Detail con inventario/ocupación, Create, Update y Delete; los casos de uso validan IDs positivos, tipos, límites de campos, capacidades y patches no vacíos.
+- [x] **Data:** GET `/api/admin/bins?warehouse_id=&zone_id=&bin_type=&q=&page=&per_page=`, GET/PUT/DELETE `/api/admin/bins/{bin_id}` y POST `/api/admin/bins`; DTO y mapper conservan `bin_id`, relaciones, capacidades, secuencias y proyección de inventario.
+- [x] **Integridad backend:** paginación exige `page >= 1` y `1 <= per_page <= 1000`; IDs de almacén/zona positivos; tipo limitado a los valores soportados. El scope del servidor y el permiso `bins` se aplican a catálogo, detalle y mutaciones. Create/Update validan pertenencia de zona y restricciones de datos; Delete responde 409 con existencias positivas o referencias Preferred Bins.
+- [x] **UI:** catálogo paginado, búsqueda por código/barcode, filtros por almacén activo, zona y tipo, exportación, alta/edición con coordenadas de ubicación, secuencias y capacidades; detalle con existencias/ocupación y confirmación de eliminación.
+- [x] **Pruebas Flask:** filtros combinados, parámetros inválidos, permisos de lectura y mutación, CRUD, 404, 409 por inventario y por Preferred Bins, eliminación válida y aislamiento transaccional.
+- [x] **Pruebas Svelte:** validación de Domain/Application, contrato de datasource, filtros y paginación, mapper de detalle/ocupación, estado UI, pertenencia de zona, errores y renderizado.
+- [x] **CI Webapp:** [run 43625210189](https://github.com/danielitoCode/smart-wms/actions/runs/43625210189), commit `4919805c`: typecheck, build, suites Domain/Application/Infrastructure/UI/i18n/Integration y regresión completa aprobadas; **335 tests en 81 archivos**.
+- [x] **CI Flask:** [run 43625127240](https://github.com/danielitoCode/smart-wms/actions/runs/43625127240), commit `ce1034fb`: **3043 tests passed**; incluye la nueva prueba de restricción por Preferred Bins. El commit posterior `4919805c` solo añadió cambios Svelte/i18n.
+- [~] **Cobertura:** el paso no bloqueante `test:coverage:feature` no generó reporte porque falta `@vitest/coverage-v8` en las dependencias de Webapp. La regresión completa sí pasó; queda como deuda de configuración transversal, no como bloqueo funcional de F1.5.
 
 ### Fase 2 — Inventario, ajustes y conteos
 
@@ -748,7 +753,9 @@ Dependencias: F4.1, F7.1 y Settings de revisión.
 |---|---|---|---:|---|
 | F1.1 | Items | Parcial | 1 | Base |
 | F1.2 | Vendors | Ausente | 1 | Base / Items si aplica |
-| F1.3 | Warehouses | Completo | 1 | Base |\n| F1.4 | Zones | Completo | 1 | Warehouses |\n| F1.5 | Bins | Pendiente | 1 | Warehouses, Zones |
+| F1.3 | Warehouses | Completo | 1 | Base |
+| F1.4 | Zones | Completo | 1 | Warehouses |
+| F1.5 | Bins | Completo | 1 | Warehouses, Zones |
 | F2.1 | Inventory | Parcial | 2 | Items, ubicaciones |
 | F2.2 | Inventory Adjustments | Ausente | 2 | Inventory, Items, ubicaciones |
 | F2.3 | Cycle Counts | Parcial | 2 | Inventory, ubicaciones |
@@ -860,7 +867,7 @@ Actualizar esta sección al cerrar cada PR/feature. Mantener una única fuente d
 | F1.2 Vendors | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
 | F1.3 Warehouses | [x] | [x] | [x] | [x] | [x] | [x] | Completa |
 | F1.4 Zones | [x] | [x] | [x] | [x] | [x] | [x] | Completa |
-| F1.5 Bins | [~] | [~] | [~] | [~] | [~] | [~] | En verificación |
+| F1.5 Bins | [x] | [x] | [x] | [x] | [x] | [x] | Completa |
 | F2.1 Inventory | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
 | F2.2 Adjustments | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
 | F2.3 Cycle Counts | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
@@ -892,14 +899,9 @@ Actualizar esta sección al cerrar cada PR/feature. Mantener una única fuente d
 | F7.1 POS Activity | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
 | F7.2 Fraud | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
 
-### F1.5 Bins / Ubicaciones — implementación en curso
+### F1.5 Bins / Ubicaciones — completada
 
-- **Domain:** entidad Bin con zona, almacén, tipo, estado, capacidad de peso/volumen y ocupación por existencias.
-- **Application:** CRUD administrativo y casos de uso separados para búsqueda operativa y consulta por barcode.
-- **Data:** CRUD real de `/api/admin/bins`; lookup real de `/api/lookup/bin/search?q=` y `/api/lookup/bin/{barcode}`, con DTO y repositorios independientes.
-- **UI:** catálogo paginado, filtros por almacén y zona, búsqueda por código/barcode, formularios de capacidad, existencias y restricciones de eliminación.
-- **Seguridad:** catálogo y lookups limitados en servidor a los almacenes autorizados; detalle, actualización y eliminación ocultan ubicaciones de otros almacenes.
-- **Verificación pendiente:** ejecución final de Webapp CI y suite backend; no marcar F1.5 completa hasta revisar ambos resultados.
+La implementación administrativa cubre CRUD, búsqueda, filtros, detalle, límites de entrada, restricciones de integridad y permisos por página/almacén. La búsqueda operativa y la consulta por barcode permanecen separadas del catálogo administrativo, con sus propios DTO y repositorios. Evidencia y deuda de cobertura quedan registradas en el apartado F1.5 anterior.
 
 
 ## 11. Protocolo de trabajo para cada incremento
