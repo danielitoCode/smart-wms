@@ -479,8 +479,9 @@ def update_preferred(validated):
     # so items.default_bin_id below cannot be pointed at a staging bin
     # either.
     if bin_row.bin_type != BIN_PICKABLE or not bin_row.is_active:
+        state = "inactive" if not bin_row.is_active else "active"
         return jsonify({
-            "error": "Preferred bins must reference an active Pickable bin"
+            "error": f"Bin {bin_row.bin_code} is {state} and has type {bin_row.bin_type}; preferred bins must reference an active Pickable bin"
         }), 400
 
     # V-028: a preferred bin write updates global state (items.default_bin_id
