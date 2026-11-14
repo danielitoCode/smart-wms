@@ -289,7 +289,7 @@ Completar una fila por operación significativa; no basta con una fila por panta
 
 **Objetivo:** completar los datos maestros que alimentan recepción, inventario, compras, ventas y movimientos.
 
-#### F1.1 Items / Productos — Parcial
+#### F1.1 Items / Productos — Parcial (pruebas de estado/UI y contratos cerradas)
 
 Dependencias: base transversal.
 
@@ -297,8 +297,10 @@ Dependencias: base transversal.
 - [ ] Aplicación: listar, consultar detalle, crear, editar, archivar/eliminar según contrato y buscar.
 - [ ] Infraestructura: repositorio y mappers contra endpoints reales.
 - [ ] UI: tabla, filtros/búsqueda, detalle y formularios con errores por campo.
-- [ ] Tests: invariantes de producto; casos de uso CRUD; contrato HTTP; formularios, estados y permisos.
+- [x] Tests: validación de SKU/peso; estado/UI; errores HTTP 403/409/422; envelope y paginación; filtros Active/Archived/All; detalle; archivado/restauración; eliminación y cancelación de solicitudes. **CI verde:** [Webapp CI — commit `6bbe15e`](https://github.com/danielitoCode/smart-wms/actions/runs/43561705576) (61 archivos / 229 tests en regresión completa).
 - [ ] Paridad: comparar acciones y campos de React Items.
+
+**Nota de cierre de pruebas (2026-11-14):** se añadieron pruebas de estado inyectando dependencias, smoke test SSR de `ItemsScreen`, pruebas de repositorio para filtros/paginación/detalle/archivo/borrado y pruebas HTTP de endpoints y normalización 403/409/422. El pipeline completo de webapp pasó: check, build, domain, application, infrastructure, UI, i18n, integration y regresión total. La etiqueta F1.1 se mantiene **Parcial** porque aún queda comparar la presentación de columnas/detalle con React (por ejemplo, peso y bin por defecto); no se declara paridad visual completa solo por tener CI verde.
 
 #### F1.2 Vendors / Proveedores — Ausente
 
