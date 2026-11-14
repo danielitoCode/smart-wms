@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getContext, onMount } from 'svelte';
+	import { page } from '$app/state';
 	import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
 	import PageHeader from '../../../../../lib/components/PageHeader.svelte';
 	import UiBanner from '../../../../../lib/components/UiBanner.svelte';
@@ -11,16 +12,30 @@
 	let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
 	onMount(() => {
+		vm.setQuery(page.url.searchParams.get('q') ?? '');
 		void vm.load(1);
+
+		return () => {
+			if (searchTimer) clearTimeout(searchTimer);
+			vm.cancelLoad();
+		};
 	});
 
 	function onSearchInput(value: string) {
 		vm.setQuery(value);
+		vm.cancelLoad();
 		if (searchTimer) clearTimeout(searchTimer);
-		searchTimer = setTimeout(() => void vm.load(1), 300);
+		searchTimer = setTimeout(() => {
+			searchTimer = null;
+			void vm.load(1);
+		}, 300);
 	}
 
 	function onFilterChange(value: 'active' | 'archived' | 'all') {
+		if (searchTimer) {
+			clearTimeout(searchTimer);
+			searchTimer = null;
+		}
 		vm.setFilter(value);
 		void vm.load(1);
 	}
@@ -42,12 +57,10 @@
 			placeholder={i18n.t('Buscar por SKU, nombre, UPC o MPN…')}
 			value={vm.query}
 			oninput={(e) => onSearchInput(e.currentTarget.value)}
-			disabled={vm.loading}
 		/>
 		<select
 			value={vm.filter}
 			onchange={(e) => onFilterChange(e.currentTarget.value as 'active' | 'archived' | 'all')}
-			disabled={vm.loading}
 		>
 			<option value="active">{i18n.t('Activos')}</option>
 			<option value="archived">{i18n.t('Archivados')}</option>
