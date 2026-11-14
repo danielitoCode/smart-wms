@@ -112,6 +112,7 @@
 			{/if}
 		</section>{/if}
 		{#if showBins}<section class="panel">
+			{#if vm.selectedZoneId != null}<p class="filter-hint">{i18n.t('Filtrando por zona')} #{vm.selectedZoneId} <button class="linkish" type="button" onclick={() => vm.loadBinsForZone(null,1)}>{i18n.t('Quitar filtro')}</button></p>{/if}
 			<div class="section-header bin-heading"><h2>{i18n.t('Ubicaciones')}</h2><div class="bin-tools"><input aria-label={i18n.t('Buscar código o código de barras')} placeholder={i18n.t('Buscar código o código de barras')} value={vm.binSearch} oninput={(e) => onSearch(e.currentTarget.value)} /><button class="quiet" type="button" onclick={exportCsv} disabled={exporting || vm.binTotal === 0}>{exporting ? i18n.t('Exportando…') : i18n.t('Exportar CSV')}</button><button class="accent" type="button" onclick={openCreateBin} disabled={vm.zones.length === 0}>{i18n.t('Nueva ubicación')}</button></div></div>
 			{#if vm.binsLoading}<p class="status">{i18n.t('Actualizando ubicaciones…')}</p>
 			{:else if vm.bins.length === 0}<p class="status">{i18n.t('No hay ubicaciones para este filtro.')}</p>
