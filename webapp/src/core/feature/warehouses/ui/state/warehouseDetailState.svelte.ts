@@ -5,6 +5,7 @@ import type {
 } from '../../domain/entity/Warehouse';
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 import { authSession } from '../../../../infrastructure/auth/AuthSession';
+import { assertZoneBelongsToWarehouse } from '../../domain/context/ZoneContext';
 
 const deps = createWarehousesDependencies();
 
@@ -87,10 +88,15 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 		return mutate(async () => { await deps.createZone.execute({ ...input, warehouseId }); zones = await deps.listZones.execute(warehouseId); }, 'No se pudo crear la zona');
 	}
 	async function updateZone(input: UpdateZoneInput) {
-		return mutate(async () => { await deps.updateZone.execute(input); zones = await deps.listZones.execute(warehouseId); }, 'No se pudo actualizar la zona');
+		return mutate(async () => {
+			assertZoneBelongsToWarehouse(input.id, warehouseId, zones);
+			await deps.updateZone.execute(input);
+			zones = await deps.listZones.execute(warehouseId);
+		}, 'No se pudo actualizar la zona');
 	}
 	async function removeZone(id: number) {
 		return mutate(async () => {
+			assertZoneBelongsToWarehouse(id, warehouseId, zones);
 			await deps.deleteZone.execute(id); zones = await deps.listZones.execute(warehouseId);
 			if (selectedZoneId === id && includeBins) await loadBinsForZone(null, 1);
 		}, 'No se pudo eliminar la zona');
