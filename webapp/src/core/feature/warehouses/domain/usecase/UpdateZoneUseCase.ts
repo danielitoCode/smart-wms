@@ -8,12 +8,12 @@ export class UpdateZoneUseCase {
 		const update: UpdateZoneInput = { id: input.id };
 		if (input.code !== undefined) {
 			const value = input.code.trim();
-			if (!value || value.length > 32) throw new Error('zone code must contain 1 to 32 characters');
+			if (!value || value.length > 20) throw new Error('zone code must contain 1 to 20 characters');
 			update.code = value;
 		}
 		if (input.name !== undefined) {
 			const value = input.name.trim();
-			if (!value || value.length > 128) throw new Error('zone name must contain 1 to 128 characters');
+			if (!value || value.length > 100) throw new Error('zone name must contain 1 to 100 characters');
 			update.name = value;
 		}
 		if (input.zoneType !== undefined) {
