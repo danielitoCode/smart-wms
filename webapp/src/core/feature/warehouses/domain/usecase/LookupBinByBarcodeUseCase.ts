@@ -7,7 +7,7 @@ export class LookupBinByBarcodeUseCase {
 	async execute(barcode: string): Promise<OperationalBinLookup> {
 		const normalized = barcode.trim();
 		if (!normalized) throw new Error('bin barcode is required');
-		if (normalized.length > 128) throw new Error('bin barcode cannot exceed 128 characters');
+		if (normalized.length > 100) throw new Error('bin barcode cannot exceed 100 characters');
 		return this.repository.lookupOperationalBin(normalized);
 	}
 }
