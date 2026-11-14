@@ -12,7 +12,11 @@ describe('PutawayMapper', () => {
 			bin_id: 2,
 			bin_code: 'STAGE-02',
 			lot_number: 'LOT-1',
-			suggested_bin: 'PICK-04'
+			suggested_bin: 'PICK-04',
+			suggested_bin_id: 9,
+			suggested_bin_priority: 1,
+			suggested_bin_barcode: 'PICK-04-BC',
+			suggested_bin_zone: 'Pick Zone'
 		});
 
 		expect(item).toMatchObject({
@@ -21,7 +25,13 @@ describe('PutawayMapper', () => {
 			binId: 2,
 			binCode: 'STAGE-02',
 			lotNumber: 'LOT-1',
-			suggestedBin: 'PICK-04'
+			suggestedBin: {
+				binId: 9,
+				binCode: 'PICK-04',
+				binBarcode: 'PICK-04-BC',
+				zoneName: 'Pick Zone',
+				priority: 1
+			}
 		});
 	});
 
