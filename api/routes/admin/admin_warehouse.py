@@ -7,7 +7,7 @@ from flask import g, jsonify, request
 from sqlalchemy import text
 
 from constants import ACTION_TRANSFER
-from middleware.auth_middleware import require_admin_or_page_permission, require_auth
+from middleware.auth_middleware import check_warehouse_access, require_admin_or_page_permission, require_auth
 from middleware.db import with_db
 from routes.admin import VALID_BIN_TYPES, VALID_ZONE_TYPES, admin_bp
 from schemas.bins import CreateBinRequest, UpdateBinRequest
@@ -200,13 +200,19 @@ def list_zones():
     params["limit"] = per_page
     params["offset"] = (page - 1) * per_page
     rows = g.db.execute(
-        text(f"SELECT zone_id, warehouse_id, zone_code, zone_name, zone_type, is_active FROM zones {where_sql} ORDER BY zone_id LIMIT :limit OFFSET :offset"),
+        text(f"""SELECT z.zone_id, z.warehouse_id, z.zone_code, z.zone_name, z.zone_type, z.is_active,
+                        COUNT(b.bin_id) AS bins_count
+                 FROM zones z LEFT JOIN bins b ON b.zone_id = z.zone_id
+                 {where_sql.replace('warehouse_id', 'z.warehouse_id')}
+                 GROUP BY z.zone_id, z.warehouse_id, z.zone_code, z.zone_name, z.zone_type, z.is_active
+                 ORDER BY z.zone_id LIMIT :limit OFFSET :offset"""),
         params,
     ).fetchall()
 
     return jsonify({
         "zones": [{"zone_id": z.zone_id, "warehouse_id": z.warehouse_id, "zone_code": z.zone_code,
-                    "zone_name": z.zone_name, "zone_type": z.zone_type, "is_active": z.is_active} for z in rows],
+                    "zone_name": z.zone_name, "zone_type": z.zone_type, "is_active": z.is_active,
+                    "bins_count": z.bins_count} for z in rows],
         "total": total, "page": page, "per_page": per_page, "pages": pages,
     })
 
@@ -244,9 +250,12 @@ def create_zone(validated):
 def update_zone(zone_id, validated):
     data = validated.model_dump(exclude_unset=True)
 
-    existing = g.db.execute(text("SELECT zone_id FROM zones WHERE zone_id = :zid"), {"zid": zone_id}).fetchone()
+    existing = g.db.execute(text("SELECT zone_id, warehouse_id FROM zones WHERE zone_id = :zid"), {"zid": zone_id}).fetchone()
     if not existing:
         return jsonify({"error": "Zone not found"}), 404
+    allowed, denial = check_warehouse_access(existing.warehouse_id)
+    if not allowed:
+        return denial
 
     ALLOWED_FIELDS = {"zone_code", "zone_name", "zone_type", "is_active"}
     fields, params = [], {"zid": zone_id}
@@ -275,11 +284,14 @@ def update_zone(zone_id, validated):
 @with_db
 def delete_zone(zone_id):
     existing = g.db.execute(
-        text("SELECT zone_id, zone_code FROM zones WHERE zone_id = :zid"),
+        text("SELECT zone_id, zone_code, warehouse_id FROM zones WHERE zone_id = :zid"),
         {"zid": zone_id},
     ).fetchone()
     if not existing:
         return jsonify({"error": "Zone not found"}), 404
+    allowed, denial = check_warehouse_access(existing.warehouse_id)
+    if not allowed:
+        return denial
 
     bin_count = g.db.execute(
         text("SELECT COUNT(*) FROM bins WHERE zone_id = :zid"),
