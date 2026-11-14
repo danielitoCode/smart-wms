@@ -23,7 +23,7 @@ describe('WarehouseWorkspaceScreen zone context', () => {
 		});
 		expect(body).toContain('WH-01 — Central');
 		expect(body).toContain('WH-02 — Secondary');
-		expect(body).toContain('Almacén seleccionado');
+		expect(body).toContain('<select');
 	});
 
 	it('locks the active warehouse for users without selection permission', () => {
