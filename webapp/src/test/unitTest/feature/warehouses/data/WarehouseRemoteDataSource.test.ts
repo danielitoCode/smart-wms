@@ -68,4 +68,22 @@ describe('WarehouseRemoteDataSource Flask contract', () => {
 		expect(api.delete).toHaveBeenCalledWith('/api/admin/zones/4');
 		expect(api.get).not.toHaveBeenCalledWith('/api/admin/zones/4');
 	});
+	it('keeps operational bin search separate from the admin catalogue endpoint', async () => {
+		const api = createApi();
+		const response = [{ bin_id: 3, bin_code: 'A-01-01', bin_barcode: 'BC-01', bin_type: 'Pickable', zone_name: 'Picking', aisle: 'A', row_num: 1, level_num: 1 }];
+		vi.mocked(api.get).mockResolvedValue(response);
+		const source = new WarehouseRemoteDataSource(api);
+		await expect(source.searchOperationalBins('A 01')).resolves.toEqual(response);
+		expect(api.get).toHaveBeenCalledWith('/api/lookup/bin/search?q=A%2001');
+	});
+
+	it('uses the barcode lookup endpoint for operational bin detail', async () => {
+		const api = createApi();
+		const response = { bin: { bin_id: 3, bin_code: 'A-01-01', bin_barcode: 'BC-01', bin_type: 'Pickable', zone_name: 'Picking', aisle: 'A', row_num: 1, level_num: 1 }, items: [] };
+		vi.mocked(api.get).mockResolvedValue(response);
+		const source = new WarehouseRemoteDataSource(api);
+		await expect(source.lookupOperationalBin('BC/01')).resolves.toEqual(response);
+		expect(api.get).toHaveBeenCalledWith('/api/lookup/bin/BC%2F01');
+	});
+
 });
