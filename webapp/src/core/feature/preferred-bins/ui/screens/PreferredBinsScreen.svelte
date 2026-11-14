@@ -23,7 +23,8 @@
 		const next = priorityDrafts[id] ?? current;
 		if (next !== current) {
 			const saved = await vm.updatePriority(id, next);
-			if (!saved) priorityDrafts[id] = current;
+			if (saved) delete priorityDrafts[id];
+			else priorityDrafts[id] = current;
 		}
 	}
 
