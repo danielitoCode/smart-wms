@@ -15,6 +15,14 @@ export function isAdmin(role: string): boolean {
 	return role === 'ADMIN';
 }
 
+/** Warehouse selection is allowed only within the user's assigned scope. */
+export function canSelectWarehouseContext(authority: WarehouseAuthority): boolean {
+	return isAdmin(authority.role) ||
+		authority.allowedPages.includes('warehouses') ||
+		authority.allowedPages.includes('zones') ||
+		authority.allowedPages.includes('bins');
+}
+
 /**
  * IDs the user may select in the UI.
  * Non-ADMIN: strictly /me warehouse_ids (never trust a free-typed UI id).
