@@ -55,6 +55,9 @@ describe('WarehouseDetailScreen zones workspace', () => {
 			context: new Map<string, any>([['i18n', i18n]])
 		});
 		expect(body).toContain('Existencias');
+		expect(body).toContain('Filtrar por zona');
+		expect(body).toContain('Todas las zonas');
+		expect(body).toContain('Picking');
 		expect(body).toContain('11 (3 asignadas)');
 		expect(body).toContain('125 lb · 32 ft³');
 		expect(body).toContain('A-01-01');
