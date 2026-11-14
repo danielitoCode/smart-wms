@@ -40,8 +40,8 @@
 	--danger-bg: #fdf0ef;
 
 	/* Foco */
-	--focus: 0 0 0 3px rgba(233, 165, 11, 0.38);
-	--focus-ring: 3px solid var(--gold);
+	--focus: 0 0 0 1px color-mix(in srgb, var(--gold) 55%, transparent);
+	--focus-ring: 1px solid color-mix(in srgb, var(--gold) 88%, var(--navy));
 
 	/* Tipografía */
 	--disp: 'Space Grotesk', system-ui, sans-serif;
