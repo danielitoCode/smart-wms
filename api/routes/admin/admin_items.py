@@ -935,6 +935,16 @@ def create_preferred_bin(validated):
     bin_id = validated.bin_id
     priority = validated.priority
 
+    # Resolve the item explicitly before inserting. Relying only on the
+    # database foreign key turns a stale/non-existent item selection into
+    # an integrity error (HTTP 500) instead of a stable client 404.
+    item_row = g.db.execute(
+        text("SELECT item_id FROM items WHERE item_id = :item_id"),
+        {"item_id": item_id},
+    ).fetchone()
+    if not item_row:
+        return jsonify({"error": "Item not found"}), 404
+
     # Preferred bins must be Pickable. Staging / PickableStaging
     # bins hold transient receiving + putaway stock; assigning one as
     # preferred renders the SKU twice at the same priority and blocks
@@ -1007,9 +1017,12 @@ def update_preferred_bin(preferred_bin_id, validated):
 @require_admin_or_page_permission("preferred-bins")
 @with_db
 def delete_preferred_bin(preferred_bin_id):
-    g.db.execute(
-        text("DELETE FROM preferred_bins WHERE preferred_bin_id = :pbid"),
+    result = g.db.execute(
+        text("DELETE FROM preferred_bins WHERE preferred_bin_id = :pbid RETURNING preferred_bin_id"),
         {"pbid": preferred_bin_id},
-    )
+    ).fetchone()
+    if not result:
+        g.db.rollback()
+        return jsonify({"error": "Preferred bin not found"}), 404
     g.db.commit()
     return jsonify({"message": "Preferred bin deleted"})
