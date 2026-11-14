@@ -11,6 +11,7 @@ describe('AccessPolicy', () => {
 		expect(requiredPageKeysForPath('/warehouses/12')).toEqual(['warehouses', 'zones', 'bins']);
 		expect(requiredPageKeysForPath('/data/bins')).toEqual(['bins', 'zones']);
 		expect(requiredPageKeysForPath('/data/preferred-bins')).toEqual(['preferred-bins']);
+		expect(requiredPageKeysForPath('/management/vendors')).toEqual(['vendors']);
 		expect(requiredPageKeysForPath('/picking')).toEqual([]);
 	});
 	it('checks warehouse scope independently from page access', () => {
