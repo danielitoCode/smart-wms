@@ -2827,3 +2827,73 @@ class TestVendorsCRUD:
             headers=auth_headers,
         )
         assert missing.status_code == 404
+
+
+class TestPreferredBinsWarehouseScope:
+    def _other_warehouse_bin(self, client, headers):
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO warehouses (warehouse_code, warehouse_name) VALUES ('PB-SCOPE-WH', 'Preferred Bin Scope') RETURNING warehouse_id"
+        )
+        warehouse_id = cur.fetchone()[0]
+        cur.execute(
+            "INSERT INTO zones (warehouse_id, zone_code, zone_name, zone_type) VALUES (%s, 'PB-SCOPE', 'Preferred Bin Scope', 'PICKING') RETURNING zone_id",
+            (warehouse_id,),
+        )
+        zone_id = cur.fetchone()[0]
+        cur.execute(
+            """INSERT INTO bins (zone_id, warehouse_id, bin_code, bin_barcode, bin_type, external_id)
+               VALUES (%s, %s, 'PB-OUTSIDE', 'PB-OUTSIDE', 'Pickable', gen_random_uuid())
+               RETURNING bin_id""",
+            (zone_id, warehouse_id),
+        )
+        bin_id = cur.fetchone()[0]
+        cur.close()
+        return warehouse_id, bin_id
+
+    def test_list_is_scoped_and_explicit_foreign_warehouse_is_denied(self, client):
+        warehouse_id, bin_id = self._other_warehouse_bin(client, None)
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute("INSERT INTO preferred_bins (item_id, bin_id, priority) VALUES (1, %s, 1)", (bin_id,))
+        cur.close()
+        _, headers = _web_user_with_pages(client, ["preferred-bins"], username="preferred_scope_list")
+        listed = client.get("/api/admin/preferred-bins", headers=headers)
+        assert listed.status_code == 200
+        assert all(row["warehouse_id"] == 1 for row in listed.get_json()["preferred_bins"])
+        denied = client.get(f"/api/admin/preferred-bins?warehouse_id={warehouse_id}", headers=headers)
+        assert denied.status_code == 403
+
+    def test_create_rejects_unassigned_bin_and_cross_warehouse_resequence(self, client):
+        warehouse_id, bin_id = self._other_warehouse_bin(client, None)
+        _, headers = _web_user_with_pages(client, ["preferred-bins"], username="preferred_scope_create")
+        outside = client.post("/api/admin/preferred-bins", json={"item_id": 1, "bin_id": bin_id, "priority": 1}, headers=headers)
+        assert outside.status_code == 403
+
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute("INSERT INTO preferred_bins (item_id, bin_id, priority) VALUES (1, %s, 1)", (bin_id,))
+        cur.close()
+        inside = client.post("/api/admin/preferred-bins", json={"item_id": 1, "bin_id": 3, "priority": 1}, headers=headers)
+        assert inside.status_code == 403
+
+    def test_update_and_delete_hide_out_of_scope_relations(self, client):
+        _warehouse_id, bin_id = self._other_warehouse_bin(client, None)
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute("INSERT INTO preferred_bins (item_id, bin_id, priority) VALUES (1, %s, 1) RETURNING preferred_bin_id", (bin_id,))
+        relation_id = cur.fetchone()[0]
+        cur.close()
+        _, headers = _web_user_with_pages(client, ["preferred-bins"], username="preferred_scope_mutate")
+        updated = client.put(f"/api/admin/preferred-bins/{relation_id}", json={"priority": 1}, headers=headers)
+        deleted = client.delete(f"/api/admin/preferred-bins/{relation_id}", headers=headers)
+        assert updated.status_code == 404
+        assert deleted.status_code == 404
+
+    def test_permission_is_required_for_preferred_bin_endpoints(self, client, auth_headers):
+        _, headers = _web_user_with_pages(client, ["items"], username="preferred_permission_denied")
+        assert client.get("/api/admin/preferred-bins", headers=headers).status_code == 403
+        assert client.post("/api/admin/preferred-bins", json={"item_id": 1, "bin_id": 3, "priority": 1}, headers=headers).status_code == 403
+        assert client.put("/api/admin/preferred-bins/1", json={"priority": 1}, headers=headers).status_code == 403
+        assert client.delete("/api/admin/preferred-bins/1", headers=headers).status_code == 403

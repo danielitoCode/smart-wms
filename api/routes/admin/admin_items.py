@@ -8,7 +8,12 @@ from sqlalchemy import text
 
 from pydantic import ValidationError
 
-from middleware.auth_middleware import require_admin_or_page_permission, require_auth
+from middleware.auth_middleware import (
+    check_warehouse_access,
+    require_admin_or_page_permission,
+    require_auth,
+    warehouse_scope_clause,
+)
 from middleware.db import with_db
 from routes.admin import admin_bp
 from datetime import timezone
@@ -842,30 +847,55 @@ def _import_inventory_adjustment(db, row: InventoryAdjustmentImportRow, released
 @require_admin_or_page_permission("preferred-bins")
 @with_db
 def list_preferred_bins():
-    item_id = request.args.get("item_id", type=int)
-    bin_id = request.args.get("bin_id", type=int)
-    search = request.args.get("q", "")
+    try:
+        warehouse_arg = request.args.get("warehouse_id")
+        warehouse_id = int(warehouse_arg) if warehouse_arg is not None else None
+        item_arg = request.args.get("item_id")
+        item_id = int(item_arg) if item_arg is not None else None
+        bin_arg = request.args.get("bin_id")
+        bin_id = int(bin_arg) if bin_arg is not None else None
+    except (TypeError, ValueError):
+        return jsonify({"error": "warehouse_id, item_id and bin_id must be integers"}), 400
 
+    if warehouse_id is not None and warehouse_id <= 0:
+        return jsonify({"error": "warehouse_id must be a positive integer"}), 400
+    if item_id is not None and item_id <= 0:
+        return jsonify({"error": "item_id must be a positive integer"}), 400
+    if bin_id is not None and bin_id <= 0:
+        return jsonify({"error": "bin_id must be a positive integer"}), 400
+    if warehouse_id is not None:
+        allowed, denial = check_warehouse_access(warehouse_id)
+        if not allowed:
+            return denial
+
+    search = (request.args.get("q") or "").strip()
     where_clauses = []
     params = {}
-    if item_id:
+    if warehouse_id is not None:
+        where_clauses.append("b.warehouse_id = :warehouse_id")
+        params["warehouse_id"] = warehouse_id
+    scope_clause, scope_params = warehouse_scope_clause("b.warehouse_id")
+    if scope_clause:
+        where_clauses.append(scope_clause.removeprefix("AND ").strip())
+        params.update(scope_params)
+    if item_id is not None:
         where_clauses.append("pb.item_id = :item_id")
         params["item_id"] = item_id
-    if bin_id:
+    if bin_id is not None:
         where_clauses.append("pb.bin_id = :bin_id")
         params["bin_id"] = bin_id
     if search:
         where_clauses.append("(i.sku ILIKE :search OR i.item_name ILIKE :search)")
         params["search"] = f"%{search}%"
 
-    where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+    where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
 
     rows = g.db.execute(
         text(f"""
             SELECT pb.preferred_bin_id, pb.item_id, pb.bin_id, pb.priority, pb.notes,
                    pb.updated_at,
                    i.sku, i.item_name,
-                   b.bin_code, z.zone_name
+                   b.warehouse_id, b.bin_code, z.zone_name
             FROM preferred_bins pb
             JOIN items i ON i.item_id = pb.item_id
             JOIN bins b ON b.bin_id = pb.bin_id
@@ -887,12 +917,41 @@ def list_preferred_bins():
                 "updated_at": r.updated_at.isoformat() if r.updated_at else None,
                 "sku": r.sku,
                 "item_name": r.item_name,
+                "warehouse_id": r.warehouse_id,
                 "bin_code": r.bin_code,
                 "zone_name": r.zone_name,
             }
             for r in rows
         ]
     })
+
+
+def _preferred_bin_item_is_fully_in_scope(db, item_id):
+    """Prevent a scoped operator from reordering a global item hierarchy.
+
+    Priorities are unique per item, not per warehouse. Resequencing one
+    warehouse can therefore change rows in another warehouse. A non-admin
+    may mutate an item's preferred-bin hierarchy only when every related
+    bin is in one of their assigned warehouses.
+    """
+    scope_clause, scope_params = warehouse_scope_clause("b.warehouse_id")
+    if not scope_clause:
+        return True
+
+    params = {"item_id": item_id, **scope_params}
+    total = db.execute(
+        text("SELECT COUNT(*) FROM preferred_bins WHERE item_id = :item_id"),
+        {"item_id": item_id},
+    ).scalar()
+    visible = db.execute(
+        text(
+            "SELECT COUNT(*) FROM preferred_bins pb "
+            "JOIN bins b ON b.bin_id = pb.bin_id "
+            "WHERE pb.item_id = :item_id " + scope_clause
+        ),
+        params,
+    ).scalar()
+    return total == visible
 
 
 def _resequence_item_preferred_bins(db, item_id, target_preferred_bin_id):
@@ -950,11 +1009,16 @@ def create_preferred_bin(validated):
     # preferred renders the SKU twice at the same priority and blocks
     # receiving. Mirrors the guard on putaway.update_preferred.
     bin_row = g.db.execute(
-        text("SELECT bin_code, bin_type FROM bins WHERE bin_id = :bin_id"),
+        text("SELECT bin_code, bin_type, warehouse_id FROM bins WHERE bin_id = :bin_id"),
         {"bin_id": bin_id},
     ).fetchone()
     if not bin_row:
         return jsonify({"error": "Bin not found"}), 404
+    allowed, denial = check_warehouse_access(bin_row.warehouse_id)
+    if not allowed:
+        return denial
+    if not _preferred_bin_item_is_fully_in_scope(g.db, item_id):
+        return jsonify({"error": "Preferred-bin priorities span warehouses outside your assigned scope"}), 403
     if bin_row.bin_type != BIN_PICKABLE:
         return jsonify({
             "error": (
@@ -995,18 +1059,25 @@ def create_preferred_bin(validated):
 def update_preferred_bin(preferred_bin_id, validated):
     priority = validated.priority
 
+    scope_clause, scope_params = warehouse_scope_clause("b.warehouse_id")
     row = g.db.execute(
         text(
-            "UPDATE preferred_bins SET priority = :priority, updated_at = NOW() "
-            "WHERE preferred_bin_id = :pbid RETURNING item_id"
+            "SELECT pb.item_id FROM preferred_bins pb "
+            "JOIN bins b ON b.bin_id = pb.bin_id "
+            "WHERE pb.preferred_bin_id = :pbid " + scope_clause
         ),
-        {"priority": priority, "pbid": preferred_bin_id},
+        {"pbid": preferred_bin_id, **scope_params},
     ).fetchone()
     if not row:
         g.db.rollback()
         return jsonify({"error": "preferred bin not found"}), 404
-    # The requested priority positions this bin; resequence the
-    # item's list so it stays a contiguous 1..K hierarchy with no ties.
+    if not _preferred_bin_item_is_fully_in_scope(g.db, row.item_id):
+        g.db.rollback()
+        return jsonify({"error": "Preferred-bin priorities span warehouses outside your assigned scope"}), 403
+    g.db.execute(
+        text("UPDATE preferred_bins SET priority = :priority, updated_at = NOW() WHERE preferred_bin_id = :pbid"),
+        {"priority": priority, "pbid": preferred_bin_id},
+    )
     _resequence_item_preferred_bins(g.db, row.item_id, preferred_bin_id)
     g.db.commit()
     return jsonify({"message": "Priority updated"})
@@ -1017,16 +1088,26 @@ def update_preferred_bin(preferred_bin_id, validated):
 @require_admin_or_page_permission("preferred-bins")
 @with_db
 def delete_preferred_bin(preferred_bin_id):
+    scope_clause, scope_params = warehouse_scope_clause("b.warehouse_id")
     result = g.db.execute(
-        text("DELETE FROM preferred_bins WHERE preferred_bin_id = :pbid RETURNING item_id"),
-        {"pbid": preferred_bin_id},
+        text(
+            "SELECT pb.item_id FROM preferred_bins pb "
+            "JOIN bins b ON b.bin_id = pb.bin_id "
+            "WHERE pb.preferred_bin_id = :pbid " + scope_clause
+        ),
+        {"pbid": preferred_bin_id, **scope_params},
     ).fetchone()
     if not result:
         g.db.rollback()
         return jsonify({"error": "Preferred bin not found"}), 404
-
-    # Keep remaining priorities contiguous after deletion as well. The
-    # deleted relation is no longer present, so no row receives tie priority.
+    if not _preferred_bin_item_is_fully_in_scope(g.db, result.item_id):
+        g.db.rollback()
+        return jsonify({"error": "Preferred-bin priorities span warehouses outside your assigned scope"}), 403
+    g.db.execute(
+        text("DELETE FROM preferred_bins WHERE preferred_bin_id = :pbid"),
+        {"pbid": preferred_bin_id},
+    )
+    # Keep remaining priorities contiguous after deletion as well.
     _resequence_item_preferred_bins(g.db, result.item_id, -1)
     g.db.commit()
     return jsonify({"message": "Preferred bin deleted"})
