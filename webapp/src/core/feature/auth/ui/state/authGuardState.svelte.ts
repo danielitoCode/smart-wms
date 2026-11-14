@@ -1,6 +1,5 @@
 import { createAuthDependencies } from '../../di/auth.dependencies';
-import type { User } from '../../domain/entity/User';
-import type { EnsureAuthenticatedResult } from '../../domain/usecase/EnsureAuthenticatedUseCase';
+import type { User, EnsureAuthenticatedResult } from '../../domain/entity/User';
 
 const deps = createAuthDependencies();
 
@@ -11,6 +10,7 @@ export function createAuthGuardState() {
 	let user = $state<User | null>(null);
 	let message = $state<string | null>(null);
 	let inFlight: Promise<void> | null = null;
+	let revalidateInFlight: Promise<void> | null = null;
 
 	async function verify() {
 		if (inFlight) return inFlight;
@@ -40,6 +40,41 @@ export function createAuthGuardState() {
 		}
 	}
 
+	/**
+	 * Soft refresh of grants via /me (+ optional refresh).
+	 * Used on internal navigation so revoked page keys take effect without full boot flash.
+	 * Network failures keep the previous in-memory user (Flask still enforces 403).
+	 */
+	async function revalidatePermissions() {
+		if (status !== 'authenticated') return;
+		if (revalidateInFlight) return revalidateInFlight;
+		revalidateInFlight = (async () => {
+			try {
+				const result: EnsureAuthenticatedResult = await deps.ensureAuthenticated.execute();
+				if (result.ok) {
+					user = result.user;
+					status = 'authenticated';
+					message = null;
+					return;
+				}
+				if (result.reason === 'unauthorized' || result.reason === 'inactive') {
+					user = null;
+					message = result.message;
+					status = 'anonymous';
+					return;
+				}
+				message = result.message;
+			} catch {
+				// keep previous session snapshot
+			}
+		})();
+		try {
+			await revalidateInFlight;
+		} finally {
+			revalidateInFlight = null;
+		}
+	}
+
 	async function logout() {
 		try {
 			await deps.logout.execute();
@@ -57,6 +92,7 @@ export function createAuthGuardState() {
 		get user() { return user; },
 		get message() { return message; },
 		verify,
+		revalidatePermissions,
 		logout
 	};
 }
