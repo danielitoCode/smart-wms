@@ -2926,9 +2926,24 @@ class TestPreferredBinsCatalogScope:
 
 
     def test_putaway_update_preferred_cannot_resequence_out_of_scope_warehouse_rows(self, client):
-        _warehouse_id, bin_id = self._other_warehouse_bin(client, None)
         conn = get_raw_connection()
         cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO warehouses (warehouse_code, warehouse_name) VALUES ('PB-PUT-WH', 'Preferred Putaway Scope') RETURNING warehouse_id"
+        )
+        warehouse_id = cur.fetchone()[0]
+        cur.execute(
+            "INSERT INTO zones (warehouse_id, zone_code, zone_name, zone_type) VALUES (%s, 'PB-PUT', 'Preferred Putaway Scope', 'PICKING') RETURNING zone_id",
+            (warehouse_id,),
+        )
+        zone_id = cur.fetchone()[0]
+        cur.execute(
+            """INSERT INTO bins (zone_id, warehouse_id, bin_code, bin_barcode, bin_type, external_id)
+               VALUES (%s, %s, 'PB-PUT-OUT', 'PB-PUT-OUT', 'Pickable', gen_random_uuid())
+               RETURNING bin_id""",
+            (zone_id, warehouse_id),
+        )
+        bin_id = cur.fetchone()[0]
         cur.execute("INSERT INTO preferred_bins (item_id, bin_id, priority) VALUES (1, %s, 1)", (bin_id,))
         cur.close()
         _, headers = _web_user_with_pages(client, ["preferred-bins"], username="preferred_scope_putaway")

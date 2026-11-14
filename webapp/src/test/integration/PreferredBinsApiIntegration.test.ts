@@ -11,6 +11,7 @@ describe('Preferred Bins HTTP integration', () => {
 			updated_at: null, sku: 'SKU-7', item_name: 'Test item', bin_code: 'PICK-42', zone_name: 'Picking'
 		};
 		const fetchMock = vi.fn()
+			 .mockResolvedValueOnce(new Response(JSON.stringify({ warehouses: [{ warehouse_id: 3, warehouse_code: 'WH-3', warehouse_name: 'Warehouse 3' }], bins: [], total: 0, page: 1, per_page: 1000, pages: 1 }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
 			.mockResolvedValueOnce(new Response(JSON.stringify({ preferred_bins: [row] }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
 			.mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Preferred bin saved' }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
 			.mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Priority updated' }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
@@ -33,7 +34,7 @@ describe('Preferred Bins HTTP integration', () => {
 			['https://wms.test/api/admin/preferred-bins/91', 'PUT'],
 			['https://wms.test/api/admin/preferred-bins/91', 'DELETE']
 		]);
-		expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toEqual({ item_id: 7, bin_id: 42, priority: 1 });
-		expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toEqual({ priority: 2 });
+		expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toEqual({ item_id: 7, bin_id: 42, priority: 1 });
+		expect(JSON.parse(String(fetchMock.mock.calls[3][1]?.body))).toEqual({ priority: 2 });
 	});
 });
