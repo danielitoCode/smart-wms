@@ -13,7 +13,8 @@ function createRepository(): WarehouseManagementRepository {
 		listActive: vi.fn(), listAdmin: vi.fn(), listAdminPage: vi.fn(), getById: vi.fn(), listZones: vi.fn(), listBins: vi.fn(),
 		createWarehouse: vi.fn(), updateWarehouse: vi.fn(), deleteWarehouse: vi.fn(),
 		createZone: vi.fn(), updateZone: vi.fn(), deleteZone: vi.fn(),
-		createBin: vi.fn(), updateBin: vi.fn(), deleteBin: vi.fn(), getBinById: vi.fn()
+		createBin: vi.fn(), updateBin: vi.fn(), deleteBin: vi.fn(), getBinById: vi.fn(),
+		searchOperationalBins: vi.fn(), lookupOperationalBin: vi.fn()
 	};
 }
 
@@ -100,6 +101,16 @@ describe('Warehouse management use cases', () => {
 		})).rejects.toThrow(/zone type/);
 		expect(repository.createZone).not.toHaveBeenCalled();
 	});
+	it('validates bin capacities and aisle storage limits before creating', async () => {
+		const repository = createRepository();
+		const useCase = new CreateBinUseCase(repository);
+		const base = { warehouseId: 1, zoneId: 2, code: 'A-1', barcode: 'BC-1', binType: 'Pickable' as const };
+		await expect(useCase.execute({ ...base, aisle: 'A'.repeat(11) })).rejects.toThrow(/aisle cannot exceed 10/);
+		await expect(useCase.execute({ ...base, maxWeightLbs: -1 })).rejects.toThrow(/maxWeightLbs/);
+		await expect(useCase.execute({ ...base, maxVolumeCuft: Number.NaN })).rejects.toThrow(/maxVolumeCuft/);
+		expect(repository.createBin).not.toHaveBeenCalled();
+	});
+
 	it('validates bin foreign keys and barcode before creating', async () => {
 		const repository = createRepository();
 		await expect(new CreateBinUseCase(repository).execute({
