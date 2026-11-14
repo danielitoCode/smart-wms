@@ -4,7 +4,7 @@ import type { WarehouseManagementRepository } from '../repository/WarehouseManag
 const TYPES: BinType[] = ['Staging', 'PickableStaging', 'Pickable'];
 
 function validateNonNegativeInteger(value: number | null | undefined, name: string): void {
-	if (value != null && (!Number.isInteger(value) || value < 0)) {
+	if (value != null && (!Number.isInteger(value) || value < 0 || value > 99999999.99 || Math.abs(value * 100 - Math.round(value * 100)) > 0.000001)) {
 		throw new Error(name + ' must be a non-negative integer');
 	}
 }
@@ -28,10 +28,10 @@ export class CreateBinUseCase {
 		if (!Number.isInteger(input.zoneId) || input.zoneId <= 0) {
 			throw new Error('zoneId must be a positive integer');
 		}
-		if (!code || code.length > 64) throw new Error('bin code must contain 1 to 64 characters');
-		if (!barcode || barcode.length > 128) throw new Error('bin barcode must contain 1 to 128 characters');
+		if (!code || code.length > 50) throw new Error('bin code must contain 1 to 50 characters');
+		if (!barcode || barcode.length > 100) throw new Error('bin barcode must contain 1 to 100 characters');
 		if (!TYPES.includes(input.binType)) throw new Error('bin type is invalid');
-		if ((input.aisle ?? '').length > 10) throw new Error('aisle cannot exceed 10 characters');
+		if ((input.aisle ?? '').trim().length > 10) throw new Error('aisle cannot exceed 10 characters');
 
 		validateNonNegativeInteger(input.rowNumber, 'rowNumber');
 		validateNonNegativeInteger(input.levelNumber, 'levelNumber');
