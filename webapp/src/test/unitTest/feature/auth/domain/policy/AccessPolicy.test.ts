@@ -103,3 +103,16 @@ describe('AccessPolicy F0.2', () => {
 		expect(fraud?.pageKey).toBe('fraud');
 	});
 });
+
+
+describe('Preferred Bins route access', () => {
+	it('gates the data route with the preferred-bins page grant', () => {
+		expect(requiredPageKeysForPath('/data/preferred-bins')).toEqual(['preferred-bins']);
+		expect(canAccessPages('USER', [], requiredPageKeysForPath('/data/preferred-bins'))).toBe(false);
+		expect(canAccessPages('USER', ['preferred-bins'], requiredPageKeysForPath('/data/preferred-bins'))).toBe(true);
+	});
+
+	it('uses Preferred Bins as the landing page when it is the only grant', () => {
+		expect(resolveHomePath({ role: 'USER', allowedPages: ['preferred-bins'] })).toBe('/data/preferred-bins');
+	});
+});
