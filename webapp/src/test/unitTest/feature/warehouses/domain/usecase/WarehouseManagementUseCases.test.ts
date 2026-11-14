@@ -37,6 +37,22 @@ describe('Warehouse management use cases', () => {
 		await expect(new UpdateWarehouseUseCase(repository).execute({ id: 1 })).rejects.toThrow(/at least one/);
 		expect(repository.updateWarehouse).not.toHaveBeenCalled();
 	});
+	it('keeps the warehouse relationship when creating a zone', async () => {
+		const repository = createRepository();
+		vi.mocked(repository.createZone).mockResolvedValue({ id: 4, warehouseId: 8, code: 'PICK', name: 'Picking', zoneType: 'PICKING', active: true });
+		await new CreateZoneUseCase(repository).execute({ warehouseId: 8, code: 'PICK', name: 'Picking', zoneType: 'PICKING' });
+		expect(repository.createZone).toHaveBeenCalledWith({ warehouseId: 8, code: 'PICK', name: 'Picking', zoneType: 'PICKING' });
+	});
+	it('keeps both warehouse and zone relationships when creating a bin', async () => {
+		const repository = createRepository();
+		vi.mocked(repository.createBin).mockResolvedValue({
+			id: 12, warehouseId: 8, zoneId: 4, zoneName: 'Picking', code: 'A-01', barcode: 'BC-01',
+			binType: 'Pickable', aisle: null, rowNumber: null, levelNumber: null, positionNumber: null,
+			pickSequence: 0, putawaySequence: 0, active: true
+		});
+		await new CreateBinUseCase(repository).execute({ warehouseId: 8, zoneId: 4, code: 'A-01', barcode: 'BC-01', binType: 'Pickable' });
+		expect(repository.createBin).toHaveBeenCalledWith(expect.objectContaining({ warehouseId: 8, zoneId: 4, code: 'A-01', barcode: 'BC-01' }));
+	});
 	it('rejects unsupported zone types before reaching the API', async () => {
 		const repository = createRepository();
 		await expect(new CreateZoneUseCase(repository).execute({
