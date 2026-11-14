@@ -69,6 +69,8 @@ def pending_putaway(warehouse_id):
             LEFT JOIN bins default_bin
               ON default_bin.bin_id = i.default_bin_id
              AND default_bin.warehouse_id = :warehouse_id
+             AND default_bin.bin_type = :bin_pickable
+             AND default_bin.is_active IS TRUE
             LEFT JOIN zones default_zone ON default_zone.zone_id = default_bin.zone_id
             WHERE b.bin_type IN (:bin_staging, :bin_pickable_staging)
               AND inv.quantity_on_hand > 0

@@ -118,6 +118,7 @@ export function createPreferredBinsState(dependencies: StateDependencies = defau
 		const requestId = ++binSearchRequest;
 		if (!selectedWarehouseId) {
 			binOptions = [];
+			loadingBins = false;
 			return;
 		}
 		loadingBins = true;
