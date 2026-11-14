@@ -55,7 +55,8 @@ export class ApiClient {
 		delete headers['cookie'];
 
 		if (options.body !== undefined) headers['Content-Type'] = 'application/json';
-		if (method !== 'GET' && method !== 'HEAD') {
+		// Mutating methods only (GET has no CSRF). HEAD not in HttpMethod union.
+		if (method !== 'GET') {
 			const csrfToken = readCsrfCookie();
 			if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
 		}
