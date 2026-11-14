@@ -15,7 +15,6 @@ export type InventoryRowDto = {
 	committed_to_orders: number;
 	lot_number: string | null;
 	last_counted_at: string | null;
-	reorder_point?: number | null;
 };
 
 export type InventoryOverviewDto = {

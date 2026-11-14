@@ -12,9 +12,25 @@
 	let binInput = $state('');
 	let itemInput = $state('');
 	let searchInput = $state('');
+	let sortKey = $state<'sku' | 'itemName' | 'binCode' | 'quantityOnHand' | 'quantityAvailable' | null>(null);
+	let sortDirection = $state<'asc' | 'desc'>('asc');
 
-	onMount(() => {
-		void vm.load();
+	const sortedItems = $derived.by(() => {
+		const rows = [...vm.items];
+		if (!sortKey) return rows;
+		return rows.sort((left, right) => {
+			const a = left[sortKey];
+			const b = right[sortKey];
+			const comparison = typeof a === 'number' && typeof b === 'number'
+				? a - b
+				: String(a ?? '').localeCompare(String(b ?? ''), undefined, { numeric: true });
+			return sortDirection === 'asc' ? comparison : -comparison;
+		});
+	});
+
+	onMount(async () => {
+		await vm.initialize();
+		warehouseInput = vm.warehouseId == null ? '' : String(vm.warehouseId);
 	});
 
 	let lastGeneration = $state(-1);
@@ -27,13 +43,26 @@
 		if (generation !== lastGeneration) {
 			lastGeneration = generation;
 			vm.invalidate();
+			warehouseInput = vm.warehouseId == null ? '' : String(vm.warehouseId);
+			binInput = '';
 			void vm.load();
 		}
 	});
 
+	function toggleSort(key: NonNullable<typeof sortKey>) {
+		if (sortKey === key) {
+			sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+		} else {
+			sortKey = key;
+			sortDirection = 'asc';
+		}
+	}
+
 	function applyFilters(event: SubmitEvent) {
 		event.preventDefault();
-		vm.setWarehouseId(warehouseInput.trim() ? Number(warehouseInput) : undefined);
+		const nextWarehouseId = warehouseInput.trim() ? Number(warehouseInput) : undefined;
+		if (nextWarehouseId !== vm.warehouseId) binInput = '';
+		vm.setWarehouseId(nextWarehouseId);
 		vm.setBinId(binInput.trim() ? Number(binInput) : undefined);
 		vm.setItemId(itemInput.trim() ? Number(itemInput) : undefined);
 		vm.setQuery(searchInput);
@@ -61,16 +90,26 @@
 
 	<form class="filters" onsubmit={applyFilters}>
 		<label>
-			{i18n.t('ID de almacén')}
-			<input type="number" min="1" step="1" placeholder={i18n.t('Todos')} bind:value={warehouseInput} />
+			{i18n.t('Almacén')}
+			<select bind:value={warehouseInput} disabled={vm.loadingOptions || vm.loading}>
+				<option value="">{i18n.t('Todos los almacenes')}</option>
+				{#each vm.warehouses as warehouse (warehouse.id)}
+					<option value={String(warehouse.id)}>{warehouse.code} · {warehouse.name}</option>
+				{/each}
+			</select>
+		</label>
+		<label>
+			{i18n.t('Ubicación')}
+			<select bind:value={binInput} disabled={!warehouseInput || vm.bins.length === 0 || vm.loading}>
+				<option value="">{i18n.t('Todas las ubicaciones')}</option>
+				{#each vm.bins as bin (bin.id)}
+					<option value={String(bin.id)}>{bin.code}{bin.zoneName ? ` · ${bin.zoneName}` : ''}</option>
+				{/each}
+			</select>
 		</label>
 		<label>
 			{i18n.t('ID de producto')}
 			<input type="number" min="1" step="1" placeholder={i18n.t('Todos')} bind:value={itemInput} />
-		</label>
-		<label>
-			{i18n.t('ID de ubicación')}
-			<input type="number" min="1" step="1" placeholder={i18n.t('Todas')} bind:value={binInput} />
 		</label>
 		<label class="search">
 			{i18n.t('Buscar')}
@@ -99,7 +138,7 @@
 		</UiBanner>
 	{:else if vm.loading && !vm.loadedOnce}
 		<UiLoader label={i18n.t('Cargando inventario…')} size="lg" />
-	{:else if vm.items.length === 0}
+	{:else if sortedItems.length === 0}
 		<p class="empty">{i18n.t('No se encontraron existencias para estos filtros.')}</p>
 	{:else}
 		<div class="table-meta">
@@ -110,21 +149,21 @@
 			<table>
 				<thead>
 					<tr>
-						<th>{i18n.t('SKU')}</th>
+						<th><button class="sort" type="button" onclick={() => toggleSort('sku')}>{i18n.t('SKU')}{sortKey === 'sku' ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : ''}</button></th>
 						<th>{i18n.t('Producto')}</th>
-						<th>{i18n.t('Ubicación')}</th>
+						<th><button class="sort" type="button" onclick={() => toggleSort('binCode')}>{i18n.t('Ubicación')}{sortKey === 'binCode' ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : ''}</button></th>
 						<th>{i18n.t('Zona')}</th>
 						<th>{i18n.t('Lote')}</th>
-						<th>{i18n.t('En mano')}</th>
+						<th><button class="sort" type="button" onclick={() => toggleSort('quantityOnHand')}>{i18n.t('En mano')}{sortKey === 'quantityOnHand' ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : ''}</button></th>
 						<th>{i18n.t('Asignado')}</th>
-						<th>{i18n.t('Disponible')}</th>
+						<th><button class="sort" type="button" onclick={() => toggleSort('quantityAvailable')}>{i18n.t('Disponible')}{sortKey === 'quantityAvailable' ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : ''}</button></th>
 						<th>{i18n.t('Comprometido')}</th>
 						<th>{i18n.t('Último conteo')}</th>
 						<th>{i18n.t('Estado')}</th>
 					</tr>
 				</thead>
 				<tbody>
-					{#each vm.items as row (row.inventoryId)}
+					{#each sortedItems as row (row.inventoryId)}
 						<tr>
 							<td class="mono">{row.sku}</td>
 							<td>{row.itemName}</td>
@@ -139,8 +178,6 @@
 							<td>
 								{#if row.quantityOnHand === 0}
 									<span class="status out">{i18n.t('Agotado')}</span>
-								{:else if row.reorderPoint != null && row.quantityOnHand <= row.reorderPoint}
-									<span class="status low">{i18n.t('Stock bajo')}</span>
 								{:else if row.quantityAvailable <= 0}
 									<span class="status allocated">{i18n.t('Sin disponibilidad')}</span>
 								{:else}
@@ -196,10 +233,11 @@
 	table { width: 100%; border-collapse: collapse; white-space: nowrap; font-size: 0.82rem; }
 	th, td { padding: 0.65rem 0.75rem; text-align: left; border-bottom: 1px solid var(--line); }
 	th { color: var(--slate); font-size: 0.7rem; font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em; }
+	.sort { border: 0; padding: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 	.qty { text-align: right; font-variant-numeric: tabular-nums; }
 	.mono { font-family: var(--font-mono, monospace); }
 	.status { display: inline-flex; border-radius: 999px; padding: 0.2rem 0.5rem; font-size: 0.7rem; font-weight: 650; }
-	.status.out, .status.low { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+	.status.out { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
 	.status.allocated { color: var(--warning, #a66b12); background: color-mix(in srgb, var(--warning, #a66b12) 12%, transparent); }
 	.status.ok { color: var(--success, #24734b); background: color-mix(in srgb, var(--success, #24734b) 12%, transparent); }
 	.pagination { justify-content: center; }

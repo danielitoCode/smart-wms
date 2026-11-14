@@ -6,7 +6,7 @@ export type InventoryStock = {
 	inventoryId: number;
 	itemId: number;
 	binId: number;
-	/** The current inventory-list response omits warehouse_id; available on future enriched contracts. */
+	/** The current inventory-list response omits warehouse_id. */
 	warehouseId?: number;
 	quantityOnHand: number;
 	quantityAllocated: number;
@@ -18,8 +18,6 @@ export type InventoryStock = {
 	binCode: string;
 	zoneName: string | null;
 	lastCountedAt: string | null;
-	/** Supplied only by API versions that expose the item's reorder point. */
-	reorderPoint?: number | null;
 };
 
 export type InventoryQuery = {
