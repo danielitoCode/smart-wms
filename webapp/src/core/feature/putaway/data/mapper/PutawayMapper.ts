@@ -33,7 +33,15 @@ export const PutawayMapper = {
 			binId: dto.bin_id,
 			binCode: dto.bin_code,
 			lotNumber: dto.lot_number ?? null,
-			suggestedBin: dto.suggested_bin ?? null
+			suggestedBin: dto.suggested_bin && dto.suggested_bin_id != null
+				? {
+						binId: dto.suggested_bin_id,
+						binCode: dto.suggested_bin,
+						binBarcode: dto.suggested_bin_barcode ?? null,
+						zoneName: dto.suggested_bin_zone ?? null,
+						priority: dto.suggested_bin_priority ?? null
+					}
+				: null
 		};
 	},
 
