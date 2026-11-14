@@ -9,8 +9,8 @@ VALID_ZONE_TYPES = ("RECEIVING", "STORAGE", "PICKING", "STAGING", "SHIPPING")
 
 class CreateZoneRequest(BaseModel):
     warehouse_id: int = Field(..., gt=0)
-    zone_code: str = Field(..., min_length=1, max_length=32)
-    zone_name: str = Field(..., min_length=1, max_length=128)
+    zone_code: str = Field(..., min_length=1, max_length=20)
+    zone_name: str = Field(..., min_length=1, max_length=100)
     zone_type: str = Field(..., min_length=1, max_length=32)
 
     @field_validator("zone_type")
@@ -22,8 +22,8 @@ class CreateZoneRequest(BaseModel):
 
 
 class UpdateZoneRequest(BaseModel):
-    zone_code: Optional[str] = Field(None, min_length=1, max_length=32)
-    zone_name: Optional[str] = Field(None, min_length=1, max_length=128)
+    zone_code: Optional[str] = Field(None, min_length=1, max_length=20)
+    zone_name: Optional[str] = Field(None, min_length=1, max_length=100)
     zone_type: Optional[str] = Field(None, min_length=1, max_length=32)
     is_active: Optional[bool] = None
 
