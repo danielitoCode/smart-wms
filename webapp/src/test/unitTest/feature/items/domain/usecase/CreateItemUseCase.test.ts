@@ -5,14 +5,14 @@ describe('CreateItemUseCase', () => {
 	it('rejects empty SKU', async () => {
 		const repo = { create: vi.fn() };
 		const uc = new CreateItemUseCase(repo as never);
-		await expect(uc.execute({ sku: '  ', itemName: 'X' })).rejects.toThrow(/SKU/i);
+		expect(() => uc.execute({ sku: '  ', itemName: 'X' })).toThrow(/SKU/i);
 		expect(repo.create).not.toHaveBeenCalled();
 	});
 
 	it('rejects weight outside bounds', async () => {
 		const repo = { create: vi.fn() };
 		const uc = new CreateItemUseCase(repo as never);
-		await expect(uc.execute({ sku: 'S', itemName: 'N', weightLbs: -1 })).rejects.toThrow(/Weight/i);
+		expect(() => uc.execute({ sku: 'S', itemName: 'N', weightLbs: -1 })).toThrow(/Weight/i);
 	});
 
 	it('forwards trimmed payload', async () => {
