@@ -57,7 +57,8 @@
 						<th>{i18n.t('Cantidad')}</th>
 						<th>{i18n.t('Desde')}</th>
 						<th>{i18n.t('Lote')}</th>
-						<th>{i18n.t('ID de ubicación destino')}</th>
+						<th>{i18n.t('Ubicación sugerida')}</th>
+						<th>{i18n.t('Destino')}</th>
 						<th></th>
 					</tr>
 				</thead>
@@ -71,9 +72,26 @@
 							<td>{item.binCode}</td>
 							<td>{item.lotNumber ?? '—'}</td>
 							<td>
+								{#if item.suggestedBin}
+									<strong>{item.suggestedBin.binCode}</strong>
+									<div class="suggestion-meta">
+										{#if item.suggestedBin.priority != null}
+											{i18n.t('Prioridad')} {item.suggestedBin.priority}
+										{:else}
+											{i18n.t('Ubicación predeterminada')}
+										{/if}
+										· ID {item.suggestedBin.binId}
+										{#if item.suggestedBin.zoneName} · {item.suggestedBin.zoneName}{/if}
+									</div>
+								{:else}
+									<span class="no-suggestion">{i18n.t('Sin ubicación sugerida')}</span>
+								{/if}
+							</td>
+							<td>
 								<input
 									type="number"
 									min="1"
+									aria-label={i18n.t('ID de ubicación destino')}
 									placeholder={i18n.t('ID de ubicación')}
 									value={state.toBinByKey[k] ?? ''}
 									oninput={(e) => state.setToBin(item, e.currentTarget.value)}
@@ -109,6 +127,8 @@
 	.subtitle { margin: 0; color: #64748b; }
 	.toolbar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: end; margin-bottom: 1rem; }
 	label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.85rem; color: #475569; }
+	.suggestion-meta { color: #64748b; font-size: 0.78rem; margin-top: 0.15rem; }
+	.no-suggestion { color: #b45309; font-size: 0.82rem; }
 	input { padding: 0.4rem 0.55rem; border: 1px solid #cbd5e1; border-radius: 6px; width: 7rem; }
 	button { padding: 0.45rem 0.85rem; border-radius: 6px; border: 1px solid #cbd5e1; background: #0f172a; color: #fff; cursor: pointer; }
 	button:disabled { opacity: 0.6; cursor: not-allowed; }
