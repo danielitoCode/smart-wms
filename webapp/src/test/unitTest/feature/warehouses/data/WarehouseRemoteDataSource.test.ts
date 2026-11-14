@@ -44,8 +44,8 @@ describe('WarehouseRemoteDataSource Flask contract', () => {
 	it('lists zones by warehouse using the paginated collection endpoint', async () => {
 		const api = createApi();
 		vi.mocked(api.get)
-			.mockResolvedValueOnce({ zones: [{ zone_id: 4, warehouse_id: 8 }], total: 2, page: 1, per_page: 1, pages: 2 })
-			.mockResolvedValueOnce({ zones: [{ zone_id: 5, warehouse_id: 8 }], total: 2, page: 2, per_page: 1, pages: 2 });
+			.mockResolvedValueOnce({ zones: [{ zone_id: 4, warehouse_id: 8 }], total: 1001, page: 1, per_page: 1000, pages: 2 })
+			.mockResolvedValueOnce({ zones: [{ zone_id: 5, warehouse_id: 8 }], total: 1001, page: 2, per_page: 1000, pages: 2 });
 		const source = new WarehouseRemoteDataSource(api);
 		await expect(source.listZones(8)).resolves.toEqual([
 			{ zone_id: 4, warehouse_id: 8 }, { zone_id: 5, warehouse_id: 8 }
