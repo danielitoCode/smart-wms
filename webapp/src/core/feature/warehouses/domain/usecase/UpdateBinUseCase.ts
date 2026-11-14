@@ -27,7 +27,7 @@ export class UpdateBinUseCase {
 			update.binType = input.binType;
 		}
 		if (input.aisle !== undefined) {
-			if (input.aisle !== null && input.aisle.length > 32) throw new Error('aisle cannot exceed 32 characters');
+			if (input.aisle !== null && input.aisle.length > 10) throw new Error('aisle cannot exceed 32 characters');
 			update.aisle = input.aisle?.trim() || null;
 		}
 		for (const [value, name] of [
@@ -41,6 +41,11 @@ export class UpdateBinUseCase {
 		if (input.pickSequence !== undefined) update.pickSequence = input.pickSequence;
 		if (input.putawaySequence !== undefined) update.putawaySequence = input.putawaySequence;
 		if (input.active !== undefined) update.active = input.active;
+		for (const [value, name] of [[input.maxWeightLbs, 'maxWeightLbs'], [input.maxVolumeCuft, 'maxVolumeCuft']] as const) {
+			if (value !== undefined && value !== null && (!Number.isFinite(value) || value < 0)) throw new Error(name + ' must be a non-negative number');
+		}
+		if (input.maxWeightLbs !== undefined) update.maxWeightLbs = input.maxWeightLbs;
+		if (input.maxVolumeCuft !== undefined) update.maxVolumeCuft = input.maxVolumeCuft;
 		if (Object.keys(update).length === 1) throw new Error('at least one bin field is required');
 		return this.repository.updateBin(update);
 	}
