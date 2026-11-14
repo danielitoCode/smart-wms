@@ -19,8 +19,9 @@ export class UpdateBinUseCase {
 			update.code = value;
 		}
 		if (input.barcode !== undefined) {
-			if (input.barcode !== null && (!input.barcode.length || input.barcode.length > 100)) throw new Error('bin barcode must contain 1 to 100 characters');
-			update.barcode = input.barcode?.trim() || null;
+			const value = input.barcode.trim();
+			if (!value || value.length > 100) throw new Error('bin barcode must contain 1 to 100 characters');
+			update.barcode = value;
 		}
 		if (input.binType !== undefined) {
 			if (!TYPES.includes(input.binType)) throw new Error('bin type is invalid');
