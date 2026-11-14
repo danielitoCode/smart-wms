@@ -7,38 +7,38 @@
 	const i18n = getContext<I18nState>('i18n');
 	import { createReceivingState } from '../state/receivingState.svelte';
 
-	const state = createReceivingState();
+	const vm = createReceivingState();
 
 	let lastGeneration = $state(-1);
 	$effect(() => {
-		const gen = state.generation;
+		const gen = vm.generation;
 		if (lastGeneration < 0) {
 			lastGeneration = gen;
 			return;
 		}
 		if (gen !== lastGeneration) {
 			lastGeneration = gen;
-			state.invalidate();
+			vm.invalidate();
 		}
 	});
 
 	function onLookup(event: Event) {
 		event.preventDefault();
-		void state.lookup();
+		void vm.lookup();
 	}
 
 	async function onReceive(event: Event) {
 		event.preventDefault();
-		const ok = await state.submitReceive();
-		if (ok && state.lastResult) pushToast(state.lastResult.message, 'success');
-		else if (state.error) pushToast(state.error, 'error');
+		const ok = await vm.submitReceive();
+		if (ok && vm.lastResult) pushToast(vm.lastResult.message, 'success');
+		else if (vm.error) pushToast(vm.error, 'error');
 	}
 
 	async function onCancel(event: Event) {
 		event.preventDefault();
-		const ok = await state.cancelReceipts();
-		if (ok && state.lastCancel) pushToast(state.lastCancel.message, 'success');
-		else if (state.error) pushToast(state.error, 'error');
+		const ok = await vm.cancelReceipts();
+		if (ok && vm.lastCancel) pushToast(vm.lastCancel.message, 'success');
+		else if (vm.error) pushToast(vm.error, 'error');
 	}
 </script>
 
@@ -52,26 +52,26 @@
 		<input
 			type="text"
 			placeholder={i18n.t('Número de orden de compra o código de barras')}
-			value={state.barcode}
-			oninput={(e) => state.setBarcode(e.currentTarget.value)}
-			disabled={state.loading || state.submitting || state.cancelling}
+			value={vm.barcode}
+			oninput={(e) => vm.setBarcode(e.currentTarget.value)}
+			disabled={vm.loading || vm.submitting || vm.cancelling}
 		/>
-		<button type="submit" disabled={state.loading || state.submitting || !state.barcode.trim()}>
-			{state.loading ? i18n.t('Buscando…') : i18n.t('Buscar')}
+		<button type="submit" disabled={vm.loading || vm.submitting || !vm.barcode.trim()}>
+			{vm.loading ? i18n.t('Buscando…') : i18n.t('Buscar')}
 		</button>
 	</form>
 
-	{#if state.error}
-		<UiBanner tone="error" message={state.error} />
+	{#if vm.error}
+		<UiBanner tone="error" message={vm.error} />
 	{/if}
 
-	{#if state.detail}
+	{#if vm.detail}
 		<section class="po">
-			<h2>{state.detail.purchaseOrder.poNumber}</h2>
+			<h2>{vm.detail.purchaseOrder.poNumber}</h2>
 			<p class="meta">
-				{state.detail.purchaseOrder.status} · WH {state.detail.purchaseOrder.warehouseId}
+				{vm.detail.purchaseOrder.status} · WH {vm.detail.purchaseOrder.warehouseId}
 			</p>
-			{#if state.drafts.length}
+			{#if vm.drafts.length}
 				<form onsubmit={onReceive}>
 					<div class="table-wrap">
 						<table>
@@ -86,7 +86,7 @@
 								</tr>
 							</thead>
 							<tbody>
-								{#each state.drafts as draft, index}
+								{#each vm.drafts as draft, index}
 									<tr>
 										<td>{draft.sku}</td>
 										<td>{draft.itemName}</td>
@@ -97,25 +97,25 @@
 												min="0"
 												value={draft.quantity}
 												oninput={(e) =>
-													state.updateDraft(index, { quantity: Number(e.currentTarget.value) })
+													vm.updateDraft(index, { quantity: Number(e.currentTarget.value) })
 												}
-												disabled={state.submitting}
+												disabled={vm.submitting}
 											/>
 										</td>
 										<td>
 											<input
 												type="text"
 												value={draft.binId}
-												oninput={(e) => state.updateDraft(index, { binId: e.currentTarget.value })}
-												disabled={state.submitting}
+												oninput={(e) => vm.updateDraft(index, { binId: e.currentTarget.value })}
+												disabled={vm.submitting}
 											/>
 										</td>
 										<td>
 											<input
 												type="text"
 												value={draft.lotNumber}
-												oninput={(e) => state.updateDraft(index, { lotNumber: e.currentTarget.value })}
-												disabled={state.submitting}
+												oninput={(e) => vm.updateDraft(index, { lotNumber: e.currentTarget.value })}
+												disabled={vm.submitting}
 											/>
 										</td>
 									</tr>
@@ -123,8 +123,8 @@
 							</tbody>
 						</table>
 					</div>
-					<button type="submit" class="primary" disabled={state.submitting}>
-						{state.submitting ? i18n.t('Registrando…') : i18n.t('Confirmar recepción')}
+					<button type="submit" class="primary" disabled={vm.submitting}>
+						{vm.submitting ? i18n.t('Registrando…') : i18n.t('Confirmar recepción')}
 					</button>
 				</form>
 			{/if}
@@ -135,17 +135,17 @@
 					<input
 						type="text"
 						placeholder="1,2,3"
-						value={state.receiptIdsInput}
-						oninput={(e) => state.setReceiptIdsInput(e.currentTarget.value)}
-						disabled={state.cancelling}
+						value={vm.receiptIdsInput}
+						oninput={(e) => vm.setReceiptIdsInput(e.currentTarget.value)}
+						disabled={vm.cancelling}
 					/>
 				</label>
-				<button type="submit" class="danger" disabled={state.cancelling}>
-					{state.cancelling ? i18n.t('Anulando…') : i18n.t('Anular recepciones')}
+				<button type="submit" class="danger" disabled={vm.cancelling}>
+					{vm.cancelling ? i18n.t('Anulando…') : i18n.t('Anular recepciones')}
 				</button>
 			</form>
 		</section>
-	{:else if !state.loading && !state.error}
+	{:else if !vm.loading && !vm.error}
 		<p class="empty">{i18n.t('Busca una orden de compra para comenzar la recepción.')}</p>
 	{/if}
 </section>
