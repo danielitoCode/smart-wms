@@ -13,7 +13,7 @@ export type PendingPutawayItem = {
 	binId: number;
 	binCode: string;
 	lotNumber: string | null;
-	suggestedBin: string | null;
+	suggestedBin: SuggestedBin | null;
 };
 
 export type SuggestedBin = {
