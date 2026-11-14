@@ -32,7 +32,8 @@ export const WarehouseMapper = {
 			code: requiredText(dto.zone_code ?? dto.code, 'zone code'),
 			name: requiredText(dto.zone_name ?? dto.name, 'zone name'),
 			zoneType: zoneType as ZoneType,
-			active: dto.is_active ?? dto.active ?? true
+			active: dto.is_active ?? dto.active ?? true,
+			binsCount: dto.bins_count ?? 0
 		};
 	},
 	toBin(dto: BinDto): Bin {
