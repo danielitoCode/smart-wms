@@ -1,6 +1,8 @@
 import { apiClient } from '../../../infrastructure/api/ApiClient';
 import { WarehouseRemoteDataSource } from '../data/datasource/WarehouseRemoteDataSource';
+import { BinLookupRemoteDataSource } from '../data/datasource/BinLookupRemoteDataSource';
 import { WarehouseRepositoryImpl } from '../data/repository/WarehouseRepositoryImpl';
+import { BinLookupRepositoryImpl } from '../data/repository/BinLookupRepositoryImpl';
 import { ListWarehousesUseCase } from '../domain/usecase/ListWarehousesUseCase';
 import { ListAdminWarehousesUseCase } from '../domain/usecase/ListAdminWarehousesUseCase';
 import { ListBinsUseCase } from '../domain/usecase/ListBinsUseCase';
@@ -22,6 +24,7 @@ import { LookupBinByBarcodeUseCase } from '../domain/usecase/LookupBinByBarcodeU
 export function createWarehousesDependencies() {
 	const datasource = new WarehouseRemoteDataSource(apiClient);
 	const repository = new WarehouseRepositoryImpl(datasource);
+	const binLookupRepository = new BinLookupRepositoryImpl(new BinLookupRemoteDataSource(apiClient));
 	return {
 		listWarehouses: new ListWarehousesUseCase(repository),
 		listAdminWarehouses: new ListAdminWarehousesUseCase(repository),
@@ -38,8 +41,8 @@ export function createWarehousesDependencies() {
 		updateBin: new UpdateBinUseCase(repository),
 		deleteBin: new DeleteBinUseCase(repository),
 		getBinDetail: new GetBinDetailUseCase(repository),
-		searchOperationalBins: new SearchBinsUseCase(repository),
-		lookupOperationalBin: new LookupBinByBarcodeUseCase(repository)
+		searchOperationalBins: new SearchBinsUseCase(binLookupRepository),
+		lookupOperationalBin: new LookupBinByBarcodeUseCase(binLookupRepository)
 	};
 }
 
