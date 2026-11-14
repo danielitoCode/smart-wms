@@ -13,13 +13,16 @@ export class CreateBinUseCase {
 		if (!code || code.length > 64) throw new Error('bin code must contain 1 to 64 characters');
 		if (!barcode || barcode.length > 128) throw new Error('bin barcode must contain 1 to 128 characters');
 		if (!TYPES.includes(input.binType)) throw new Error('bin type is invalid');
-		if ((input.aisle ?? '').length > 32) throw new Error('aisle cannot exceed 32 characters');
+		if ((input.aisle ?? '').length > 10) throw new Error('aisle cannot exceed 32 characters');
 		validateOptionalNonNegative(input.rowNumber, 'rowNumber');
 		validateOptionalNonNegative(input.levelNumber, 'levelNumber');
 		validateOptionalNonNegative(input.positionNumber, 'positionNumber');
 		const pickSequence = input.pickSequence ?? 0, putawaySequence = input.putawaySequence ?? 0;
 		validateOptionalNonNegative(pickSequence, 'pickSequence');
 		validateOptionalNonNegative(putawaySequence, 'putawaySequence');
-		return this.repository.createBin({ ...input, code, barcode, aisle: input.aisle?.trim() || null, pickSequence, putawaySequence });
+	for (const [value, name] of [[input.maxWeightLbs, 'maxWeightLbs'], [input.maxVolumeCuft, 'maxVolumeCuft']] as const) {
+		if (value != null && (!Number.isFinite(value) || value < 0)) throw new Error(name + ' must be a non-negative number');
+	}
+		return this.repository.createBin({ ...input, code, barcode, aisle: input.aisle?.trim() || null, pickSequence, putawaySequence, maxWeightLbs: input.maxWeightLbs ?? null, maxVolumeCuft: input.maxVolumeCuft ?? null });
 	}
 }
