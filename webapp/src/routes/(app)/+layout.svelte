@@ -73,6 +73,7 @@
 			{ href: '/management/audit-log', label: i18n.t('Audit log'), icon: 'clipboard-list', pageKey: 'audit-log' }
 		]},
 		{ label: i18n.t('Datos'), items: [
+			{ href: '/items', label: i18n.t('Items'), icon: 'package', pageKey: 'items' },
 			{ href: '/data', label: i18n.t('Maestros'), icon: 'database' },
 			{ href: '/warehouses', label: i18n.t('Almacenes'), icon: 'warehouse', pageKey: 'warehouses' }
 		]}
