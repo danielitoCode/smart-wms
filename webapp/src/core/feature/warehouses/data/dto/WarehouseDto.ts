@@ -23,6 +23,8 @@ export type BinDto = {
 	aisle?: string | null; row_num?: number | null; level_num?: number | null;
 	position_num?: number | null; pick_sequence?: number; putaway_sequence?: number;
 	is_active?: boolean; active?: boolean;
+	max_weight_lbs?: number | string | null; max_volume_cuft?: number | string | null;
+	quantity_on_hand?: number; quantity_allocated?: number; inventory_lines?: number;
 };
 export type BinListResponseDto = {
 	bins?: BinDto[]; items?: BinDto[]; data?: BinDto[];
@@ -34,3 +36,15 @@ export type BinInventoryDto = {
 };
 export type BinDetailResponseDto = { bin: BinDto; inventory: BinInventoryDto[] };
 export type MessageDto = { message: string };
+
+export type OperationalBinSearchResultDto = {
+	bin_id: number; bin_code: string; bin_barcode: string | null; bin_type: string;
+	zone_name: string | null; aisle: string | null; row_num: number | null; level_num: number | null;
+};
+export type OperationalBinLookupDto = {
+	bin: OperationalBinSearchResultDto;
+	items: Array<{
+		item_id: number; sku: string; item_name: string; upc: string | null;
+		quantity_on_hand: number; quantity_allocated: number; quantity_available: number; lot_number: string | null;
+	}>;
+};
