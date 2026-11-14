@@ -88,7 +88,9 @@
 						<th>{i18n.t('Nombre')}</th>
 						<th>{i18n.t('UPC')}</th>
 						<th>{i18n.t('MPN')}</th>
+						<th>{i18n.t('Bin por defecto')}</th>
 						<th>{i18n.t('Categoría')}</th>
+						<th>{i18n.t('Peso (lb)')}</th>
 						<th>{i18n.t('Estado')}</th>
 						<th>{i18n.t('Acciones')}</th>
 					</tr>
@@ -102,7 +104,9 @@
 							<td>{item.name}</td>
 							<td>{item.upc ?? '—'}</td>
 							<td>{item.mpn ?? '—'}</td>
+							<td class="mono">{item.defaultBinCode ?? '—'}</td>
 							<td>{item.category ?? '—'}</td>
+							<td>{item.weightLbs != null ? `${item.weightLbs} lb` : '—'}</td>
 							<td>{item.active ? i18n.t('Activo') : i18n.t('Archivado')}</td>
 							<td class="actions">
 								<button type="button" class="ghost" onclick={() => vm.openEdit(item)}>{i18n.t('Editar')}</button>
@@ -199,11 +203,30 @@
 {#if vm.detail}
 	<div class="modal" role="dialog" aria-modal="true">
 		<div class="panel wide">
-			<h2>{vm.detail.item.sku} · {vm.detail.item.name}</h2>
-			<p class="meta">
-				{vm.detail.item.active ? i18n.t('Activo') : i18n.t('Archivado')}
-				{#if vm.detail.item.category} · {vm.detail.item.category}{/if}
-			</p>
+			<h2>{vm.detail.item.name || vm.detail.item.sku}</h2>
+			<h3>{i18n.t('Detalles del producto')}</h3>
+			<dl class="detail-grid">
+				<dt>{i18n.t('SKU')}</dt><dd class="mono">{vm.detail.item.sku}</dd>
+				<dt>{i18n.t('UPC')}</dt><dd class="mono">{vm.detail.item.upc ?? '—'}</dd>
+				<dt>{i18n.t('MPN')}</dt><dd class="mono">{vm.detail.item.mpn ?? '—'}</dd>
+				<dt>{i18n.t('Categoría')}</dt><dd>{vm.detail.item.category ?? '—'}</dd>
+				<dt>{i18n.t('Peso (lb)')}</dt><dd>{vm.detail.item.weightLbs != null ? `${vm.detail.item.weightLbs} lb` : '—'}</dd>
+				<dt>{i18n.t('Bin por defecto')}</dt><dd class="mono">{vm.detail.item.defaultBinCode ?? '—'}</dd>
+				<dt>{i18n.t('Estado')}</dt><dd>{vm.detail.item.active ? i18n.t('Activo') : i18n.t('Archivado')}</dd>
+			</dl>
+			{#if vm.detail.preferredBins.length}
+				<h3>{i18n.t('Ubicaciones preferidas')}</h3>
+				<div class="table-wrap">
+					<table>
+						<thead><tr><th>{i18n.t('Ubicación')}</th><th>{i18n.t('Zona')}</th><th>{i18n.t('Prioridad')}</th></tr></thead>
+						<tbody>
+							{#each vm.detail.preferredBins as pb (pb.preferredBinId)}
+								<tr><td class="mono">{pb.binCode ?? pb.binId}</td><td>{pb.zoneName ?? '—'}</td><td>{pb.priority}</td></tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			{/if}
 			{#if vm.detail.inventory.length}
 				<h3>{i18n.t('Inventario')}</h3>
 				<table>
@@ -228,14 +251,6 @@
 				</table>
 			{:else}
 				<p class="status">{i18n.t('Sin existencias.')}</p>
-			{/if}
-			{#if vm.detail.preferredBins.length}
-				<h3>{i18n.t('Ubicaciones preferidas')}</h3>
-				<ul>
-					{#each vm.detail.preferredBins as pb (pb.preferredBinId)}
-						<li>{pb.priority}. {pb.binCode ?? pb.binId} ({pb.zoneName ?? '—'})</li>
-					{/each}
-				</ul>
 			{/if}
 			<div class="modal-actions">
 				<button type="button" class="secondary" onclick={() => vm.closeDetail()}>{i18n.t('Cerrar')}</button>
@@ -341,9 +356,32 @@
 		gap: 0.5rem;
 		margin-top: 0.5rem;
 	}
-	.meta {
-		color: var(--slate);
+	.detail-grid {
+		display: grid;
+		grid-template-columns: minmax(7rem, 0.8fr) minmax(0, 1.4fr);
+		gap: 0.55rem 1rem;
 		margin: 0;
+	}
+	.detail-grid dt {
+		color: var(--slate);
+		font-size: 0.875rem;
+	}
+	.detail-grid dd {
+		margin: 0;
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+	.mono {
+		font-family: var(--font-mono, ui-monospace, monospace);
+	}
+	@media (max-width: 480px) {
+		.detail-grid {
+			grid-template-columns: 1fr;
+			gap: 0.2rem;
+		}
+		.detail-grid dd {
+			margin-bottom: 0.55rem;
+		}
 	}
 	.status {
 		color: var(--slate);
