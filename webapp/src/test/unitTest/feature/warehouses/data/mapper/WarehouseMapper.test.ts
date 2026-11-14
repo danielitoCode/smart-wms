@@ -15,7 +15,7 @@ describe('WarehouseMapper', () => {
 		expect(WarehouseMapper.toZone({
 			zone_id: 4, warehouse_id: 8, zone_code: 'PICK', zone_name: 'Picking',
 			zone_type: 'PICKING', is_active: false
-		})).toEqual({ id: 4, warehouseId: 8, code: 'PICK', name: 'Picking', zoneType: 'PICKING', active: false });
+		})).toEqual({ id: 4, warehouseId: 8, code: 'PICK', name: 'Picking', zoneType: 'PICKING', active: false, binsCount: 0 });
 	});
 	it('maps complete bin location and sequence fields', () => {
 		expect(WarehouseMapper.toBin({
