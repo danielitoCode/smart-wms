@@ -594,7 +594,11 @@ const additionalTranslations: Record<Locale, Record<string, string>> = {
 		'Buscar…': 'Cerca…', 'Cargando': 'Caricamento', 'No hay registros para mostrar.': 'Nessun record da visualizzare.',
 		'Consulta conectada al API Flask. Las acciones de escritura se migrarán con sus contratos y permisos específicos.': 'Consultazione collegata all’API Flask. Le operazioni di scrittura saranno migrate con i rispettivi contratti e permessi.',
 		'Gestión': 'Gestione', 'Compras': 'Acquisti', 'Proveedores': 'Fornitori', 'Pendientes': 'In sospeso', 'Aprobaciones': 'Approvazioni', 'Ajustes': 'Rettifiche', 'Movimientos': 'Movimenti', 'Órdenes de traslado': 'Ordini di trasferimento', 'Revisión de pedidos': 'Revisione ordini', 'Actividad POS': 'Attività POS', 'Reembolsos': 'Rimborsi', 'Usuarios': 'Utenti',
-		...featureTranslations.it
+		...featureTranslations.it,
+		'Bin por defecto': 'Ubicazione predefinita',
+		'Peso (lb)': 'Peso (lb)',
+		'Detalles del producto': 'Dettagli prodotto',
+		'Prioridad': 'Priorità'
 	},
 	es: {},
 	en: {
@@ -610,7 +614,11 @@ const additionalTranslations: Record<Locale, Record<string, string>> = {
 		'Contraseña actualizada': 'Password updated', 'Código': 'Code', '¿Eliminar': 'Delete',
 	
 		'Ubicaciones': 'Locations', 'Actualizando ubicaciones…': 'Refreshing locations…', 'Cargando almacén seleccionado…': 'Loading selected warehouse…', 'ID de ubicación': 'Location ID', 'Consulta y busca los productos registrados en el almacén.': 'Browse and search products registered in the warehouse.', 'Empaque de pedidos': 'Order packing', 'Preparación de pedidos': 'Order picking', 'Código del pedido (ej. SO-2026-001)': 'Order code (e.g. SO-2026-001)', 'Identificadores de pedidos (ej. 1, 2, 3)': 'Order IDs (e.g. 1, 2, 3)', 'Números o códigos de pedido (ej. SO-001, SO-002)': 'Order numbers or codes (e.g. SO-001, SO-002)', 'Despacho de pedidos': 'Order dispatch',
-		...featureTranslations.en
+		...featureTranslations.en,
+		'Bin por defecto': 'Default Bin',
+		'Peso (lb)': 'Weight (lb)',
+		'Detalles del producto': 'Product details',
+		'Prioridad': 'Priority'
 	}
 };
 
