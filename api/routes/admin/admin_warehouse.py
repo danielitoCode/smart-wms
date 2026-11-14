@@ -372,6 +372,10 @@ def list_bins():
     if warehouse_id:
         where_clauses.append("b.warehouse_id = :wid")
         params["wid"] = warehouse_id
+    scope_clause, scope_params = warehouse_scope_clause("b.warehouse_id")
+    if scope_clause:
+        where_clauses.append(scope_clause.removeprefix("AND ").strip())
+        params.update(scope_params)
     if zone_id:
         where_clauses.append("b.zone_id = :zid")
         params["zid"] = zone_id
@@ -433,15 +437,17 @@ def list_bins():
 @require_admin_or_page_permission("bins")
 @with_db
 def get_bin(bin_id):
+    scope_clause, scope_params = warehouse_scope_clause("b.warehouse_id")
     b = g.db.execute(
-        text("""
+        text(f"""
             SELECT b.bin_id, b.zone_id, z.zone_name, b.warehouse_id, b.bin_code, b.bin_barcode, b.bin_type,
                    b.aisle, b.row_num, b.level_num, b.position_num, b.pick_sequence, b.putaway_sequence,
                    b.max_weight_lbs, b.max_volume_cuft, b.is_active
             FROM bins b JOIN zones z ON z.zone_id = b.zone_id
             WHERE b.bin_id = :bid
+              {scope_clause}
         """),
-        {"bid": bin_id},
+        {"bid": bin_id, **scope_params},
     ).fetchone()
     if not b:
         return jsonify({"error": "Bin not found"}), 404
@@ -481,6 +487,10 @@ def get_bin(bin_id):
 @with_db
 def create_bin(validated):
     data = validated.model_dump()
+
+    allowed, response = check_warehouse_access(data["warehouse_id"])
+    if not allowed:
+        return response
 
     zone = g.db.execute(
         text("SELECT zone_id FROM zones WHERE zone_id = :zid AND warehouse_id = :wid"),
@@ -537,7 +547,11 @@ def create_bin(validated):
 def update_bin(bin_id, validated):
     data = validated.model_dump(exclude_unset=True)
 
-    existing = g.db.execute(text("SELECT bin_id, warehouse_id FROM bins WHERE bin_id = :bid"), {"bid": bin_id}).fetchone()
+    scope_clause, scope_params = warehouse_scope_clause("warehouse_id")
+    existing = g.db.execute(
+        text(f"SELECT bin_id, warehouse_id FROM bins WHERE bin_id = :bid {scope_clause}"),
+        {"bid": bin_id, **scope_params},
+    ).fetchone()
     if not existing:
         return jsonify({"error": "Bin not found"}), 404
 
@@ -600,7 +614,11 @@ def update_bin(bin_id, validated):
 @require_admin_or_page_permission("bins")
 @with_db
 def delete_bin(bin_id):
-    existing = g.db.execute(text("SELECT bin_id, bin_code FROM bins WHERE bin_id = :bid"), {"bid": bin_id}).fetchone()
+    scope_clause, scope_params = warehouse_scope_clause("warehouse_id")
+    existing = g.db.execute(
+        text(f"SELECT bin_id, bin_code FROM bins WHERE bin_id = :bid {scope_clause}"),
+        {"bid": bin_id, **scope_params},
+    ).fetchone()
     if not existing:
         return jsonify({"error": "Bin not found"}), 404
 
