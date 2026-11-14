@@ -3,7 +3,18 @@ import { ItemRepositoryImpl } from '../../../../../core/feature/items/data/repos
 import type { ItemRemoteDataSource } from '../../../../../core/feature/items/data/datasource/ItemRemoteDataSource';
 
 const pageResponse = {
-	items: [{ item_id: 7, sku: 'SKU-7', item_name: 'Caja', is_active: true }],
+	items: [{
+		item_id: 7,
+		sku: 'SKU-7',
+		item_name: 'Caja',
+		upc: '012345678905',
+		mpn: 'MFR-7',
+		category: 'Embalaje',
+		weight_lbs: 2.5,
+		default_bin_id: 12,
+		default_bin_code: 'A-01-02',
+		is_active: true
+	}],
 	total: 101,
 	page: 3,
 	per_page: 20,
@@ -43,7 +54,18 @@ describe('ItemRepositoryImpl', () => {
 			page: 3,
 			perPage: 20,
 			pages: 6,
-			items: [{ id: 7, sku: 'SKU-7', name: 'Caja', active: true }]
+			items: [{
+				id: 7,
+				sku: 'SKU-7',
+				name: 'Caja',
+				upc: '012345678905',
+				mpn: 'MFR-7',
+				category: 'Embalaje',
+				weightLbs: 2.5,
+				defaultBinId: 12,
+				defaultBinCode: 'A-01-02',
+				active: true
+			}]
 		});
 	});
 
@@ -54,7 +76,15 @@ describe('ItemRepositoryImpl', () => {
 		const result = await repository.getDetail(7);
 
 		expect(datasource.getDetail).toHaveBeenCalledWith(7);
-		expect(result.item.id).toBe(7);
+		expect(result.item).toMatchObject({
+			id: 7,
+			upc: '012345678905',
+			mpn: 'MFR-7',
+			category: 'Embalaje',
+			weightLbs: 2.5,
+			defaultBinId: 12,
+			defaultBinCode: 'A-01-02'
+		});
 		expect(result.inventory[0]).toMatchObject({ inventoryId: 1, binCode: 'A-01', quantityOnHand: 8 });
 		expect(result.preferredBins).toEqual([]);
 	});
