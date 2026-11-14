@@ -9,7 +9,6 @@
 
 	const MIN_VISIBLE_MS = 900;
 
-	/** Mensajes de progreso: sensación de carga de entorno pesado. */
 	const PHASE_KEYS = [
 		'Estableciendo canal seguro…',
 		'Comprobando sesión y permisos…',
@@ -21,7 +20,12 @@
 	let phaseIndex = $state(0);
 	let phaseTimer: ReturnType<typeof setInterval> | null = null;
 
+	const isLoading = $derived(splash.status === 'checking' || splash.status === 'idle');
+	const isError = $derived(splash.status === 'error');
 	const phaseLabel = $derived(i18n.t(PHASE_KEYS[phaseIndex] ?? PHASE_KEYS[0]));
+	const progress = $derived(
+			isLoading ? ((phaseIndex + 1) / PHASE_KEYS.length) * 100 : isError ? 0 : 100
+	);
 
 	function startPhases() {
 		phaseIndex = 0;
@@ -76,37 +80,60 @@
 	}
 </script>
 
-<section class="splash" aria-busy={splash.status === 'checking'} aria-live="polite">
-	<div class="panel">
+<section class="splash" aria-busy={isLoading}>
+	<div class="content">
 		<img
-			class="mark"
-			src="/brand/abellis_mark_principal.svg"
-			width="72"
-			height="72"
-			alt="Abellis"
+				class="mark"
+				src="/brand/abellis_mark_principal.svg"
+				width="64"
+				height="64"
+				alt="Abellis"
 		/>
-		<p class="eyebrow">ABELLIS</p>
-		<h1>Smart WMS</h1>
-		<p class="lead">{i18n.t('Preparando el entorno de almacén…')}</p>
 
-		{#if splash.status === 'checking' || splash.status === 'idle'}
-			<div class="spinner" role="status" aria-label={i18n.t('Validando sesión')}></div>
-			<p class="status">{i18n.t('Comprobando sesión…')}</p>
-			<p class="phase">{phaseLabel}</p>
-			<ul class="pipeline" aria-hidden="true">
-				{#each PHASE_KEYS as key, i}
-					<li class:done={i < phaseIndex} class:active={i === phaseIndex}></li>
-				{/each}
-			</ul>
-		{:else if splash.status === 'error'}
-			<p class="error" role="alert">{splash.message ?? i18n.t('No se pudo validar la sesión')}</p>
-			<button type="button" class="primary" onclick={() => void retry()}>{i18n.t('Reintentar')}</button>
-			<button type="button" class="ghost" onclick={() => void goto('/login', { replaceState: true })}
-				>{i18n.t('Ir al login')}</button
-			>
+		<div class="titles">
+			<p class="eyebrow">ABELLIS</p>
+			<h1>Smart WMS</h1>
+		</div>
+
+		{#if isError}
+			<div class="status-block">
+				<p class="error" role="alert">
+					{splash.message ?? i18n.t('No se pudo validar la sesión')}
+				</p>
+				<div class="actions">
+					<button type="button" class="primary" onclick={() => void retry()}>
+						{i18n.t('Reintentar')}
+					</button>
+					<button
+							type="button"
+							class="ghost"
+							onclick={() => void goto('/login', { replaceState: true })}
+					>
+						{i18n.t('Ir al login')}
+					</button>
+				</div>
+			</div>
 		{:else}
-			<p class="status">{i18n.t('Redirigiendo…')}</p>
-			<p class="phase">{i18n.t('Abriendo el módulo asignado…')}</p>
+			<div class="status-block">
+				<div
+						class="progress"
+						role="progressbar"
+						aria-valuemin="0"
+						aria-valuemax="100"
+						aria-valuenow={Math.round(progress)}
+						aria-label={i18n.t('Validando sesión')}
+				>
+					<span class="fill" style="width: {progress}%"></span>
+				</div>
+
+				<p class="phase" aria-live="polite">
+					{#key isLoading ? phaseIndex : 'done'}
+						<span>
+							{isLoading ? phaseLabel : i18n.t('Abriendo el módulo asignado…')}
+						</span>
+					{/key}
+				</p>
+			</div>
 		{/if}
 	</div>
 </section>
@@ -118,25 +145,39 @@
 		place-items: center;
 		padding: 1.5rem;
 		background:
-			radial-gradient(ellipse at 20% 10%, color-mix(in srgb, var(--lightblue, #8fb4da) 28%, transparent), transparent 55%),
-			radial-gradient(ellipse at 80% 90%, color-mix(in srgb, var(--gold, #e9a50b) 16%, transparent), transparent 50%),
-			var(--bg);
+				radial-gradient(
+						ellipse at 20% 10%,
+						color-mix(in srgb, var(--lightblue, #8fb4da) 22%, transparent),
+						transparent 55%
+				),
+				radial-gradient(
+						ellipse at 80% 90%,
+						color-mix(in srgb, var(--gold, #e9a50b) 12%, transparent),
+						transparent 50%
+				),
+				var(--bg);
 		color: var(--ink);
 	}
 
-	.panel {
-		width: min(22rem, 100%);
+	.content {
+		width: min(20rem, 100%);
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 1.75rem;
 		text-align: center;
-		animation: fade-in var(--motion-page, 320ms) var(--ease-out, ease) both;
+		animation: fade-in 400ms ease-out both;
 	}
 
 	.mark {
 		display: block;
-		margin-bottom: 0.35rem;
+	}
+
+	.titles {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.25rem;
 	}
 
 	.eyebrow {
@@ -154,63 +195,55 @@
 		color: var(--head-ink, var(--navy-deep));
 	}
 
-	.lead,
-	.status {
-		margin: 0;
-		color: var(--slate);
-		font: 500 var(--fs-md, 0.92rem) var(--body, system-ui);
+	.status-block {
+		width: 100%;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.progress {
+		width: 100%;
+		height: 3px;
+		border-radius: 99px;
+		overflow: hidden;
+		background: var(--line);
+	}
+
+	.fill {
+		display: block;
+		height: 100%;
+		background: var(--gold);
+		transition: width 400ms ease-out;
 	}
 
 	.phase {
-		margin: 0.15rem 0 0;
-		min-height: 1.15em;
+		margin: 0;
+		min-height: 1.25em;
 		color: var(--muted, var(--slate));
-		font: 500 var(--fs-xs, 0.72rem) / 1.4 var(--body, system-ui);
-		letter-spacing: 0.02em;
+		font: 500 var(--fs-md, 0.88rem) / 1.4 var(--body, system-ui);
 	}
 
-	.pipeline {
-		display: flex;
-		gap: 0.35rem;
-		margin: 0.65rem 0 0;
-		padding: 0;
-		list-style: none;
-	}
-
-	.pipeline li {
-		width: 1.65rem;
-		height: 3px;
-		border-radius: 99px;
-		background: var(--line);
-		transition: background var(--motion-fast, 140ms) ease;
-	}
-
-	.pipeline li.active {
-		background: var(--gold);
-	}
-
-	.pipeline li.done {
-		background: var(--navy);
+	.phase span {
+		display: inline-block;
+		animation: fade-in 240ms ease-out both;
 	}
 
 	.error {
-		margin: 0.4rem 0 0.2rem;
+		margin: 0;
 		color: var(--danger);
-		font-size: var(--fs-md, 0.9rem);
+		font: 500 var(--fs-md, 0.9rem) / 1.4 var(--body, system-ui);
 	}
 
-	.spinner {
-		width: 2rem;
-		height: 2rem;
-		margin: 0.75rem 0 0.15rem;
-		border: 2.5px solid color-mix(in srgb, var(--navy) 18%, transparent);
-		border-top-color: var(--gold);
-		border-radius: 50%;
-		animation: spin 0.75s linear infinite;
+	.actions {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 0.5rem;
 	}
 
 	button {
-		margin-top: 0.35rem;
 		min-height: 42px;
 		padding: 0.55rem 1.1rem;
 		border: 1px solid var(--line);
@@ -219,6 +252,11 @@
 		color: var(--ink);
 		font: 600 0.88rem var(--body);
 		cursor: pointer;
+	}
+
+	button:focus-visible {
+		outline: 2px solid var(--gold);
+		outline-offset: 2px;
 	}
 
 	button.primary {
@@ -232,12 +270,6 @@
 		color: var(--navy);
 	}
 
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
-
 	@keyframes fade-in {
 		from {
 			opacity: 0;
@@ -248,9 +280,13 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.spinner,
-		.panel {
+		.content,
+		.phase span {
 			animation: none;
+		}
+
+		.fill {
+			transition: none;
 		}
 	}
 </style>

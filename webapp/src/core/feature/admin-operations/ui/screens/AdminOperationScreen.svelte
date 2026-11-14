@@ -7,8 +7,13 @@
   import { createAdminOperationState } from '../state/adminOperationState.svelte';
   import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
 
-  const i18n = getContext<I18nState>('i18n');
-  const selection = getContext<WarehouseSelectionState>('warehouseSelection');
+  const i18n: I18nState = getContext<I18nState | undefined>('i18n') ?? ({
+    get locale() { return 'es'; },
+    t: (value: string) => value,
+    setLocale: () => undefined,
+    init: () => undefined
+  } as I18nState);
+  const selection = getContext<WarehouseSelectionState | undefined>('warehouseSelection');
   function isAdminOperationKey(value: string | undefined): value is AdminOperationKey {
     return value !== undefined && Object.prototype.hasOwnProperty.call(ADMIN_OPERATION_CATALOG, value);
   }
@@ -34,7 +39,8 @@
     const state = vm;
     const current = definition;
     const warehouseId = selection?.warehouseId;
-    if (state && current && (!current.warehouseScoped || selection.initialized)) {
+    const warehouseInitialized = selection ? selection.initialized : true;
+    if (state && current && (!current.warehouseScoped || warehouseInitialized)) {
       untrack(() => {
         if (current.warehouseScoped && previousWarehouseId !== warehouseId) {
           state.resetPage();
@@ -125,7 +131,8 @@
   }
 
   function load(): void {
-    if (!definition || (definition.warehouseScoped && !selection.initialized)) return;
+    if (!definition) return;
+    if (definition.warehouseScoped && (!selection || !selection.initialized)) return;
     void vm.load({
       warehouseId: definition.warehouseScoped ? selection?.warehouseId : null
     });
@@ -183,7 +190,7 @@
         {#if definition.statusOptions}
           <label>
             <span>{i18n.t('Estado')}</span>
-            <select value={vm.status} onchange={(event) => { vm.setStatus(event.currentTarget.value); load(); }}>
+            <select bind:value={vm.status} onchange={() => load()}>
               <option value="">{i18n.t('Todos')}</option>
               {#each definition.statusOptions as status}
                 <option value={status}>{status}</option>
@@ -194,7 +201,7 @@
         {#if definition.channelFilter}
           <label>
             <span>{i18n.t('Canal')}</span>
-            <select value={vm.channel} onchange={(event) => { vm.setChannel(event.currentTarget.value as '' | 'counter' | 'phone'); load(); }}>
+            <select bind:value={vm.channel} onchange={() => load()}>
               <option value="">{i18n.t('Todos')}</option>
               <option value="counter">{i18n.t('Mostrador')}</option>
               <option value="phone">{i18n.t('Teléfono')}</option>
@@ -226,7 +233,7 @@
         {#if definition.activeFilter}
           <label>
             <span>{i18n.t('Activo')}</span>
-            <select value={vm.active} onchange={(event) => { vm.setActive(event.currentTarget.value as '' | 'true' | 'false'); load(); }}>
+            <select bind:value={vm.active} onchange={() => load()}>
               <option value="">{i18n.t('Todos')}</option>
               <option value="true">{i18n.t('Activos')}</option>
               <option value="false">{i18n.t('Inactivos')}</option>
@@ -293,7 +300,7 @@
 {/if}
 
 <style>
-  .page{max-width:78rem;margin:1.4rem auto;padding:0 1.1rem;font-family:var(--body);animation:enter .18s ease-out}
+  .page{max-width:78rem;margin:1.4rem auto;padding:0 1.1rem;font-family:var(--body, "Segoe UI", sans-serif);animation:enter .18s ease-out}
   header{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.3rem}
   .eyebrow{margin:0 0 .35rem;color:var(--slate);font:600 .64rem var(--disp);letter-spacing:.15em}
   h1{margin:0;color:var(--ink);font:700 1.65rem var(--disp);letter-spacing:-.025em}
