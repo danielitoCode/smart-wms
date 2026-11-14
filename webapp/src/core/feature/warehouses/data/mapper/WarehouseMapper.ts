@@ -66,6 +66,7 @@ export const WarehouseMapper = {
 	toOperationalBinSearchResult(dto: OperationalBinSearchResultDto) {
 		return {
 			id: requiredId(dto.bin_id, 'operational bin id'),
+			warehouseId: dto.warehouse_id ?? null,
 			code: requiredText(dto.bin_code, 'operational bin code'),
 			barcode: dto.bin_barcode ?? null,
 			binType: dto.bin_type as BinType,
