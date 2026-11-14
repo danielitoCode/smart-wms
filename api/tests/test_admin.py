@@ -437,6 +437,65 @@ class TestBins:
         assert resp.status_code == 200
         assert len(resp.get_json()["bins"]) == 9
 
+    def test_list_bins_combines_type_and_text_filters(self, client, auth_headers):
+        response = client.get(
+            "/api/admin/bins?warehouse_id=1&bin_type=Pickable&q=A-01",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["total"] == len(data["bins"])
+        assert data["bins"]
+        assert all(row["bin_type"] == "Pickable" for row in data["bins"])
+        assert all("A-01" in row["bin_code"] or "A-01" in row["bin_barcode"] for row in data["bins"])
+
+    def test_list_bins_rejects_invalid_pagination_and_filters(self, client, auth_headers):
+        for query in (
+            "page=0",
+            "page=not-a-number",
+            "per_page=0",
+            "per_page=1001",
+            "warehouse_id=0",
+            "zone_id=-1",
+            "bin_type=Unsupported",
+        ):
+            response = client.get("/api/admin/bins?" + query, headers=auth_headers)
+            assert response.status_code == 400, query
+            assert "error" in response.get_json(), query
+
+    def test_bin_catalogue_requires_bins_page_permission(self, client):
+        _, headers = _web_user_with_pages(client, ["items"], username="bins_page_denied_user")
+        assert client.get("/api/admin/bins", headers=headers).status_code == 403
+        assert client.get("/api/admin/bins/3", headers=headers).status_code == 403
+        assert client.post("/api/admin/bins", json={
+            "zone_id": 2, "warehouse_id": 1, "bin_code": "NO-GRANT",
+            "bin_barcode": "NO-GRANT", "bin_type": "Pickable"
+        }, headers=headers).status_code == 403
+        assert client.put("/api/admin/bins/3", json={"bin_code": "NO-GRANT"}, headers=headers).status_code == 403
+        assert client.delete("/api/admin/bins/3", headers=headers).status_code == 403
+
+    def test_delete_bin_enforces_inventory_restriction(self, client, auth_headers):
+        response = client.delete("/api/admin/bins/3", headers=auth_headers)
+        assert response.status_code == 409
+        assert "quantity on hand" in response.get_json()["error"]
+
+    def test_delete_bin_not_found(self, client, auth_headers):
+        response = client.delete("/api/admin/bins/999999", headers=auth_headers)
+        assert response.status_code == 404
+
+    def test_delete_empty_bin_succeeds(self, client, auth_headers):
+        created = client.post("/api/admin/bins", json={
+            "zone_id": 2, "warehouse_id": 1, "bin_code": "DELETE-EMPTY",
+            "bin_barcode": "DELETE-EMPTY", "bin_type": "Pickable"
+        }, headers=auth_headers)
+        assert created.status_code == 201
+        bin_id = created.get_json()["bin_id"]
+
+        deleted = client.delete(f"/api/admin/bins/{bin_id}", headers=auth_headers)
+        assert deleted.status_code == 200
+        assert deleted.get_json()["message"] == "Bin deleted"
+        assert client.get(f"/api/admin/bins/{bin_id}", headers=auth_headers).status_code == 404
+
     def test_get_bin_with_inventory(self, client, auth_headers):
         resp = client.get("/api/admin/bins/3", headers=auth_headers)
         assert resp.status_code == 200

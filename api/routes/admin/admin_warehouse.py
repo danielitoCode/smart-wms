@@ -360,23 +360,39 @@ def delete_zone(zone_id):
 @require_admin_or_page_permission("bins")
 @with_db
 def list_bins():
-    page = request.args.get("page", 1, type=int)
-    per_page = min(request.args.get("per_page", 50, type=int), 1000)
+    try:
+        page = int(request.args.get("page", "1"))
+        per_page = int(request.args.get("per_page", "50"))
+        warehouse_arg = request.args.get("warehouse_id")
+        zone_arg = request.args.get("zone_id")
+        warehouse_id = int(warehouse_arg) if warehouse_arg is not None else None
+        zone_id = int(zone_arg) if zone_arg is not None else None
+    except (TypeError, ValueError):
+        return jsonify({"error": "page, per_page, warehouse_id and zone_id must be integers"}), 400
+
+    if page < 1:
+        return jsonify({"error": "page must be a positive integer"}), 400
+    if not 1 <= per_page <= 1000:
+        return jsonify({"error": "per_page must be between 1 and 1000"}), 400
+    if warehouse_id is not None and warehouse_id <= 0:
+        return jsonify({"error": "warehouse_id must be a positive integer"}), 400
+    if zone_id is not None and zone_id <= 0:
+        return jsonify({"error": "zone_id must be a positive integer"}), 400
 
     where_clauses = []
     params = {}
-    warehouse_id = request.args.get("warehouse_id", type=int)
-    zone_id = request.args.get("zone_id", type=int)
     bin_type = request.args.get("bin_type")
+    if bin_type and bin_type not in VALID_BIN_TYPES:
+        return jsonify({"error": f"bin_type must be one of: {', '.join(VALID_BIN_TYPES)}"}), 400
     search = (request.args.get("q") or "").strip()
-    if warehouse_id:
+    if warehouse_id is not None:
         where_clauses.append("b.warehouse_id = :wid")
         params["wid"] = warehouse_id
     scope_clause, scope_params = warehouse_scope_clause("b.warehouse_id")
     if scope_clause:
         where_clauses.append(scope_clause.removeprefix("AND ").strip())
         params.update(scope_params)
-    if zone_id:
+    if zone_id is not None:
         where_clauses.append("b.zone_id = :zid")
         params["zid"] = zone_id
     if bin_type:
