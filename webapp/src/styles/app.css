@@ -2,6 +2,7 @@
 @import './tokens-cards.css';
 @import './motion.css';
 @import './cards.css';
+@import './tables.css';
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
 
 *,*::before,*::after { box-sizing:border-box; }
