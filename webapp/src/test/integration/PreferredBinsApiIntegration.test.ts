@@ -19,7 +19,7 @@ describe('Preferred Bins HTTP integration', () => {
 		vi.stubGlobal('fetch', fetchMock);
 
 		const source = new PreferredBinsRemoteDataSource(new ApiClient('https://wms.test'));
-		const catalog = await source.catalog({ warehouseId: 3 });
+		const catalog = await source.catalog({ warehouseId: 3, search: 'PICK', page: 2, perPage: 50 });
 		expect(catalog.warehouses).toEqual([{ warehouse_id: 3, warehouse_code: 'WH-3', warehouse_name: 'Warehouse 3' }]);
 		const rows = await source.list({ search: 'SKU-7', warehouseId: 3 });
 		expect(rows).toEqual([row]);
@@ -28,7 +28,7 @@ describe('Preferred Bins HTTP integration', () => {
 		await source.remove(91);
 
 		expect(fetchMock.mock.calls.map(([url, init]) => [url, init?.method])).toEqual([
-			['https://wms.test/api/admin/preferred-bins/catalog?warehouse_id=3', 'GET'],
+			['https://wms.test/api/admin/preferred-bins/catalog?warehouse_id=3&q=PICK&page=2&per_page=50', 'GET'],
 			['https://wms.test/api/admin/preferred-bins?q=SKU-7&warehouse_id=3', 'GET'],
 			['https://wms.test/api/admin/preferred-bins', 'POST'],
 			['https://wms.test/api/admin/preferred-bins/91', 'PUT'],
@@ -36,5 +36,16 @@ describe('Preferred Bins HTTP integration', () => {
 		]);
 		expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toEqual({ item_id: 7, bin_id: 42, priority: 1 });
 		expect(JSON.parse(String(fetchMock.mock.calls[3][1]?.body))).toEqual({ priority: 2 });
+	});
+
+	it('preserves Flask forbidden and conflict status codes through ApiClient', async () => {
+		const fetchMock = vi.fn()
+			.mockResolvedValueOnce(new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } }))
+			.mockResolvedValueOnce(new Response(JSON.stringify({ error: 'Preferred-bin priorities span warehouses outside your assigned scope' }), { status: 409, headers: { 'Content-Type': 'application/json' } }));
+		vi.stubGlobal('fetch', fetchMock);
+		const source = new PreferredBinsRemoteDataSource(new ApiClient('https://wms.test'));
+
+		await expect(source.list()).rejects.toMatchObject({ status: 403, code: 'forbidden', message: 'Forbidden' });
+		await expect(source.update(91, { priority: 2 })).rejects.toMatchObject({ status: 409, code: 'conflict' });
 	});
 });

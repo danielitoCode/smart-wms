@@ -16,7 +16,11 @@ function createDependencies() {
 					{ id: 3, code: 'WH-3', name: 'Warehouse 3' },
 					{ id: 4, code: 'WH-4', name: 'Warehouse 4' }
 				],
-				bins: [{ id: 42, warehouseId: 3, zoneId: 8, zoneName: 'Picking', code: 'PICK-42', barcode: null, binType: 'Pickable', active: true }],
+				bins: [
+					{ id: 42, warehouseId: 3, zoneId: 8, zoneName: 'Picking', code: 'PICK-42', barcode: null, binType: 'Pickable', active: true },
+					{ id: 43, warehouseId: 3, zoneId: 8, zoneName: 'Picking', code: 'PICK-43', barcode: null, binType: 'Pickable', active: false },
+					{ id: 44, warehouseId: 4, zoneId: 9, zoneName: 'Other', code: 'PICK-44', barcode: null, binType: 'Pickable', active: true }
+				],
 				total: 1, page: 1, perPage: 1000, pages: 1
 			}) },
 			add: { execute: vi.fn().mockResolvedValue(undefined) },
@@ -65,6 +69,27 @@ describe('Preferred Bins UI state', () => {
 			itemId: 7, binId: 42, priority: 1, warehouseId: 3, binWarehouseId: 3, binType: 'Pickable'
 		});
 		expect(dependencies.preferred.list.execute).toHaveBeenCalledTimes(2);
+	});
+
+	it('updates priority and removes using the preferred relation ID, refreshing the list', async () => {
+		const state = createPreferredBinsState(dependencies as never);
+		await state.loadCatalogs();
+
+		await expect(state.updatePriority(91, 2)).resolves.toBe(true);
+		expect(dependencies.preferred.updatePriority.execute).toHaveBeenCalledWith(91, 2);
+		await expect(state.remove(91)).resolves.toBe(true);
+		expect(dependencies.preferred.remove.execute).toHaveBeenCalledWith(91);
+		expect(dependencies.preferred.list.execute).toHaveBeenCalledTimes(3);
+		expect(state.saving).toBe(false);
+	});
+
+	it('surfaces mutation conflicts and releases the saving state', async () => {
+		dependencies.preferred.updatePriority.execute.mockRejectedValueOnce(new Error('Priority conflict'));
+		const state = createPreferredBinsState(dependencies as never);
+
+		await expect(state.updatePriority(91, 2)).resolves.toBe(false);
+		expect(state.error).toBe('Priority conflict');
+		expect(state.saving).toBe(false);
 	});
 
 	it('does not keep a stale item selected after the user changes the item query', async () => {
