@@ -304,6 +304,63 @@ class TestZones:
 # ── Bins ──────────────────────────────────────────────────────────────────────
 
 class TestBins:
+
+    def test_operational_bin_search_applies_warehouse_scope_before_limit(self, client):
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO warehouses (warehouse_code, warehouse_name) VALUES ('LOOKUP-OTHER-WH', 'Other Lookup Warehouse') RETURNING warehouse_id"
+        )
+        other_id = cur.fetchone()[0]
+        cur.execute(
+            "INSERT INTO zones (warehouse_id, zone_code, zone_name, zone_type) VALUES (%s, 'LOOKUP', 'Lookup zone', 'STORAGE') RETURNING zone_id",
+            (other_id,),
+        )
+        other_zone_id = cur.fetchone()[0]
+        for index in range(51):
+            cur.execute(
+                """INSERT INTO bins (zone_id, warehouse_id, bin_code, bin_barcode, bin_type, external_id)
+                   VALUES (%s, %s, %s, %s, 'Pickable', gen_random_uuid())""",
+                (other_zone_id, other_id, f'SCOPEMATCH-OTHER-{index:03d}', f'SCOPEMATCH-OTHER-{index:03d}'),
+            )
+        cur.execute(
+            """INSERT INTO bins (zone_id, warehouse_id, bin_code, bin_barcode, bin_type, external_id)
+               VALUES (2, 1, 'SCOPEMATCH-LOCAL', 'SCOPEMATCH-LOCAL', 'Pickable', gen_random_uuid())"""
+        )
+        conn.commit()
+        cur.close()
+
+        _, headers = _web_user_with_pages(client, ["bins"], username="bin_lookup_scope_user")
+        response = client.get("/api/lookup/bin/search?q=SCOPEMATCH", headers=headers)
+        assert response.status_code == 200
+        rows = response.get_json()
+        assert [row["bin_code"] for row in rows] == ["SCOPEMATCH-LOCAL"]
+        assert all(row["warehouse_id"] == 1 for row in rows)
+
+    def test_operational_barcode_lookup_hides_bins_outside_assigned_warehouses(self, client):
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO warehouses (warehouse_code, warehouse_name) VALUES ('BARCODE-OTHER-WH', 'Other Barcode Warehouse') RETURNING warehouse_id"
+        )
+        other_id = cur.fetchone()[0]
+        cur.execute(
+            "INSERT INTO zones (warehouse_id, zone_code, zone_name, zone_type) VALUES (%s, 'BARCODE', 'Barcode zone', 'STORAGE') RETURNING zone_id",
+            (other_id,),
+        )
+        zone_id = cur.fetchone()[0]
+        cur.execute(
+            """INSERT INTO bins (zone_id, warehouse_id, bin_code, bin_barcode, bin_type, external_id)
+               VALUES (%s, %s, 'BARCODE-OUTSIDE', 'BARCODE-OUTSIDE', 'Pickable', gen_random_uuid())""",
+            (zone_id, other_id),
+        )
+        conn.commit()
+        cur.close()
+
+        _, headers = _web_user_with_pages(client, ["bins"], username="bin_barcode_scope_user")
+        response = client.get("/api/lookup/bin/BARCODE-OUTSIDE", headers=headers)
+        assert response.status_code == 404
+
     def test_list_bins(self, client, auth_headers):
         resp = client.get("/api/admin/bins?warehouse_id=1", headers=auth_headers)
         assert resp.status_code == 200
