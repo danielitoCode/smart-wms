@@ -198,6 +198,15 @@ class TestZones:
         zone = next(z for z in resp.get_json()["zones"] if z["zone_id"] == 2)
         assert zone["bins_count"] == 9
 
+    def test_zone_collection_requires_zones_page_permission(self, client):
+        _, warehouse_only_headers = _web_user_with_pages(client, ["warehouses"], username="warehouse_only_user")
+        denied = client.get("/api/admin/zones?warehouse_id=1", headers=warehouse_only_headers)
+        assert denied.status_code == 403
+
+        _, zones_headers = _web_user_with_pages(client, ["zones"], username="zones_page_user")
+        allowed = client.get("/api/admin/zones?warehouse_id=1", headers=zones_headers)
+        assert allowed.status_code == 200
+
 
 # ── Bins ──────────────────────────────────────────────────────────────────────
 
