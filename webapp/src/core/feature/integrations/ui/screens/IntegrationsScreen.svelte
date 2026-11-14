@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiLoader from '../../../../../lib/components/UiLoader.svelte';
 	import { onMount, getContext } from 'svelte';
 	import type { I18nState } from '#lib/i18n/i18n.svelte';
 	import { createIntegrationsState } from '../state/integrationsState.svelte';
@@ -16,7 +17,7 @@
 	</header>
 	{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
 	{#if vm.message}<p class="success" role="status">{i18n.t(vm.message)}</p>{/if}
-	{#if vm.loading}<p>{i18n.t('Cargando…')}</p>
+	{#if vm.loading}<UiLoader label={i18n.t('Cargando…')} />
 	{:else if vm.rows.length === 0}<p class="empty">{i18n.t('No hay conectores disponibles.')}</p>
 	{:else}
 		<div class="grid">
