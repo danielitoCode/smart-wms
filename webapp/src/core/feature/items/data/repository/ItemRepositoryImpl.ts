@@ -6,7 +6,7 @@ import { ItemMapper } from '../mapper/ItemMapper';
 export class ItemRepositoryImpl implements ItemRepository {
 	constructor(private readonly datasource: ItemRemoteDataSource) {}
 
-	async listPage(query: ItemListQuery = {}): Promise<ItemListPage> {
+	async listPage(query: ItemListQuery = {}, options?: { signal?: AbortSignal }): Promise<ItemListPage> {
 		const filter = query.filter ?? 'active';
 		const active = filter === 'all' ? undefined : filter === 'active';
 		const body = await this.datasource.listPage({
@@ -15,7 +15,7 @@ export class ItemRepositoryImpl implements ItemRepository {
 			q: query.q,
 			page: query.page,
 			perPage: query.perPage
-		});
+		}, options);
 		return ItemMapper.toListPage(body);
 	}
 
