@@ -1,11 +1,9 @@
-import { createPutawayDependencies } from '../../di/putaway.dependencies';
+import { createPutawayDependencies, type PutawayDependencies } from '../../di/putaway.dependencies';
 import type { ConfirmPutawayResult, PendingPutawayItem } from '../../domain/entity/Putaway';
 import { authSession } from '../../../../infrastructure/auth/AuthSession';
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 
-const deps = createPutawayDependencies();
-
-export function createPutawayState() {
+export function createPutawayState(dependencies: PutawayDependencies = createPutawayDependencies()) {
 	const defaultWh = authSession.getUser()?.warehouseIds?.[0] ?? 1;
 
 	let warehouseId = $state(defaultWh);
@@ -31,7 +29,7 @@ export function createPutawayState() {
 		error = null;
 		lastResult = null;
 		try {
-			items = await deps.listPending.execute(warehouseId);
+			items = await dependencies.listPending.execute(warehouseId);
 			toBinByKey = Object.fromEntries(
 				items
 					.filter((item) => item.suggestedBin != null)
@@ -71,7 +69,7 @@ export function createPutawayState() {
 		submittingKey = k;
 		error = null;
 		try {
-			lastResult = await deps.confirm.execute({
+			lastResult = await dependencies.confirm.execute({
 				itemId: item.itemId,
 				fromBinId: item.binId,
 				toBinId,
