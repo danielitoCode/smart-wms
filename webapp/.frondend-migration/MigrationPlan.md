@@ -319,17 +319,24 @@ Dependencias: F1.1 no introduce una relación de proveedor-producto en el contra
 
 **Limitación del pipeline:** la etapa opcional `test:coverage:feature` no pudo generar el reporte porque falta `@vitest/coverage-v8` en las dependencias; está configurada con `continue-on-error`. Las 256 pruebas de regresión sí pasaron.
 
-#### F1.3 Warehouses / Zones / Bins — Parcial
+#### F1.3 Warehouses / Zones / Bins — En curso (subflujo Warehouses verificado)
 
 Dependencias: base transversal.
 
-- [ ] Dominio: almacén, zona, ubicación y relaciones; reglas de pertenencia y códigos.
-- [ ] Aplicación: operaciones CRUD permitidas y consultas jerárquicas.
-- [ ] Infraestructura: contratos reales y mappers.
-- [ ] UI: completar listado/detalle/edición, relaciones y exportación si aplica.
-- [ ] Tests: jerarquía, integridad, CRUD, errores y permisos por almacén.
-- [ ] Paridad: comparar operaciones React Warehouses, Zones y Bins.
-- [ ] Regresión: validar Inventory, Receiving, Putaway y Picking actuales.
+**Warehouses / Almacenes — trabajo completado en esta iteración:**
+
+- [x] Domain/Application: entidad Warehouse con identidad numérica canónica (`warehouse_id`), código, nombre, dirección, estado y casos de uso List, Detail, Create, Update y Delete.
+- [x] Data: contraste con Flask en `api/routes/admin/admin_warehouse.py` y `api/schemas/warehouses.py`. GET `/api/admin/warehouses?page=&per_page=` devuelve `warehouses`, `total`, `page`, `per_page`, `pages`; GET detalle devuelve `warehouse` y `zones`; POST admite `warehouse_code`, `warehouse_name`, `address`; PUT admite esos campos y `is_active`; DELETE recibe `warehouse_id` en la ruta. No se sustituye el ID por el código.
+- [x] UI: listado administrativo con navegación paginada, detalle y acceso a la estructura; formulario de alta/edición, cambio de estado y confirmación de eliminación. Si el servidor rechaza la eliminación por inventario, bins o zonas existentes, el error permanece visible en la confirmación.
+- [x] Pruebas: contrato de datasource, mapeo del sobre paginado, recuperación de todas las páginas para el selector, identidad canónica, proyecciones de relaciones Warehouse → Zones → Bins, validación CRUD, asignaciones de almacenes autorizados y cancelación de solicitudes al cambiar el almacén activo.
+
+**Pendiente para cerrar el feature agregado F1.3:**
+
+- [~] Completar la matriz de paridad React para Zones y Bins, incluyendo restricciones de integridad, errores de eliminación y edición de relaciones.
+- [~] Añadir/terminar pruebas de UI e integración para los flujos jerárquicos Zones/Bins y sus permisos específicos.
+- [~] Ejecutar regresión dirigida de Inventory, Receiving, Putaway y Picking después de los cambios de catálogos.
+
+**Evidencia CI:** [Webapp CI](https://github.com/danielitoCode/smart-wms/actions/runs/43602389216), commit `2d92c194`: TypeScript/Svelte Check, build, suites Domain, Application, Infrastructure, UI, i18n, Integration y regresión completa aprobadas; **270 tests en 68 archivos**. La etapa opcional de cobertura por feature no generó reporte porque falta `@vitest/coverage-v8`; el workflow está configurado para no bloquear por esa etapa.
 
 **Salida de fase:** catálogos maestros utilizables por todos los flujos dependientes.
 
