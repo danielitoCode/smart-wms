@@ -46,6 +46,12 @@ export class SubmitCycleCountUseCase {
 
 		// Read the persisted state before sending: only open counts are submittable.
 		const detail = await this.repository.getCycleCount(countId);
+		const snapshotItemIds = new Set(detail.lines.map((line) => line.itemId));
+		for (const itemId of unexpectedItemIds) {
+			if (snapshotItemIds.has(itemId)) {
+				throw new Error('unexpected itemIds must not duplicate items already present in the count snapshot');
+			}
+		}
 		if (!canSubmitCycleCount(detail.status)) {
 			throw new Error(`Cycle count status is ${detail.status}, cannot submit`);
 		}

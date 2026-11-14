@@ -64,6 +64,16 @@ describe('SubmitCycleCountUseCase', () => {
 		expect(repo.getCycleCount).not.toHaveBeenCalled();
 	});
 
+	it('rejects unexpected products already present in the snapshot', async () => {
+		const repo = createRepo({
+			getCycleCount: vi.fn().mockResolvedValue({ ...openDetail, lines: [{ countLineId: 4, itemId: 99, sku: 'SKU-99', itemName: 'Bearing', upc: null, expectedQuantity: 1, countedQuantity: null, variance: null, scanned: false, unexpected: false }] })
+		});
+		await expect(new SubmitCycleCountUseCase(repo).execute(10, [
+			{ unexpected: true, itemId: 99, countedQuantity: 1 }
+		])).rejects.toThrow(/already present in the count snapshot/);
+		expect(repo.submitCycleCount).not.toHaveBeenCalled();
+	});
+
 	it('rejects duplicate unexpected item lines', async () => {
 		const repo = createRepo();
 		await expect(new SubmitCycleCountUseCase(repo).execute(10, [
