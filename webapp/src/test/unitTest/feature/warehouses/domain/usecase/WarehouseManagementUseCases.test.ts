@@ -45,6 +45,21 @@ describe('Warehouse management use cases', () => {
 		await new CreateZoneUseCase(repository).execute({ warehouseId: 8, code: 'PICK', name: 'Picking', zoneType: 'PICKING' });
 		expect(repository.createZone).toHaveBeenCalledWith({ warehouseId: 8, code: 'PICK', name: 'Picking', zoneType: 'PICKING' });
 	});
+
+	it('enforces PostgreSQL zone_code and zone_name lengths on create', async () => {
+		const repository = createRepository();
+		const useCase = new CreateZoneUseCase(repository);
+		await expect(useCase.execute({ warehouseId: 1, code: 'C'.repeat(21), name: 'Valid', zoneType: 'STORAGE' })).rejects.toThrow(/1 to 20/);
+		await expect(useCase.execute({ warehouseId: 1, code: 'VALID', name: 'N'.repeat(101), zoneType: 'STORAGE' })).rejects.toThrow(/1 to 100/);
+		expect(repository.createZone).not.toHaveBeenCalled();
+	});
+	it('enforces PostgreSQL zone_code and zone_name lengths on update', async () => {
+		const repository = createRepository();
+		const useCase = new UpdateZoneUseCase(repository);
+		await expect(useCase.execute({ id: 1, code: 'C'.repeat(21) })).rejects.toThrow(/1 to 20/);
+		await expect(useCase.execute({ id: 1, name: 'N'.repeat(101) })).rejects.toThrow(/1 to 100/);
+		expect(repository.updateZone).not.toHaveBeenCalled();
+	});
 	it('keeps both warehouse and zone relationships when creating a bin', async () => {
 		const repository = createRepository();
 		vi.mocked(repository.createBin).mockResolvedValue({
