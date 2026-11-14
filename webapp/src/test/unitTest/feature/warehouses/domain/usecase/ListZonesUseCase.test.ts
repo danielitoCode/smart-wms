@@ -7,6 +7,7 @@ describe('ListZonesUseCase', () => {
 		const repo: WarehouseRepository = {
 			listActive: vi.fn(),
 			listAdmin: vi.fn(),
+			listAdminPage: vi.fn(),
 			getById: vi.fn(),
 			listZones: vi.fn().mockResolvedValue([
 				{
@@ -29,6 +30,7 @@ describe('ListZonesUseCase', () => {
 		const repo = {
 			listActive: vi.fn(),
 			listAdmin: vi.fn(),
+			listAdminPage: vi.fn(),
 			getById: vi.fn(),
 			listZones: vi.fn(),
 			listBins: vi.fn()
