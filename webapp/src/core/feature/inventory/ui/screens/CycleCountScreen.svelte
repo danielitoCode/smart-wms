@@ -45,7 +45,7 @@
 				required
 			/>
 		</label>
-		<button type="submit" class:accent={!state.detail || state.detail.status === 'COMPLETED'} class:quiet={!!state.detail && state.detail.status === 'PENDING' || state.detail.status === 'IN_PROGRESS'} disabled={state.busy || !state.binIdsInput.trim()}>
+		<button type="submit" class:accent={!state.detail || state.detail.status === 'COMPLETED'} class:quiet={!!state.detail && (state.detail.status === 'PENDING' || state.detail.status === 'IN_PROGRESS')} disabled={state.busy || !state.binIdsInput.trim()}>
 			{i18n.t("Crear conteos")}
 		</button>
 	</form>
@@ -112,7 +112,7 @@
 						</tbody>
 					</table>
 				</div>
-				{#if state.detail.status !== 'COMPLETED'}
+				{#if state.detail.status === 'PENDING' || state.detail.status === 'IN_PROGRESS'}
 					<button type="submit" class="accent" disabled={state.busy || state.detail.lines.length === 0}>{i18n.t('Enviar conteo')}</button>
 				{/if}
 			</form>

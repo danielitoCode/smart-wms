@@ -65,7 +65,7 @@ export function createCycleCountState() {
 	}
 
 	async function loadDetail(countId: number) {
-		if (loading || busy) return false;
+		if (loading) return false;
 		if (!Number.isInteger(countId) || countId <= 0) {
 			error = 'countId inválido';
 			return false;
