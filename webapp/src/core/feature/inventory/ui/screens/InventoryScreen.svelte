@@ -16,7 +16,8 @@
 	let sortDirection = $state<'asc' | 'desc'>('asc');
 
 	const sortedItems = $derived.by(() => {
-		const rows = [...vm.items];
+		const source = vm.items;
+		const rows = Array.isArray(source) ? [...source] : [];
 		const key = sortKey;
 		if (key === null) return rows;
 		return rows.sort((left, right) => {
@@ -88,48 +89,39 @@
 <section class="inventory page">
 	<PageHeader
 		title={i18n.t('Inventario')}
-		subtitle={i18n.t('Consulta las existencias por producto, almacén, ubicación y lote.')}
+		subtitle={i18n.t('Consulta las existencias por producto, ubicación y lote.')}
 	/>
 
 	<form class="filters" onsubmit={applyFilters}>
 		<label>
 			{i18n.t('Almacén')}
-			<select bind:value={warehouseInput} disabled={vm.loadingOptions || vm.loading}>
-				<option value="">{i18n.t('Todos los almacenes')}</option>
-				{#each vm.warehouses as warehouse (warehouse.id)}
-					<option value={String(warehouse.id)}>{warehouse.code} · {warehouse.name}</option>
+			<select bind:value={warehouseInput} disabled={vm.loading || vm.loadingOptions}>
+				<option value="">{i18n.t('Todos')}</option>
+				{#each vm.warehouses as wh (wh.id)}
+					<option value={String(wh.id)}>{wh.code ?? wh.name ?? wh.id}</option>
 				{/each}
 			</select>
 		</label>
 		<label>
 			{i18n.t('Ubicación')}
-			<select bind:value={binInput} disabled={!warehouseInput || vm.bins.length === 0 || vm.loading}>
-				<option value="">{i18n.t('Todas las ubicaciones')}</option>
+			<select bind:value={binInput} disabled={vm.loading || !warehouseInput}>
+				<option value="">{i18n.t('Todas')}</option>
 				{#each vm.bins as bin (bin.id)}
-					<option value={String(bin.id)}>{bin.code}{bin.zoneName ? ` · ${bin.zoneName}` : ''}</option>
+					<option value={String(bin.id)}>{bin.code ?? bin.id}</option>
 				{/each}
 			</select>
 		</label>
 		<label>
-			{i18n.t('ID de producto')}
-			<input type="number" min="1" step="1" placeholder={i18n.t('Todos')} bind:value={itemInput} />
+			{i18n.t('Item ID')}
+			<input type="number" min="1" bind:value={itemInput} disabled={vm.loading} />
 		</label>
 		<label class="search">
-			{i18n.t('Buscar')}
-			<input
-				type="search"
-				maxlength="200"
-				placeholder={i18n.t('SKU, nombre, UPC, MPN o código de ubicación')}
-				bind:value={searchInput}
-			/>
+			{i18n.t('Búsqueda')}
+			<input type="search" bind:value={searchInput} placeholder={i18n.t('SKU, nombre…')} disabled={vm.loading} />
 		</label>
 		<div class="filter-actions">
-			<button type="submit" class="accent" disabled={vm.loading}>
-				{vm.loading ? i18n.t('Cargando…') : i18n.t('Aplicar filtros')}
-			</button>
-			<button type="button" class="secondary" onclick={clearFilters} disabled={vm.loading}>
-				{i18n.t('Limpiar')}
-			</button>
+			<button type="submit" class="accent" disabled={vm.loading}>{vm.loading ? i18n.t('Cargando…') : i18n.t('Filtrar')}</button>
+			<button type="button" class="secondary" onclick={clearFilters} disabled={vm.loading}>{i18n.t('Limpiar')}</button>
 		</div>
 	</form>
 
@@ -142,45 +134,36 @@
 	{:else if vm.loading && !vm.loadedOnce}
 		<UiLoader label={i18n.t('Cargando inventario…')} size="lg" />
 	{:else if sortedItems.length === 0}
-		<p class="empty">{i18n.t('No se encontraron existencias para estos filtros.')}</p>
+		<p class="empty">{i18n.t('Todavía no hay existencias registradas.')}</p>
 	{:else}
 		<div class="table-meta">
-			<span>{i18n.t('Registros')}: {vm.total.toLocaleString()}</span>
-			<span>{i18n.t('Página')} {vm.page} / {vm.pages}</span>
+			<span>{i18n.t('Total')}: {vm.total}</span>
 		</div>
-		<div class="table-wrap" aria-busy={vm.loading}>
+		<div class="table-wrap">
 			<table>
 				<thead>
 					<tr>
-						<th><button class="sort" type="button" onclick={() => toggleSort('sku')}>{i18n.t('SKU')}{sortKey === 'sku' ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : ''}</button></th>
-						<th>{i18n.t('Producto')}</th>
-						<th><button class="sort" type="button" onclick={() => toggleSort('binCode')}>{i18n.t('Ubicación')}{sortKey === 'binCode' ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : ''}</button></th>
-						<th>{i18n.t('Zona')}</th>
+						<th><button type="button" class="sort" onclick={() => toggleSort('sku')}>{i18n.t('SKU')}</button></th>
+						<th><button type="button" class="sort" onclick={() => toggleSort('itemName')}>{i18n.t('Nombre')}</button></th>
+						<th><button type="button" class="sort" onclick={() => toggleSort('binCode')}>{i18n.t('Ubicación')}</button></th>
+						<th class="qty"><button type="button" class="sort" onclick={() => toggleSort('quantityOnHand')}>{i18n.t('En mano')}</button></th>
+						<th class="qty"><button type="button" class="sort" onclick={() => toggleSort('quantityAvailable')}>{i18n.t('Disponible')}</button></th>
 						<th>{i18n.t('Lote')}</th>
-						<th><button class="sort" type="button" onclick={() => toggleSort('quantityOnHand')}>{i18n.t('En mano')}{sortKey === 'quantityOnHand' ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : ''}</button></th>
-						<th>{i18n.t('Asignado')}</th>
-						<th><button class="sort" type="button" onclick={() => toggleSort('quantityAvailable')}>{i18n.t('Disponible')}{sortKey === 'quantityAvailable' ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : ''}</button></th>
-						<th>{i18n.t('Comprometido')}</th>
-						<th>{i18n.t('Último conteo')}</th>
 						<th>{i18n.t('Estado')}</th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each sortedItems as row (row.inventoryId)}
 						<tr>
-							<td class="mono">{row.sku}</td>
-							<td>{row.itemName}</td>
-							<td class="mono">{row.binCode}</td>
-							<td>{row.zoneName ?? '—'}</td>
-							<td>{row.lotNumber ?? '—'}</td>
+							<td class="mono">{row.sku ?? row.itemId}</td>
+							<td>{row.itemName ?? '—'}</td>
+							<td class="mono">{row.binCode ?? row.binId}</td>
 							<td class="qty">{row.quantityOnHand}</td>
-							<td class="qty">{row.quantityAllocated}</td>
 							<td class="qty">{row.quantityAvailable}</td>
-							<td class="qty">{row.committedToOrders}</td>
-							<td>{row.lastCountedAt ? new Date(row.lastCountedAt).toLocaleDateString() : '—'}</td>
+							<td>{row.lotNumber ?? '—'}</td>
 							<td>
-								{#if row.quantityOnHand === 0}
-									<span class="status out">{i18n.t('Agotado')}</span>
+								{#if row.quantityOnHand <= 0}
+									<span class="status out">{i18n.t('Sin stock')}</span>
 								{:else if row.quantityAvailable <= 0}
 									<span class="status allocated">{i18n.t('Sin disponibilidad')}</span>
 								{:else}
