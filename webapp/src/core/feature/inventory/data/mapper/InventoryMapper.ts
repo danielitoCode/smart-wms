@@ -30,8 +30,7 @@ export const InventoryMapper = {
 			itemName: dto.item_name,
 			binCode: dto.bin_code,
 			zoneName: dto.zone_name,
-			lastCountedAt: dto.last_counted_at,
-			...(dto.reorder_point !== undefined ? { reorderPoint: dto.reorder_point } : {})
+			lastCountedAt: dto.last_counted_at
 		};
 	},
 
