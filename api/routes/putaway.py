@@ -313,7 +313,7 @@ def suggest_bin(item_id):
                 "bin_code": default.bin_code,
                 "bin_barcode": default.bin_barcode,
                 "zone_name": default.zone_name,
-                "priority": None,
+                "priority": 1,
             }
 
     return jsonify({
