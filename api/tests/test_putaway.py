@@ -216,6 +216,33 @@ class TestConfirmPutaway:
         assert data["transfer_id"] is not None
         assert data["quantity"] == 10
 
+    def test_pending_suggestion_flows_through_to_confirm(self, client, auth_headers):
+        _receive_to_staging(client, auth_headers, item_id=1, quantity=6)
+
+        pending = client.get("/api/putaway/pending/1", headers=auth_headers)
+        assert pending.status_code == 200
+        row = next(
+            item for item in pending.get_json()["pending_items"]
+            if item["sku"] == "TST-001"
+        )
+        assert row["suggested_bin"] == "A-01-01"
+        assert row["suggested_bin_id"] == 3
+
+        confirmed = client.post(
+            "/api/putaway/confirm",
+            json={
+                "item_id": row["item_id"],
+                "from_bin_id": row["bin_id"],
+                "to_bin_id": row["suggested_bin_id"],
+                "quantity": row["quantity"],
+                "lot_number": row["lot_number"],
+            },
+            headers=auth_headers,
+        )
+        assert confirmed.status_code == 200
+        assert confirmed.get_json()["to_bin"] == row["suggested_bin"]
+        assert confirmed.get_json()["quantity"] == row["quantity"]
+
     def test_confirm_putaway_creates_transfer_record(self, client, auth_headers):
         _receive_to_staging(client, auth_headers, item_id=1, quantity=10)
         client.post(
