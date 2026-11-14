@@ -170,9 +170,12 @@ class TestZones:
         assert _query_val("SELECT zone_code FROM zones WHERE zone_id = %s", (2,)) != "RCV"
 
     def test_zone_pagination_rejects_non_positive_values(self, client, auth_headers):
-        for query in ("page=0", "page=-1", "page=invalid", "per_page=0", "per_page=1001", "per_page=invalid", "warehouse_id=invalid"):
+        for query in ("page=0", "page=-1", "page=invalid", "per_page=0", "per_page=1001", "per_page=invalid"):
             response = client.get(f"/api/admin/zones?warehouse_id=1&{query}", headers=auth_headers)
             assert response.status_code == 400, query
+
+        invalid_warehouse = client.get("/api/admin/zones?warehouse_id=invalid", headers=auth_headers)
+        assert invalid_warehouse.status_code == 400
 
     def test_create_zone_rejects_lengths_exceeding_postgres_columns(self, client, auth_headers):
         too_long_code = client.post("/api/admin/zones", json={
