@@ -1110,8 +1110,9 @@ def create_preferred_bin(validated):
     if not _preferred_bin_item_is_fully_in_scope(g.db, item_id):
         return jsonify({"error": "Preferred-bin priorities span warehouses outside your assigned scope"}), 403
     if bin_row.bin_type != BIN_PICKABLE or not bin_row.is_active:
+        state = "inactive" if not bin_row.is_active else "active"
         return jsonify({
-            "error": "Preferred bins must reference an active Pickable bin"
+            "error": f"Bin {bin_row.bin_code} is {state} and has type {bin_row.bin_type}; preferred bins must reference an active Pickable bin"
         }), 400
 
     g.db.execute(
@@ -1147,7 +1148,7 @@ def update_preferred_bin(preferred_bin_id, validated):
     scope_clause, scope_params = warehouse_scope_clause("b.warehouse_id")
     row = g.db.execute(
         text(
-            "SELECT pb.item_id, b.bin_type, b.is_active FROM preferred_bins pb "
+            "SELECT pb.item_id, b.bin_code, b.bin_type, b.is_active FROM preferred_bins pb "
             "JOIN bins b ON b.bin_id = pb.bin_id "
             "WHERE pb.preferred_bin_id = :pbid " + scope_clause
         ),
@@ -1161,7 +1162,11 @@ def update_preferred_bin(preferred_bin_id, validated):
         return jsonify({"error": "Preferred-bin priorities span warehouses outside your assigned scope"}), 403
     if row.bin_type != BIN_PICKABLE or not row.is_active:
         g.db.rollback()
-        return jsonify({"error": "Preferred bins must reference an active Pickable bin"}), 409
+        state = "inactive" if not row.is_active else "active"
+        g.db.rollback()
+        return jsonify({
+            "error": f"Bin {row.bin_code} is {state} and has type {row.bin_type}; preferred bins must reference an active Pickable bin"
+        }), 409
     g.db.execute(
         text("UPDATE preferred_bins SET priority = :priority, updated_at = NOW() WHERE preferred_bin_id = :pbid"),
         {"priority": priority, "pbid": preferred_bin_id},
