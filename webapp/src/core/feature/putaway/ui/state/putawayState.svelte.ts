@@ -76,6 +76,9 @@ export function createPutawayState(dependencies: PutawayDependencies = createPut
 				quantity: item.quantity,
 				lotNumber: item.lotNumber
 			});
+			// Release the submission lock before reloading; load() intentionally
+			// refuses to run while a transfer is being submitted.
+			submittingKey = null;
 			await load();
 			return true;
 		} catch (err) {
