@@ -414,6 +414,16 @@ class TestBins:
         }, headers=auth_headers)
         assert resp.status_code == 400
 
+    def test_create_bin_enforces_postgres_code_barcode_and_aisle_lengths(self, client, auth_headers):
+        base = {"zone_id": 2, "warehouse_id": 1, "bin_code": "LENGTH", "bin_barcode": "LENGTH", "bin_type": "Pickable"}
+        for payload in (
+            {**base, "bin_code": "C" * 51},
+            {**base, "bin_barcode": "B" * 101},
+            {**base, "aisle": "A" * 11},
+        ):
+            response = client.post("/api/admin/bins", json=payload, headers=auth_headers)
+            assert response.status_code == 400
+
     def test_update_bin_pick_sequence(self, client, auth_headers):
         resp = client.put("/api/admin/bins/3", json={"pick_sequence": 999}, headers=auth_headers)
         assert resp.status_code == 200
