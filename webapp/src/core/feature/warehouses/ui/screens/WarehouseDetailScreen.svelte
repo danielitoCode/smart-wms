@@ -5,7 +5,7 @@
 	import type { Bin, BinType, Zone, ZoneType } from '../../domain/entity/Warehouse';
 
 	const i18n = getContext<I18nState>('i18n');
-	let { warehouseId, showZones = true, showBins = true, includeBins = true, backHref = '/warehouses' }: { warehouseId: number; showZones?: boolean; showBins?: boolean; includeBins?: boolean; backHref?: string } = $props();
+	let { warehouseId, showZones = true, showBins = true, includeBins = true, initialZoneId = null, backHref = '/warehouses' }: { warehouseId: number; showZones?: boolean; showBins?: boolean; includeBins?: boolean; initialZoneId?: number | null; backHref?: string } = $props();
 	// svelte-ignore state_referenced_locally
 	const vm = createWarehouseDetailState(warehouseId, includeBins);
 
@@ -22,7 +22,7 @@
 	let exporting = $state(false);
 	let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
-	onMount(() => { void vm.load(); });
+	onMount(() => { void vm.load(initialZoneId); });
 	function zoneTypeLabel(type: ZoneType): string {
 		const labels: Record<ZoneType, string> = { RECEIVING: i18n.t('Recepción'), STORAGE: i18n.t('Almacenamiento'), PICKING: i18n.t('Preparación'), STAGING: i18n.t('Zona temporal'), SHIPPING: i18n.t('Despacho') };
 		return labels[type];
@@ -107,9 +107,9 @@
 			{#if vm.zones.length === 0}<p class="status">{i18n.t('Sin zonas.')}</p>
 			{:else}<div class="table-wrap"><table><thead><tr><th>{i18n.t('Código')}</th><th>{i18n.t('Nombre')}</th><th>{i18n.t('Tipo')}</th><th>{i18n.t('Ubicaciones asociadas')}</th><th>{i18n.t('Estado')}</th><th>{i18n.t('Acciones')}</th></tr></thead><tbody>
 				{#each vm.zones as zone (zone.id)}<tr class:selected={vm.selectedZoneId === zone.id}><td class="mono">{zone.code}</td><td>{zone.name}</td><td>{zoneTypeLabel(zone.zoneType)}</td><td>{zone.binsCount ?? 0}</td><td>{zone.active ? i18n.t('Activo') : i18n.t('Inactivo')}</td>
-					<td class="actions">{#if showBins}<button class="quiet" type="button" onclick={() => vm.loadBinsForZone(zone.id,1)}>{i18n.t('Ubicaciones')}</button>{/if}<button class="quiet" type="button" onclick={() => openEditZone(zone)}>{i18n.t('Editar')}</button><button class="danger" type="button" onclick={() => deleteZoneTarget = zone}>{i18n.t('Eliminar')}</button></td></tr>{/each}
+					<td class="actions"><a class="quiet" href={'/data/bins?zone_id=' + zone.id}>{i18n.t('Ver ubicaciones')}</a><button class="quiet" type="button" onclick={() => openEditZone(zone)}>{i18n.t('Editar')}</button><button class="danger" type="button" onclick={() => deleteZoneTarget = zone}>{i18n.t('Eliminar')}</button></td></tr>{/each}
 			</tbody></table></div>
-			{#if vm.selectedZoneId != null}<p class="filter-hint">{i18n.t('Filtrando por zona')} #{vm.selectedZoneId} <button class="linkish" type="button" onclick={() => vm.loadBinsForZone(null,1)}>{i18n.t('Quitar filtro')}</button></p>{/if}{/if}
+			{/if}
 		</section>{/if}
 		{#if showBins}<section class="panel">
 			<div class="section-header bin-heading"><h2>{i18n.t('Ubicaciones')}</h2><div class="bin-tools"><input aria-label={i18n.t('Buscar código o código de barras')} placeholder={i18n.t('Buscar código o código de barras')} value={vm.binSearch} oninput={(e) => onSearch(e.currentTarget.value)} /><button class="quiet" type="button" onclick={exportCsv} disabled={exporting || vm.binTotal === 0}>{exporting ? i18n.t('Exportando…') : i18n.t('Exportar CSV')}</button><button class="accent" type="button" onclick={openCreateBin} disabled={vm.zones.length === 0}>{i18n.t('Nueva ubicación')}</button></div></div>
@@ -157,3 +157,4 @@
 	form { display:flex; flex-direction:column; gap:.75rem; margin-top:1rem; } label { display:flex; flex-direction:column; gap:.25rem; color:var(--slate); font-size:.83rem; font-weight:600; } label input:not([type=checkbox]),label select { box-sizing:border-box; width:100%; padding:.55rem .65rem; border:1px solid var(--line); border-radius:var(--radius-field); color:var(--ink); background:var(--surface); font:400 .9rem var(--body); } .check { flex-direction:row; align-items:center; } footer { display:flex; justify-content:flex-end; gap:.45rem; margin-top:.8rem; } dl { display:grid; grid-template-columns:10rem 1fr; gap:.4rem .75rem; font-size:.85rem; } dt { color:var(--slate); } dd { margin:0; color:var(--ink); }
 	@media(max-width:680px) { .section-header { align-items:flex-start; flex-direction:column; } .bin-heading { align-items:stretch; } .bin-tools { width:100%; } .bin-tools input { flex:1; min-width:10rem; } .actions { flex-wrap:wrap; } }
 </style>
+\n			{#if vm.selectedZoneId != null}<p class="filter-hint">{i18n.t('Filtrando por zona')} #{vm.selectedZoneId} <button class="linkish" type="button" onclick={() => vm.loadBinsForZone(null,1)}>{i18n.t('Quitar filtro')}</button></p>{/if}
