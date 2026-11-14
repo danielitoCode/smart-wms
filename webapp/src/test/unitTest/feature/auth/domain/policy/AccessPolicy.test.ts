@@ -62,6 +62,14 @@ describe('AccessPolicy F0.2', () => {
 		expect(requiredPageKeysForPath('/management/count-approvals')).toEqual(['count-approvals']);
 	});
 
+	it('vendors route is gated by the vendors permission key', () => {
+		const required = requiredPageKeysForPath('/management/vendors');
+		expect(required).toEqual(['vendors']);
+		expect(canAccessPages('USER', [], required)).toBe(false);
+		expect(canAccessPages('USER', ['vendors'], required)).toBe(true);
+		expect(canAccessPages('ADMIN', [], required)).toBe(true);
+	});
+
 	it('hasOverride respects ADMIN and list', () => {
 		expect(hasOverride('ADMIN', [], 'so-full-edit')).toBe(true);
 		expect(hasOverride('USER', [], 'so-full-edit')).toBe(false);
