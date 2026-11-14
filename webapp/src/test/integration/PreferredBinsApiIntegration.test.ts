@@ -18,6 +18,8 @@ describe('Preferred Bins HTTP integration', () => {
 		vi.stubGlobal('fetch', fetchMock);
 
 		const source = new PreferredBinsRemoteDataSource(new ApiClient('https://wms.test'));
+		const catalog = await source.catalog({ warehouseId: 3 });
+		expect(catalog.warehouses).toEqual([]);
 		const rows = await source.list({ search: 'SKU-7', warehouseId: 3 });
 		expect(rows).toEqual([row]);
 		await source.create({ item_id: 7, bin_id: 42, priority: 1 });
@@ -25,6 +27,7 @@ describe('Preferred Bins HTTP integration', () => {
 		await source.remove(91);
 
 		expect(fetchMock.mock.calls.map(([url, init]) => [url, init?.method])).toEqual([
+			['https://wms.test/api/admin/preferred-bins/catalog?warehouse_id=3', 'GET'],
 			['https://wms.test/api/admin/preferred-bins?q=SKU-7&warehouse_id=3', 'GET'],
 			['https://wms.test/api/admin/preferred-bins', 'POST'],
 			['https://wms.test/api/admin/preferred-bins/91', 'PUT'],

@@ -30,6 +30,18 @@ describe('PreferredBinMapper', () => {
 		});
 	});
 
+	it('maps the feature-scoped catalog and pagination projection', () => {
+		expect(PreferredBinMapper.toCatalog({
+			warehouses: [{ warehouse_id: 3, warehouse_code: 'WH-3', warehouse_name: 'Warehouse 3' }],
+			bins: [{ bin_id: 42, warehouse_id: 3, zone_id: 8, zone_name: 'Picking', bin_code: 'PICK-42', bin_barcode: 'BC-42', bin_type: 'Pickable', is_active: true }],
+			total: 1, page: 1, per_page: 1000, pages: 1
+		})).toEqual({
+			warehouses: [{ id: 3, code: 'WH-3', name: 'Warehouse 3' }],
+			bins: [{ id: 42, warehouseId: 3, zoneId: 8, zoneName: 'Picking', code: 'PICK-42', barcode: 'BC-42', active: true }],
+			total: 1, page: 1, perPage: 1000, pages: 1
+		});
+	});
+
 	it('maps create and priority mutation bodies to the Flask snake_case contract', () => {
 		expect(PreferredBinMapper.toCreateDto({ itemId: 7, binId: 42, priority: 2 })).toEqual({
 			item_id: 7, bin_id: 42, priority: 2

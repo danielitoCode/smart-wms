@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Item } from '../../../../../core/feature/items/domain/entity/Item';
-import type { Bin, Warehouse } from '../../../../../core/feature/warehouses/domain/entity/Warehouse';
 import { createPreferredBinsState } from '../../../../../core/feature/preferred-bins/ui/state/preferredBinsState.svelte';
 
 const row = {
@@ -12,21 +11,19 @@ function createDependencies() {
 	return {
 		preferred: {
 			list: { execute: vi.fn().mockResolvedValue([row]) },
+			catalog: { execute: vi.fn().mockResolvedValue({
+				warehouses: [
+					{ id: 3, code: 'WH-3', name: 'Warehouse 3' },
+					{ id: 4, code: 'WH-4', name: 'Warehouse 4' }
+				],
+				bins: [{ id: 42, warehouseId: 3, zoneId: 8, zoneName: 'Picking', code: 'PICK-42', barcode: null, active: true }],
+				total: 1, page: 1, perPage: 1000, pages: 1
+			}) },
 			add: { execute: vi.fn().mockResolvedValue(undefined) },
 			updatePriority: { execute: vi.fn().mockResolvedValue(undefined) },
 			remove: { execute: vi.fn().mockResolvedValue(undefined) }
 		},
-		items: { searchItems: { execute: vi.fn().mockResolvedValue([]) } },
-		warehouses: {
-			listAdminWarehouses: { execute: vi.fn().mockResolvedValue([
-				{ id: 3, code: 'WH-3', name: 'Warehouse 3', address: null, active: true, createdAt: null },
-				{ id: 4, code: 'WH-4', name: 'Warehouse 4', address: null, active: true, createdAt: null }
-			] satisfies Warehouse[]) },
-			listBins: { execute: vi.fn().mockResolvedValue({
-				items: [{ id: 42, warehouseId: 3, zoneId: 8, zoneName: 'Picking', code: 'PICK-42', barcode: null, binType: 'Pickable', aisle: null, rowNumber: null, levelNumber: null, positionNumber: null, pickSequence: 1, putawaySequence: 1, active: true, maxWeightLbs: null, maxVolumeCuft: null, quantityOnHand: 0, quantityAllocated: 0, inventoryLines: 0 }] satisfies Bin[],
-				page: 1, pages: 1, total: 1, perPage: 1000
-			}) }
-		}
+		items: { searchItems: { execute: vi.fn().mockResolvedValue([]) } }
 	};
 }
 
@@ -52,8 +49,8 @@ describe('Preferred Bins UI state', () => {
 		await state.loadCatalogs();
 		await state.chooseWarehouse(3);
 		expect(state.binOptions.map(bin => bin.id)).toEqual([42]);
-		expect(dependencies.warehouses.listBins.execute).toHaveBeenCalledWith({
-			warehouseId: 3, q: undefined, page: 1, perPage: 1000
+		expect(dependencies.preferred.catalog.execute).toHaveBeenCalledWith({
+			warehouseId: 3, search: undefined, page: 1, perPage: 1000
 		});
 	});
 

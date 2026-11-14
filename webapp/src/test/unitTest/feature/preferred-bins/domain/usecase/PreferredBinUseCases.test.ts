@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { PreferredBinsRepository } from '../../../../../../core/feature/preferred-bins/domain/repository/PreferredBinsRepository';
 import {
 	AddPreferredBinUseCase,
+	ListPreferredBinCatalogUseCase,
 	ListPreferredBinsUseCase,
 	RemovePreferredBinUseCase,
 	UpdatePreferredBinPriorityUseCase
@@ -17,6 +18,15 @@ function repository(): PreferredBinsRepository {
 }
 
 describe('Preferred Bins use cases', () => {
+	it('validates warehouse and pagination parameters for the feature catalog', async () => {
+		const repo = repository();
+		const useCase = new ListPreferredBinCatalogUseCase(repo);
+		expect(() => useCase.execute({ warehouseId: 0 })).toThrow('almacén');
+		expect(() => useCase.execute({ page: 0 })).toThrow('página');
+		expect(() => useCase.execute({ perPage: 1001 })).toThrow('página');
+		expect(repo.listCatalog).not.toHaveBeenCalled();
+	});
+
 	it('rejects a non-existent/invalid item identifier before calling the API', async () => {
 		const repo = repository();
 		const useCase = new AddPreferredBinUseCase(repo);

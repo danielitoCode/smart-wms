@@ -10,6 +10,13 @@ describe('PreferredBinsRemoteDataSource', () => {
 		expect(api.get).toHaveBeenCalledWith('/api/admin/preferred-bins?q=SKU-7&item_id=7&warehouse_id=3');
 	});
 
+	it('loads warehouse and active Pickable-bin choices through the feature permission endpoint', async () => {
+		const api = { get: vi.fn().mockResolvedValue({ warehouses: [], bins: [], total: 0, page: 1, per_page: 1000, pages: 1 }) } as unknown as ApiClient;
+		const source = new PreferredBinsRemoteDataSource(api);
+		await source.catalog({ warehouseId: 3, search: 'PICK', page: 2, perPage: 1000 });
+		expect(api.get).toHaveBeenCalledWith('/api/admin/preferred-bins/catalog?warehouse_id=3&q=PICK&page=2&per_page=1000');
+	});
+
 	it('uses the supported collection POST and relation-id PUT/DELETE endpoints', async () => {
 		const api = {
 			get: vi.fn().mockResolvedValue({ preferred_bins: [] }),

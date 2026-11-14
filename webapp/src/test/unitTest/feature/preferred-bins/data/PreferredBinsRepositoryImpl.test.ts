@@ -9,6 +9,10 @@ describe('PreferredBinsRepositoryImpl', () => {
 				preferred_bin_id: 91, item_id: 7, bin_id: 42, warehouse_id: 3, priority: 2,
 				updated_at: null, sku: 'SKU-7', item_name: 'Test item', bin_code: 'PICK-42', zone_name: 'Picking'
 			}]),
+			catalog: vi.fn().mockResolvedValue({
+				warehouses: [{ warehouse_id: 3, warehouse_code: 'WH-3', warehouse_name: 'Warehouse 3' }],
+				bins: [], total: 0, page: 1, per_page: 1000, pages: 1
+			}),
 			create: vi.fn().mockResolvedValue({ message: 'saved' }),
 			update: vi.fn().mockResolvedValue({ message: 'updated' }),
 			remove: vi.fn().mockResolvedValue({ message: 'deleted' })
@@ -17,6 +21,11 @@ describe('PreferredBinsRepositoryImpl', () => {
 		const rows = await repository.list({ warehouseId: 3 });
 		expect(rows[0]).toMatchObject({ preferredBinId: 91, itemId: 7, binId: 42, warehouseId: 3, priority: 2 });
 		expect(remote.list).toHaveBeenCalledWith({ warehouseId: 3 });
+		await expect(repository.listCatalog()).resolves.toMatchObject({
+			warehouses: [{ id: 3, code: 'WH-3', name: 'Warehouse 3' }],
+			total: 0, pages: 1
+		});
+		expect(remote.catalog).toHaveBeenCalledWith(undefined);
 
 		await repository.create({ itemId: 7, binId: 42, priority: 2 });
 		await repository.update(91, 1);
