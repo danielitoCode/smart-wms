@@ -145,7 +145,6 @@ def staging_summary(warehouse_id):
         ),
         {
             "warehouse_id": warehouse_id,
-            "bin_pickable": BIN_PICKABLE,
             "bin_staging": BIN_STAGING,
             "bin_pickable_staging": BIN_PICKABLE_STAGING,
         },
@@ -187,6 +186,7 @@ def staging_summary(warehouse_id):
         ),
         {
             "warehouse_id": warehouse_id,
+            "bin_pickable": BIN_PICKABLE,
             "bin_staging": BIN_STAGING,
             "bin_pickable_staging": BIN_PICKABLE_STAGING,
         },
