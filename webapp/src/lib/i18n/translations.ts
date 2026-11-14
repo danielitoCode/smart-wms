@@ -3,7 +3,7 @@ export type Locale = 'it' | 'es' | 'en';
 // Spanish is the source key to keep translations auditable alongside the current UI copy.
 export const translations: Record<Locale, Record<string, string>> = {
 	it: {
-		'Existencias': 'Giacenze', 'asignadas': 'assegnate', 'Capacidad': 'Capacità',
+		'Filtrar por zona': 'Filtra per zona', 'Todas las zonas': 'Tutte le zone', 'Existencias': 'Giacenze', 'asignadas': 'assegnate', 'Capacidad': 'Capacità',
 		'Peso máximo': 'Peso massimo', 'Volumen máximo': 'Volume massimo',
 		'Disponibles': 'Disponibili', 'Peso máximo (lb)': 'Peso massimo (lb)',
 		'Volumen máximo (ft³)': 'Volume massimo (ft³)',
@@ -30,7 +30,7 @@ export const translations: Record<Locale, Record<string, string>> = {
 	},
 	es: {},
 	en: {
-		'Existencias': 'Stock', 'asignadas': 'allocated', 'Capacidad': 'Capacity',
+		'Filtrar por zona': 'Filter by zone', 'Todas las zonas': 'All zones', 'Existencias': 'Stock', 'asignadas': 'allocated', 'Capacidad': 'Capacity',
 		'Peso máximo': 'Maximum weight', 'Volumen máximo': 'Maximum volume',
 		'Disponibles': 'Available', 'Peso máximo (lb)': 'Maximum weight (lb)',
 		'Volumen máximo (ft³)': 'Maximum volume (ft³)',
