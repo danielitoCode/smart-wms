@@ -1,6 +1,6 @@
 import type { WarehouseManagementRepository } from '../../domain/repository/WarehouseManagementRepository';
 import type {
-	Bin, BinDetail, BinPage, OperationalBinLookup, OperationalBinSearchResult, WarehousePage, CreateBinInput, CreateWarehouseInput, CreateZoneInput,
+	Bin, BinDetail, BinPage, WarehousePage, CreateBinInput, CreateWarehouseInput, CreateZoneInput,
 	UpdateBinInput, UpdateWarehouseInput, UpdateZoneInput, Warehouse, Zone
 } from '../../domain/entity/Warehouse';
 import type { WarehouseRemoteDataSource } from '../datasource/WarehouseRemoteDataSource';
@@ -86,10 +86,4 @@ export class WarehouseRepositoryImpl implements WarehouseManagementRepository {
 	}
 	async deleteBin(id: number): Promise<void> { await this.datasource.deleteBin(id); }
 	async getBinById(id: number): Promise<BinDetail> { return WarehouseMapper.toBinDetail(await this.datasource.getBinById(id)); }
-	async searchOperationalBins(query: string): Promise<OperationalBinSearchResult[]> {
-		return (await this.datasource.searchOperationalBins(query)).map(WarehouseMapper.toOperationalBinSearchResult);
-	}
-	async lookupOperationalBin(barcode: string): Promise<OperationalBinLookup> {
-		return WarehouseMapper.toOperationalBinLookup(await this.datasource.lookupOperationalBin(barcode));
-	}
 }
