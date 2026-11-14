@@ -118,6 +118,9 @@ describe('Warehouse management use cases', () => {
 		await expect(useCase.execute({ ...base, maxWeightLbs: -1 })).rejects.toThrow(/maxWeightLbs/);
 		await expect(useCase.execute({ ...base, maxVolumeCuft: Number.NaN })).rejects.toThrow(/maxVolumeCuft/);
 		expect(repository.createBin).not.toHaveBeenCalled();
+		await expect(useCase.execute({ ...base, maxWeightLbs: 12.345 })).rejects.toThrow(/two decimal places/);
+		await expect(useCase.execute({ ...base, code: 'C'.repeat(51) })).rejects.toThrow(/1 to 50/);
+		await expect(useCase.execute({ ...base, barcode: 'B'.repeat(101) })).rejects.toThrow(/1 to 100/);
 	});
 
 	it('validates bin foreign keys and barcode before creating', async () => {
