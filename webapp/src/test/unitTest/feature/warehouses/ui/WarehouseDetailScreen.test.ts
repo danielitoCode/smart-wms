@@ -30,7 +30,7 @@ describe('WarehouseDetailScreen zones workspace', () => {
 		expect(body).toContain('Picking');
 		expect(body).toContain('Preparación');
 		expect(body).toContain('Ubicaciones asociadas');
-		expect(body).toContain('svelte-1qez22i">4</td>');
+		expect(body).toContain('>4</td>');
 		expect(body).toContain('Activo');
 		expect(body).toContain('Editar');
 		expect(body).toContain('Eliminar');
