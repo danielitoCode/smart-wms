@@ -85,10 +85,12 @@ describe('Items HTTP integration', () => {
 
 	it('serializes active, archived and all filters with the requested pagination', async () => {
 		const responseBody = { items: [], total: 0, page: 3, per_page: 20, pages: 0 };
-		const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(responseBody), {
-			status: 200,
-			headers: { 'Content-Type': 'application/json' }
-		}));
+		const fetchMock = vi.fn().mockImplementation(() =>
+			Promise.resolve(new Response(JSON.stringify(responseBody), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' }
+			}))
+		);
 		vi.stubGlobal('fetch', fetchMock);
 		const source = new ItemRemoteDataSource(new ApiClient('https://wms.test'));
 
