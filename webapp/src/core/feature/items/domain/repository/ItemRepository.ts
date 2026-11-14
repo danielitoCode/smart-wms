@@ -2,7 +2,7 @@ import type { Item, ItemDetail, ItemListPage, ItemListQuery, ItemWriteInput } fr
 
 export interface ItemRepository {
 	/** GET /api/admin/items — paginated */
-	listPage(query?: ItemListQuery): Promise<ItemListPage>;
+	listPage(query?: ItemListQuery, options?: { signal?: AbortSignal }): Promise<ItemListPage>;
 
 	/** GET /api/admin/items/{id} — { item, inventory, preferred_bins } */
 	getDetail(id: number): Promise<ItemDetail>;
