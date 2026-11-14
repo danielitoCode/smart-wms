@@ -1018,11 +1018,15 @@ def update_preferred_bin(preferred_bin_id, validated):
 @with_db
 def delete_preferred_bin(preferred_bin_id):
     result = g.db.execute(
-        text("DELETE FROM preferred_bins WHERE preferred_bin_id = :pbid RETURNING preferred_bin_id"),
+        text("DELETE FROM preferred_bins WHERE preferred_bin_id = :pbid RETURNING item_id"),
         {"pbid": preferred_bin_id},
     ).fetchone()
     if not result:
         g.db.rollback()
         return jsonify({"error": "Preferred bin not found"}), 404
+
+    # Keep remaining priorities contiguous after deletion as well. The
+    # deleted relation is no longer present, so no row receives tie priority.
+    _resequence_item_preferred_bins(g.db, result.item_id, -1)
     g.db.commit()
     return jsonify({"message": "Preferred bin deleted"})
