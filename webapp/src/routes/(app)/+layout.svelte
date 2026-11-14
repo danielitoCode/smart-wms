@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getContext, onMount, setContext } from 'svelte';
+	import { getContext, onMount, setContext, untrack } from 'svelte';
 	import { goto, onNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import AppIcon from '../../lib/components/AppIcon.svelte';
@@ -88,17 +88,25 @@
 	});
 
 	$effect(() => {
-		if (guard.status !== 'authenticated' || !guard.user) return;
-		void warehouseSelection.syncFromUser({
-			userId: guard.user.userId,
-			username: guard.user.username,
-			fullName: guard.user.fullName,
-			role: guard.user.role,
-			warehouseIds: guard.user.warehouseIds,
-			allowedPages: guard.user.allowedPages,
-			allowedFunctions: guard.user.allowedFunctions,
-			allowedOverrides: guard.user.allowedOverrides ?? [],
-			mustChangePassword: guard.user.mustChangePassword
+		if (guard.status !== 'authenticated' || !guard.user || !warehouseSelection.initialized) return;
+
+		// Only auth identity/permissions and initialization are effect dependencies.
+		// syncFromUser reads and writes the warehouse state internally; track none of
+		// those reads or its own writes, otherwise Svelte can re-run this effect forever.
+		const user = guard.user;
+		const warehouseUser = {
+			userId: user.userId,
+			username: user.username,
+			fullName: user.fullName,
+			role: user.role,
+			warehouseIds: user.warehouseIds,
+			allowedPages: user.allowedPages,
+			allowedFunctions: user.allowedFunctions,
+			allowedOverrides: user.allowedOverrides ?? [],
+			mustChangePassword: user.mustChangePassword
+		};
+		untrack(() => {
+			void warehouseSelection.syncFromUser(warehouseUser);
 		});
 	});
 
