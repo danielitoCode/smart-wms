@@ -103,8 +103,9 @@ class TestPreferredBinRelationLifecycle:
         assert resp.status_code == 404
         assert resp.get_json()["error"] == "Item not found"
 
-    def test_delete_existing_relation_removes_only_that_relation(self, client, auth_headers):
+    def test_delete_existing_relation_removes_and_resequences_remaining_rows(self, client, auth_headers):
         assert _post(client, auth_headers, 3, 1).status_code in (200, 201)
+        assert _post(client, auth_headers, 4, 2).status_code in (200, 201)
         relation_id = _pbid(1, 3)
         resp = client.delete(
             f"/api/admin/preferred-bins/{relation_id}",
@@ -112,6 +113,7 @@ class TestPreferredBinRelationLifecycle:
         )
         assert resp.status_code == 200
         assert _pbid(1, 3) is None
+        assert _rows_for_item(1) == [(4, 1)]
 
     def test_delete_missing_relation_returns_404(self, client, auth_headers):
         resp = client.delete(
