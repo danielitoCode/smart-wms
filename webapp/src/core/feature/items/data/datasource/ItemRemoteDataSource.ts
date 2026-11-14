@@ -1,14 +1,18 @@
 import type { ApiClient } from '#core/infrastructure/api/ApiClient.ts';
-import type { ItemDto, ItemListResponseDto } from '../dto/ItemDto';
+import type {
+	ItemArchiveResponseDto,
+	ItemDetailResponseDto,
+	ItemDto,
+	ItemListResponseDto,
+	ItemWriteBodyDto
+} from '../dto/ItemDto';
 
-function asItemList(body: ItemDto[] | ItemListResponseDto | ItemDto): ItemDto[] {
+function asItemList(body: ItemDto[] | { items?: ItemDto[]; data?: ItemDto[]; results?: ItemDto[] }): ItemDto[] {
 	if (Array.isArray(body)) return body;
 	if (body && typeof body === 'object') {
-		const record = body as ItemListResponseDto & ItemDto;
-		if (Array.isArray(record.items)) return record.items;
-		if (Array.isArray(record.data)) return record.data;
-		if (Array.isArray(record.results)) return record.results;
-		if ('sku' in record) return [record as ItemDto];
+		if (Array.isArray(body.items)) return body.items;
+		if (Array.isArray(body.data)) return body.data;
+		if (Array.isArray(body.results)) return body.results;
 	}
 	return [];
 }
@@ -16,36 +20,52 @@ function asItemList(body: ItemDto[] | ItemListResponseDto | ItemDto): ItemDto[] 
 export class ItemRemoteDataSource {
 	constructor(private readonly api: ApiClient) {}
 
-	async list(params?: {
+	listPage(params: {
 		category?: string;
 		active?: boolean;
 		q?: string;
 		page?: number;
-	}): Promise<ItemDto[]> {
-		const query = new URLSearchParams();
-		if (params?.category) query.set('category', params.category);
-		if (params?.active != null) query.set('active', String(params.active));
-		if (params?.q) query.set('q', params.q);
-		if (params?.page != null) query.set('page', String(params.page));
-		const qs = query.toString();
-		const body = await this.api.get<ItemDto[] | ItemListResponseDto>(
-			`/api/admin/items${qs ? `?${qs}` : ''}`
-		);
-		return asItemList(body);
+		perPage?: number;
+	}): Promise<ItemListResponseDto> {
+		return this.api.get<ItemListResponseDto>('/api/admin/items', {
+			query: {
+				category: params.category,
+				active: params.active === undefined ? undefined : params.active ? 'true' : 'false',
+				q: params.q,
+				page: params.page,
+				per_page: params.perPage
+			}
+		});
 	}
 
-	async getById(id: number): Promise<ItemDto> {
-		return this.api.get<ItemDto>(`/api/admin/items/${id}`);
+	getDetail(id: number): Promise<ItemDetailResponseDto | ItemDto> {
+		return this.api.get<ItemDetailResponseDto | ItemDto>(`/api/admin/items/${id}`);
+	}
+
+	create(body: ItemWriteBodyDto): Promise<ItemDto> {
+		return this.api.post<ItemDto>('/api/admin/items', body);
+	}
+
+	update(id: number, body: ItemWriteBodyDto): Promise<ItemDto> {
+		return this.api.put<ItemDto>(`/api/admin/items/${id}`, body);
+	}
+
+	archive(id: number): Promise<ItemArchiveResponseDto> {
+		return this.api.post<ItemArchiveResponseDto>(`/api/admin/items/${id}/archive`, {});
+	}
+
+	delete(id: number): Promise<void> {
+		return this.api.delete<void>(`/api/admin/items/${id}`);
 	}
 
 	async search(query: string): Promise<ItemDto[]> {
-		const body = await this.api.get<ItemDto[] | ItemListResponseDto>(
-			`/api/lookup/item/search?q=${encodeURIComponent(query)}`
-		);
+		const body = await this.api.get<ItemDto[] | ItemListResponseDto>('/api/lookup/item/search', {
+			query: { q: query }
+		});
 		return asItemList(body);
 	}
 
-	async lookupByBarcode(barcode: string): Promise<ItemDto> {
+	lookupByBarcode(barcode: string): Promise<ItemDto> {
 		return this.api.get<ItemDto>(`/api/lookup/item/${encodeURIComponent(barcode)}`);
 	}
 }
