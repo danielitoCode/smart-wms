@@ -394,9 +394,18 @@ def list_bins():
     rows = g.db.execute(
         text(f"""
             SELECT b.bin_id, b.zone_id, COALESCE(z.zone_name, '') AS zone_name, b.warehouse_id, b.bin_code, b.bin_barcode, b.bin_type,
-                   b.aisle, b.row_num, b.level_num, b.position_num, b.pick_sequence, b.putaway_sequence, b.is_active
+                   b.aisle, b.row_num, b.level_num, b.position_num, b.pick_sequence, b.putaway_sequence,
+                   b.max_weight_lbs, b.max_volume_cuft, b.is_active,
+                   COALESCE(inv.quantity_on_hand, 0) AS quantity_on_hand,
+                   COALESCE(inv.quantity_allocated, 0) AS quantity_allocated,
+                   COALESCE(inv.inventory_lines, 0) AS inventory_lines
             FROM bins b
             LEFT JOIN zones z ON z.zone_id = b.zone_id
+            LEFT JOIN (
+                SELECT bin_id, SUM(quantity_on_hand) AS quantity_on_hand,
+                       SUM(quantity_allocated) AS quantity_allocated, COUNT(*) AS inventory_lines
+                FROM inventory GROUP BY bin_id
+            ) inv ON inv.bin_id = b.bin_id
             {where_sql}
             ORDER BY b.bin_id LIMIT :limit OFFSET :offset
         """),
@@ -408,7 +417,11 @@ def list_bins():
             {"bin_id": r.bin_id, "zone_id": r.zone_id, "zone_name": r.zone_name, "warehouse_id": r.warehouse_id,
              "bin_code": r.bin_code, "bin_barcode": r.bin_barcode, "bin_type": r.bin_type,
              "aisle": r.aisle, "row_num": r.row_num, "level_num": r.level_num, "position_num": r.position_num,
-             "pick_sequence": r.pick_sequence, "putaway_sequence": r.putaway_sequence, "is_active": r.is_active}
+             "pick_sequence": r.pick_sequence, "putaway_sequence": r.putaway_sequence,
+             "max_weight_lbs": float(r.max_weight_lbs) if r.max_weight_lbs is not None else None,
+             "max_volume_cuft": float(r.max_volume_cuft) if r.max_volume_cuft is not None else None,
+             "quantity_on_hand": r.quantity_on_hand, "quantity_allocated": r.quantity_allocated,
+             "inventory_lines": r.inventory_lines, "is_active": r.is_active}
             for r in rows
         ],
         "total": total, "page": page, "per_page": per_page, "pages": pages,
@@ -423,7 +436,8 @@ def get_bin(bin_id):
     b = g.db.execute(
         text("""
             SELECT b.bin_id, b.zone_id, z.zone_name, b.warehouse_id, b.bin_code, b.bin_barcode, b.bin_type,
-                   b.aisle, b.row_num, b.level_num, b.position_num, b.pick_sequence, b.putaway_sequence, b.is_active
+                   b.aisle, b.row_num, b.level_num, b.position_num, b.pick_sequence, b.putaway_sequence,
+                   b.max_weight_lbs, b.max_volume_cuft, b.is_active
             FROM bins b JOIN zones z ON z.zone_id = b.zone_id
             WHERE b.bin_id = :bid
         """),
@@ -446,7 +460,10 @@ def get_bin(bin_id):
         "bin": {"bin_id": b.bin_id, "zone_id": b.zone_id, "zone_name": b.zone_name, "warehouse_id": b.warehouse_id,
                 "bin_code": b.bin_code, "bin_barcode": b.bin_barcode, "bin_type": b.bin_type,
                 "aisle": b.aisle, "row_num": b.row_num, "level_num": b.level_num, "position_num": b.position_num,
-                "pick_sequence": b.pick_sequence, "putaway_sequence": b.putaway_sequence, "is_active": b.is_active},
+                "pick_sequence": b.pick_sequence, "putaway_sequence": b.putaway_sequence,
+                "max_weight_lbs": float(b.max_weight_lbs) if b.max_weight_lbs is not None else None,
+                "max_volume_cuft": float(b.max_volume_cuft) if b.max_volume_cuft is not None else None,
+                "is_active": b.is_active},
         # inventory_id is the row identity the admin grid keys on.
         # item_id alone is not unique here: inventory is UNIQUE(item_id,
         # bin_id, lot_number), so one item in this bin across two lots is
@@ -465,6 +482,13 @@ def get_bin(bin_id):
 def create_bin(validated):
     data = validated.model_dump()
 
+    zone = g.db.execute(
+        text("SELECT zone_id FROM zones WHERE zone_id = :zid AND warehouse_id = :wid"),
+        {"zid": data["zone_id"], "wid": data["warehouse_id"]},
+    ).fetchone()
+    if not zone:
+        return jsonify({"error": "Zone not found in the specified warehouse"}), 400
+
     dup = g.db.execute(
         text("SELECT 1 FROM bins WHERE warehouse_id = :wid AND bin_code = :code"),
         {"wid": data["warehouse_id"], "code": data["bin_code"]},
@@ -474,15 +498,16 @@ def create_bin(validated):
 
     result = g.db.execute(
         text("""
-            INSERT INTO bins (zone_id, warehouse_id, bin_code, bin_barcode, bin_type, aisle, row_num, level_num, position_num, pick_sequence, putaway_sequence, external_id)
-            VALUES (:zone_id, :wid, :code, :barcode, :type, :aisle, :row, :level, :pos, :pick_seq, :put_seq, :ext_id)
-            RETURNING bin_id, zone_id, warehouse_id, bin_code, bin_barcode, bin_type, aisle, row_num, level_num, position_num, pick_sequence, putaway_sequence, is_active
+            INSERT INTO bins (zone_id, warehouse_id, bin_code, bin_barcode, bin_type, aisle, row_num, level_num, position_num, pick_sequence, putaway_sequence, max_weight_lbs, max_volume_cuft, external_id)
+            VALUES (:zone_id, :wid, :code, :barcode, :type, :aisle, :row, :level, :pos, :pick_seq, :put_seq, :max_weight, :max_volume, :ext_id)
+            RETURNING bin_id, zone_id, warehouse_id, bin_code, bin_barcode, bin_type, aisle, row_num, level_num, position_num, pick_sequence, putaway_sequence, max_weight_lbs, max_volume_cuft, is_active
         """),
         {
             "zone_id": data["zone_id"], "wid": data["warehouse_id"], "code": data["bin_code"],
             "barcode": data["bin_barcode"], "type": data["bin_type"],
             "aisle": data.get("aisle"), "row": data.get("row_num"), "level": data.get("level_num"),
             "pos": data.get("position_num"), "pick_seq": data.get("pick_sequence", 0), "put_seq": data.get("putaway_sequence", 0),
+            "max_weight": data.get("max_weight_lbs"), "max_volume": data.get("max_volume_cuft"),
             "ext_id": str(uuid.uuid4()),
         },
     )
@@ -493,7 +518,10 @@ def create_bin(validated):
         "bin_code": row.bin_code, "bin_barcode": row.bin_barcode, "bin_type": row.bin_type,
         "aisle": row.aisle, "row_num": row.row_num, "level_num": row.level_num,
         "position_num": row.position_num, "pick_sequence": row.pick_sequence,
-        "putaway_sequence": row.putaway_sequence, "is_active": row.is_active,
+        "putaway_sequence": row.putaway_sequence,
+        "max_weight_lbs": float(row.max_weight_lbs) if row.max_weight_lbs is not None else None,
+        "max_volume_cuft": float(row.max_volume_cuft) if row.max_volume_cuft is not None else None,
+        "is_active": row.is_active,
     }), 201
 
 
@@ -505,11 +533,27 @@ def create_bin(validated):
 def update_bin(bin_id, validated):
     data = validated.model_dump(exclude_unset=True)
 
-    existing = g.db.execute(text("SELECT bin_id FROM bins WHERE bin_id = :bid"), {"bid": bin_id}).fetchone()
+    existing = g.db.execute(text("SELECT bin_id, warehouse_id FROM bins WHERE bin_id = :bid"), {"bid": bin_id}).fetchone()
     if not existing:
         return jsonify({"error": "Bin not found"}), 404
 
-    ALLOWED_FIELDS = {"bin_code", "bin_barcode", "bin_type", "aisle", "row_num", "level_num", "position_num", "pick_sequence", "putaway_sequence", "is_active", "zone_id"}
+    if "zone_id" in data:
+        zone = g.db.execute(
+            text("SELECT zone_id FROM zones WHERE zone_id = :zid AND warehouse_id = :wid"),
+            {"zid": data["zone_id"], "wid": existing.warehouse_id},
+        ).fetchone()
+        if not zone:
+            return jsonify({"error": "Zone does not belong to the bin warehouse"}), 400
+
+    if "bin_code" in data:
+        duplicate = g.db.execute(
+            text("SELECT 1 FROM bins WHERE warehouse_id = :wid AND bin_code = :code AND bin_id <> :bid"),
+            {"wid": existing.warehouse_id, "code": data["bin_code"], "bid": bin_id},
+        ).fetchone()
+        if duplicate:
+            return jsonify({"error": f"Duplicate bin_code '{data['bin_code']}' in warehouse {existing.warehouse_id}"}), 400
+
+    ALLOWED_FIELDS = {"bin_code", "bin_barcode", "bin_type", "aisle", "row_num", "level_num", "position_num", "pick_sequence", "putaway_sequence", "max_weight_lbs", "max_volume_cuft", "is_active", "zone_id"}
     fields, params = [], {"bid": bin_id}
     for col in ALLOWED_FIELDS:
         if col in data:
@@ -519,13 +563,18 @@ def update_bin(bin_id, validated):
     if not fields:
         return jsonify({"error": "No valid fields provided"}), 400
 
-    g.db.execute(text(f"UPDATE bins SET {', '.join(fields)} WHERE bin_id = :bid"), params)
-    g.db.commit()
+    try:
+        g.db.execute(text(f"UPDATE bins SET {', '.join(fields)} WHERE bin_id = :bid"), params)
+        g.db.commit()
+    except IntegrityError:
+        g.db.rollback()
+        return jsonify({"error": "Bin update conflicts with an existing bin code or invalid relationship"}), 400
 
     row = g.db.execute(
         text("""
             SELECT b.bin_id, b.zone_id, z.zone_name, b.warehouse_id, b.bin_code, b.bin_barcode, b.bin_type,
-                   b.aisle, b.row_num, b.level_num, b.position_num, b.pick_sequence, b.putaway_sequence, b.is_active
+                   b.aisle, b.row_num, b.level_num, b.position_num, b.pick_sequence, b.putaway_sequence,
+                   b.max_weight_lbs, b.max_volume_cuft, b.is_active
             FROM bins b JOIN zones z ON z.zone_id = b.zone_id WHERE b.bin_id = :bid
         """),
         {"bid": bin_id},
@@ -535,7 +584,10 @@ def update_bin(bin_id, validated):
         "bin_code": row.bin_code, "bin_barcode": row.bin_barcode, "bin_type": row.bin_type,
         "aisle": row.aisle, "row_num": row.row_num, "level_num": row.level_num,
         "position_num": row.position_num, "pick_sequence": row.pick_sequence,
-        "putaway_sequence": row.putaway_sequence, "is_active": row.is_active,
+        "putaway_sequence": row.putaway_sequence,
+        "max_weight_lbs": float(row.max_weight_lbs) if row.max_weight_lbs is not None else None,
+        "max_volume_cuft": float(row.max_volume_cuft) if row.max_volume_cuft is not None else None,
+        "is_active": row.is_active,
     })
 
 
