@@ -131,6 +131,10 @@ class TestZones:
         assert data["total"] == 6
         assert data["pages"] == 3
 
+    def test_zone_detail_get_is_not_a_supported_endpoint(self, client, auth_headers):
+        resp = client.get("/api/admin/zones/1", headers=auth_headers)
+        assert resp.status_code == 405
+
     def test_create_zone(self, client, auth_headers):
         resp = client.post("/api/admin/zones", json={
             "warehouse_id": 1, "zone_code": "TEST", "zone_name": "Test Zone", "zone_type": "STORAGE"
