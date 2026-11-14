@@ -70,6 +70,14 @@ describe('AccessPolicy F0.2', () => {
 		expect(canAccessPages('ADMIN', [], required)).toBe(true);
 	});
 
+	it('zones route is gated by the zones permission key', () => {
+		const required = requiredPageKeysForPath('/data/zones');
+		expect(required).toEqual(['zones']);
+		expect(canAccessPages('USER', ['zones'], required)).toBe(true);
+		expect(canAccessPages('USER', ['warehouses'], required)).toBe(false);
+		expect(canAccessPages('ADMIN', [], required)).toBe(true);
+	});
+
 	it('hasOverride respects ADMIN and list', () => {
 		expect(hasOverride('ADMIN', [], 'so-full-edit')).toBe(true);
 		expect(hasOverride('USER', [], 'so-full-edit')).toBe(false);
