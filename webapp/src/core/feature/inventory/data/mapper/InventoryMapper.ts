@@ -1,4 +1,4 @@
-import type { InventoryStock } from '../../domain/entity/InventoryStock';
+import type { InventoryPage, InventoryStock } from '../../domain/entity/InventoryStock';
 import type {
 	CycleCountDetail,
 	CycleCountLine,
@@ -10,21 +10,38 @@ import type {
 	CycleCountLineDto,
 	CycleCountSubmitResponseDto,
 	CycleCountSummaryDto,
+	InventoryOverviewDto,
 	InventoryRowDto
 } from '../dto/InventoryDto';
 
 export const InventoryMapper = {
 	toStock(dto: InventoryRowDto): InventoryStock {
 		return {
-			inventoryId: dto.inventory_id ?? dto.id ?? 0,
+			inventoryId: dto.inventory_id,
 			itemId: dto.item_id,
 			binId: dto.bin_id,
-			warehouseId: dto.warehouse_id,
+			...(dto.warehouse_id != null ? { warehouseId: dto.warehouse_id } : {}),
 			quantityOnHand: dto.quantity_on_hand,
-			lotNumber: dto.lot_number ?? null,
-			sku: dto.sku ?? null,
-			itemName: dto.item_name ?? null,
-			binCode: dto.bin_code ?? null
+			quantityAllocated: dto.quantity_allocated,
+			quantityAvailable: dto.quantity_available,
+			committedToOrders: dto.committed_to_orders,
+			lotNumber: dto.lot_number,
+			sku: dto.sku,
+			itemName: dto.item_name,
+			binCode: dto.bin_code,
+			zoneName: dto.zone_name,
+			lastCountedAt: dto.last_counted_at,
+			...(dto.reorder_point !== undefined ? { reorderPoint: dto.reorder_point } : {})
+		};
+	},
+
+	toOverview(dto: InventoryOverviewDto): InventoryPage {
+		return {
+			items: dto.inventory.map(InventoryMapper.toStock),
+			page: dto.page,
+			perPage: dto.per_page,
+			total: dto.total,
+			pages: dto.pages
 		};
 	},
 

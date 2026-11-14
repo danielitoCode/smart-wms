@@ -1,25 +1,29 @@
-/**
- * DTOs mirror backend JSON shapes (snake_case).
- * Admin inventory list responses may vary by version; fields are optional where docs are incomplete.
- */
+import type { CycleCountSubmitLine } from '../../domain/entity/CycleCount';
 
 export type InventoryRowDto = {
-	inventory_id?: number;
-	id?: number;
+	inventory_id: number;
 	item_id: number;
+	sku: string;
+	item_name: string;
 	bin_id: number;
-	warehouse_id: number;
+	bin_code: string;
+	warehouse_id?: number;
+	zone_name: string | null;
 	quantity_on_hand: number;
-	lot_number?: string | null;
-	sku?: string | null;
-	item_name?: string | null;
-	bin_code?: string | null;
+	quantity_allocated: number;
+	quantity_available: number;
+	committed_to_orders: number;
+	lot_number: string | null;
+	last_counted_at: string | null;
+	reorder_point?: number | null;
 };
 
 export type InventoryOverviewDto = {
-	inventory?: InventoryRowDto[];
-	items?: InventoryRowDto[];
-	data?: InventoryRowDto[];
+	inventory: InventoryRowDto[];
+	total: number;
+	page: number;
+	per_page: number;
+	pages: number;
 };
 
 export type CycleCountSummaryDto = {
@@ -31,9 +35,7 @@ export type CycleCountSummaryDto = {
 	assigned_to?: string | null;
 };
 
-export type CreateCycleCountResponseDto = {
-	counts: CycleCountSummaryDto[];
-};
+export type CreateCycleCountResponseDto = { counts: CycleCountSummaryDto[] };
 
 export type CycleCountLineDto = {
 	count_line_id: number;
@@ -43,17 +45,8 @@ export type CycleCountLineDto = {
 	counted_quantity?: number | null;
 };
 
-/**
- * GET /api/inventory/cycle-count/{id} returns nested cycle_count + lines
- * (test_inventory.py).
- */
 export type CycleCountDetailDto = {
-	cycle_count?: {
-		count_id: number;
-		bin_id: number;
-		bin_code: string;
-		status: string;
-	};
+	cycle_count?: { count_id: number; bin_id: number; bin_code: string; status: string };
 	count_id?: number;
 	bin_id?: number;
 	bin_code?: string;
@@ -75,3 +68,5 @@ export type CycleCountSubmitResponseDto = {
 		}>;
 	};
 };
+
+export type { CycleCountSubmitLine };

@@ -8,6 +8,10 @@
 
 	const i18n = getContext<I18nState>('i18n');
 	const vm = createInventoryOverviewState();
+	let warehouseInput = $state('');
+	let binInput = $state('');
+	let itemInput = $state('');
+	let searchInput = $state('');
 
 	onMount(() => {
 		void vm.load();
@@ -15,83 +19,134 @@
 
 	let lastGeneration = $state(-1);
 	$effect(() => {
-		const gen = vm.generation;
+		const generation = vm.generation;
 		if (lastGeneration < 0) {
-			lastGeneration = gen;
+			lastGeneration = generation;
 			return;
 		}
-		if (gen !== lastGeneration) {
-			lastGeneration = gen;
+		if (generation !== lastGeneration) {
+			lastGeneration = generation;
 			vm.invalidate();
 			void vm.load();
 		}
 	});
 
-	function onFilter(e: Event) {
-		e.preventDefault();
-		void vm.load(vm.warehouseId);
+	function applyFilters(event: SubmitEvent) {
+		event.preventDefault();
+		vm.setWarehouseId(warehouseInput.trim() ? Number(warehouseInput) : undefined);
+		vm.setBinId(binInput.trim() ? Number(binInput) : undefined);
+		vm.setItemId(itemInput.trim() ? Number(itemInput) : undefined);
+		vm.setQuery(searchInput);
+		void vm.applyFilters();
+	}
+
+	function clearFilters() {
+		warehouseInput = '';
+		binInput = '';
+		itemInput = '';
+		searchInput = '';
+		vm.setWarehouseId(undefined);
+		vm.setBinId(undefined);
+		vm.setItemId(undefined);
+		vm.setQuery('');
+		void vm.applyFilters();
 	}
 </script>
 
 <section class="inventory page">
 	<PageHeader
 		title={i18n.t('Inventario')}
-		subtitle={i18n.t('Consulta las existencias por producto, ubicación y lote.')}
+		subtitle={i18n.t('Consulta las existencias por producto, almacén, ubicación y lote.')}
 	/>
 
-	<form class="filters" onsubmit={onFilter}>
+	<form class="filters" onsubmit={applyFilters}>
 		<label>
 			{i18n.t('ID de almacén')}
+			<input type="number" min="1" step="1" placeholder={i18n.t('Todos')} bind:value={warehouseInput} />
+		</label>
+		<label>
+			{i18n.t('ID de producto')}
+			<input type="number" min="1" step="1" placeholder={i18n.t('Todos')} bind:value={itemInput} />
+		</label>
+		<label>
+			{i18n.t('ID de ubicación')}
+			<input type="number" min="1" step="1" placeholder={i18n.t('Todas')} bind:value={binInput} />
+		</label>
+		<label class="search">
+			{i18n.t('Buscar')}
 			<input
-				type="number"
-				min="1"
-				placeholder={i18n.t('Todos')}
-				value={vm.warehouseId ?? ''}
-				oninput={(e) => {
-					const v = e.currentTarget.value;
-					vm.setWarehouseId(v === '' ? undefined : Number(v));
-				}}
-				disabled={vm.loading}
+				type="search"
+				maxlength="200"
+				placeholder={i18n.t('SKU, nombre, UPC, MPN o código de ubicación')}
+				bind:value={searchInput}
 			/>
 		</label>
-		<button type="submit" class="accent" disabled={vm.loading}>
-			{vm.loading ? i18n.t('Cargando…') : i18n.t('Filtrar')}
-		</button>
-		<button type="button" class="secondary" onclick={() => vm.load()} disabled={vm.loading}>
-			{i18n.t('Actualizar')}
-		</button>
+		<div class="filter-actions">
+			<button type="submit" class="accent" disabled={vm.loading}>
+				{vm.loading ? i18n.t('Cargando…') : i18n.t('Aplicar filtros')}
+			</button>
+			<button type="button" class="secondary" onclick={clearFilters} disabled={vm.loading}>
+				{i18n.t('Limpiar')}
+			</button>
+		</div>
 	</form>
 
 	{#if vm.error}
 		<UiBanner tone="error" message={vm.error}>
 			{#snippet action()}
-				<button type="button" onclick={() => vm.load()}>{i18n.t('Reintentar')}</button>
+				<button type="button" onclick={() => void vm.load()}>{i18n.t('Reintentar')}</button>
 			{/snippet}
 		</UiBanner>
 	{:else if vm.loading && !vm.loadedOnce}
 		<UiLoader label={i18n.t('Cargando inventario…')} size="lg" />
 	{:else if vm.items.length === 0}
-		<p class="empty">{i18n.t('Todavía no hay existencias registradas.')}</p>
+		<p class="empty">{i18n.t('No se encontraron existencias para estos filtros.')}</p>
 	{:else}
-		<div class="table-wrap">
+		<div class="table-meta">
+			<span>{i18n.t('Registros')}: {vm.total.toLocaleString()}</span>
+			<span>{i18n.t('Página')} {vm.page} / {vm.pages}</span>
+		</div>
+		<div class="table-wrap" aria-busy={vm.loading}>
 			<table>
 				<thead>
 					<tr>
 						<th>{i18n.t('SKU')}</th>
-						<th>{i18n.t('Nombre')}</th>
+						<th>{i18n.t('Producto')}</th>
 						<th>{i18n.t('Ubicación')}</th>
-						<th>{i18n.t('Cantidad')}</th>
+						<th>{i18n.t('Zona')}</th>
 						<th>{i18n.t('Lote')}</th>
+						<th>{i18n.t('En mano')}</th>
+						<th>{i18n.t('Asignado')}</th>
+						<th>{i18n.t('Disponible')}</th>
+						<th>{i18n.t('Comprometido')}</th>
+						<th>{i18n.t('Último conteo')}</th>
+						<th>{i18n.t('Estado')}</th>
 					</tr>
 				</thead>
 				<tbody>
-					{#each vm.items as row (row.inventoryId + '-' + row.itemId + '-' + row.binId)}
+					{#each vm.items as row (row.inventoryId)}
 						<tr>
-							<td>{row.sku ?? row.itemId}</td>
-							<td>{row.itemName ?? '—'}</td>
-							<td>{row.binCode ?? row.binId}</td>
-							<td class="qty">{row.quantityOnHand}</td>
+							<td class="mono">{row.sku}</td>
+							<td>{row.itemName}</td>
+							<td class="mono">{row.binCode}</td>
+							<td>{row.zoneName ?? '—'}</td>
 							<td>{row.lotNumber ?? '—'}</td>
+							<td class="qty">{row.quantityOnHand}</td>
+							<td class="qty">{row.quantityAllocated}</td>
+							<td class="qty">{row.quantityAvailable}</td>
+							<td class="qty">{row.committedToOrders}</td>
+							<td>{row.lastCountedAt ? new Date(row.lastCountedAt).toLocaleDateString() : '—'}</td>
+							<td>
+								{#if row.quantityOnHand === 0}
+									<span class="status out">{i18n.t('Agotado')}</span>
+								{:else if row.reorderPoint != null && row.quantityOnHand <= row.reorderPoint}
+									<span class="status low">{i18n.t('Stock bajo')}</span>
+								{:else if row.quantityAvailable <= 0}
+									<span class="status allocated">{i18n.t('Sin disponibilidad')}</span>
+								{:else}
+									<span class="status ok">{i18n.t('Disponible')}</span>
+								{/if}
+							</td>
 						</tr>
 					{/each}
 				</tbody>
@@ -100,6 +155,15 @@
 		{#if vm.loading}
 			<UiLoader label={i18n.t('Actualizando…')} />
 		{/if}
+		<nav class="pagination" aria-label={i18n.t('Paginación del inventario')}>
+			<button type="button" class="secondary" onclick={() => vm.setPage(vm.page - 1)} disabled={vm.page <= 1 || vm.loading}>
+				{i18n.t('Anterior')}
+			</button>
+			<span>{vm.page} / {vm.pages}</span>
+			<button type="button" class="secondary" onclick={() => vm.setPage(vm.page + 1)} disabled={vm.page >= vm.pages || vm.loading}>
+				{i18n.t('Siguiente')}
+			</button>
+		</nav>
 	{/if}
 </section>
 
@@ -117,12 +181,30 @@
 		gap: 0.3rem;
 		min-width: 10rem;
 	}
-	.qty {
-		font-variant-numeric: tabular-nums;
-		font-weight: 600;
-	}
-	.status {
+	.filters .search { flex: 1 1 18rem; }
+	.filter-actions { display: flex; gap: 0.5rem; }
+	.table-meta, .pagination {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
 		color: var(--slate);
 		font-size: var(--fs-sm, 0.8125rem);
+		margin: 0.65rem 0;
+	}
+	.table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 10px; }
+	table { width: 100%; border-collapse: collapse; white-space: nowrap; font-size: 0.82rem; }
+	th, td { padding: 0.65rem 0.75rem; text-align: left; border-bottom: 1px solid var(--line); }
+	th { color: var(--slate); font-size: 0.7rem; font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em; }
+	.qty { text-align: right; font-variant-numeric: tabular-nums; }
+	.mono { font-family: var(--font-mono, monospace); }
+	.status { display: inline-flex; border-radius: 999px; padding: 0.2rem 0.5rem; font-size: 0.7rem; font-weight: 650; }
+	.status.out, .status.low { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+	.status.allocated { color: var(--warning, #a66b12); background: color-mix(in srgb, var(--warning, #a66b12) 12%, transparent); }
+	.status.ok { color: var(--success, #24734b); background: color-mix(in srgb, var(--success, #24734b) 12%, transparent); }
+	.pagination { justify-content: center; }
+	@media (max-width: 640px) {
+		.filters label { flex: 1 1 100%; }
+		.filter-actions { width: 100%; }
 	}
 </style>

@@ -1,16 +1,40 @@
 /**
- * Domain entity: stock position of an item in a bin.
- * Derived from SentryWMS inventory rows (item_id, bin_id, warehouse_id, quantity_on_hand, lot_number).
- * Enriched fields (sku, itemName, binCode) come from joined admin/lookup responses when available.
+ * One persisted inventory row. A row is identified by inventoryId, not by
+ * itemId/binId: the same item/bin pair may contain multiple lots.
  */
 export type InventoryStock = {
 	inventoryId: number;
 	itemId: number;
 	binId: number;
-	warehouseId: number;
+	/** The current inventory-list response omits warehouse_id; available on future enriched contracts. */
+	warehouseId?: number;
 	quantityOnHand: number;
+	quantityAllocated: number;
+	quantityAvailable: number;
+	committedToOrders: number;
 	lotNumber: string | null;
-	sku: string | null;
-	itemName: string | null;
-	binCode: string | null;
+	sku: string;
+	itemName: string;
+	binCode: string;
+	zoneName: string | null;
+	lastCountedAt: string | null;
+	/** Supplied only by API versions that expose the item's reorder point. */
+	reorderPoint?: number | null;
+};
+
+export type InventoryQuery = {
+	warehouseId?: number;
+	itemId?: number;
+	binId?: number;
+	query?: string;
+	page?: number;
+	perPage?: number;
+};
+
+export type InventoryPage = {
+	items: InventoryStock[];
+	page: number;
+	perPage: number;
+	total: number;
+	pages: number;
 };
