@@ -2897,3 +2897,29 @@ class TestPreferredBinsWarehouseScope:
         assert client.post("/api/admin/preferred-bins", json={"item_id": 1, "bin_id": 3, "priority": 1}, headers=headers).status_code == 403
         assert client.put("/api/admin/preferred-bins/1", json={"priority": 1}, headers=headers).status_code == 403
         assert client.delete("/api/admin/preferred-bins/1", headers=headers).status_code == 403
+
+
+class TestPreferredBinsCatalogScope:
+    def test_catalog_uses_preferred_bins_permission_and_warehouse_scope(self, client):
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO warehouses (warehouse_code, warehouse_name) VALUES ('PBCAT-OTHER', 'Preferred Catalog Other') RETURNING warehouse_id"
+        )
+        other_id = cur.fetchone()[0]
+        cur.close()
+        _, headers = _web_user_with_pages(client, ["preferred-bins"], username="preferred_catalog_scope")
+
+        catalog = client.get("/api/admin/preferred-bins/catalog", headers=headers)
+        assert catalog.status_code == 200
+        assert [row["warehouse_id"] for row in catalog.get_json()["warehouses"]] == [1]
+        assert client.get(f"/api/admin/preferred-bins/catalog?warehouse_id={other_id}", headers=headers).status_code == 403
+
+        bins = client.get("/api/admin/preferred-bins/catalog?warehouse_id=1", headers=headers)
+        assert bins.status_code == 200
+        assert all(row["warehouse_id"] == 1 and row["bin_type"] == "Pickable" and row["is_active"] for row in bins.get_json()["bins"])
+
+    def test_catalog_does_not_require_bins_or_warehouses_page_grants(self, client):
+        _, headers = _web_user_with_pages(client, ["preferred-bins"], username="preferred_catalog_only")
+        response = client.get("/api/admin/preferred-bins/catalog?warehouse_id=1", headers=headers)
+        assert response.status_code == 200

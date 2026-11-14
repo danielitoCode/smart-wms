@@ -984,6 +984,96 @@ def _resequence_item_preferred_bins(db, item_id, target_preferred_bin_id):
         )
 
 
+@admin_bp.route("/preferred-bins/catalog", methods=["GET"])
+@require_auth
+@require_admin_or_page_permission("preferred-bins")
+@with_db
+def preferred_bins_catalog():
+    """Return only the warehouse and Pickable-bin choices this page may manage."""
+    try:
+        warehouse_arg = request.args.get("warehouse_id")
+        warehouse_id = int(warehouse_arg) if warehouse_arg is not None else None
+        page = int(request.args.get("page", "1"))
+        per_page = int(request.args.get("per_page", "1000"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "warehouse_id, page and per_page must be integers"}), 400
+
+    if warehouse_id is not None and warehouse_id <= 0:
+        return jsonify({"error": "warehouse_id must be a positive integer"}), 400
+    if page < 1:
+        return jsonify({"error": "page must be a positive integer"}), 400
+    if not 1 <= per_page <= 1000:
+        return jsonify({"error": "per_page must be between 1 and 1000"}), 400
+    if warehouse_id is not None:
+        allowed, denial = check_warehouse_access(warehouse_id)
+        if not allowed:
+            return denial
+
+    warehouse_scope, warehouse_params = warehouse_scope_clause("w.warehouse_id")
+    warehouses = g.db.execute(
+        text(
+            "SELECT w.warehouse_id, w.warehouse_code, w.warehouse_name "
+            "FROM warehouses w WHERE w.is_active IS TRUE " + warehouse_scope +
+            " ORDER BY w.warehouse_code"
+        ),
+        warehouse_params,
+    ).fetchall()
+
+    bins = []
+    total = 0
+    pages = 1
+    if warehouse_id is not None:
+        bin_scope, bin_scope_params = warehouse_scope_clause("b.warehouse_id")
+        where = [
+            "b.warehouse_id = :warehouse_id",
+            "b.bin_type = :bin_pickable",
+            "b.is_active IS TRUE",
+        ]
+        params = {
+            "warehouse_id": warehouse_id,
+            "bin_pickable": BIN_PICKABLE,
+            **bin_scope_params,
+        }
+        if bin_scope:
+            where.append(bin_scope.removeprefix("AND ").strip())
+        search = (request.args.get("q") or "").strip()
+        if search:
+            where.append("(b.bin_code ILIKE :q OR b.bin_barcode ILIKE :q)")
+            params["q"] = f"%{search}%"
+        where_sql = "WHERE " + " AND ".join(where)
+        total = g.db.execute(
+            text(f"SELECT COUNT(*) FROM bins b {where_sql}"),
+            params,
+        ).scalar()
+        pages = max(1, math.ceil(total / per_page))
+        params["limit"] = per_page
+        params["offset"] = (page - 1) * per_page
+        bins = g.db.execute(
+            text(
+                "SELECT b.bin_id, b.warehouse_id, b.zone_id, z.zone_name, "
+                "b.bin_code, b.bin_barcode, b.bin_type, b.is_active "
+                "FROM bins b LEFT JOIN zones z ON z.zone_id = b.zone_id "
+                + where_sql +
+                " ORDER BY b.bin_code, b.bin_id LIMIT :limit OFFSET :offset"
+            ),
+            params,
+        ).fetchall()
+
+    return jsonify({
+        "warehouses": [
+            {"warehouse_id": row.warehouse_id, "warehouse_code": row.warehouse_code, "warehouse_name": row.warehouse_name}
+            for row in warehouses
+        ],
+        "bins": [
+            {"bin_id": row.bin_id, "warehouse_id": row.warehouse_id, "zone_id": row.zone_id,
+             "zone_name": row.zone_name, "bin_code": row.bin_code, "bin_barcode": row.bin_barcode,
+             "bin_type": row.bin_type, "is_active": row.is_active}
+            for row in bins
+        ],
+        "total": total, "page": page, "per_page": per_page, "pages": pages,
+    })
+
+
 @admin_bp.route("/preferred-bins", methods=["POST"])
 @require_auth
 @require_admin_or_page_permission("preferred-bins")
