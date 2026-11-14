@@ -311,7 +311,7 @@ def suggest_bin(item_id):
                 "bin_code": default.bin_code,
                 "bin_barcode": default.bin_barcode,
                 "zone_name": default.zone_name,
-                "priority": 1,
+                "priority": None,
             }
 
     return jsonify({
@@ -350,7 +350,7 @@ def confirm_putaway(validated):
         return jsonify({"error": "Source bin not found"}), 404
 
     to_bin = g.db.execute(
-        text("SELECT bin_id, bin_code FROM bins WHERE bin_id = :bin_id"),
+        text("SELECT bin_id, bin_code, warehouse_id FROM bins WHERE bin_id = :bin_id"),
         {"bin_id": to_bin_id},
     ).fetchone()
     if not to_bin:
@@ -358,6 +358,9 @@ def confirm_putaway(validated):
 
     username = g.current_user["username"]
     warehouse_id = from_bin.warehouse_id
+
+    if to_bin.warehouse_id != warehouse_id:
+        return jsonify({"error": "Destination bin must belong to the source warehouse"}), 400
 
     ok, denied = check_warehouse_access(warehouse_id)
     if not ok:
