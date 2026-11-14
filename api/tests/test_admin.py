@@ -155,6 +155,49 @@ class TestZones:
         assert resp.status_code == 200
         assert resp.get_json()["zone_name"] == "Updated Receiving"
 
+    def test_create_zone_rejects_nonexistent_warehouse(self, client, auth_headers):
+        resp = client.post("/api/admin/zones", json={
+            "warehouse_id": 999999, "zone_code": "NO-WH", "zone_name": "No warehouse", "zone_type": "STORAGE"
+        }, headers=auth_headers)
+        assert resp.status_code == 404
+        assert resp.get_json()["error"] == "Warehouse not found"
+
+    def test_update_and_delete_zone_reject_other_warehouse(self, client):
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO warehouses (warehouse_code, warehouse_name) VALUES ('ZONE-SCOPE-WH', 'Zone Scope') RETURNING warehouse_id"
+        )
+        other_warehouse_id = cur.fetchone()[0]
+        cur.execute(
+            "INSERT INTO zones (warehouse_id, zone_code, zone_name, zone_type) VALUES (%s, 'FOREIGN-Z', 'Foreign Zone', 'STORAGE') RETURNING zone_id",
+            (other_warehouse_id,),
+        )
+        foreign_zone_id = cur.fetchone()[0]
+        cur.close()
+
+        _, headers = _web_user_with_pages(client, ["zones"], username="zones_scope_user")
+        update = client.put(
+            f"/api/admin/zones/{foreign_zone_id}",
+            json={"zone_name": "Unauthorized edit"},
+            headers=headers,
+        )
+        assert update.status_code == 403
+        delete = client.delete(f"/api/admin/zones/{foreign_zone_id}", headers=headers)
+        assert delete.status_code == 403
+        assert _query_val("SELECT zone_name FROM zones WHERE zone_id = %s", (foreign_zone_id,)) == "Foreign Zone"
+
+    def test_delete_zone_rejects_associated_bins(self, client, auth_headers):
+        resp = client.delete("/api/admin/zones/2", headers=auth_headers)
+        assert resp.status_code == 409
+        assert "bin(s)" in resp.get_json()["error"]
+
+    def test_zone_list_includes_associated_bin_count(self, client, auth_headers):
+        resp = client.get("/api/admin/zones?warehouse_id=1", headers=auth_headers)
+        assert resp.status_code == 200
+        zone = next(z for z in resp.get_json()["zones"] if z["zone_id"] == 2)
+        assert zone["bins_count"] == 9
+
 
 # ── Bins ──────────────────────────────────────────────────────────────────────
 
