@@ -14,6 +14,82 @@ def _query_val(sql, params=None):
     row = _query_one(sql, params)
     return row[0] if row else None
 
+def _exec(sql, params=None):
+    conn = get_raw_connection()
+    cur = conn.cursor()
+    cur.execute(sql, params or ())
+    cur.close()
+
+
+def _create_single_item_so(so_number, quantity=5):
+    conn = get_raw_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """INSERT INTO sales_orders
+               (so_number, so_barcode, customer_name, status, warehouse_id,
+                created_by, external_id)
+           VALUES (%s, %s, 'Preferred Bin Test', 'OPEN', 1, 'admin', gen_random_uuid())
+           RETURNING so_id""",
+        (so_number, so_number),
+    )
+    so_id = cur.fetchone()[0]
+    cur.execute(
+        """INSERT INTO sales_order_lines (so_id, item_id, quantity_ordered, line_number)
+           VALUES (%s, 1, %s, 1)""",
+        (so_id, quantity),
+    )
+    cur.close()
+    return so_id
+
+
+def _set_item1_inventory(bin_id, quantity):
+    existing = _query_one(
+        "SELECT inventory_id FROM inventory WHERE item_id = 1 AND bin_id = %s AND warehouse_id = 1",
+        (bin_id,),
+    )
+    if existing:
+        _exec(
+            """UPDATE inventory
+                  SET quantity_on_hand = %s, quantity_allocated = 0, updated_at = NOW()
+                WHERE inventory_id = %s""",
+            (quantity, existing[0]),
+        )
+    else:
+        _exec(
+            """INSERT INTO inventory (item_id, bin_id, warehouse_id, quantity_on_hand)
+               VALUES (1, %s, 1, %s)""",
+            (bin_id, quantity),
+        )
+
+
+def _set_preferred_bins(*bin_priorities):
+    for bin_id, priority in bin_priorities:
+        _exec(
+            """INSERT INTO preferred_bins (item_id, bin_id, priority)
+               VALUES (1, %s, %s)""",
+            (bin_id, priority),
+        )
+
+
+def _created_task_allocations(client, auth_headers, so_number):
+    response = client.post(
+        "/api/picking/create-batch",
+        json={"so_identifiers": [so_number], "warehouse_id": 1},
+        headers=auth_headers,
+    )
+    assert response.status_code == 200, response.get_json()
+    batch_id = response.get_json()["batch_id"]
+    conn = get_raw_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """SELECT bin_id, quantity_to_pick FROM pick_tasks
+             WHERE batch_id = %s ORDER BY pick_task_id""",
+        (batch_id,),
+    )
+    rows = cur.fetchall()
+    cur.close()
+    return rows
+
 
 def _create_batch(client, auth_headers, so_ids=None):
     """Create a pick batch for the given SOs (default: SO-2026-001 and SO-2026-002)."""
@@ -102,6 +178,63 @@ class TestCreateBatch:
         assert first_status == "CANCELLED"
         # And the new batch is OPEN with real pick_tasks.
         assert second.get_json()["total_items"] > 0
+
+
+class TestPreferredBinPickingAllocation:
+    def test_preferred_priority_overrides_pick_sequence(self, client, auth_headers):
+        # Bin 4 has a slower physical pick_sequence than bin 3, but priority 1 wins.
+        _set_item1_inventory(3, 50)
+        _set_item1_inventory(4, 50)
+        _set_preferred_bins((4, 1), (3, 2))
+        _create_single_item_so("SO-PREFERRED-FIRST", quantity=5)
+
+        assert _created_task_allocations(client, auth_headers, "SO-PREFERRED-FIRST") == [(4, 5)]
+
+    def test_insufficient_stock_in_primary_bin_falls_through_by_priority(self, client, auth_headers):
+        _set_item1_inventory(3, 50)
+        _set_item1_inventory(4, 2)
+        _set_preferred_bins((4, 1), (3, 2))
+        _create_single_item_so("SO-PREFERRED-SPLIT", quantity=5)
+
+        # Allocate all stock from priority 1, then continue with priority 2.
+        assert _created_task_allocations(client, auth_headers, "SO-PREFERRED-SPLIT") == [
+            (4, 2),
+            (3, 3),
+        ]
+
+    def test_preferred_bin_in_another_warehouse_is_ignored(self, client, auth_headers):
+        _set_item1_inventory(3, 50)
+        _create_single_item_so("SO-PREFERRED-WAREHOUSE", quantity=5)
+
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """INSERT INTO zones (warehouse_id, zone_code, zone_name, zone_type)
+               VALUES (2, 'PICK-TEST', 'Other Warehouse Pick', 'PICKING')
+               RETURNING zone_id"""
+        )
+        zone_id = cur.fetchone()[0]
+        cur.execute(
+            """INSERT INTO bins
+                   (zone_id, warehouse_id, bin_code, bin_barcode, bin_type,
+                    pick_sequence, putaway_sequence, external_id)
+               VALUES (%s, 2, 'WH2-PREFERRED', 'WH2-PREFERRED', 'Pickable',
+                       1, 1, gen_random_uuid())
+               RETURNING bin_id""",
+            (zone_id,),
+        )
+        other_warehouse_bin_id = cur.fetchone()[0]
+        cur.execute(
+            """INSERT INTO preferred_bins (item_id, bin_id, priority)
+               VALUES (1, %s, 1)""",
+            (other_warehouse_bin_id,),
+        )
+        cur.close()
+
+        allocations = _created_task_allocations(
+            client, auth_headers, "SO-PREFERRED-WAREHOUSE"
+        )
+        assert allocations == [(3, 5)]
 
 
 class TestGetBatch:
