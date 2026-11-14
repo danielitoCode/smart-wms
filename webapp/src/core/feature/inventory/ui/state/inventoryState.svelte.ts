@@ -76,10 +76,9 @@ export function createInventoryOverviewState() {
 	}
 
 	async function load(overrides: { warehouseId?: number; page?: number } = {}) {
-		const scope = warehouseSelection?.beginScopedRequest() ?? beginWarehouseScopedRequest();
 		const version = ++requestVersion;
-
-		if (Object.prototype.hasOwnProperty.call(overrides, 'warehouseId')) {
+		const scope = beginWarehouseScopedRequest();
+		if (overrides.warehouseId !== undefined) {
 			warehouseId = overrides.warehouseId;
 		} else if (warehouseSelection?.warehouseId != null) {
 			warehouseId = warehouseSelection.warehouseId ?? undefined;
@@ -100,7 +99,13 @@ export function createInventoryOverviewState() {
 				perPage: PAGE_SIZE
 			});
 			if (!scope.isCurrent() || version !== requestVersion) return false;
-			result = data;
+			result = {
+				items: Array.isArray(data.items) ? data.items : [],
+				page: data.page ?? 1,
+				perPage: data.perPage ?? PAGE_SIZE,
+				total: data.total ?? 0,
+				pages: data.pages ?? 1
+			};
 			loadedOnce = true;
 			return true;
 		} catch (err) {
@@ -158,22 +163,54 @@ export function createInventoryOverviewState() {
 	}
 
 	return {
-		get items(): InventoryStock[] { return result.items; },
-		get page() { return result.page; },
-		get pages() { return result.pages; },
-		get perPage() { return result.perPage; },
-		get total() { return result.total; },
-		get warehouses() { return warehouses; },
-		get bins() { return bins; },
-		get warehouseId() { return warehouseId; },
-		get binId() { return binId; },
-		get itemId() { return itemId; },
-		get query() { return query; },
-		get loading() { return loading; },
-		get loadingOptions() { return loadingOptions; },
-		get error() { return error; },
-		get loadedOnce() { return loadedOnce; },
-		get generation() { return warehouseSelection?.generation ?? 0; },
+		get items(): InventoryStock[] {
+			return Array.isArray(result?.items) ? result.items : [];
+		},
+		get page() {
+			return result.page;
+		},
+		get pages() {
+			return result.pages;
+		},
+		get perPage() {
+			return result.perPage;
+		},
+		get total() {
+			return result.total;
+		},
+		get warehouses() {
+			return warehouses;
+		},
+		get bins() {
+			return bins;
+		},
+		get warehouseId() {
+			return warehouseId;
+		},
+		get binId() {
+			return binId;
+		},
+		get itemId() {
+			return itemId;
+		},
+		get query() {
+			return query;
+		},
+		get loading() {
+			return loading;
+		},
+		get loadingOptions() {
+			return loadingOptions;
+		},
+		get error() {
+			return error;
+		},
+		get loadedOnce() {
+			return loadedOnce;
+		},
+		get generation() {
+			return warehouseSelection?.generation ?? 0;
+		},
 		setWarehouseId,
 		setBinId,
 		setItemId,

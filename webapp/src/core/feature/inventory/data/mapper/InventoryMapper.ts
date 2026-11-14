@@ -36,7 +36,7 @@ export const InventoryMapper = {
 
 	toOverview(dto: InventoryOverviewDto): InventoryPage {
 		return {
-			items: dto.inventory.map(InventoryMapper.toStock),
+			items: (dto.inventory ?? []).map(InventoryMapper.toStock),
 			page: dto.page,
 			perPage: dto.per_page,
 			total: dto.total,
