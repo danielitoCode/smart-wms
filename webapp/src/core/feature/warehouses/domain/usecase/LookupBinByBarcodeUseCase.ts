@@ -1,8 +1,8 @@
 import type { OperationalBinLookup } from '../entity/Warehouse';
-import type { WarehouseManagementRepository } from '../repository/WarehouseManagementRepository';
+import type { BinLookupRepository } from '../repository/BinLookupRepository';
 
 export class LookupBinByBarcodeUseCase {
-	constructor(private readonly repository: WarehouseManagementRepository) {}
+	constructor(private readonly repository: BinLookupRepository) {}
 
 	async execute(barcode: string): Promise<OperationalBinLookup> {
 		const normalized = barcode.trim();
