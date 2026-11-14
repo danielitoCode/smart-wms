@@ -7,6 +7,7 @@
 	import ThemeToggle from '../../lib/components/ThemeToggle.svelte';
 	import WarehousePicker from '../../lib/components/WarehousePicker.svelte';
 	import SessionBootView from '../../lib/components/SessionBootView.svelte';
+	import { fixedTooltip } from '../../lib/actions/fixedTooltip';
 	import type { I18nState } from '../../lib/i18n/i18n.svelte';
 	import { createAuthGuardState } from '../../core/feature/auth/ui/state/authGuardState.svelte';
 	import { createWarehouseSelectionState } from '../../core/feature/warehouses/ui/state/warehouseSelectionState.svelte';
@@ -165,6 +166,7 @@
 										class="nav-link ui-tip"
 										class:active={isActive(item.href)}
 										href={item.href}
+										use:fixedTooltip={{ placement: 'right' }}
 										onclick={() => (sidebarOpen = false)}
 									>
 										<AppIcon name={item.icon} size={18} />
@@ -195,8 +197,8 @@
 					{#if warehouseSelection.canSelect && warehouseSelection.warehouses.length > 0}
 						<WarehousePicker />
 					{/if}
-					{#if !guard.user?.mustChangePassword}<a class="account-action ui-tip ui-tip--rise" href="/change-password" aria-label={i18n.t('Cambiar contraseña')}><AppIcon name="lock" size={17} /><span>{i18n.t('Contraseña')}</span><span class="ui-tip__bubble" role="tooltip"><span class="ui-tip__head"><AppIcon name="lock" size={14} />{i18n.t('Cambiar contraseña')}</span><span class="ui-tip__body">{i18n.t('Actualiza tu contraseña de acceso. Obligatorio si el sistema lo exige al iniciar sesión.')}</span></span></a>{/if}
-					<button type="button" class="account-action ui-tip ui-tip--rise" onclick={logout} aria-label={i18n.t('Cerrar sesión')}>
+					{#if !guard.user?.mustChangePassword}<a class="account-action ui-tip ui-tip--rise" href="/change-password" use:fixedTooltip={{ placement: 'top' }} aria-label={i18n.t('Cambiar contraseña')}><AppIcon name="lock" size={17} /><span>{i18n.t('Contraseña')}</span><span class="ui-tip__bubble" role="tooltip"><span class="ui-tip__head"><AppIcon name="lock" size={14} />{i18n.t('Cambiar contraseña')}</span><span class="ui-tip__body">{i18n.t('Actualiza tu contraseña de acceso. Obligatorio si el sistema lo exige al iniciar sesión.')}</span></span></a>{/if}
+					<button type="button" class="account-action ui-tip ui-tip--rise" use:fixedTooltip={{ placement: 'top' }} onclick={logout} aria-label={i18n.t('Cerrar sesión')}>
 						<AppIcon name="logout" size={17} /><span>{i18n.t('Salir')}</span>
 						<span class="ui-tip__bubble" role="tooltip">
 							<span class="ui-tip__head"><AppIcon name="logout" size={14} />{i18n.t('Cerrar sesión')}</span>
