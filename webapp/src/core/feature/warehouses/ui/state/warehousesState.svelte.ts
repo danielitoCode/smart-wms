@@ -6,22 +6,32 @@ const deps = createWarehousesDependencies();
 
 export function createWarehousesState() {
 	let warehouses = $state<Warehouse[]>([]);
+	let total = $state(0);
+	let page = $state(1);
+	let pages = $state(1);
+	let perPage = $state(50);
 	let loading = $state(false);
 	let mutating = $state(false);
 	let error = $state<string | null>(null);
 	let loadedOnce = $state(false);
 
-	async function load() {
+	async function load(nextPage = page) {
 		if (loading) return false;
 		loading = true;
 		error = null;
 		try {
-			warehouses = await deps.listAdminWarehouses.execute();
+			const result = await deps.listAdminWarehouses.executePage({ page: nextPage, perPage });
+			warehouses = result.items;
+			total = result.total;
+			page = result.page;
+			pages = result.pages;
+			perPage = result.perPage;
 			loadedOnce = true;
 			return true;
 		} catch (err) {
 			error = toUserMessage(err, 'No se pudieron cargar los almacenes');
 			warehouses = [];
+			total = 0;
 			return false;
 		} finally {
 			loading = false;
@@ -56,6 +66,7 @@ export function createWarehousesState() {
 		get warehouses() { return warehouses; }, get loading() { return loading; },
 		get mutating() { return mutating; }, get error() { return error; },
 		get loadedOnce() { return loadedOnce; },
+		get total() { return total; }, get page() { return page; }, get pages() { return pages; }, get perPage() { return perPage; },
 		load, create, update, remove, clearError() { error = null; }
 	};
 }
