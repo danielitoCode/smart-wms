@@ -1,6 +1,6 @@
 /**
  * Campos de formulario unificados (estilo reembolsos / Abellis).
- * Borde de foco fino y elegante (1px gold + halo suave), no anillo grueso.
+ * Hover sutil; foco con borde oro fino que SE MANTIENE al escribir.
  */
 
 :root {
@@ -11,15 +11,15 @@
 	--field-bg: var(--card);
 	--field-ink: var(--ink);
 	--field-placeholder: var(--muted);
-	/* Foco: línea fina + halo discreto (más elegante que ring de 3px) */
-	--field-focus-border: 1px solid color-mix(in srgb, var(--gold) 88%, var(--navy));
-	--field-focus-ring: 0 0 0 1px color-mix(in srgb, var(--gold) 55%, transparent);
+	--field-hover-border: 1px solid color-mix(in srgb, var(--line) 35%, var(--slate));
+	/* Foco: borde 1px oro + halo 1px — visible y estable con el caret */
+	--field-focus-border: 1px solid color-mix(in srgb, var(--gold) 92%, #fff 8%);
+	--field-focus-ring: 0 0 0 1px color-mix(in srgb, var(--gold) 50%, transparent);
 	--field-transition: border-color var(--motion-fast, 140ms) var(--ease-out, ease),
 		box-shadow var(--motion-fast, 140ms) var(--ease-out, ease),
 		background-color var(--motion-fast, 140ms) var(--ease-out, ease);
 }
 
-/* Alta especificidad para ganar a estilos scoped de pantallas */
 body input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']):not([type='submit']):not([type='button']),
 body select,
 body textarea,
@@ -77,19 +77,24 @@ body .login input::placeholder {
 	opacity: 1;
 }
 
-/* Hover: borde un poco más presente, sin grueso */
-body input:hover:not(:disabled):not(:focus):not([type='checkbox']):not([type='radio']),
-body select:hover:not(:disabled):not(:focus),
-body textarea:hover:not(:disabled):not(:focus),
-body .shell .content input:hover:not(:disabled):not(:focus):not([type='checkbox']):not([type='radio']),
-body .shell .content select:hover:not(:disabled):not(:focus),
-body .shell .content textarea:hover:not(:disabled):not(:focus) {
-	border-color: color-mix(in srgb, var(--line) 40%, var(--slate));
+/* Hover solo cuando NO está enfocado */
+body input:hover:not(:disabled):not(:focus):not(:focus-visible):not([type='checkbox']):not([type='radio']),
+body select:hover:not(:disabled):not(:focus):not(:focus-visible),
+body textarea:hover:not(:disabled):not(:focus):not(:focus-visible),
+body .shell .content input:hover:not(:disabled):not(:focus):not(:focus-visible):not([type='checkbox']):not([type='radio']),
+body .shell .content select:hover:not(:disabled):not(:focus):not(:focus-visible),
+body .shell .content textarea:hover:not(:disabled):not(:focus):not(:focus-visible) {
+	border: var(--field-hover-border);
 }
 
-/* Foco: borde fino oro + halo 1px (elegante, no “anillo grueso”) */
+/*
+ * Foco (escribir): borde oro fino + halo.
+ * !important: evita que estilos scoped de pantallas (border: 1px solid var(--line))
+ * anulen el resaltado al hacer click / tab.
+ */
 body input:focus:not([type='checkbox']):not([type='radio']),
 body input:focus-visible:not([type='checkbox']):not([type='radio']),
+body input:focus-within:not([type='checkbox']):not([type='radio']),
 body select:focus,
 body select:focus-visible,
 body textarea:focus,
@@ -101,10 +106,12 @@ body .shell .content select:focus-visible,
 body .shell .content textarea:focus,
 body .shell .content textarea:focus-visible,
 body .login input:focus,
-body .login input:focus-visible {
-	border: var(--field-focus-border);
-	box-shadow: var(--field-focus-ring);
-	outline: none;
+body .login input:focus-visible,
+body .login select:focus,
+body .login select:focus-visible {
+	border: var(--field-focus-border) !important;
+	box-shadow: var(--field-focus-ring) !important;
+	outline: none !important;
 }
 
 body input:disabled,
