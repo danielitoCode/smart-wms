@@ -16,6 +16,8 @@ import { CreateBinUseCase } from '../domain/usecase/CreateBinUseCase';
 import { UpdateBinUseCase } from '../domain/usecase/UpdateBinUseCase';
 import { DeleteBinUseCase } from '../domain/usecase/DeleteBinUseCase';
 import { GetBinDetailUseCase } from '../domain/usecase/GetBinDetailUseCase';
+import { SearchBinsUseCase } from '../domain/usecase/SearchBinsUseCase';
+import { LookupBinByBarcodeUseCase } from '../domain/usecase/LookupBinByBarcodeUseCase';
 
 export function createWarehousesDependencies() {
 	const datasource = new WarehouseRemoteDataSource(apiClient);
@@ -35,7 +37,9 @@ export function createWarehousesDependencies() {
 		createBin: new CreateBinUseCase(repository),
 		updateBin: new UpdateBinUseCase(repository),
 		deleteBin: new DeleteBinUseCase(repository),
-		getBinDetail: new GetBinDetailUseCase(repository)
+		getBinDetail: new GetBinDetailUseCase(repository),
+		searchOperationalBins: new SearchBinsUseCase(repository),
+		lookupOperationalBin: new LookupBinByBarcodeUseCase(repository)
 	};
 }
 
