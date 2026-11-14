@@ -14,6 +14,9 @@ export class CreateCycleCountUseCase {
 		if (binIds.some((id) => !Number.isInteger(id) || id <= 0)) {
 			throw new Error('each binId must be a positive integer');
 		}
+		if (new Set(binIds).size !== binIds.length) {
+			throw new Error('binIds must not contain duplicates');
+		}
 		return this.repository.createCycleCounts(warehouseId, binIds);
 	}
 }

@@ -2,6 +2,7 @@ import type { InventoryPage, InventoryStock } from '../../domain/entity/Inventor
 import type {
 	CycleCountDetail,
 	CycleCountLine,
+	CycleCountStatus,
 	CycleCountSubmitResult,
 	CycleCountSummary
 } from '../../domain/entity/CycleCount';
@@ -13,6 +14,13 @@ import type {
 	InventoryOverviewDto,
 	InventoryRowDto
 } from '../dto/InventoryDto';
+
+function toCycleCountStatus(status: string): CycleCountStatus {
+	if (status === 'PENDING' || status === 'IN_PROGRESS' || status === 'COMPLETED' || status === 'VARIANCE') {
+		return status;
+	}
+	throw new Error(`Unsupported cycle count status: ${status}`);
+}
 
 export const InventoryMapper = {
 	toStock(dto: InventoryRowDto): InventoryStock {
@@ -44,14 +52,15 @@ export const InventoryMapper = {
 		};
 	},
 
-	toCycleCountSummary(dto: CycleCountSummaryDto): CycleCountSummary {
+	toCycleCountSummary(dto: CycleCountSummaryDto, warehouseId: number): CycleCountSummary {
 		return {
 			countId: dto.count_id,
+			warehouseId,
 			binId: dto.bin_id,
 			binCode: dto.bin_code,
-			status: dto.status,
-			lines: dto.lines,
-			assignedTo: dto.assigned_to ?? null
+			status: toCycleCountStatus(dto.status),
+			lineCount: dto.lines,
+			assignedTo: dto.assigned_to
 		};
 	},
 
@@ -59,35 +68,48 @@ export const InventoryMapper = {
 		return {
 			countLineId: dto.count_line_id,
 			itemId: dto.item_id,
-			sku: dto.sku ?? null,
-			expectedQuantity: dto.expected_quantity ?? null,
-			countedQuantity: dto.counted_quantity ?? null
+			sku: dto.sku,
+			itemName: dto.item_name,
+			upc: dto.upc,
+			expectedQuantity: dto.expected_quantity,
+			countedQuantity: dto.counted_quantity,
+			variance: dto.variance,
+			scanned: dto.scanned,
+			unexpected: dto.unexpected
 		};
 	},
 
 	toCycleCountDetail(dto: CycleCountDetailDto): CycleCountDetail {
 		const header = dto.cycle_count;
 		return {
-			countId: header?.count_id ?? dto.count_id ?? 0,
-			binId: header?.bin_id ?? dto.bin_id ?? 0,
-			binCode: header?.bin_code ?? dto.bin_code ?? '',
-			status: header?.status ?? dto.status ?? 'PENDING',
-			lines: (dto.lines ?? []).map(InventoryMapper.toCycleCountLine)
+			countId: header.count_id,
+			warehouseId: header.warehouse_id,
+			binId: header.bin_id,
+			binCode: header.bin_code,
+			binBarcode: header.bin_barcode,
+			status: toCycleCountStatus(header.status),
+			assignedTo: header.assigned_to,
+			createdAt: header.created_at,
+			showExpected: dto.show_expected,
+			lines: dto.lines.map(InventoryMapper.toCycleCountLine)
 		};
 	},
 
 	toSubmitResult(dto: CycleCountSubmitResponseDto): CycleCountSubmitResult {
-		const summary = dto.summary;
 		return {
-			status: dto.status,
-			totalLines: summary?.total_lines ?? 0,
-			linesWithVariance: summary?.lines_with_variance ?? 0,
-			adjustments: (summary?.adjustments ?? []).map((a) => ({
-				sku: a.sku,
-				expected: a.expected,
-				counted: a.counted,
-				variance: a.variance,
-				adjustmentId: a.adjustment_id
+			countId: dto.count_id,
+			binCode: dto.bin_code,
+			status: toCycleCountStatus(dto.status),
+			totalLines: dto.summary.total_lines,
+			linesMatched: dto.summary.lines_matched,
+			linesWithVariance: dto.summary.lines_with_variance,
+			adjustments: dto.summary.adjustments.map((adjustment) => ({
+				sku: adjustment.sku,
+				expected: adjustment.expected,
+				counted: adjustment.counted,
+				variance: adjustment.variance,
+				adjustmentId: adjustment.adjustment_id,
+				unexpected: adjustment.unexpected === true
 			}))
 		};
 	}

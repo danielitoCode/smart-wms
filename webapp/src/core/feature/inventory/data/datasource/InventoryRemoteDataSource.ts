@@ -3,6 +3,7 @@ import type { CycleCountSubmitLine } from '../../domain/entity/CycleCount';
 import type {
 	CreateCycleCountResponseDto,
 	CycleCountDetailDto,
+	CycleCountSubmitLineDto,
 	CycleCountSubmitResponseDto,
 	InventoryOverviewDto
 } from '../dto/InventoryDto';
@@ -46,14 +47,24 @@ export class InventoryRemoteDataSource {
 		countId: number,
 		lines: CycleCountSubmitLine[]
 	): Promise<CycleCountSubmitResponseDto> {
+		const payloadLines: CycleCountSubmitLineDto[] = lines.map((line) => {
+			if ('unexpected' in line && line.unexpected === true) {
+				return {
+					unexpected: true,
+					item_id: line.itemId,
+					...(line.sku != null ? { sku: line.sku } : {}),
+					counted_quantity: line.countedQuantity
+				};
+			}
+			return {
+				count_line_id: line.countLineId,
+				counted_quantity: line.countedQuantity
+			};
+		});
+
 		return this.api.post<CycleCountSubmitResponseDto>('/api/inventory/cycle-count/submit', {
 			count_id: countId,
-			lines: lines.map((line) => ({
-				count_line_id: line.countLineId,
-				counted_quantity: line.countedQuantity,
-				...(line.unexpected != null ? { unexpected: line.unexpected } : {}),
-				...(line.itemId != null ? { item_id: line.itemId } : {})
-			}))
+			lines: payloadLines
 		});
 	}
 }

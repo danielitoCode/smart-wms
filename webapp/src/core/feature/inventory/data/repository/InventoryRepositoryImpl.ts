@@ -33,7 +33,7 @@ export class InventoryRepositoryImpl implements InventoryRepository {
 
 	async createCycleCounts(warehouseId: number, binIds: number[]): Promise<CycleCountSummary[]> {
 		const response = await this.datasource.createCycleCounts(warehouseId, binIds);
-		return (response.counts ?? []).map(InventoryMapper.toCycleCountSummary);
+		return response.counts.map((count) => InventoryMapper.toCycleCountSummary(count, warehouseId));
 	}
 
 	async getCycleCount(countId: number): Promise<CycleCountDetail> {
