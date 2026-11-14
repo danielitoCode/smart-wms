@@ -67,6 +67,7 @@
 				</tr>
 			{/each}</tbody>
 		</table></div>
+		<div class="pagination"><span>{vm.total} almacenes · página {vm.page} de {vm.pages}</span><div><button type="button" class="quiet" disabled={vm.page <= 1 || vm.loading} onclick={() => vm.load(vm.page - 1)}>{i18n.t('Anterior')}</button><button type="button" class="quiet" disabled={vm.page >= vm.pages || vm.loading} onclick={() => vm.load(vm.page + 1)}>{i18n.t('Siguiente')}</button></div></div>
 	{/if}
 	{#if vm.error && vm.loadedOnce}<p class="error" role="alert">{vm.error}</p>{/if}
 </section>
