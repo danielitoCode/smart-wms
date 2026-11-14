@@ -17,3 +17,5 @@ export function createVendorDependencies() {
 		remove: new DeleteVendorUseCase(repository)
 	};
 }
+
+export type VendorDependencies = ReturnType<typeof createVendorDependencies>;
