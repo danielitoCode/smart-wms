@@ -1,6 +1,7 @@
 /**
  * In-memory view of the authenticated user.
  * The credential remains in the backend's HttpOnly cookie.
+ * Flask reloads grants from DB on each /me; revalidatePermissions refreshes this snapshot.
  */
 export type AuthUser = {
 	userId: number;
@@ -10,6 +11,7 @@ export type AuthUser = {
 	warehouseIds: number[];
 	allowedPages: string[];
 	allowedFunctions: string[];
+	allowedOverrides: string[];
 	mustChangePassword: boolean;
 };
 
