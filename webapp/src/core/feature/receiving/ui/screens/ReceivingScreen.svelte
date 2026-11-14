@@ -9,6 +9,19 @@
 
 	const state = createReceivingState();
 
+	let lastGeneration = $state(-1);
+	$effect(() => {
+		const gen = state.generation;
+		if (lastGeneration < 0) {
+			lastGeneration = gen;
+			return;
+		}
+		if (gen !== lastGeneration) {
+			lastGeneration = gen;
+			state.invalidate();
+		}
+	});
+
 	function onLookup(event: Event) {
 		event.preventDefault();
 		void state.lookup();
@@ -52,44 +65,28 @@
 		<UiBanner tone="error" message={state.error} />
 	{/if}
 
-	{#if state.lastResult}
-		<UiBanner
-			tone="success"
-			message={`${state.lastResult.message}${state.lastResult.receiptIds.length ? ' · recepciones: ' + state.lastResult.receiptIds.join(', ') : ''} · estado: ${state.lastResult.poStatus}`}
-		/>
-	{/if}
-
-	{#if state.lastCancel}
-		<UiBanner tone="success" message={`${state.lastCancel.message} · recepciones anuladas: ${state.lastCancel.reversed}`} />
-	{/if}
-
 	{#if state.detail}
 		<section class="po">
-			<h2>{i18n.t('Orden de compra')} {state.detail.purchaseOrder.poNumber}</h2>
+			<h2>{state.detail.purchaseOrder.poNumber}</h2>
 			<p class="meta">
-				{state.detail.purchaseOrder.vendorName}
-				· {state.detail.purchaseOrder.status}
-				· Almacén #{state.detail.purchaseOrder.warehouseId}
+				{state.detail.purchaseOrder.status} · WH {state.detail.purchaseOrder.warehouseId}
 			</p>
-
-			{#if state.drafts.length === 0}
-				<p class="status">{i18n.t('No quedan líneas pendientes de recibir.')}</p>
-			{:else}
+			{#if state.drafts.length}
 				<form onsubmit={onReceive}>
 					<div class="table-wrap">
 						<table>
 							<thead>
 								<tr>
 									<th>{i18n.t('SKU')}</th>
-									<th>{i18n.t('Producto')}</th>
-									<th>{i18n.t('Pendiente')}</th>
+									<th>{i18n.t('Nombre')}</th>
+									<th>{i18n.t('Restante')}</th>
 									<th>{i18n.t('Cantidad')}</th>
-									<th>{i18n.t('Bin ID')}</th>
+									<th>{i18n.t('Bin')}</th>
 									<th>{i18n.t('Lote')}</th>
 								</tr>
 							</thead>
 							<tbody>
-								{#each state.drafts as draft, index (draft.itemId)}
+								{#each state.drafts as draft, index}
 									<tr>
 										<td>{draft.sku}</td>
 										<td>{draft.itemName}</td>
@@ -98,9 +95,10 @@
 											<input
 												type="number"
 												min="0"
-												max={draft.remaining}
 												value={draft.quantity}
-												oninput={(e) => state.updateDraft(index, { quantity: Number(e.currentTarget.value) })}
+												oninput={(e) =>
+													state.updateDraft(index, { quantity: Number(e.currentTarget.value) })
+												}
 												disabled={state.submitting}
 											/>
 										</td>
