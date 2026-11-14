@@ -289,18 +289,18 @@ Completar una fila por operación significativa; no basta con una fila por panta
 
 **Objetivo:** completar los datos maestros que alimentan recepción, inventario, compras, ventas y movimientos.
 
-#### F1.1 Items / Productos — Parcial (pruebas de estado/UI y contratos cerradas)
+#### F1.1 Items / Productos — Completa
 
 Dependencias: base transversal.
 
-- [ ] Dominio: identidad, SKU/código, unidad, estado, atributos y reglas de unicidad confirmadas con backend.
-- [ ] Aplicación: listar, consultar detalle, crear, editar, archivar/eliminar según contrato y buscar.
-- [ ] Infraestructura: repositorio y mappers contra endpoints reales.
-- [ ] UI: tabla, filtros/búsqueda, detalle y formularios con errores por campo.
-- [x] Tests: validación de SKU/peso; estado/UI; errores HTTP 403/409/422; envelope y paginación; filtros Active/Archived/All; detalle; archivado/restauración; eliminación y cancelación de solicitudes. **CI verde:** [Webapp CI — commit `6bbe15e`](https://github.com/danielitoCode/smart-wms/actions/runs/43561705576) (61 archivos / 229 tests en regresión completa).
-- [ ] Paridad: comparar acciones y campos de React Items.
+- [x] Dominio: entidad, atributos, estado y tipos alineados con el contrato Flask; validaciones de SKU/peso cubiertas.
+- [x] Aplicación: listar/paginar/buscar, consultar detalle, crear, editar, archivar/restaurar y eliminar mediante casos de uso.
+- [x] Infraestructura: DTO, mapper y repositorio alineados con endpoints Flask, envelope paginado, filtros y errores HTTP.
+- [x] UI: tabla con SKU, nombre, UPC, MPN, bin por defecto, categoría, peso y estado; filtros, búsqueda, paginación, detalle, ubicaciones preferidas, inventario y formularios CRUD.
+- [x] Tests: validación de SKU/peso; estado/UI; errores HTTP 403/409/422; envelope y paginación; filtros Active/Archived/All; detalle; archivado/restauración; eliminación; cancelación de solicitudes y proyecciones de campos de paridad (UPC, MPN, categoría, peso y bin por defecto). **CI verde:** [Webapp CI — commit `6bbe15e`](https://github.com/danielitoCode/smart-wms/actions/runs/43561705576) (61 archivos / 229 tests en regresión completa). La prueba adicional de proyecciones se añadió en `cb2c6ac`.
+- [x] Paridad: comparación con `admin/src/pages/Items.jsx`; columnas, detalle, filtros, búsqueda, paginación y acciones CRUD/archivo cubiertos. Svelte conserva todos los campos relevantes y añade información de bins/zonas.
 
-**Nota de cierre de pruebas (2026-11-14):** se añadieron pruebas de estado inyectando dependencias, smoke test SSR de `ItemsScreen`, pruebas de repositorio para filtros/paginación/detalle/archivo/borrado y pruebas HTTP de endpoints y normalización 403/409/422. El pipeline completo de webapp pasó: check, build, domain, application, infrastructure, UI, i18n, integration y regresión total. La etiqueta F1.1 se mantiene **Parcial** porque aún queda comparar la presentación de columnas/detalle con React (por ejemplo, peso y bin por defecto); no se declara paridad visual completa solo por tener CI verde.
+**Cierre F1.1 (2026-11-14):** la comparación directa con React confirmó paridad de los campos y acciones relevantes. La tabla Svelte presenta bin por defecto y peso; el detalle presenta UPC, MPN, categoría, peso, estado y bin por defecto, además de preferred bins e inventario. Se reforzó `ItemRepositoryImpl.test.ts` para verificar que el mapper conserva UPC, MPN, categoría, peso, `defaultBinId` y `defaultBinCode` en las proyecciones. El pipeline completo previamente aprobado cubrió check, build, domain, application, infrastructure, UI, i18n, integration y regresión total (61 archivos / 229 tests). La prueba adicional de proyecciones se incorporó después de esa ejecución, en el commit `cb2c6ac`; debe quedar incluida en la siguiente ejecución de CI. F1.1 queda funcional y documentalmente cerrada; no se modificó backend ni autorización.
 
 #### F1.2 Vendors / Proveedores — Ausente
 
@@ -830,7 +830,7 @@ Actualizar esta sección al cerrar cada PR/feature. Mantener una única fuente d
 
 | Feature ID | Dominio | Aplicación | Infraestructura | UI | Tests | Integración | Estado |
 |---|---|---|---|---|---|---|---|
-| F1.1 Items | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
+| F1.1 Items | [x] | [x] | [x] | [x] | [x] | [x] | Completa |
 | F1.2 Vendors | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
 | F1.3 Warehouses/Zones/Bins | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
 | F2.1 Inventory | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
