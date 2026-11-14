@@ -33,8 +33,18 @@ export class WarehouseRemoteDataSource {
 		return response.warehouse;
 	}
 	async listZones(warehouseId: number): Promise<ZoneDto[]> {
-		const body = await this.api.get<ZoneListResponseDto | ZoneDto[]>('/api/admin/zones?warehouse_id=' + warehouseId);
-		return asList(body, ['zones', 'items', 'data']);
+		const all: ZoneDto[] = [];
+		let page = 1;
+		let pages = 1;
+		do {
+			const response = await this.api.get<ZoneListResponseDto>(
+				'/api/admin/zones?warehouse_id=' + warehouseId + '&page=' + page + '&per_page=1000'
+			);
+			all.push(...(response.zones ?? []));
+			pages = response.pages ?? 1;
+			page += 1;
+		} while (page <= pages);
+		return all;
 	}
 	async listBins(params?: { warehouseId?: number; zoneId?: number; page?: number; perPage?: number; q?: string }): Promise<BinListResponseDto> {
 		const query = new URLSearchParams();
