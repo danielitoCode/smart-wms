@@ -69,6 +69,44 @@ describe('ItemRepositoryImpl', () => {
 		});
 	});
 
+	it('preserves React list projections including identifiers, category, weight and default bin', async () => {
+		const datasource = createDatasource();
+		datasource.listPage = vi.fn().mockResolvedValue({
+			items: [{
+				item_id: 7,
+				sku: 'SKU-7',
+				item_name: 'Caja',
+				upc: '012345678905',
+				mpn: 'BOX-7',
+				category: 'Embalaje',
+				weight_lbs: 12.5,
+				default_bin_id: 4,
+				default_bin_code: 'A-01-02',
+				is_active: true
+			}],
+			total: 1,
+			page: 1,
+			per_page: 50,
+			pages: 1
+		});
+		const repository = new ItemRepositoryImpl(datasource);
+
+		const result = await repository.listPage();
+
+		expect(result.items[0]).toMatchObject({
+			id: 7,
+			sku: 'SKU-7',
+			name: 'Caja',
+			upc: '012345678905',
+			mpn: 'BOX-7',
+			category: 'Embalaje',
+			weightLbs: 12.5,
+			defaultBinId: 4,
+			defaultBinCode: 'A-01-02',
+			active: true
+		});
+	});
+
 	it('maps detail inventory and preferred-bin projections', async () => {
 		const datasource = createDatasource();
 		const repository = new ItemRepositoryImpl(datasource);
