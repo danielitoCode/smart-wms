@@ -11,7 +11,7 @@ export class PreferredBinsRepositoryImpl implements PreferredBinsRepository {
 	}
 
 	async listCatalog(query?: PreferredBinCatalogQuery): Promise<PreferredBinCatalog> {
-		return PreferredBinMapper.toCatalog(await this.remote.catalog(query));
+		return M.toCatalog(await this.remote.catalog(query));
 	}
 
 	create(value: PreferredBinCandidate) {
