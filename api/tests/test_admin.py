@@ -2918,6 +2918,8 @@ class TestPreferredBinsCatalogScope:
         bins = client.get("/api/admin/preferred-bins/catalog?warehouse_id=1", headers=headers)
         assert bins.status_code == 200
         assert all(row["warehouse_id"] == 1 and row["bin_type"] == "Pickable" and row["is_active"] for row in bins.get_json()["bins"])
+        assert client.get("/api/admin/preferred-bins/catalog?page=0", headers=headers).status_code == 400
+        assert client.get("/api/admin/preferred-bins/catalog?per_page=1001", headers=headers).status_code == 400
 
     def test_catalog_does_not_require_bins_or_warehouses_page_grants(self, client):
         _, headers = _web_user_with_pages(client, ["preferred-bins"], username="preferred_catalog_only")

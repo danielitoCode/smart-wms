@@ -121,3 +121,20 @@ class TestPreferredBinRelationLifecycle:
             headers=auth_headers,
         )
         assert resp.status_code == 404
+
+
+class TestPreferredBinPriorityLimits:
+    def test_create_rejects_priority_outside_supported_range(self, client, auth_headers):
+        assert _post(client, auth_headers, 3, 0).status_code == 400
+        assert _post(client, auth_headers, 3, 101).status_code == 400
+
+    def test_update_rejects_priority_outside_supported_range(self, client, auth_headers):
+        assert _post(client, auth_headers, 3, 1).status_code in (200, 201)
+        relation_id = _pbid(1, 3)
+        for priority in (0, 101):
+            response = client.put(
+                f"/api/admin/preferred-bins/{relation_id}",
+                json={"priority": priority},
+                headers=auth_headers,
+            )
+            assert response.status_code == 400

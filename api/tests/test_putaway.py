@@ -440,3 +440,48 @@ class TestUpdatePreferred:
     def test_update_preferred_requires_auth(self, client):
         resp = client.post("/api/putaway/update-preferred", json={"item_id": 1, "bin_id": 3})
         assert resp.status_code == 401
+
+
+class TestPreferredBinPutawaySuggestions:
+    def test_pending_ignores_preferred_bin_from_another_warehouse(self, client, auth_headers):
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO warehouses (warehouse_code, warehouse_name) VALUES ('PUT-PREF-WH2', 'Putaway Preferred WH2') RETURNING warehouse_id"
+        )
+        warehouse_id = cur.fetchone()[0]
+        cur.execute(
+            "INSERT INTO zones (warehouse_id, zone_code, zone_name, zone_type) VALUES (%s, 'PUT-PREF', 'Putaway Preferred', 'PICKING') RETURNING zone_id",
+            (warehouse_id,),
+        )
+        zone_id = cur.fetchone()[0]
+        cur.execute(
+            """INSERT INTO bins (zone_id, warehouse_id, bin_code, bin_barcode, bin_type, external_id)
+               VALUES (%s, %s, 'PUT-PREF-OUT', 'PUT-PREF-OUT', 'Pickable', gen_random_uuid())
+               RETURNING bin_id""",
+            (zone_id, warehouse_id),
+        )
+        foreign_bin_id = cur.fetchone()[0]
+        cur.execute("INSERT INTO preferred_bins (item_id, bin_id, priority) VALUES (1, %s, 1)", (foreign_bin_id,))
+        cur.close()
+        _receive_to_staging(client, auth_headers, item_id=1, quantity=10)
+
+        response = client.get("/api/putaway/pending/1", headers=auth_headers)
+        row = next(item for item in response.get_json()["pending_items"] if item["sku"] == "TST-001")
+        assert row["suggested_bin_id"] == 3
+        assert row["suggested_bin"] == "A-01-01"
+
+    def test_pending_and_suggest_ignore_inactive_preferred_bins(self, client, auth_headers):
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute("UPDATE bins SET is_active = FALSE WHERE bin_id = 4")
+        cur.execute("INSERT INTO preferred_bins (item_id, bin_id, priority) VALUES (1, 4, 1)")
+        cur.close()
+        _receive_to_staging(client, auth_headers, item_id=1, quantity=10)
+
+        pending = client.get("/api/putaway/pending/1", headers=auth_headers)
+        row = next(item for item in pending.get_json()["pending_items"] if item["sku"] == "TST-001")
+        assert row["suggested_bin_id"] == 3
+        suggested = client.get("/api/putaway/suggest/1", headers=auth_headers)
+        assert suggested.status_code == 200
+        assert suggested.get_json()["preferred_bin"]["bin_id"] == 3

@@ -28,6 +28,18 @@ describe('Preferred Bins use cases', () => {
 		expect(repo.listCatalog).not.toHaveBeenCalled();
 	});
 
+	it('rejects preferred priorities outside the backend 1..100 range', async () => {
+		const repo = repository();
+		const add = new AddPreferredBinUseCase(repo);
+		expect(() => add.execute({ itemId: 1, binId: 3, priority: 0, warehouseId: 1, binWarehouseId: 1, binType: 'Pickable' })).toThrow('entre 1 y 100');
+		expect(() => add.execute({ itemId: 1, binId: 3, priority: 101, warehouseId: 1, binWarehouseId: 1, binType: 'Pickable' })).toThrow('entre 1 y 100');
+		const update = new UpdatePreferredBinPriorityUseCase(repo);
+		expect(() => update.execute(91, 0)).toThrow('entre 1 y 100');
+		expect(() => update.execute(91, 101)).toThrow('entre 1 y 100');
+		expect(repo.create).not.toHaveBeenCalled();
+		expect(repo.update).not.toHaveBeenCalled();
+	});
+
 	it('rejects a non-existent/invalid item identifier before calling the API', async () => {
 		const repo = repository();
 		const useCase = new AddPreferredBinUseCase(repo);
