@@ -1,4 +1,5 @@
 export type Warehouse = { id: number; code: string; name: string; address: string | null; active: boolean; createdAt: string | null };
+export type WarehousePage = { items: Warehouse[]; total: number; page: number; pages: number; perPage: number };
 export type CreateWarehouseInput = { code: string; name: string; address?: string | null };
 export type UpdateWarehouseInput = { id: number; code?: string; name?: string; address?: string | null; active?: boolean };
 
