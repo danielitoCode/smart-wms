@@ -24,7 +24,7 @@ export type CreateBinInput = {
 	maxWeightLbs?: number | null; maxVolumeCuft?: number | null;
 };
 export type UpdateBinInput = {
-	id: number; zoneId?: number; code?: string; barcode?: string | null; binType?: BinType;
+	id: number; zoneId?: number; code?: string; barcode?: string; binType?: BinType;
 	aisle?: string | null; rowNumber?: number | null; levelNumber?: number | null;
 	positionNumber?: number | null; pickSequence?: number; putawaySequence?: number; active?: boolean;
 	maxWeightLbs?: number | null; maxVolumeCuft?: number | null;
