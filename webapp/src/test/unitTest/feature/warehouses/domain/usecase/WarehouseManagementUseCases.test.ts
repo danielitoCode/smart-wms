@@ -3,6 +3,8 @@ import { DeleteWarehouseUseCase } from '../../../../../../core/feature/warehouse
 import { CreateWarehouseUseCase } from '../../../../../../core/feature/warehouses/domain/usecase/CreateWarehouseUseCase';
 import { UpdateWarehouseUseCase } from '../../../../../../core/feature/warehouses/domain/usecase/UpdateWarehouseUseCase';
 import { CreateZoneUseCase } from '../../../../../../core/feature/warehouses/domain/usecase/CreateZoneUseCase';
+import { UpdateZoneUseCase } from '../../../../../../core/feature/warehouses/domain/usecase/UpdateZoneUseCase';
+import { DeleteZoneUseCase } from '../../../../../../core/feature/warehouses/domain/usecase/DeleteZoneUseCase';
 import { CreateBinUseCase } from '../../../../../../core/feature/warehouses/domain/usecase/CreateBinUseCase';
 import type { WarehouseManagementRepository } from '../../../../../../core/feature/warehouses/domain/repository/WarehouseManagementRepository';
 
@@ -52,6 +54,29 @@ describe('Warehouse management use cases', () => {
 		});
 		await new CreateBinUseCase(repository).execute({ warehouseId: 8, zoneId: 4, code: 'A-01', barcode: 'BC-01', binType: 'Pickable' });
 		expect(repository.createBin).toHaveBeenCalledWith(expect.objectContaining({ warehouseId: 8, zoneId: 4, code: 'A-01', barcode: 'BC-01' }));
+	});
+	it('normalizes zone updates without allowing warehouse reassignment', async () => {
+		const repository = createRepository();
+		vi.mocked(repository.updateZone).mockResolvedValue({ id: 4, warehouseId: 8, code: 'PICK', name: 'Picking', zoneType: 'PICKING', active: false });
+		await new UpdateZoneUseCase(repository).execute({ id: 4, code: ' PICK ', name: ' Picking ', active: false });
+		expect(repository.updateZone).toHaveBeenCalledWith({ id: 4, code: 'PICK', name: 'Picking', active: false });
+	});
+	it('rejects invalid zone updates and empty patches', async () => {
+		const repository = createRepository();
+		await expect(new UpdateZoneUseCase(repository).execute({ id: 4 })).rejects.toThrow(/at least one/);
+		await expect(new UpdateZoneUseCase(repository).execute({ id: 0, name: 'Invalid' })).rejects.toThrow(/zone id/);
+		expect(repository.updateZone).not.toHaveBeenCalled();
+	});
+	it('deletes by canonical zone id and propagates the 409 bins restriction', async () => {
+		const repository = createRepository();
+		vi.mocked(repository.deleteZone).mockRejectedValueOnce(new Error('Zone cannot be deleted because 2 bin(s) are assigned'));
+		await expect(new DeleteZoneUseCase(repository).execute(4)).rejects.toThrow(/bin\(s\)/);
+		expect(repository.deleteZone).toHaveBeenCalledWith(4);
+	});
+	it('rejects nonexistent zone identifiers before deletion', async () => {
+		const repository = createRepository();
+		await expect(new DeleteZoneUseCase(repository).execute(0)).rejects.toThrow(/positive integer/);
+		expect(repository.deleteZone).not.toHaveBeenCalled();
 	});
 	it('rejects unsupported zone types before reaching the API', async () => {
 		const repository = createRepository();
