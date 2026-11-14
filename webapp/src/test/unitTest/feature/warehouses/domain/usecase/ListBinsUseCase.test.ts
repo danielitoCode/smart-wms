@@ -7,6 +7,7 @@ describe('ListBinsUseCase', () => {
 		const repo = {
 			listActive: vi.fn(),
 			listAdmin: vi.fn(),
+			listAdminPage: vi.fn(),
 			getById: vi.fn(),
 			listZones: vi.fn(),
 			listBins: vi.fn().mockResolvedValue([])
@@ -21,6 +22,7 @@ describe('ListBinsUseCase', () => {
 		const repo = {
 			listActive: vi.fn(),
 			listAdmin: vi.fn(),
+			listAdminPage: vi.fn(),
 			getById: vi.fn(),
 			listZones: vi.fn(),
 			listBins: vi.fn().mockResolvedValue([])
