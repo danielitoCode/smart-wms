@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { DeleteWarehouseUseCase } from '../../../../../../core/feature/warehouses/domain/usecase/DeleteWarehouseUseCase';
 import { CreateWarehouseUseCase } from '../../../../../../core/feature/warehouses/domain/usecase/CreateWarehouseUseCase';
 import { UpdateWarehouseUseCase } from '../../../../../../core/feature/warehouses/domain/usecase/UpdateWarehouseUseCase';
 import { CreateZoneUseCase } from '../../../../../../core/feature/warehouses/domain/usecase/CreateZoneUseCase';
@@ -19,6 +20,17 @@ describe('Warehouse management use cases', () => {
 		const repository = createRepository();
 		await new CreateWarehouseUseCase(repository).execute({ code: ' WH-01 ', name: ' Main ', address: ' Address ' });
 		expect(repository.createWarehouse).toHaveBeenCalledWith({ code: 'WH-01', name: 'Main', address: 'Address' });
+	});
+	it('deletes by the canonical numeric warehouse id and propagates backend restrictions', async () => {
+		const repository = createRepository();
+		vi.mocked(repository.deleteWarehouse).mockRejectedValueOnce(new Error('Cannot delete warehouse with existing bins'));
+		await expect(new DeleteWarehouseUseCase(repository).execute(14)).rejects.toThrow(/existing bins/);
+		expect(repository.deleteWarehouse).toHaveBeenCalledWith(14);
+	});
+	it('rejects invalid warehouse identifiers before deletion', async () => {
+		const repository = createRepository();
+		await expect(new DeleteWarehouseUseCase(repository).execute(0)).rejects.toThrow(/positive integer/);
+		expect(repository.deleteWarehouse).not.toHaveBeenCalled();
 	});
 	it('rejects empty warehouse updates instead of sending an empty update', async () => {
 		const repository = createRepository();
