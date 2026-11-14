@@ -5,7 +5,7 @@
 	import type { WarehouseSelectionState } from '../state/warehouseSelectionState.svelte';
 
 	const i18n = getContext<I18nState>('i18n');
-	let { mode }: { mode: 'zones' | 'bins' } = $props();
+	let { mode, initialZoneId = null }: { mode: 'zones' | 'bins'; initialZoneId?: number | null } = $props();
 	const selection = getContext<WarehouseSelectionState>('warehouseSelection');
 </script>
 
@@ -24,7 +24,7 @@
 	{:else if selection.warehouseId == null}<p class="error" role="alert">{i18n.t('No hay un almacén seleccionado. Un usuario con permiso de Almacenes debe establecer la selección primero.')}</p>
 	{:else}
 		{#key selection.warehouseId}
-			<WarehouseDetailScreen warehouseId={selection.warehouseId} showZones={mode === 'zones'} showBins={mode === 'bins'} includeBins={mode === 'bins'} backHref={mode === 'zones' ? '/data/zones' : '/data/bins'} />
+			<WarehouseDetailScreen warehouseId={selection.warehouseId} showZones={mode === 'zones'} showBins={mode === 'bins'} includeBins={mode === 'bins'} initialZoneId={mode === 'bins' ? initialZoneId : null} backHref={mode === 'zones' ? '/data/zones' : '/data/bins'} />
 		{/key}
 	{/if}
 </section>
