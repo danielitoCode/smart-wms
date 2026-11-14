@@ -15,11 +15,11 @@ export class UpdateBinUseCase {
 		}
 		if (input.code !== undefined) {
 			const value = input.code.trim();
-			if (!value || value.length > 64) throw new Error('bin code must contain 1 to 64 characters');
+			if (!value || value.length > 50) throw new Error('bin code must contain 1 to 50 characters');
 			update.code = value;
 		}
 		if (input.barcode !== undefined) {
-			if (input.barcode !== null && (!input.barcode.length || input.barcode.length > 128)) throw new Error('bin barcode must contain 1 to 128 characters');
+			if (input.barcode !== null && (!input.barcode.length || input.barcode.length > 100)) throw new Error('bin barcode must contain 1 to 100 characters');
 			update.barcode = input.barcode?.trim() || null;
 		}
 		if (input.binType !== undefined) {
@@ -27,7 +27,7 @@ export class UpdateBinUseCase {
 			update.binType = input.binType;
 		}
 		if (input.aisle !== undefined) {
-			if (input.aisle !== null && input.aisle.length > 10) throw new Error('aisle cannot exceed 10 characters');
+			if (input.aisle !== null && input.aisle.trim().length > 10) throw new Error('aisle cannot exceed 10 characters');
 			update.aisle = input.aisle?.trim() || null;
 		}
 		for (const [value, name] of [
@@ -42,7 +42,7 @@ export class UpdateBinUseCase {
 		if (input.putawaySequence !== undefined) update.putawaySequence = input.putawaySequence;
 		if (input.active !== undefined) update.active = input.active;
 		for (const [value, name] of [[input.maxWeightLbs, 'maxWeightLbs'], [input.maxVolumeCuft, 'maxVolumeCuft']] as const) {
-			if (value !== undefined && value !== null && (!Number.isFinite(value) || value < 0)) throw new Error(name + ' must be a non-negative number');
+			if (value !== undefined && value !== null && (!Number.isFinite(value) || value < 0 || value > 99999999.99 || Math.abs(value * 100 - Math.round(value * 100)) > 0.000001)) throw new Error(name + ' must be a non-negative number with at most two decimal places');
 		}
 		if (input.maxWeightLbs !== undefined) update.maxWeightLbs = input.maxWeightLbs;
 		if (input.maxVolumeCuft !== undefined) update.maxVolumeCuft = input.maxVolumeCuft;
