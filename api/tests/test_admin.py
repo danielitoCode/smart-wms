@@ -190,6 +190,11 @@ class TestZones:
         assert too_long_code.status_code == 400
         assert too_long_name.status_code == 400
 
+    def test_update_zone_rejects_null_required_fields(self, client, auth_headers):
+        for payload in ({"zone_code": None}, {"zone_name": None}, {"zone_type": None}):
+            response = client.put("/api/admin/zones/1", json=payload, headers=auth_headers)
+            assert response.status_code == 400
+
     def test_zone_detail_get_is_not_a_supported_endpoint(self, client, auth_headers):
         resp = client.get("/api/admin/zones/1", headers=auth_headers)
         assert resp.status_code == 405
