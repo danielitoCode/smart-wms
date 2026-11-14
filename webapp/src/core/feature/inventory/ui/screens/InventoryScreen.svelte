@@ -12,6 +12,20 @@
 		void state.load();
 	});
 
+	let lastGeneration = $state(-1);
+	$effect(() => {
+		const gen = state.generation;
+		if (lastGeneration < 0) {
+			lastGeneration = gen;
+			return;
+		}
+		if (gen !== lastGeneration) {
+			lastGeneration = gen;
+			state.invalidate();
+			void state.load();
+		}
+	});
+
 	function onFilter(e: Event) {
 		e.preventDefault();
 		void state.load(state.warehouseId);
