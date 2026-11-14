@@ -5,7 +5,7 @@ import WarehouseDetailScreen from '../../../../../core/feature/warehouses/ui/scr
 const vm = vi.hoisted(() => ({
 	warehouse: { id: 1, code: 'WH-01', name: 'Central', address: null, active: true },
 	zones: [{ id: 11, warehouseId: 1, code: 'PICK', name: 'Picking', zoneType: 'PICKING', active: true, binsCount: 4 }],
-	bins: [], binSearch: '', binTotal: 0, binPage: 1, binPages: 1,
+	bins: [{ id: 3, warehouseId: 1, zoneId: 11, zoneName: 'Picking', code: 'A-01-01', barcode: 'BC-01', binType: 'Pickable', aisle: 'A', rowNumber: 1, levelNumber: 1, positionNumber: 1, pickSequence: 4, putawaySequence: 0, active: true, maxWeightLbs: 125, maxVolumeCuft: 32, quantityOnHand: 11, quantityAllocated: 3, inventoryLines: 2 }], binSearch: '', binTotal: 1, binPage: 1, binPages: 1,
 	selectedZoneId: null, selectedBinDetail: null, loading: false, binsLoading: false,
 	mutating: false, error: null,
 	load: vi.fn(), loadBinsForZone: vi.fn(), searchBins: vi.fn(), createZone: vi.fn(),
@@ -48,4 +48,16 @@ describe('WarehouseDetailScreen zones workspace', () => {
 		expect(body).toContain('href="/data/bins?zone_id=11"');
 		expect(body).toContain('Ver ubicaciones');
 	});
+	it('renders stock occupancy and configured capacities in the bins catalogue', () => {
+		const i18n = { t: (message: string) => message };
+		const { body } = render(WarehouseDetailScreen, {
+			props: { warehouseId: 1, showZones: false, showBins: true, includeBins: true },
+			context: new Map<string, any>([['i18n', i18n]])
+		});
+		expect(body).toContain('Existencias');
+		expect(body).toContain('11 (3 asignadas)');
+		expect(body).toContain('125 lb · 32 ft³');
+		expect(body).toContain('A-01-01');
+	});
+
 });
