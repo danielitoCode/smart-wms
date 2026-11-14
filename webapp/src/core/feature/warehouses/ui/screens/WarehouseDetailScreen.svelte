@@ -13,7 +13,7 @@
 	const canViewBins = currentUser?.role === 'ADMIN' || (currentUser?.allowedPages ?? []).includes('bins');
 
 	type ZoneForm = { code: string; name: string; zoneType: ZoneType; active: boolean };
-	type BinForm = { zoneId: number | null; code: string; barcode: string; binType: BinType; aisle: string; pickSequence: number; active: boolean };
+	type BinForm = { zoneId: number | null; code: string; barcode: string; binType: BinType; aisle: string; pickSequence: number; maxWeightLbs: number | null; maxVolumeCuft: number | null; active: boolean };
 	let showZoneForm = $state(false);
 	let editingZone = $state(null as Zone | null);
 	let deleteZoneTarget = $state(null as Zone | null);
@@ -21,7 +21,7 @@
 	let showBinForm = $state(false);
 	let editingBin = $state(null as Bin | null);
 	let deleteBinTarget = $state(null as Bin | null);
-	let binForm = $state({ zoneId: null, code: '', barcode: '', binType: 'Pickable', aisle: '', pickSequence: 0, active: true } as BinForm);
+	let binForm = $state({ zoneId: null, code: '', barcode: '', binType: 'Pickable', aisle: '', pickSequence: 0, maxWeightLbs: null, maxVolumeCuft: null, active: true } as BinForm);
 	let exporting = $state(false);
 	let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -56,19 +56,19 @@
 		if (deleteZoneTarget && await vm.removeZone(deleteZoneTarget.id)) deleteZoneTarget = null;
 	}
 	function openCreateBin() {
-		editingBin = null; binForm = { zoneId: vm.zones[0]?.id ?? null, code: '', barcode: '', binType: 'Pickable', aisle: '', pickSequence: 0, active: true };
+		editingBin = null; binForm = { zoneId: vm.zones[0]?.id ?? null, code: '', barcode: '', binType: 'Pickable', aisle: '', pickSequence: 0, maxWeightLbs: null, maxVolumeCuft: null, active: true };
 		vm.clearError(); showBinForm = true;
 	}
 	function openEditBin(bin: Bin) {
-		editingBin = bin; binForm = { zoneId: bin.zoneId, code: bin.code, barcode: bin.barcode ?? '', binType: bin.binType, aisle: bin.aisle ?? '', pickSequence: bin.pickSequence, active: bin.active };
+		editingBin = bin; binForm = { zoneId: bin.zoneId, code: bin.code, barcode: bin.barcode ?? '', binType: bin.binType, aisle: bin.aisle ?? '', pickSequence: bin.pickSequence, maxWeightLbs: bin.maxWeightLbs, maxVolumeCuft: bin.maxVolumeCuft, active: bin.active };
 		vm.clearError(); showBinForm = true;
 	}
 	async function saveBin(event: SubmitEvent) {
 		event.preventDefault();
 		if (binForm.zoneId == null) return;
 		const ok = editingBin
-			? await vm.updateBin({ id: editingBin.id, zoneId: binForm.zoneId, code: binForm.code, barcode: binForm.barcode, binType: binForm.binType, aisle: binForm.aisle || null, pickSequence: binForm.pickSequence, active: binForm.active })
-			: await vm.createBin({ zoneId: binForm.zoneId, code: binForm.code, barcode: binForm.barcode, binType: binForm.binType, aisle: binForm.aisle || null, pickSequence: binForm.pickSequence });
+			? await vm.updateBin({ id: editingBin.id, zoneId: binForm.zoneId, code: binForm.code, barcode: binForm.barcode, binType: binForm.binType, aisle: binForm.aisle || null, pickSequence: binForm.pickSequence, maxWeightLbs: binForm.maxWeightLbs, maxVolumeCuft: binForm.maxVolumeCuft, active: binForm.active })
+			: await vm.createBin({ zoneId: binForm.zoneId, code: binForm.code, barcode: binForm.barcode, binType: binForm.binType, aisle: binForm.aisle || null, pickSequence: binForm.pickSequence, maxWeightLbs: binForm.maxWeightLbs, maxVolumeCuft: binForm.maxVolumeCuft });
 		if (ok) showBinForm = false;
 	}
 	async function deleteBin() {
@@ -119,8 +119,8 @@
 			<div class="section-header bin-heading"><h2>{i18n.t('Ubicaciones')}</h2><div class="bin-tools"><input aria-label={i18n.t('Buscar código o código de barras')} placeholder={i18n.t('Buscar código o código de barras')} value={vm.binSearch} oninput={(e) => onSearch(e.currentTarget.value)} /><button class="quiet" type="button" onclick={exportCsv} disabled={exporting || vm.binTotal === 0}>{exporting ? i18n.t('Exportando…') : i18n.t('Exportar CSV')}</button><button class="accent" type="button" onclick={openCreateBin} disabled={vm.zones.length === 0}>{i18n.t('Nueva ubicación')}</button></div></div>
 			{#if vm.binsLoading}<p class="status">{i18n.t('Actualizando ubicaciones…')}</p>
 			{:else if vm.bins.length === 0}<p class="status">{i18n.t('No hay ubicaciones para este filtro.')}</p>
-			{:else}<div class="table-wrap"><table><thead><tr><th>{i18n.t('Código')}</th><th>{i18n.t('Código de barras')}</th><th>{i18n.t('Tipo')}</th><th>{i18n.t("Zona")}</th><th>{i18n.t('Pasillo')}</th><th>{i18n.t('Orden de preparación')}</th><th>{i18n.t('Estado')}</th><th>{i18n.t('Acciones')}</th></tr></thead><tbody>
-				{#each vm.bins as bin (bin.id)}<tr><td><button class="linkish mono" type="button" onclick={() => vm.viewBin(bin.id)}>{bin.code}</button></td><td class="mono">{bin.barcode ?? '—'}</td><td>{binTypeLabel(bin.binType)}</td><td>{bin.zoneName ?? bin.zoneId ?? '—'}</td><td>{bin.aisle ?? '—'}</td><td>{bin.pickSequence}</td><td>{bin.active ? i18n.t('Activo') : i18n.t('Inactivo')}</td><td class="actions"><button class="quiet" type="button" onclick={() => openEditBin(bin)}>{i18n.t('Editar')}</button><button class="danger" type="button" onclick={() => deleteBinTarget = bin}>{i18n.t('Eliminar')}</button></td></tr>{/each}
+			{:else}<div class="table-wrap"><table><thead><tr><th>{i18n.t('Código')}</th><th>{i18n.t('Código de barras')}</th><th>{i18n.t('Tipo')}</th><th>{i18n.t("Zona")}</th><th>{i18n.t('Pasillo')}</th><th>{i18n.t('Orden de preparación')}</th><th>{i18n.t('Existencias')}</th><th>{i18n.t('Capacidad')}</th><th>{i18n.t('Estado')}</th><th>{i18n.t('Acciones')}</th></tr></thead><tbody>
+				{#each vm.bins as bin (bin.id)}<tr><td><button class="linkish mono" type="button" onclick={() => vm.viewBin(bin.id)}>{bin.code}</button></td><td class="mono">{bin.barcode ?? '—'}</td><td>{binTypeLabel(bin.binType)}</td><td>{bin.zoneName ?? bin.zoneId ?? '—'}</td><td>{bin.aisle ?? '—'}</td><td>{bin.pickSequence}</td><td>{bin.quantityOnHand} ({bin.quantityAllocated} {i18n.t('asignadas')})</td><td>{bin.maxWeightLbs == null && bin.maxVolumeCuft == null ? '—' : [bin.maxWeightLbs != null ? bin.maxWeightLbs + ' lb' : '', bin.maxVolumeCuft != null ? bin.maxVolumeCuft + ' ft³' : ''].filter(Boolean).join(' · ')}</td><td>{bin.active ? i18n.t('Activo') : i18n.t('Inactivo')}</td><td class="actions"><button class="quiet" type="button" onclick={() => openEditBin(bin)}>{i18n.t('Editar')}</button><button class="danger" type="button" onclick={() => deleteBinTarget = bin}>{i18n.t('Eliminar')}</button></td></tr>{/each}
 			</tbody></table></div>
 			<div class="pagination"><span>{vm.binTotal} ubicaciones · página {vm.binPage} de {vm.binPages}</span><div><button type="button" disabled={vm.binPage <= 1 || vm.binsLoading} onclick={() => vm.loadBinsForZone(vm.selectedZoneId,vm.binPage - 1)}>{i18n.t("Anterior")}</button><button type="button" disabled={vm.binPage >= vm.binPages || vm.binsLoading} onclick={() => vm.loadBinsForZone(vm.selectedZoneId,vm.binPage + 1)}>{i18n.t("Siguiente")}</button></div></div>{/if}
 		</section>{/if}
@@ -137,14 +137,14 @@
 	<label>{i18n.t('Código')}<input bind:value={binForm.code} maxlength="64" required disabled={vm.mutating} /></label><label>{i18n.t('Código de barras')}<input bind:value={binForm.barcode} maxlength="128" required disabled={vm.mutating} /></label>
 	<label>{i18n.t('Tipo')}<select bind:value={binForm.binType} disabled={vm.mutating}>{#each ['Staging','PickableStaging','Pickable'] as type}<option value={type}>{binTypeLabel(type as BinType)}</option>{/each}</select></label>
 	<label>{i18n.t("Zona")}<select bind:value={binForm.zoneId} required disabled={vm.mutating}><option value={null}>{i18n.t('Seleccionar zona')}</option>{#each vm.zones as zone}<option value={zone.id}>{zone.code} — {zone.name}</option>{/each}</select></label>
-	<label>{i18n.t('Pasillo')}<input bind:value={binForm.aisle} maxlength="32" disabled={vm.mutating} /></label><label>{i18n.t('Orden de preparación')}<input type="number" min="0" step="1" bind:value={binForm.pickSequence} disabled={vm.mutating} /></label>
+	<label>{i18n.t('Pasillo')}<input bind:value={binForm.aisle} maxlength="10" disabled={vm.mutating} /></label><label>{i18n.t('Orden de preparación')}<input type="number" min="0" step="1" bind:value={binForm.pickSequence} disabled={vm.mutating} /></label><label>{i18n.t('Peso máximo (lb)')}<input type="number" min="0" step="0.01" bind:value={binForm.maxWeightLbs} disabled={vm.mutating} /></label><label>{i18n.t('Volumen máximo (ft³)')}<input type="number" min="0" step="0.01" bind:value={binForm.maxVolumeCuft} disabled={vm.mutating} /></label>
 	{#if editingBin}<label class="check"><input type="checkbox" bind:checked={binForm.active} /> {i18n.t("Activo")}</label>{/if}
 	{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}<footer><button class="quiet" type="button" onclick={() => showBinForm = false}>{i18n.t('Cancelar')}</button><button class="primary" type="submit" disabled={vm.mutating || binForm.zoneId == null}>{i18n.t('Guardar')}</button></footer>
 </form></section></div>{/if}
 {#if deleteZoneTarget}<div class="backdrop"><section class="dialog" role="alertdialog" aria-modal="true"><h2>{i18n.t('Eliminar zona')}</h2><p>{i18n.t("¿Eliminar")} <strong>{deleteZoneTarget.code} — {deleteZoneTarget.name}</strong>? {i18n.t('El backend rechazará la operación si aún tiene ubicaciones asociadas.')}</p>{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}<footer><button class="quiet" type="button" onclick={() => deleteZoneTarget = null}>{i18n.t('Cancelar')}</button><button class="danger" type="button" onclick={deleteZone} disabled={vm.mutating}>{i18n.t('Eliminar')}</button></footer></section></div>{/if}
 {#if deleteBinTarget}<div class="backdrop"><section class="dialog" role="alertdialog" aria-modal="true"><h2>{i18n.t('Eliminar ubicación')}</h2><p>{i18n.t("¿Eliminar")} <strong>{deleteBinTarget.code}</strong>? {i18n.t('No puede tener existencias ni referencias de ubicaciones preferidas.')}</p>{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}<footer><button class="quiet" type="button" onclick={() => deleteBinTarget = null}>{i18n.t('Cancelar')}</button><button class="danger" type="button" onclick={deleteBin} disabled={vm.mutating}>{i18n.t('Eliminar')}</button></footer></section></div>{/if}
 {#if vm.selectedBinDetail}<div class="backdrop"><section class="dialog wide" role="dialog" aria-modal="true"><h2>{i18n.t('Ubicación')} {vm.selectedBinDetail.bin.code}</h2>
-	<dl><dt>{i18n.t('Código de barras')}</dt><dd>{vm.selectedBinDetail.bin.barcode ?? '—'}</dd><dt>{i18n.t('Tipo')}</dt><dd>{binTypeLabel(vm.selectedBinDetail.bin.binType)}</dd><dt>{i18n.t("Zona")}</dt><dd>{vm.selectedBinDetail.bin.zoneName ?? '—'}</dd><dt>{i18n.t('Pasillo')}</dt><dd>{vm.selectedBinDetail.bin.aisle ?? '—'}</dd><dt>{i18n.t('Orden de preparación')}</dt><dd>{vm.selectedBinDetail.bin.pickSequence}</dd><dt>{i18n.t('Estado')}</dt><dd>{vm.selectedBinDetail.bin.active ? i18n.t('Activo') : i18n.t('Inactivo')}</dd></dl>
+	<dl><dt>{i18n.t('Código de barras')}</dt><dd>{vm.selectedBinDetail.bin.barcode ?? '—'}</dd><dt>{i18n.t('Tipo')}</dt><dd>{binTypeLabel(vm.selectedBinDetail.bin.binType)}</dd><dt>{i18n.t("Zona")}</dt><dd>{vm.selectedBinDetail.bin.zoneName ?? '—'}</dd><dt>{i18n.t('Pasillo')}</dt><dd>{vm.selectedBinDetail.bin.aisle ?? '—'}</dd><dt>{i18n.t('Orden de preparación')}</dt><dd>{vm.selectedBinDetail.bin.pickSequence}</dd><dt>{i18n.t('Peso máximo')}</dt><dd>{vm.selectedBinDetail.bin.maxWeightLbs == null ? '—' : vm.selectedBinDetail.bin.maxWeightLbs + ' lb'}</dd><dt>{i18n.t('Volumen máximo')}</dt><dd>{vm.selectedBinDetail.bin.maxVolumeCuft == null ? '—' : vm.selectedBinDetail.bin.maxVolumeCuft + ' ft³'}</dd><dt>{i18n.t('Existencias')}</dt><dd>{vm.selectedBinDetail.occupancy.quantityOnHand} · {i18n.t('Disponibles')}: {vm.selectedBinDetail.occupancy.quantityAvailable} · {i18n.t('Asignadas')}: {vm.selectedBinDetail.occupancy.quantityAllocated}</dd><dt>{i18n.t('Estado')}</dt><dd>{vm.selectedBinDetail.bin.active ? i18n.t('Activo') : i18n.t('Inactivo')}</dd></dl>
 	<h3>{i18n.t('Inventario')}</h3>{#if vm.selectedBinDetail.inventory.length === 0}<p class="status">{i18n.t('Esta ubicación no tiene existencias.')}</p>{:else}<div class="table-wrap"><table><thead><tr><th>{i18n.t("SKU")}</th><th>{i18n.t('Producto')}</th><th>{i18n.t('Disponible')}</th><th>{i18n.t('Asignado')}</th></tr></thead><tbody>{#each vm.selectedBinDetail.inventory as row (row.inventoryId)}<tr><td class="mono">{row.sku}</td><td>{row.itemName}</td><td>{row.quantityOnHand}</td><td>{row.quantityAllocated}</td></tr>{/each}</tbody></table></div>{/if}
 	<footer><button class="quiet" type="button" onclick={() => vm.closeBinDetail()}>{i18n.t('Cerrar')}</button></footer></section></div>{/if}
 
