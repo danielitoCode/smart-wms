@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiCheckbox from '../../../../../lib/components/UiCheckbox.svelte';
 	import { onMount, getContext } from 'svelte';
 	import type { I18nState } from '#lib/i18n/i18n.svelte';
 	import { createSettingsState } from '../state/settingsState.svelte';
@@ -57,11 +58,11 @@
 		<form class="form" onsubmit={(e) => { e.preventDefault(); void vm.save(); }}>
 			{#each KNOWN_SETTING_KEYS as key}
 				{#if isBooleanKey(key)}
-					<label class="check">
-						<input type="checkbox" checked={(vm.draft[key] ?? '') === 'true'}
-							onchange={(e) => vm.setDraft(key, e.currentTarget.checked ? 'true' : 'false')} />
-						{i18n.t(labels[key] ?? key)}
-					</label>
+					<UiCheckbox
+						checked={(vm.draft[key] ?? '') === 'true'}
+						label={i18n.t(labels[key] ?? key)}
+						onchange={(v) => vm.setDraft(key, v ? 'true' : 'false')}
+					/>
 				{:else}
 					<label>
 						<span>{i18n.t(labels[key] ?? key)}</span>
