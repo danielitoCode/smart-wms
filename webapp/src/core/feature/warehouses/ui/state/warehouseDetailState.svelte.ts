@@ -26,7 +26,7 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 	let error = $state<string | null>(null);
 	let binsRequestVersion = 0;
 
-	async function load() {
+	async function load(initialZoneId: number | null = null) {
 		if (loading) return false;
 		if (!Number.isInteger(warehouseId) || warehouseId <= 0) {
 			error = 'warehouseId inválido';
@@ -48,7 +48,10 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 				? await deps.getWarehouse.execute(warehouseId)
 				: { id: warehouseId, code: String(warehouseId), name: 'Almacén seleccionado', address: null, active: true, createdAt: null };
 			zones = await deps.listZones.execute(warehouseId);
-			if (includeBins) await loadBinsForZone(null, 1);
+			if (initialZoneId != null && !zones.some(zone => zone.id === initialZoneId)) {
+				throw new Error('La zona seleccionada no pertenece al almacén activo');
+			}
+			if (includeBins) await loadBinsForZone(initialZoneId, 1);
 			return true;
 		} catch (err) {
 			error = toUserMessage(err, 'No se pudo cargar el almacén');
