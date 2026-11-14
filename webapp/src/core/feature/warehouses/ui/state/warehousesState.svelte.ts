@@ -20,7 +20,10 @@ export function createWarehousesState() {
 		loading = true;
 		error = null;
 		try {
-			const result = await deps.listAdminWarehouses.executePage({ page: nextPage, perPage });
+			let result = await deps.listAdminWarehouses.executePage({ page: nextPage, perPage });
+			if (result.page > result.pages && result.pages > 0) {
+				result = await deps.listAdminWarehouses.executePage({ page: result.pages, perPage });
+			}
 			warehouses = result.items;
 			total = result.total;
 			page = result.page;
