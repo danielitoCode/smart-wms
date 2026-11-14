@@ -1,4 +1,5 @@
 <script lang="ts">
 	import WarehouseWorkspaceScreen from './WarehouseWorkspaceScreen.svelte';
+	let { initialZoneId = null }: { initialZoneId?: number | null } = $props();
 </script>
-<WarehouseWorkspaceScreen mode="bins" />
+<WarehouseWorkspaceScreen mode="bins" {initialZoneId} />
