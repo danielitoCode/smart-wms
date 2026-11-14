@@ -7,7 +7,7 @@ from flask import g, jsonify, request
 from sqlalchemy import text
 
 from constants import ACTION_TRANSFER
-from middleware.auth_middleware import check_warehouse_access, require_admin_or_page_permission, require_auth
+from middleware.auth_middleware import check_warehouse_access, require_admin_or_page_permission, require_auth, warehouse_scope_clause
 from middleware.db import with_db
 from routes.admin import VALID_BIN_TYPES, VALID_ZONE_TYPES, admin_bp
 from schemas.bins import CreateBinRequest, UpdateBinRequest
@@ -186,15 +186,22 @@ def list_zones():
     page = request.args.get("page", 1, type=int)
     per_page = min(request.args.get("per_page", 50, type=int), 1000)
 
-    where_clauses, params = [], {}
     warehouse_id = request.args.get("warehouse_id", type=int)
-    if warehouse_id:
-        where_clauses.append("warehouse_id = :wid")
+    if warehouse_id is not None:
+        allowed, denial = check_warehouse_access(warehouse_id)
+        if not allowed:
+            return denial
+
+    scope_sql, params = warehouse_scope_clause("z.warehouse_id")
+    where_sql = "WHERE 1 = 1 " + scope_sql
+    if warehouse_id is not None:
+        where_sql += " AND z.warehouse_id = :wid"
         params["wid"] = warehouse_id
 
-    where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
-
-    total = g.db.execute(text(f"SELECT COUNT(*) FROM zones {where_sql}"), params).scalar()
+    total = g.db.execute(
+        text(f"SELECT COUNT(*) FROM zones z {where_sql}"),
+        params,
+    ).scalar()
     pages = max(1, math.ceil(total / per_page))
 
     params["limit"] = per_page
@@ -203,7 +210,7 @@ def list_zones():
         text(f"""SELECT z.zone_id, z.warehouse_id, z.zone_code, z.zone_name, z.zone_type, z.is_active,
                         COUNT(b.bin_id) AS bins_count
                  FROM zones z LEFT JOIN bins b ON b.zone_id = z.zone_id
-                 {where_sql.replace('warehouse_id', 'z.warehouse_id')}
+                 {where_sql}
                  GROUP BY z.zone_id, z.warehouse_id, z.zone_code, z.zone_name, z.zone_type, z.is_active
                  ORDER BY z.zone_id LIMIT :limit OFFSET :offset"""),
         params,
@@ -231,6 +238,9 @@ def create_zone(validated):
     ).fetchone()
     if not warehouse:
         return jsonify({"error": "Warehouse not found"}), 404
+    allowed, denial = check_warehouse_access(data["warehouse_id"])
+    if not allowed:
+        return denial
 
     dup = g.db.execute(
         text("SELECT 1 FROM zones WHERE warehouse_id = :wid AND zone_code = :code"),
