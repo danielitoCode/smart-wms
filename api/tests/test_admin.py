@@ -155,6 +155,10 @@ class TestZones:
         assert resp.status_code == 200
         assert resp.get_json()["zone_name"] == "Updated Receiving"
 
+    def test_zone_detail_get_is_not_a_supported_endpoint(self, client, auth_headers):
+        resp = client.get("/api/admin/zones/1", headers=auth_headers)
+        assert resp.status_code == 405
+
     def test_zone_list_and_create_respect_assigned_warehouses(self, client):
         conn = get_raw_connection()
         cur = conn.cursor()
