@@ -107,7 +107,7 @@
 			{#if vm.zones.length === 0}<p class="status">{i18n.t('Sin zonas.')}</p>
 			{:else}<div class="table-wrap"><table><thead><tr><th>{i18n.t('Código')}</th><th>{i18n.t('Nombre')}</th><th>{i18n.t('Tipo')}</th><th>{i18n.t('Ubicaciones asociadas')}</th><th>{i18n.t('Estado')}</th><th>{i18n.t('Acciones')}</th></tr></thead><tbody>
 				{#each vm.zones as zone (zone.id)}<tr class:selected={vm.selectedZoneId === zone.id}><td class="mono">{zone.code}</td><td>{zone.name}</td><td>{zoneTypeLabel(zone.zoneType)}</td><td>{zone.binsCount ?? 0}</td><td>{zone.active ? i18n.t('Activo') : i18n.t('Inactivo')}</td>
-					<td class="actions"><span class="associated-bins">{zone.binsCount ?? 0} {i18n.t('ubicaciones')}</span><button class="quiet" type="button" onclick={() => openEditZone(zone)}>{i18n.t('Editar')}</button><button class="danger" type="button" onclick={() => deleteZoneTarget = zone}>{i18n.t('Eliminar')}</button></td></tr>{/each}
+					<td class="actions"><button class="quiet" type="button" onclick={() => openEditZone(zone)}>{i18n.t('Editar')}</button><button class="danger" type="button" onclick={() => deleteZoneTarget = zone}>{i18n.t('Eliminar')}</button></td></tr>{/each}
 			</tbody></table></div>
 			{#if vm.selectedZoneId != null}<p class="filter-hint">{i18n.t('Filtrando por zona')} #{vm.selectedZoneId} <button class="linkish" type="button" onclick={() => vm.loadBinsForZone(null,1)}>{i18n.t('Quitar filtro')}</button></p>{/if}{/if}
 		</section>{/if}
