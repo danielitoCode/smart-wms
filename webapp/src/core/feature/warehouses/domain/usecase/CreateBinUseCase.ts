@@ -4,14 +4,14 @@ import type { WarehouseManagementRepository } from '../repository/WarehouseManag
 const TYPES: BinType[] = ['Staging', 'PickableStaging', 'Pickable'];
 
 function validateNonNegativeInteger(value: number | null | undefined, name: string): void {
-	if (value != null && (!Number.isInteger(value) || value < 0 || value > 99999999.99 || Math.abs(value * 100 - Math.round(value * 100)) > 0.000001)) {
+	if (value != null && (!Number.isInteger(value) || value < 0)) {
 		throw new Error(name + ' must be a non-negative integer');
 	}
 }
 
 function validateCapacity(value: number | null | undefined, name: string): void {
-	if (value != null && (!Number.isFinite(value) || value < 0)) {
-		throw new Error(name + ' must be a non-negative number');
+	if (value != null && (!Number.isFinite(value) || value < 0 || value > 99999999.99 || Math.abs(value * 100 - Math.round(value * 100)) > 0.000001)) {
+		throw new Error(name + ' must be a non-negative number with at most two decimal places');
 	}
 }
 
