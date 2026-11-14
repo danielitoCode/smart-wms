@@ -483,6 +483,27 @@ class TestBins:
         response = client.delete("/api/admin/bins/999999", headers=auth_headers)
         assert response.status_code == 404
 
+    def test_delete_bin_enforces_preferred_bin_reference_restriction(self, client, auth_headers):
+        created = client.post("/api/admin/bins", json={
+            "zone_id": 2, "warehouse_id": 1, "bin_code": "PREFERRED-REF",
+            "bin_barcode": "PREFERRED-REF", "bin_type": "Pickable"
+        }, headers=auth_headers)
+        assert created.status_code == 201
+        bin_id = created.get_json()["bin_id"]
+
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO preferred_bins (item_id, bin_id, priority) VALUES (1, %s, "
+            "(SELECT COALESCE(MAX(priority), 0) + 1 FROM preferred_bins WHERE item_id = 1))",
+            (bin_id,),
+        )
+        cur.close()
+
+        deleted = client.delete(f"/api/admin/bins/{bin_id}", headers=auth_headers)
+        assert deleted.status_code == 409
+        assert "preferred-bin mapping" in deleted.get_json()["error"]
+
     def test_delete_empty_bin_succeeds(self, client, auth_headers):
         created = client.post("/api/admin/bins", json={
             "zone_id": 2, "warehouse_id": 1, "bin_code": "DELETE-EMPTY",
