@@ -84,6 +84,22 @@ class TestAdminPriorityResequence:
         assert resp.status_code == 200
         assert _rows_for_item(1) == [(4, 1), (3, 2)]
 
+    def test_put_rejects_relation_whose_bin_became_inactive(self, client, auth_headers):
+        assert _post(client, auth_headers, 4, 1).status_code in (200, 201)
+        relation_id = _pbid(1, 4)
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute("UPDATE bins SET is_active = FALSE WHERE bin_id = 4")
+        cur.close()
+
+        response = client.put(
+            f"/api/admin/preferred-bins/{relation_id}",
+            json={"priority": 1},
+            headers=auth_headers,
+        )
+        assert response.status_code == 409
+        assert "active Pickable" in response.get_json()["error"]
+
     def test_put_missing_returns_404(self, client, auth_headers):
         resp = client.put(
             "/api/admin/preferred-bins/999999",

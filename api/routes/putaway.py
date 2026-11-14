@@ -145,6 +145,7 @@ def staging_summary(warehouse_id):
         ),
         {
             "warehouse_id": warehouse_id,
+            "bin_pickable": BIN_PICKABLE,
             "bin_staging": BIN_STAGING,
             "bin_pickable_staging": BIN_PICKABLE_STAGING,
         },
@@ -164,12 +165,16 @@ def staging_summary(warehouse_id):
                         JOIN bins pbb ON pbb.bin_id = pb.bin_id
                         WHERE pb.item_id = inv.item_id
                           AND pbb.warehouse_id = :warehouse_id
+                          AND pbb.bin_type = :bin_pickable
+                          AND pbb.is_active IS TRUE
                         ORDER BY pb.priority ASC
                         LIMIT 1),
                        (SELECT db.bin_code
                         FROM bins db
                         WHERE db.bin_id = i.default_bin_id
-                          AND db.warehouse_id = :warehouse_id)
+                          AND db.warehouse_id = :warehouse_id
+                          AND db.bin_type = :bin_pickable
+                          AND db.is_active IS TRUE)
                    ) AS suggested_bin
               FROM bins b
               JOIN inventory inv ON inv.bin_id = b.bin_id
@@ -459,7 +464,7 @@ def update_preferred(validated):
         return jsonify({"error": "Item not found"}), 404
 
     bin_row = g.db.execute(
-        text("SELECT bin_id, bin_code, bin_type, warehouse_id FROM bins WHERE bin_id = :bin_id"),
+        text("SELECT bin_id, bin_code, bin_type, warehouse_id, is_active FROM bins WHERE bin_id = :bin_id"),
         {"bin_id": bin_id},
     ).fetchone()
     if not bin_row:
@@ -473,14 +478,9 @@ def update_preferred(validated):
     # receiving. Reject at the write so the pollution never lands -- and
     # so items.default_bin_id below cannot be pointed at a staging bin
     # either.
-    if bin_row.bin_type != BIN_PICKABLE:
+    if bin_row.bin_type != BIN_PICKABLE or not bin_row.is_active:
         return jsonify({
-            "error": (
-                f"Bin {bin_row.bin_code} is a {bin_row.bin_type} bin; "
-                "preferred bins must be Pickable. Staging and "
-                "PickableStaging bins hold transient receiving stock and "
-                "cannot be an item's home pick location."
-            )
+            "error": "Preferred bins must reference an active Pickable bin"
         }), 400
 
     # V-028: a preferred bin write updates global state (items.default_bin_id

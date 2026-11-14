@@ -182,6 +182,29 @@ class TestStagingSummary:
         assert filled[0]["total_qty"] == 10
         assert "TST-001" in [it["sku"] for it in filled[0]["items"]]
 
+    def test_staging_summary_ignores_legacy_staging_preferred_bin(self, client, auth_headers):
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute("INSERT INTO preferred_bins (item_id, bin_id, priority) VALUES (1, 1, 1)")
+        cur.close()
+        _receive_to_staging(client, auth_headers, item_id=1, quantity=10, bin_id=1)
+
+        response = client.get("/api/putaway/staging-summary/1", headers=auth_headers)
+        item = next(row for bin_row in response.get_json()["bins"] for row in bin_row["items"])
+        assert item["suggested_bin"] == "A-01-01"
+
+    def test_staging_summary_ignores_inactive_preferred_bin(self, client, auth_headers):
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute("UPDATE bins SET is_active = FALSE WHERE bin_id = 4")
+        cur.execute("INSERT INTO preferred_bins (item_id, bin_id, priority) VALUES (1, 4, 1)")
+        cur.close()
+        _receive_to_staging(client, auth_headers, item_id=1, quantity=10, bin_id=1)
+
+        response = client.get("/api/putaway/staging-summary/1", headers=auth_headers)
+        item = next(row for bin_row in response.get_json()["bins"] for row in bin_row["items"])
+        assert item["suggested_bin"] == "A-01-01"
+
 
 class TestBinSuggestion:
     def test_suggest_returns_default_bin(self, client, auth_headers):

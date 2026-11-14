@@ -79,6 +79,7 @@ def _plan_coverage(db, so_lines_by_item, warehouse_id):
                   AND inv.warehouse_id = :wh
                   AND (inv.quantity_on_hand - inv.quantity_allocated) > 0
                   AND b.bin_type IN (:bin_pickable, :bin_pickable_staging)
+                  AND b.is_active IS TRUE
                 ORDER BY
                   CASE WHEN pb.priority IS NULL THEN 1 ELSE 0 END ASC,
                   pb.priority ASC,
@@ -480,6 +481,7 @@ def create_pick_batch(db, so_identifiers, warehouse_id, username, exclude_so_ids
                       AND inv.warehouse_id = :wh
                       AND (inv.quantity_on_hand - inv.quantity_allocated) > 0
                       AND b.bin_type IN (:bin_pickable, :bin_pickable_staging)
+                      AND b.is_active IS TRUE
                     ORDER BY
                       CASE WHEN pb.priority IS NULL THEN 1 ELSE 0 END ASC,
                       pb.priority ASC,

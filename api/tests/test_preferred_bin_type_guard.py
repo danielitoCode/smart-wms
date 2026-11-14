@@ -59,6 +59,20 @@ class TestPutawayUpdatePreferredGuard:
             "SELECT 1 FROM preferred_bins WHERE item_id = 1 AND bin_id = 5"
         ) is None
 
+    def test_rejects_inactive_pickable_bin(self, client, auth_headers):
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute("UPDATE bins SET is_active = FALSE WHERE bin_id = 4")
+        cur.close()
+        resp = client.post(
+            "/api/putaway/update-preferred",
+            json={"item_id": 1, "bin_id": 4},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 400
+        assert "active Pickable" in resp.get_json()["error"]
+        assert _query_one("SELECT 1 FROM preferred_bins WHERE item_id = 1 AND bin_id = 4") is None
+
     def test_accepts_pickable_bin(self, client, auth_headers):
         resp = client.post(
             "/api/putaway/update-preferred",
@@ -106,6 +120,20 @@ class TestAdminCreatePreferredBinGuard:
         assert _query_one(
             "SELECT 1 FROM preferred_bins WHERE item_id = 1 AND bin_id = 3"
         ) is not None
+
+    def test_rejects_inactive_pickable_bin(self, client, auth_headers):
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute("UPDATE bins SET is_active = FALSE WHERE bin_id = 4")
+        cur.close()
+        resp = client.post(
+            "/api/admin/preferred-bins",
+            json={"item_id": 1, "bin_id": 4, "priority": 1},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 400
+        assert "active Pickable" in resp.get_json()["error"]
+        assert _query_one("SELECT 1 FROM preferred_bins WHERE item_id = 1 AND bin_id = 4") is None
 
     def test_missing_bin_is_404(self, client, auth_headers):
         resp = client.post(

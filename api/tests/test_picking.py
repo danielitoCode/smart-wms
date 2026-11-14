@@ -202,6 +202,15 @@ class TestPreferredBinPickingAllocation:
             (3, 3),
         ]
 
+    def test_inactive_preferred_bin_is_not_allocated(self, client, auth_headers):
+        _set_item1_inventory(3, 50)
+        _set_item1_inventory(4, 50)
+        _set_preferred_bins((4, 1), (3, 2))
+        _exec("UPDATE bins SET is_active = FALSE WHERE bin_id = 4")
+        _create_single_item_so("SO-PREFERRED-INACTIVE", quantity=5)
+
+        assert _created_task_allocations(client, auth_headers, "SO-PREFERRED-INACTIVE") == [(3, 5)]
+
     def test_invalid_pickable_staging_relation_does_not_override_valid_preferred_bin(self, client, auth_headers):
         # Legacy rows can exist despite the write guard. A PickableStaging
         # bin remains a fallback pick source, but must not gain preferred
