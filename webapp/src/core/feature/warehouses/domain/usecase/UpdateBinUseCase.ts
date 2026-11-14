@@ -27,7 +27,7 @@ export class UpdateBinUseCase {
 			update.binType = input.binType;
 		}
 		if (input.aisle !== undefined) {
-			if (input.aisle !== null && input.aisle.length > 10) throw new Error('aisle cannot exceed 32 characters');
+			if (input.aisle !== null && input.aisle.length > 10) throw new Error('aisle cannot exceed 10 characters');
 			update.aisle = input.aisle?.trim() || null;
 		}
 		for (const [value, name] of [
