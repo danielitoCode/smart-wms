@@ -45,7 +45,7 @@
 				required
 			/>
 		</label>
-		<button type="submit" class:accent={!state.detail || state.detail.status === 'COMPLETED'} class:quiet={!!state.detail && state.detail.status !== 'COMPLETED'} disabled={state.busy || !state.binIdsInput.trim()}>
+		<button type="submit" class:accent={!state.detail || state.detail.status === 'COMPLETED'} class:quiet={!!state.detail && state.detail.status === 'PENDING' || state.detail.status === 'IN_PROGRESS'} disabled={state.busy || !state.binIdsInput.trim()}>
 			{i18n.t("Crear conteos")}
 		</button>
 	</form>
@@ -68,7 +68,7 @@
 						onclick={() => state.loadDetail(c.countId)}
 						disabled={state.loading || state.busy}
 					>
-						{i18n.t('Conteo')} #{c.countId} · {i18n.t('ubicación')} {c.binCode} · {c.status} · {c.lines} {i18n.t('líneas')}
+						{i18n.t('Conteo')} #{c.countId} · {i18n.t('ubicación')} {c.binCode} · {c.status} · {c.lineCount} {i18n.t('líneas')}
 					</button>
 				</li>
 			{/each}
@@ -95,8 +95,8 @@
 						<tbody>
 							{#each state.detail.lines as line (line.countLineId)}
 								<tr>
-									<td>{line.sku ?? line.itemId}</td>
-									<td>{line.expectedQuantity ?? '—'}</td>
+									<td>{line.sku} · {line.itemName}</td>
+									<td>{state.detail.showExpected ? line.expectedQuantity : '—'}</td>
 									<td>
 										<input
 											type="number"
@@ -113,7 +113,7 @@
 					</table>
 				</div>
 				{#if state.detail.status !== 'COMPLETED'}
-					<button type="submit" class="accent" disabled={state.busy}>{i18n.t('Enviar conteo')}</button>
+					<button type="submit" class="accent" disabled={state.busy || state.detail.lines.length === 0}>{i18n.t('Enviar conteo')}</button>
 				{/if}
 			</form>
 		</section>

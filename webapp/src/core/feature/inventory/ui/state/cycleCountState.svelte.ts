@@ -4,6 +4,7 @@ import type {
 	CycleCountSubmitResult,
 	CycleCountSummary
 } from '../../domain/entity/CycleCount';
+import { canSubmitCycleCount } from '../../domain/entity/CycleCount';
 import { authSession } from '../../../../infrastructure/auth/AuthSession';
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 
@@ -17,7 +18,7 @@ export function createCycleCountState() {
 	let created = $state<CycleCountSummary[]>([]);
 	let selectedCountId = $state<number | null>(null);
 	let detail = $state<CycleCountDetail | null>(null);
-	/** counted quantities keyed by countLineId */
+	/** Counted quantities keyed by snapshot countLineId. */
 	let countsByLine = $state<Record<number, number>>({});
 	let submitResult = $state<CycleCountSubmitResult | null>(null);
 
@@ -32,15 +33,17 @@ export function createCycleCountState() {
 			error = 'warehouseId debe ser un entero positivo';
 			return false;
 		}
-		const binIds = binIdsInput
-			.split(/[\s,;]+/)
-			.map((s) => s.trim())
-			.filter(Boolean)
-			.map((s) => Number(s))
-			.filter((n) => Number.isInteger(n) && n > 0);
-
-		if (binIds.length === 0) {
-			error = 'Indica al menos un bin_id válido';
+		const rawBinIds = binIdsInput
+			.split(/[\\s,;]+/)
+			.map((value) => value.trim())
+			.filter(Boolean);
+		const binIds = rawBinIds.map(Number);
+		if (binIds.length === 0 || binIds.some((id) => !Number.isInteger(id) || id <= 0)) {
+			error = 'Indica uno o más bin_id enteros positivos';
+			return false;
+		}
+		if (new Set(binIds).size !== binIds.length) {
+			error = 'No repitas identificadores de ubicación';
 			return false;
 		}
 
@@ -51,9 +54,7 @@ export function createCycleCountState() {
 		try {
 			created = await deps.createCycleCount.execute(warehouseId, binIds);
 			info = `Creados ${created.length} conteo(s)`;
-			if (created[0]) {
-				await loadDetail(created[0].countId);
-			}
+			if (created[0]) await loadDetail(created[0].countId);
 			return true;
 		} catch (err) {
 			error = toUserMessage(err, 'No se pudo crear el cycle count');
@@ -64,7 +65,7 @@ export function createCycleCountState() {
 	}
 
 	async function loadDetail(countId: number) {
-		if (loading) return false;
+		if (loading || busy) return false;
 		if (!Number.isInteger(countId) || countId <= 0) {
 			error = 'countId inválido';
 			return false;
@@ -75,10 +76,9 @@ export function createCycleCountState() {
 		submitResult = null;
 		try {
 			detail = await deps.getCycleCount.execute(countId);
+			// Blind-count behavior: do not seed counted values from expected stock.
 			const next: Record<number, number> = {};
-			for (const line of detail.lines) {
-				next[line.countLineId] = line.countedQuantity ?? line.expectedQuantity ?? 0;
-			}
+			for (const line of detail.lines) next[line.countLineId] = line.countedQuantity ?? 0;
 			countsByLine = next;
 			return true;
 		} catch (err) {
@@ -92,24 +92,23 @@ export function createCycleCountState() {
 
 	function setCounted(countLineId: number, value: number) {
 		const n = Number.isFinite(value) ? Math.trunc(value) : 0;
-		countsByLine = { ...countsByLine, [countLineId]: n < 0 ? 0 : n };
+		countsByLine = { ...countsByLine, [countLineId]: Math.min(1_000_000, Math.max(0, n)) };
 	}
 
 	async function submit() {
 		if (!detail || busy || loading) return false;
-		if (detail.status === 'COMPLETED') {
-			error = 'Este conteo ya está completado';
+		if (!canSubmitCycleCount(detail.status)) {
+			error = `El conteo está en estado ${detail.status} y no admite envío`;
 			return false;
 		}
 		if (detail.lines.length === 0) {
-			error = 'El conteo no tiene líneas';
+			error = 'El conteo no tiene líneas; añade un producto inesperado antes de enviarlo';
 			return false;
 		}
-
 		for (const line of detail.lines) {
-			const q = countsByLine[line.countLineId];
-			if (!Number.isInteger(q) || q < 0) {
-				error = `Cantidad inválida en línea ${line.sku ?? line.countLineId}`;
+			const quantity = countsByLine[line.countLineId];
+			if (!Number.isInteger(quantity) || quantity < 0 || quantity > 1_000_000) {
+				error = `Cantidad inválida en línea ${line.sku || line.countLineId}`;
 				return false;
 			}
 		}
@@ -120,66 +119,37 @@ export function createCycleCountState() {
 		submitResult = null;
 		const countId = detail.countId;
 		try {
-			const lines = detail.lines.map((l) => ({
-				countLineId: l.countLineId,
-				countedQuantity: countsByLine[l.countLineId] ?? 0
+			const lines = detail.lines.map((line) => ({
+				countLineId: line.countLineId,
+				countedQuantity: countsByLine[line.countLineId] ?? 0
 			}));
 			submitResult = await deps.submitCycleCount.execute(countId, lines);
 			info = `Conteo ${submitResult.status} · variaciones ${submitResult.linesWithVariance}`;
-			try {
-				await loadDetail(countId);
-			} catch {
-				/* keep submit result even if reload fails */
-			}
+			// Refresh after releasing the busy flag; the use case itself verifies persisted status.
 			return true;
 		} catch (err) {
 			error = toUserMessage(err, 'No se pudo enviar el conteo');
 			return false;
 		} finally {
 			busy = false;
+			if (submitResult) await loadDetail(countId);
 		}
 	}
 
 	return {
-		get warehouseId() {
-			return warehouseId;
-		},
-		get binIdsInput() {
-			return binIdsInput;
-		},
-		get created() {
-			return created;
-		},
-		get selectedCountId() {
-			return selectedCountId;
-		},
-		get detail() {
-			return detail;
-		},
-		get countsByLine() {
-			return countsByLine;
-		},
-		get submitResult() {
-			return submitResult;
-		},
-		get loading() {
-			return loading;
-		},
-		get busy() {
-			return busy;
-		},
-		get error() {
-			return error;
-		},
-		get info() {
-			return info;
-		},
-		setWarehouseId: (v: number) => {
-			warehouseId = Number.isFinite(v) ? Math.trunc(v) : 1;
-		},
-		setBinIdsInput: (v: string) => {
-			binIdsInput = v;
-		},
+		get warehouseId() { return warehouseId; },
+		get binIdsInput() { return binIdsInput; },
+		get created() { return created; },
+		get selectedCountId() { return selectedCountId; },
+		get detail() { return detail; },
+		get countsByLine() { return countsByLine; },
+		get submitResult() { return submitResult; },
+		get loading() { return loading; },
+		get busy() { return busy; },
+		get error() { return error; },
+		get info() { return info; },
+		setWarehouseId: (value: number) => { warehouseId = Number.isFinite(value) ? Math.trunc(value) : 1; },
+		setBinIdsInput: (value: string) => { binIdsInput = value; },
 		setCounted,
 		create,
 		loadDetail,
