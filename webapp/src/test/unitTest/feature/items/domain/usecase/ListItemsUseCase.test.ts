@@ -14,7 +14,7 @@ describe('ListItemsUseCase', () => {
 			category: undefined,
 			page: 1,
 			perPage: 50
-		});
+		}, undefined);
 		expect(() => uc.execute({ page: 0 })).toThrow(/page/i);
 	});
 });
