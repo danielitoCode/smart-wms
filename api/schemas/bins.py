@@ -12,13 +12,15 @@ class CreateBinRequest(BaseModel):
     warehouse_id: int = Field(..., gt=0)
     bin_code: str = Field(..., min_length=1, max_length=64)
     bin_barcode: str = Field(..., min_length=1, max_length=128)
-    bin_type: str = Field(..., min_length=1, max_length=32)
+    bin_type: str = Field(..., min_length=1, max_length=10)
     aisle: Optional[str] = Field(None, max_length=32)
     row_num: Optional[int] = Field(None, ge=0)
     level_num: Optional[int] = Field(None, ge=0)
     position_num: Optional[int] = Field(None, ge=0)
     pick_sequence: int = Field(0, ge=0)
     putaway_sequence: int = Field(0, ge=0)
+    max_weight_lbs: Optional[float] = Field(None, ge=0)
+    max_volume_cuft: Optional[float] = Field(None, ge=0)
 
     @field_validator("bin_type")
     @classmethod
@@ -38,6 +40,8 @@ class UpdateBinRequest(BaseModel):
     position_num: Optional[int] = Field(None, ge=0)
     pick_sequence: Optional[int] = Field(None, ge=0)
     putaway_sequence: Optional[int] = Field(None, ge=0)
+    max_weight_lbs: Optional[float] = Field(None, ge=0)
+    max_volume_cuft: Optional[float] = Field(None, ge=0)
     is_active: Optional[bool] = None
     zone_id: Optional[int] = Field(None, gt=0)
 
