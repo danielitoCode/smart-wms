@@ -1,24 +1,17 @@
 /**
- * Tooltip elevado estilo “bubble rise” (Abellis).
- * Aparición completa ≤ 1s (más rápido que el original 2s/5s).
+ * Tooltip Abellis — bubble con position:fixed (action fixedTooltip)
+ * para salir por encima de sidebar overflow y contenido.
+ * Aparición ≤ 1s.
  */
 
 .ui-tip {
 	position: relative;
-	z-index: 1;
-}
-
-.ui-tip:hover,
-.ui-tip:focus-within {
-	z-index: 10040;
 }
 
 .ui-tip__bubble {
-	position: absolute;
-	left: calc(100% + 0.65rem);
-	top: 50%;
-	transform: translate(0, -50%) scale(0.96);
-	transform-origin: left center;
+	position: fixed;
+	left: 0;
+	top: 0;
 	min-width: 12.5rem;
 	max-width: 17rem;
 	padding: 0.7rem 0.85rem;
@@ -27,34 +20,53 @@
 	color: var(--ink);
 	border: 1px solid color-mix(in srgb, var(--line) 80%, var(--gold) 20%);
 	box-shadow:
-		0 10px 28px color-mix(in srgb, var(--navy) 18%, transparent),
-		0 0 0 1px color-mix(in srgb, var(--gold) 12%, transparent);
+		0 12px 32px color-mix(in srgb, var(--navy) 22%, transparent),
+		0 0 0 1px color-mix(in srgb, var(--gold) 14%, transparent);
 	pointer-events: none;
-	z-index: 10050;
+	z-index: 2147483000;
 	opacity: 0;
 	filter: blur(4px);
 	visibility: hidden;
 	transition:
-		opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-		transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-		filter 0.55s ease,
-		visibility 0s linear 0.55s;
+		opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+		filter 0.45s ease,
+		visibility 0s linear 0.5s;
 	font: 500 var(--fs-sm, 0.8125rem) / 1.4 var(--body, system-ui);
 }
 
 .ui-tip__bubble::before {
 	content: '';
 	position: absolute;
-	left: -0.28rem;
-	top: 50%;
 	width: 0.55rem;
 	height: 0.55rem;
-	transform: translateY(-50%) rotate(45deg);
 	background: var(--card, #fff);
+	opacity: 0;
+	transition: opacity 0.35s ease;
+	z-index: -1;
+}
+
+.ui-tip__bubble[data-placed='right']::before {
+	left: -0.28rem;
+	top: 50%;
+	transform: translateY(-50%) rotate(45deg);
 	border-left: 1px solid color-mix(in srgb, var(--line) 80%, var(--gold) 20%);
 	border-bottom: 1px solid color-mix(in srgb, var(--line) 80%, var(--gold) 20%);
-	opacity: 0;
-	transition: opacity 0.4s ease 0.05s;
+}
+
+.ui-tip__bubble[data-placed='left']::before {
+	right: -0.28rem;
+	top: 50%;
+	transform: translateY(-50%) rotate(45deg);
+	border-right: 1px solid color-mix(in srgb, var(--line) 80%, var(--gold) 20%);
+	border-top: 1px solid color-mix(in srgb, var(--line) 80%, var(--gold) 20%);
+}
+
+.ui-tip__bubble[data-placed='top']::before {
+	left: 50%;
+	bottom: -0.28rem;
+	transform: translateX(-50%) rotate(45deg);
+	border-right: 1px solid color-mix(in srgb, var(--line) 80%, var(--gold) 20%);
+	border-bottom: 1px solid color-mix(in srgb, var(--line) 80%, var(--gold) 20%);
 }
 
 .ui-tip__head {
@@ -87,11 +99,9 @@
 	opacity: 1;
 	filter: blur(0);
 	visibility: visible;
-	transform: translate(0, -50%) scale(1);
 	transition:
-		opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1),
-		transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-		filter 0.5s ease,
+		opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+		filter 0.4s ease,
 		visibility 0s linear 0s;
 }
 
@@ -101,33 +111,9 @@
 }
 
 .ui-tip--rise > .ui-tip__bubble {
-	left: 50%;
-	top: auto;
-	bottom: calc(100% + 0.55rem);
-	transform: translate(-50%, 12%) scale(0.96);
-	transform-origin: bottom center;
 	min-width: 9rem;
 	max-width: 14rem;
 	text-align: center;
-}
-
-.ui-tip--rise > .ui-tip__bubble::before {
-	left: 50%;
-	top: auto;
-	bottom: -0.28rem;
-	transform: translateX(-50%) rotate(45deg);
-	border-left: none;
-	border-bottom: 1px solid color-mix(in srgb, var(--line) 80%, var(--gold) 20%);
-	border-right: 1px solid color-mix(in srgb, var(--line) 80%, var(--gold) 20%);
-}
-
-.ui-tip--rise:hover > .ui-tip__bubble,
-.ui-tip--rise:focus-within > .ui-tip__bubble {
-	transform: translate(-50%, 0) scale(1);
-}
-
-.main-nav .ui-tip.nav-link {
-	overflow: visible;
 }
 
 @media (max-width: 900px) {
@@ -140,10 +126,6 @@
 	.ui-tip__bubble,
 	.ui-tip__bubble::before {
 		transition: none;
-		filter: none;
-	}
-	.ui-tip:hover > .ui-tip__bubble,
-	.ui-tip:focus-within > .ui-tip__bubble {
 		filter: none;
 	}
 }
