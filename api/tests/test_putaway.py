@@ -54,6 +54,30 @@ class TestPendingPutaway:
         assert row["suggested_bin_barcode"] == "A-01-01"
         assert row["suggested_bin_zone"] == "Pick Zone"
 
+    def test_pending_items_ignore_legacy_preferred_staging_bin_and_fall_back_to_default(self, client, auth_headers):
+        # API writes reject Staging, but suggestions must also be safe
+        # against legacy rows created before that guard existed.
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute("INSERT INTO preferred_bins (item_id, bin_id, priority) VALUES (1, 1, 1)")
+        cur.close()
+        _receive_to_staging(client, auth_headers, item_id=1, quantity=10)
+
+        resp = client.get("/api/putaway/pending/1", headers=auth_headers)
+        row = next(p for p in resp.get_json()["pending_items"] if p["sku"] == "TST-001")
+        assert row["suggested_bin_id"] == 3
+        assert row["suggested_bin"] == "A-01-01"
+
+    def test_suggest_ignores_legacy_preferred_staging_bin(self, client, auth_headers):
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute("INSERT INTO preferred_bins (item_id, bin_id, priority) VALUES (1, 1, 1)")
+        cur.close()
+
+        resp = client.get("/api/putaway/suggest/1", headers=auth_headers)
+        assert resp.status_code == 200
+        assert resp.get_json()["preferred_bin"]["bin_id"] == 3
+
     def test_pending_items_prefer_preferred_bin_over_default(self, client, auth_headers):
         # priority-1 preferred_bins entry must win over items.default_bin_id.
         conn = get_raw_connection()

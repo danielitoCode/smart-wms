@@ -61,6 +61,8 @@ def pending_putaway(warehouse_id):
                 LEFT JOIN zones z ON z.zone_id = pbb.zone_id
                 WHERE pb.item_id = inv.item_id
                   AND pbb.warehouse_id = :warehouse_id
+                  AND pbb.bin_type = :bin_pickable
+                  AND pbb.is_active IS TRUE
                 ORDER BY pb.priority ASC, pb.preferred_bin_id ASC
                 LIMIT 1
             ) preferred ON TRUE
@@ -75,6 +77,7 @@ def pending_putaway(warehouse_id):
         ),
         {
             "warehouse_id": warehouse_id,
+            "bin_pickable": BIN_PICKABLE,
             "bin_staging": BIN_STAGING,
             "bin_pickable_staging": BIN_PICKABLE_STAGING,
         },
@@ -242,11 +245,13 @@ def suggest_bin(item_id):
                 JOIN bins b ON b.bin_id = pb.bin_id
                 LEFT JOIN zones z ON z.zone_id = b.zone_id
                 WHERE pb.item_id = :item_id
+                  AND b.bin_type = :bin_pickable
+                  AND b.is_active IS TRUE
                 ORDER BY pb.priority ASC
                 LIMIT 1
                 """
             ),
-            {"item_id": item_id},
+            {"item_id": item_id, "bin_pickable": BIN_PICKABLE},
         ).fetchone()
     elif allowed_wh:
         preferred = g.db.execute(
@@ -259,11 +264,13 @@ def suggest_bin(item_id):
                 LEFT JOIN zones z ON z.zone_id = b.zone_id
                 WHERE pb.item_id = :item_id
                   AND b.warehouse_id IN :warehouse_ids
+                  AND b.bin_type = :bin_pickable
+                  AND b.is_active IS TRUE
                 ORDER BY pb.priority ASC
                 LIMIT 1
                 """
             ).bindparams(bindparam("warehouse_ids", expanding=True)),
-            {"item_id": item_id, "warehouse_ids": allowed_wh},
+            {"item_id": item_id, "warehouse_ids": allowed_wh, "bin_pickable": BIN_PICKABLE},
         ).fetchone()
     else:
         preferred = None
@@ -288,9 +295,11 @@ def suggest_bin(item_id):
                     FROM bins b
                     LEFT JOIN zones z ON z.zone_id = b.zone_id
                     WHERE b.bin_id = :bin_id
+                      AND b.bin_type = :bin_pickable
+                      AND b.is_active IS TRUE
                     """
                 ),
-                {"bin_id": item.default_bin_id},
+                {"bin_id": item.default_bin_id, "bin_pickable": BIN_PICKABLE},
             ).fetchone()
         elif allowed_wh:
             default = g.db.execute(
@@ -301,9 +310,11 @@ def suggest_bin(item_id):
                     LEFT JOIN zones z ON z.zone_id = b.zone_id
                     WHERE b.bin_id = :bin_id
                       AND b.warehouse_id IN :warehouse_ids
+                      AND b.bin_type = :bin_pickable
+                      AND b.is_active IS TRUE
                     """
                 ).bindparams(bindparam("warehouse_ids", expanding=True)),
-                {"bin_id": item.default_bin_id, "warehouse_ids": allowed_wh},
+                {"bin_id": item.default_bin_id, "warehouse_ids": allowed_wh, "bin_pickable": BIN_PICKABLE},
             ).fetchone()
         else:
             default = None
