@@ -16,30 +16,39 @@ Seguimiento de cierre por fase. Un feature **no** se da por terminado solo porqu
 |---|---|---|
 | Login / me / refresh / logout / change-password | Hecho | `AuthRemoteDataSource`, use cases |
 | HttpOnly + CSRF en cliente | Hecho | `ApiClient` |
-| Sesión inválida vs red vs inactivo | Hecho | `EnsureAuthenticatedUseCase` (401→refresh→/me; inactive) |
-| Splash + guard + mustChangePassword | Hecho | `SplashScreen`, `authGuardState`, layout |
-| Tests unitarios use cases | Hecho | `src/test/unitTest/feature/auth/domain/usecase/*` |
-| Tests integración HTTP auth | Hecho | `src/test/integration/AuthHttpIntegration.test.ts` |
-| Paridad visual 1:1 con React | No requerida | Flujo funcional cerrado; UI Abellis propia |
+| Sesión inválida vs red vs inactivo | Hecho | `EnsureAuthenticatedUseCase` |
+| Splash + guard + mustChangePassword | Hecho | UI auth + layout |
+| Tests unitarios + HTTP integration auth | Hecho | `src/test/.../auth` |
 
-**Cierre funcional F0.1:** sí (flujo). Restan regresiones E2E en entorno Docker real.
+**Cierre funcional F0.1:** sí (flujo).
 
 ### F0.2 Authorization / Permisos
 
 | Criterio | Estado | Evidencia |
 |---|---|---|
 | Catálogo page_keys Flask | Hecho | `PermissionCatalog.ts` |
-| Matriz página/acción/endpoint | Hecho | `PermissionMatrix.ts` |
-| fraud ≠ sales-orders | Hecho | `requiredPageKeysForPath`, nav `pageKey: 'fraud'` |
-| count-approvals vs adjustments | Hecho | open=`count-approvals`; approve API=`adjustments` + `canPerform` |
-| UX gates sin sustituir Flask | Hecho | `canPerform` / `canAccessPages` |
-| Revalidate `/me` on navigate | Hecho | `authGuard.revalidatePermissions` + layout `$effect` |
-| canPerform sales-orders | Hecho | `salesOrdersState` mutate + `so-full-edit` |
-| canPerform count-approvals approve | Hecho | `cycleCountApprovalsState.canApprove` |
-| Tests policy | Hecho | `AccessPolicy.test.ts` |
-| Tests HTTP 403 reales | Pendiente | Requiere backend en CI |
+| fraud / count-approvals alineados | Hecho | AccessPolicy + nav |
+| canPerform SO / approvals | Parcial | sales-orders + cycle-count-approvals |
+| Revalidate `/me` on navigate | Hecho | `authGuard.revalidatePermissions` |
 
-**Cierre F0.2:** parcial-alto. Falta batería HTTP 403 en CI y cableado `canPerform` en resto de features mutadoras.
+**Cierre F0.2:** parcial-alto.
+
+### F0.3 Warehouse Context / Contexto de almacén
+
+| Criterio | Estado | Evidencia |
+|---|---|---|
+| Almacén activo centralizado | Hecho | `warehouseSelectionState` + layout context |
+| Origen `warehouse_ids` de `/me` | Hecho | `load` / `syncFromUser` |
+| Validar selección ⊆ warehouse_ids (non-ADMIN) | Hecho | `WarehouseContext.authorizedWarehouseIds` |
+| Descartar ID persistido inválido (P-11) | Hecho | `resolveActiveWarehouseId` |
+| Invalidar + cancelar al cambiar almacén | Hecho | `WarehouseRequestScope.notifyWarehouseChanged` |
+| Respuestas tardías no pisan almacén actual | Hecho | `beginScopedRequest().isCurrent()` |
+| No confiar solo en UI id | Hecho | `requireWarehouseId` + `assertWarehouseAuthorized` |
+| Tests P-06..P-11 cliente | Hecho | `WarehouseContext.test.ts` |
+| Tests scope abort | Hecho | `WarehouseRequestScope.test.ts` |
+| P-01..P-16 HTTP reales en CI | Pendiente | Requiere Flask en pipeline |
+
+**Cierre F0.3:** parcial-alto en cliente. Flask sigue siendo frontera de scope (P-07/P-08 path vs body). Features operativas deben usar `beginScopedRequest` + `requireWarehouseId` al leer/mutar.
 
 ## Fases 1–6
 
@@ -47,13 +56,12 @@ Seguimiento de cierre por fase. Un feature **no** se da por terminado solo porqu
 |---|---|---|
 | 1 | Datos maestros | En curso / parcial |
 | 2 | Inventario y compras | Parcial |
-| 3 | Ventas y movimientos | Parcial (sales-orders avanzado) |
+| 3 | Ventas y movimientos | Parcial |
 | 4 | Administración | Parcial |
 | 5 | Integraciones | Parcial |
 | 6 | Cierre transversal | Pendiente |
 
 ## Notas de autoridad
 
-- Flask recarga grants desde DB en cada request autenticado; el JWT no es fuente de permisos actuales.
-- El cliente solo mejora UX (ocultar nav/botones). Un 403 de Flask siempre gana.
-- Tras revocación de page_key, la navegación interna llama `revalidatePermissions` para actualizar snapshot sin logout manual.
+- Flask recarga grants y warehouse_ids desde DB en cada request.
+- Cliente solo mejora UX y cancela trabajo obsoleto. Un 403 Flask siempre gana.
