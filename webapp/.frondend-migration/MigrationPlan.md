@@ -309,9 +309,11 @@ Dependencias: F1.1 no introduce una relación de proveedor-producto en el contra
 - [x] Domain: entidad, campos de contacto/direcciones, estado nullable y UUID canónico.
 - [x] Application: List (filtros/paginación), Detail, Create, Update y Delete.
 - [x] Data: GET/POST `/api/admin/vendors`; GET/PUT/DELETE `/api/admin/vendors/{canonical_id}`; mapeo explícito `canonical_id` y `external_id`.
-- [x] UI: tabla, búsqueda, Active/Inactive/All, paginación, formulario completo, detalle y confirmaciones de desactivación/eliminación.
-- [x] Pruebas: filtros/paginación, IDs canónicos, duplicados de nombre conservados como registros distintos, errores 403/404/409/422, estado y permisos `vendors`.
+- [x] UI: tabla, búsqueda explícita, filtros Active/Inactive/All, paginación con recuperación al reducirse el total, formulario completo, detalle y confirmaciones de desactivación/eliminación.
+- [x] Pruebas: filtros/paginación, IDs canónicos, nombres repetidos conservados como registros distintos, errores 403/404/409/422, estado, concurrencia de cargas y permiso `vendors`.
 - [ ] Regresión final: ejecutar Webapp CI sobre el commit candidato y corregir todos los fallos antes de cerrar F1.2.
+
+**Implementación:** estado y pantalla reestructurados en commits `2f4408d`, `db715fa`, `557ca3c` y `2ea1057`; pruebas de datasource, use cases, estado y UI en `4168cf1`, `66c4cda`, `d06b752`, `5f99711`, `9058c9a`, `65d4802` y `16a64e7`.
 
 **Notas contractuales:** Flask filtra con `active=true|false`; omitir `active` significa All. La desactivación es `PUT is_active=false`; DELETE es eliminación física y devuelve `{deleted: true}`. `vendor_name` no tiene restricción única en el esquema actual, por lo que nombres repetidos son válidos y la UI los identifica por `canonical_id`. La ruta Flask protege GET/POST/PUT/DELETE con `require_admin_or_page_permission("vendors")`; el frontend replica el gate de página sin sustituir la autorización del servidor.
 
