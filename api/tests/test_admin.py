@@ -167,9 +167,10 @@ class TestZones:
         )
         assert resp.status_code == 400
         assert "Duplicate zone_code" in resp.get_json()["error"]
+        assert _query_val("SELECT zone_code FROM zones WHERE zone_id = 2") != "RCV"
 
     def test_zone_pagination_rejects_non_positive_values(self, client, auth_headers):
-        for query in ("page=0", "page=-1", "per_page=0", "per_page=1001"):
+        for query in ("page=0", "page=-1", "page=invalid", "per_page=0", "per_page=1001", "per_page=invalid", "warehouse_id=invalid"):
             response = client.get(f"/api/admin/zones?warehouse_id=1&{query}", headers=auth_headers)
             assert response.status_code == 400, query
 
