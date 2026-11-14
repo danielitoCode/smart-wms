@@ -72,13 +72,12 @@ export function createWarehouseSelectionState() {
 		authorityRole = user?.role ?? 'USER';
 		assignedIds = [...(user?.warehouseIds ?? [])];
 		const canBrowseAll = user?.role === 'ADMIN' || (user?.allowedPages ?? []).includes('warehouses');
-		canSelect = canSelectWarehouseContext(authority);
-
 		const authority = {
 			role: authorityRole,
 			assignedWarehouseIds: assignedIds,
 			allowedPages: user?.allowedPages ?? []
 		};
+		canSelect = canSelectWarehouseContext(authority);
 
 		try {
 			let catalog: Warehouse[] = [];
@@ -140,12 +139,12 @@ export function createWarehouseSelectionState() {
 		authorityRole = user.role;
 		assignedIds = [...(user.warehouseIds ?? [])];
 		const canBrowseAll = user.role === 'ADMIN' || (user.allowedPages ?? []).includes('warehouses');
-		canSelect = canSelectWarehouseContext(authority);
 		const authority = {
 			role: authorityRole,
 			assignedWarehouseIds: assignedIds,
 			allowedPages: user.allowedPages ?? []
 		};
+		canSelect = canSelectWarehouseContext(authority);
 		const catalogIds = warehouses.map((w) => w.id);
 		selectableIds = authorizedWarehouseIds(authority, catalogIds);
 		if (warehouseId != null && !selectableIds.includes(warehouseId)) {
