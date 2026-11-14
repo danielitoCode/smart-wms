@@ -70,8 +70,8 @@ export function createWarehouseSelectionState() {
 		const savedId = readSavedId();
 		authorityRole = user?.role ?? 'USER';
 		assignedIds = [...(user?.warehouseIds ?? [])];
-		canSelect =
-			user?.role === 'ADMIN' || (user?.allowedPages ?? []).includes('warehouses');
+		const canBrowseAll = user?.role === 'ADMIN' || (user?.allowedPages ?? []).includes('warehouses');
+		canSelect = canBrowseAll || (user?.allowedPages ?? []).includes('zones') || (user?.allowedPages ?? []).includes('bins');
 
 		const authority = {
 			role: authorityRole,
@@ -81,7 +81,7 @@ export function createWarehouseSelectionState() {
 
 		try {
 			let catalog: Warehouse[] = [];
-			if (user?.role === 'ADMIN' || canSelect) {
+			if (canBrowseAll) {
 				try {
 					catalog = await deps.listAdminWarehouses.execute();
 				} catch {
@@ -138,7 +138,8 @@ export function createWarehouseSelectionState() {
 		}
 		authorityRole = user.role;
 		assignedIds = [...(user.warehouseIds ?? [])];
-		canSelect = user.role === 'ADMIN' || (user.allowedPages ?? []).includes('warehouses');
+		const canBrowseAll = user.role === 'ADMIN' || (user.allowedPages ?? []).includes('warehouses');
+		canSelect = canBrowseAll || (user.allowedPages ?? []).includes('zones') || (user.allowedPages ?? []).includes('bins');
 		const authority = {
 			role: authorityRole,
 			assignedWarehouseIds: assignedIds,
