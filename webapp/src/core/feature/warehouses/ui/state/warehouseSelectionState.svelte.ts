@@ -138,7 +138,6 @@ export function createWarehouseSelectionState() {
 		}
 		authorityRole = user.role;
 		assignedIds = [...(user.warehouseIds ?? [])];
-		const canBrowseAll = user.role === 'ADMIN' || (user.allowedPages ?? []).includes('warehouses');
 		const authority = {
 			role: authorityRole,
 			assignedWarehouseIds: assignedIds,
