@@ -125,6 +125,18 @@ describe('WarehouseDetailState zone and bins interactions', () => {
 		expect(deps.listBins.execute).toHaveBeenLastCalledWith({ warehouseId: 1, zoneId: 11, page: 2, perPage: 50 });
 	});
 
+	it('rejects create and update when the selected zone is outside the active warehouse', async () => {
+		const state = createWarehouseDetailState(1, true);
+		await state.load();
+		const createResult = await state.createBin({ zoneId: 99, code: 'BAD', barcode: 'BAD', binType: 'Pickable' });
+		expect(createResult).toBe(false);
+		expect(deps.createBin.execute).not.toHaveBeenCalled();
+		const updateResult = await state.updateBin({ id: 3, zoneId: 99 });
+		expect(updateResult).toBe(false);
+		expect(deps.updateBin.execute).not.toHaveBeenCalled();
+		expect(state.error).toContain('does not belong');
+	});
+
 	it('keeps stock and preferred-bin deletion conflicts visible', async () => {
 		deps.deleteBin.execute.mockRejectedValueOnce(new Error('Bin cannot be deleted because inventory remains'));
 		const state = createWarehouseDetailState(1, true);

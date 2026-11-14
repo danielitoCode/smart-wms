@@ -70,6 +70,25 @@ describe('WarehouseRemoteDataSource Flask contract', () => {
 		expect(api.get).toHaveBeenCalledWith('/api/admin/bins?warehouse_id=1');
 	});
 
+	it('uses the admin bin collection and canonical bin_id detail/mutation endpoints', async () => {
+		const api = createApi();
+		const bin = { bin_id: 3, warehouse_id: 1, zone_id: 2, bin_code: 'A-01', bin_barcode: 'BC-01', bin_type: 'Pickable' };
+		vi.mocked(api.post).mockResolvedValue(bin);
+		vi.mocked(api.get).mockResolvedValue({ bin, inventory: [] });
+		vi.mocked(api.put).mockResolvedValue(bin);
+		vi.mocked(api.delete).mockResolvedValue({ message: 'Bin deleted' });
+		const source = new WarehouseRemoteDataSource(api);
+		const create = { warehouse_id: 1, zone_id: 2, bin_code: 'A-01', bin_barcode: 'BC-01', bin_type: 'Pickable' };
+		await source.createBin(create);
+		await source.getBinById(3);
+		await source.updateBin(3, { pick_sequence: 7 });
+		await source.deleteBin(3);
+		expect(api.post).toHaveBeenCalledWith('/api/admin/bins', create);
+		expect(api.get).toHaveBeenCalledWith('/api/admin/bins/3');
+		expect(api.put).toHaveBeenCalledWith('/api/admin/bins/3', { pick_sequence: 7 });
+		expect(api.delete).toHaveBeenCalledWith('/api/admin/bins/3');
+	});
+
 	it('uses only collection POST and zone-id PUT/DELETE endpoints; no detail GET is assumed', async () => {
 		const api = createApi();
 		vi.mocked(api.post).mockResolvedValue({ zone_id: 4, warehouse_id: 8, zone_code: 'PICK', zone_name: 'Picking', zone_type: 'PICKING', is_active: true });
