@@ -110,7 +110,7 @@ describe('Items HTTP integration', () => {
 		const fetchMock = vi.fn()
 			.mockResolvedValueOnce(new Response(JSON.stringify(responses[0]), { status: 200 }))
 			.mockResolvedValueOnce(new Response(JSON.stringify(responses[1]), { status: 200 }))
-			.mockResolvedValueOnce(new Response('', { status: 204 }));
+			.mockResolvedValueOnce(new Response(null, { status: 204 }));
 		vi.stubGlobal('fetch', fetchMock);
 		const source = new ItemRemoteDataSource(new ApiClient('https://wms.test'));
 
