@@ -103,6 +103,16 @@ class TestPendingPutaway:
         assert row["suggested_bin_id"] == 3
         assert row["suggested_bin_priority"] is None
 
+        # A default bin outside the requested warehouse is not a valid fallback.
+        cur = get_raw_connection().cursor()
+        cur.execute("DELETE FROM preferred_bins WHERE item_id = 1")
+        cur.execute("UPDATE items SET default_bin_id = %s WHERE item_id = 1", (other_bin_id,))
+        cur.close()
+        resp = client.get("/api/putaway/pending/1", headers=auth_headers)
+        row = next(p for p in resp.get_json()["pending_items"] if p["sku"] == "TST-001")
+        assert row["suggested_bin"] is None
+        assert row["suggested_bin_id"] is None
+
     def test_pending_items_suggested_bin_null_when_no_hint(self, client, auth_headers):
         # No preferred_bins, no default_bin_id -> suggested_bin is null
         # rather than falling through to an unrelated bin.
