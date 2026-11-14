@@ -184,7 +184,11 @@ def delete_warehouse(warehouse_id):
 @with_db
 def list_zones():
     page = request.args.get("page", 1, type=int)
-    per_page = min(request.args.get("per_page", 50, type=int), 1000)
+    per_page = request.args.get("per_page", 50, type=int)
+    if page < 1:
+        return jsonify({"error": "page must be a positive integer"}), 400
+    if per_page < 1 or per_page > 1000:
+        return jsonify({"error": "per_page must be between 1 and 1000"}), 400
 
     warehouse_id = request.args.get("warehouse_id", type=int)
     if warehouse_id is not None:
@@ -273,6 +277,16 @@ def update_zone(zone_id, validated):
     allowed, denial = check_warehouse_access(existing.warehouse_id)
     if not allowed:
         return denial
+
+    if "zone_code" in data:
+        duplicate = g.db.execute(
+            text("SELECT 1 FROM zones WHERE warehouse_id = :wid AND zone_code = :code AND zone_id <> :zid"),
+            {"wid": existing.warehouse_id, "code": data["zone_code"], "zid": zone_id},
+        ).fetchone()
+        if duplicate:
+            return jsonify({
+                "error": f"Duplicate zone_code '{data['zone_code']}' in warehouse {existing.warehouse_id}"
+            }), 400
 
     ALLOWED_FIELDS = {"zone_code", "zone_name", "zone_type", "is_active"}
     fields, params = [], {"zid": zone_id}
