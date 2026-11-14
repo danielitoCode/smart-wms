@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ItemRepositoryImpl } from '../../../../../../core/feature/items/data/repository/ItemRepositoryImpl';
-import type { ItemRemoteDataSource } from '../../../../../../core/feature/items/data/datasource/ItemRemoteDataSource';
+import { ItemRepositoryImpl } from '../../../../../core/feature/items/data/repository/ItemRepositoryImpl';
+import type { ItemRemoteDataSource } from '../../../../../core/feature/items/data/datasource/ItemRemoteDataSource';
 
 const pageResponse = {
 	items: [{ item_id: 7, sku: 'SKU-7', item_name: 'Caja', is_active: true }],
