@@ -116,6 +116,7 @@ describe('WarehouseDetailState zone and bins interactions', () => {
 	});
 
 	it('updates a bin and reloads the current filtered page', async () => {
+		deps.listBins.execute.mockResolvedValueOnce(binPage).mockResolvedValueOnce({ ...binPage, page: 2 });
 		const state = createWarehouseDetailState(1, true);
 		await state.load(11);
 		await state.loadBinsForZone(11, 2);
