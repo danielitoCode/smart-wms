@@ -3,6 +3,7 @@ import type { Warehouse } from '../../domain/entity/Warehouse';
 import type { AuthUser } from '../../../../infrastructure/auth/AuthSession';
 import {
 	assertWarehouseAuthorized,
+	canSelectWarehouseContext,
 	authorizedWarehouseIds,
 	resolveActiveWarehouseId
 } from '../../domain/context/WarehouseContext';
@@ -71,7 +72,7 @@ export function createWarehouseSelectionState() {
 		authorityRole = user?.role ?? 'USER';
 		assignedIds = [...(user?.warehouseIds ?? [])];
 		const canBrowseAll = user?.role === 'ADMIN' || (user?.allowedPages ?? []).includes('warehouses');
-		canSelect = canBrowseAll || (user?.allowedPages ?? []).includes('zones') || (user?.allowedPages ?? []).includes('bins');
+		canSelect = canSelectWarehouseContext(authority);
 
 		const authority = {
 			role: authorityRole,
@@ -139,7 +140,7 @@ export function createWarehouseSelectionState() {
 		authorityRole = user.role;
 		assignedIds = [...(user.warehouseIds ?? [])];
 		const canBrowseAll = user.role === 'ADMIN' || (user.allowedPages ?? []).includes('warehouses');
-		canSelect = canBrowseAll || (user.allowedPages ?? []).includes('zones') || (user.allowedPages ?? []).includes('bins');
+		canSelect = canSelectWarehouseContext(authority);
 		const authority = {
 			role: authorityRole,
 			assignedWarehouseIds: assignedIds,
