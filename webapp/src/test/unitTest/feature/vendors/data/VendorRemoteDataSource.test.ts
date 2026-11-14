@@ -84,6 +84,11 @@ describe('VendorRemoteDataSource HTTP contract', () => {
 		await expect(source.create({ vendor_name: 'Acme' })).rejects.toMatchObject({ status, code });
 	});
 
+	it('surfaces a missing canonical vendor as HTTP 404', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: 'Vendor not found' }), { status: 404 })));
+		const source = new VendorRemoteDataSource(new ApiClient('https://wms.test'));
+		await expect(source.getById(vendor.canonical_id)).rejects.toMatchObject({ status: 404, code: 'not_found' });
+	});
 	it('requires the Flask delete acknowledgement', async () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ deleted: false }), { status: 200 })));
 		const source = new VendorRemoteDataSource(new ApiClient('https://wms.test'));
