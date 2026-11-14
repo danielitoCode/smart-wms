@@ -7,7 +7,7 @@ import type { WarehouseManagementRepository } from '../../../../../../core/featu
 
 function createRepository(): WarehouseManagementRepository {
 	return {
-		listActive: vi.fn(), listAdmin: vi.fn(), getById: vi.fn(), listZones: vi.fn(), listBins: vi.fn(),
+		listActive: vi.fn(), listAdmin: vi.fn(), listAdminPage: vi.fn(), getById: vi.fn(), listZones: vi.fn(), listBins: vi.fn(),
 		createWarehouse: vi.fn(), updateWarehouse: vi.fn(), deleteWarehouse: vi.fn(),
 		createZone: vi.fn(), updateZone: vi.fn(), deleteZone: vi.fn(),
 		createBin: vi.fn(), updateBin: vi.fn(), deleteBin: vi.fn(), getBinById: vi.fn()
