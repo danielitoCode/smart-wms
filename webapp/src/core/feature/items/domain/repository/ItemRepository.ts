@@ -1,18 +1,25 @@
-import type { Item } from '../entity/Item';
+import type { Item, ItemDetail, ItemListPage, ItemListQuery, ItemWriteInput } from '../entity/Item';
 
 export interface ItemRepository {
-	/** GET /api/admin/items */
-	list(params?: {
-		category?: string;
-		active?: boolean;
-		q?: string;
-		page?: number;
-	}): Promise<Item[]>;
+	/** GET /api/admin/items — paginated */
+	listPage(query?: ItemListQuery): Promise<ItemListPage>;
 
-	/** GET /api/admin/items/{id} */
-	getById(id: number): Promise<Item>;
+	/** GET /api/admin/items/{id} — { item, inventory, preferred_bins } */
+	getDetail(id: number): Promise<ItemDetail>;
 
-	/** GET /api/lookup/item/search?q= */
+	/** POST /api/admin/items */
+	create(input: ItemWriteInput): Promise<Item>;
+
+	/** PUT /api/admin/items/{id} */
+	update(id: number, input: Partial<ItemWriteInput>): Promise<Item>;
+
+	/** POST /api/admin/items/{id}/archive — toggle is_active */
+	archive(id: number): Promise<{ message: string; active: boolean }>;
+
+	/** DELETE /api/admin/items/{id} */
+	delete(id: number): Promise<void>;
+
+	/** GET /api/lookup/item/search?q= — operational search */
 	search(query: string): Promise<Item[]>;
 
 	/** GET /api/lookup/item/{barcode} */

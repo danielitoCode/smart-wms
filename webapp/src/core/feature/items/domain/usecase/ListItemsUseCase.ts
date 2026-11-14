@@ -1,25 +1,22 @@
-import type { Item } from '../entity/Item';
+import type { ItemListPage, ItemListQuery } from '../entity/Item';
 import type { ItemRepository } from '../repository/ItemRepository';
-
-export type ListItemsInput = {
-	category?: string;
-	active?: boolean;
-	q?: string;
-	page?: number;
-};
 
 export class ListItemsUseCase {
 	constructor(private readonly repository: ItemRepository) {}
 
-	execute(input: ListItemsInput = {}): Promise<Item[]> {
-		if (input.page != null && (!Number.isInteger(input.page) || input.page < 1)) {
-			throw new Error('page must be an integer >= 1 when provided');
+	execute(query: ItemListQuery = {}): Promise<ItemListPage> {
+		const page = query.page ?? 1;
+		const perPage = query.perPage ?? 50;
+		if (!Number.isInteger(page) || page < 1) throw new Error('page must be an integer >= 1');
+		if (!Number.isInteger(perPage) || perPage < 1 || perPage > 1000) {
+			throw new Error('per_page must be 1..1000');
 		}
-		return this.repository.list({
-			category: input.category?.trim() || undefined,
-			active: input.active,
-			q: input.q?.trim() || undefined,
-			page: input.page
+		return this.repository.listPage({
+			q: query.q?.trim() || undefined,
+			filter: query.filter ?? 'active',
+			category: query.category?.trim() || undefined,
+			page,
+			perPage
 		});
 	}
 }
