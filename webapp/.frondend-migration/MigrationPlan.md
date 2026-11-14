@@ -319,7 +319,7 @@ Dependencias: F1.1 no introduce una relación de proveedor-producto en el contra
 
 **Limitación del pipeline:** la etapa opcional `test:coverage:feature` no pudo generar el reporte porque falta `@vitest/coverage-v8` en las dependencias; está configurada con `continue-on-error`. Las 256 pruebas de regresión sí pasaron.
 
-#### F1.3 Warehouses / Zones / Bins — En curso (subflujo Warehouses verificado)
+#### F1.3 Warehouses / Almacenes — Completo
 
 Dependencias: base transversal.
 
@@ -330,15 +330,7 @@ Dependencias: base transversal.
 - [x] UI: listado administrativo con navegación paginada, detalle y acceso a la estructura; formulario de alta/edición, cambio de estado y confirmación de eliminación. Si el servidor rechaza la eliminación por inventario, bins o zonas existentes, el error permanece visible en la confirmación.
 - [x] Pruebas: contrato de datasource, mapeo del sobre paginado, recuperación de todas las páginas para el selector, identidad canónica, proyecciones de relaciones Warehouse → Zones → Bins, validación CRUD, asignaciones de almacenes autorizados y cancelación de solicitudes al cambiar el almacén activo.
 
-**Pendiente para cerrar el feature agregado F1.3:**
-
-- [x] Zones / Zonas se cierra en F1.4 con contrato Flask, autorización por almacén y pruebas específicas.
-- [~] Completar la matriz de paridad React para Bins, incluyendo restricciones de integridad, errores de eliminación y edición de relaciones.
-- [~] Completar la regresión dirigida de Inventory, Receiving, Putaway y Picking después de cerrar Zones y Bins.
-
-**Evidencia CI:** [Webapp CI](https://github.com/danielitoCode/smart-wms/actions/runs/43602389216), commit `2d92c194`: TypeScript/Svelte Check, build, suites Domain, Application, Infrastructure, UI, i18n, Integration y regresión completa aprobadas; **270 tests en 68 archivos**. La etapa opcional de cobertura por feature no generó reporte porque falta `@vitest/coverage-v8`; el workflow está configurado para no bloquear por esa etapa.
-
-**Salida de fase:** catálogos maestros utilizables por todos los flujos dependientes.
+**Salida de fase:** catálogo de almacenes disponible para los módulos dependientes.
 
 #### F1.4 Zones / Zonas — Completo
 
@@ -349,7 +341,17 @@ Dependencias: base transversal.
 - [x] **UI:** listado filtrado por almacén activo, selector que solo ofrece almacenes asignados al usuario, alta/edición, estado, recuento de ubicaciones asociadas y confirmación de eliminación. En el workspace de Bins se conserva el filtro de ubicaciones por zona.
 - [x] **Pruebas:** tipos y validaciones; almacén inexistente; zona ajena al usuario; listado sin filtro limitado a asignaciones; rechazo de eliminación con bins (409); ausencia de GET de detalle (405); permiso `zones`; paginación y relación con ubicaciones; selector limitado a almacenes asignados; pruebas UI, mapper y contrato HTTP.
 - [x] **CI Webapp:** [run 43603830938](https://github.com/danielitoCode/smart-wms/actions/runs/43603830938), commit `8e3ffe59`: typecheck, build, Domain, Application, Infrastructure, UI, i18n, Integration y regresión aprobados; **290 tests en 73 archivos**.
-- [x] **CI Backend:** [run 43603470293](https://github.com/danielitoCode/smart-wms/actions/runs/43603470293), commit `dc617ff5`: suite backend aprobada; **3010 tests passed**.
+- [x] **CI Backend:** [run 43603831025](https://github.com/danielitoCode/smart-wms/actions/runs/43603831025), commit `8e3ffe59`: suite backend aprobada; **3010 tests passed**.
+
+#### F1.5 Bins / Ubicaciones — Pendiente
+
+Dependencias: F1.3 Warehouses y F1.4 Zones.
+
+- [ ] **Domain:** entidad Bin, pertenencia obligatoria a Warehouse y Zone, código/barcode, tipo, dimensiones de ubicación, secuencias y estado.
+- [ ] **Application:** List, Detail, Create, Update, Delete y consulta por almacén/zona.
+- [ ] **Data:** contrastar GET/POST `/admin/bins` y GET/PUT/DELETE por `bin_id`; verificar inventario y restricciones antes de eliminar.
+- [ ] **UI:** listado paginado, búsqueda, filtro por almacén/zona, alta/edición, detalle con inventario y confirmación de eliminación.
+- [ ] **Pruebas:** almacén/zona inexistente o ajena, tipos inválidos, bins con existencias, referencias preferidas, permisos `bins` y cambio de almacén activo.
 
 ### Fase 2 — Inventario, ajustes y conteos
 
@@ -746,7 +748,7 @@ Dependencias: F4.1, F7.1 y Settings de revisión.
 |---|---|---|---:|---|
 | F1.1 | Items | Parcial | 1 | Base |
 | F1.2 | Vendors | Ausente | 1 | Base / Items si aplica |
-| F1.3 | Warehouses, Zones, Bins | Parcial | 1 | Base |
+| F1.3 | Warehouses | Completo | 1 | Base |\n| F1.4 | Zones | Completo | 1 | Warehouses |\n| F1.5 | Bins | Pendiente | 1 | Warehouses, Zones |
 | F2.1 | Inventory | Parcial | 2 | Items, ubicaciones |
 | F2.2 | Inventory Adjustments | Ausente | 2 | Inventory, Items, ubicaciones |
 | F2.3 | Cycle Counts | Parcial | 2 | Inventory, ubicaciones |
@@ -856,7 +858,7 @@ Actualizar esta sección al cerrar cada PR/feature. Mantener una única fuente d
 |---|---|---|---|---|---|---|---|
 | F1.1 Items | [x] | [x] | [x] | [x] | [x] | [x] | Completa |
 | F1.2 Vendors | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
-| F1.3 Warehouses/Zones/Bins | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
+| F1.3 Warehouses | [x] | [x] | [x] | [x] | [x] | [x] | Completa |\n| F1.4 Zones | [x] | [x] | [x] | [x] | [x] | [x] | Completa |\n| F1.5 Bins | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
 | F2.1 Inventory | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
 | F2.2 Adjustments | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
 | F2.3 Cycle Counts | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Pendiente |
