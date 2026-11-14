@@ -64,12 +64,16 @@ export const WarehouseMapper = {
 		};
 	},
 	toOperationalBinSearchResult(dto: OperationalBinSearchResultDto) {
+		const binType = requiredText(dto.bin_type, 'operational bin type');
+		if (!['Staging', 'PickableStaging', 'Pickable'].includes(binType)) {
+			throw new Error('Unsupported operational bin type returned by lookup API: ' + binType);
+		}
 		return {
 			id: requiredId(dto.bin_id, 'operational bin id'),
 			warehouseId: dto.warehouse_id ?? null,
 			code: requiredText(dto.bin_code, 'operational bin code'),
 			barcode: dto.bin_barcode ?? null,
-			binType: dto.bin_type as BinType,
+			binType: binType as BinType,
 			zoneName: dto.zone_name ?? null,
 			aisle: dto.aisle ?? null,
 			rowNumber: dto.row_num ?? null,
