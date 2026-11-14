@@ -1,8 +1,6 @@
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
-import { createItemsDependencies } from '../../di/items.dependencies';
+import { createItemsDependencies, type ItemsDependencies } from '../../di/items.dependencies';
 import type { Item, ItemDetail, ItemListFilter, ItemWriteInput } from '../../domain/entity/Item';
-
-const deps = createItemsDependencies();
 
 export type ItemFormModel = {
 	sku: string;
@@ -43,7 +41,7 @@ function formToWrite(form: ItemFormModel): ItemWriteInput {
 	};
 }
 
-export function createItemsState() {
+export function createItemsState(dependencies: ItemsDependencies = createItemsDependencies()) {
 	let items = $state<Item[]>([]);
 	let total = $state(0);
 	let page = $state(1);
@@ -77,7 +75,7 @@ export function createItemsState() {
 		loading = true;
 		error = null;
 		try {
-			const result = await deps.listItems.execute(
+			const result = await dependencies.listItems.execute(
 				{
 					q: query.trim() || undefined,
 					filter,
@@ -107,7 +105,7 @@ export function createItemsState() {
 	async function openDetail(id: number) {
 		error = null;
 		try {
-			detail = await deps.getItemDetail.execute(id);
+			detail = await dependencies.getItemDetail.execute(id);
 		} catch (err) {
 			error = toUserMessage(err, 'No se pudo cargar el detalle del producto');
 			detail = null;
@@ -144,9 +142,9 @@ export function createItemsState() {
 		try {
 			const body = formToWrite(form);
 			if (editId != null) {
-				await deps.updateItem.execute(editId, body);
+				await dependencies.updateItem.execute(editId, body);
 			} else {
-				await deps.createItem.execute(body);
+				await dependencies.createItem.execute(body);
 			}
 			showForm = false;
 			editId = null;
@@ -163,7 +161,7 @@ export function createItemsState() {
 	async function toggleArchive(item: Item) {
 		error = null;
 		try {
-			await deps.archiveItem.execute(item.id);
+			await dependencies.archiveItem.execute(item.id);
 			await load(page);
 			if (detail?.item.id === item.id) await openDetail(item.id);
 		} catch (err) {
@@ -176,7 +174,7 @@ export function createItemsState() {
 		saving = true;
 		error = null;
 		try {
-			await deps.deleteItem.execute(deleteId);
+			await dependencies.deleteItem.execute(deleteId);
 			deleteId = null;
 			detail = null;
 			await load(page);
