@@ -1,5 +1,5 @@
 import type { Bin, BinDetail, BinInventoryRow, Warehouse, Zone, ZoneType, BinType } from '../../domain/entity/Warehouse';
-import type { BinDetailResponseDto, BinDto, WarehouseListItemDto, ZoneDto } from '../dto/WarehouseDto';
+import type { BinDetailResponseDto, BinDto, OperationalBinLookupDto, OperationalBinSearchResultDto, WarehouseListItemDto, ZoneDto } from '../dto/WarehouseDto';
 
 function requiredId(value: number | undefined, label: string): number {
 	if (!Number.isInteger(value) || (value as number) <= 0) throw new Error('Invalid ' + label + ' returned by warehouse API');
@@ -55,7 +55,39 @@ export const WarehouseMapper = {
 			positionNumber: dto.position_num ?? null,
 			pickSequence: dto.pick_sequence ?? 0,
 			putawaySequence: dto.putaway_sequence ?? 0,
-			active: dto.is_active ?? dto.active ?? true
+			active: dto.is_active ?? dto.active ?? true,
+			maxWeightLbs: dto.max_weight_lbs == null ? null : Number(dto.max_weight_lbs),
+			maxVolumeCuft: dto.max_volume_cuft == null ? null : Number(dto.max_volume_cuft),
+			quantityOnHand: dto.quantity_on_hand ?? 0,
+			quantityAllocated: dto.quantity_allocated ?? 0,
+			inventoryLines: dto.inventory_lines ?? 0
+		};
+	},
+	toOperationalBinSearchResult(dto: OperationalBinSearchResultDto) {
+		return {
+			id: requiredId(dto.bin_id, 'operational bin id'),
+			code: requiredText(dto.bin_code, 'operational bin code'),
+			barcode: dto.bin_barcode ?? null,
+			binType: dto.bin_type as BinType,
+			zoneName: dto.zone_name ?? null,
+			aisle: dto.aisle ?? null,
+			rowNumber: dto.row_num ?? null,
+			levelNumber: dto.level_num ?? null
+		};
+	},
+	toOperationalBinLookup(dto: OperationalBinLookupDto) {
+		return {
+			bin: this.toOperationalBinSearchResult(dto.bin),
+			items: dto.items.map(row => ({
+				itemId: requiredId(row.item_id, 'lookup item id'),
+				sku: requiredText(row.sku, 'lookup SKU'),
+				itemName: requiredText(row.item_name, 'lookup item name'),
+				upc: row.upc ?? null,
+				quantityOnHand: row.quantity_on_hand,
+				quantityAllocated: row.quantity_allocated,
+				quantityAvailable: row.quantity_available,
+				lotNumber: row.lot_number ?? null
+			}))
 		};
 	},
 	toBinDetail(dto: BinDetailResponseDto): BinDetail {
@@ -67,6 +99,8 @@ export const WarehouseMapper = {
 			quantityOnHand: row.quantity_on_hand,
 			quantityAllocated: row.quantity_allocated
 		}));
-		return { bin: this.toBin(dto.bin), inventory };
+		const quantityOnHand = inventory.reduce((sum, row) => sum + row.quantityOnHand, 0);
+		const quantityAllocated = inventory.reduce((sum, row) => sum + row.quantityAllocated, 0);
+		return { bin: this.toBin(dto.bin), inventory, occupancy: { quantityOnHand, quantityAllocated, quantityAvailable: quantityOnHand - quantityAllocated, inventoryLines: inventory.length } };
 	}
 };
