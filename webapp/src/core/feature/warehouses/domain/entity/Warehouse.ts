@@ -4,7 +4,7 @@ export type CreateWarehouseInput = { code: string; name: string; address?: strin
 export type UpdateWarehouseInput = { id: number; code?: string; name?: string; address?: string | null; active?: boolean };
 
 export type ZoneType = 'RECEIVING' | 'STORAGE' | 'PICKING' | 'STAGING' | 'SHIPPING';
-export type Zone = { id: number; warehouseId: number; code: string; name: string; zoneType: ZoneType; active: boolean };
+export type Zone = { id: number; warehouseId: number; code: string; name: string; zoneType: ZoneType; active: boolean; binsCount?: number };
 export type CreateZoneInput = { warehouseId: number; code: string; name: string; zoneType: ZoneType };
 export type UpdateZoneInput = { id: number; code?: string; name?: string; zoneType?: ZoneType; active?: boolean };
 
