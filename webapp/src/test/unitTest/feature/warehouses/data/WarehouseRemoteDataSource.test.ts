@@ -54,6 +54,22 @@ describe('WarehouseRemoteDataSource Flask contract', () => {
 		expect(api.get).toHaveBeenNthCalledWith(2, '/api/admin/zones?warehouse_id=8&page=2&per_page=1000');
 	});
 
+	it('sends all bin catalogue filters with Flask query parameter names', async () => {
+		const api = createApi();
+		vi.mocked(api.get).mockResolvedValue({ bins: [], total: 0, page: 2, per_page: 25, pages: 0 });
+		const source = new WarehouseRemoteDataSource(api);
+		await source.listBins({ warehouseId: 1, zoneId: 4, binType: 'Pickable', q: 'A 01', page: 2, perPage: 25 });
+		expect(api.get).toHaveBeenCalledWith('/api/admin/bins?warehouse_id=1&zone_id=4&bin_type=Pickable&page=2&per_page=25&q=A+01');
+	});
+
+	it('omits unset bin catalogue filters', async () => {
+		const api = createApi();
+		vi.mocked(api.get).mockResolvedValue({ bins: [] });
+		const source = new WarehouseRemoteDataSource(api);
+		await source.listBins({ warehouseId: 1 });
+		expect(api.get).toHaveBeenCalledWith('/api/admin/bins?warehouse_id=1');
+	});
+
 	it('uses only collection POST and zone-id PUT/DELETE endpoints; no detail GET is assumed', async () => {
 		const api = createApi();
 		vi.mocked(api.post).mockResolvedValue({ zone_id: 4, warehouse_id: 8, zone_code: 'PICK', zone_name: 'Picking', zone_type: 'PICKING', is_active: true });

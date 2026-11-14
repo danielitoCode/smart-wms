@@ -84,6 +84,16 @@ describe('WarehouseDetailState zone and bins interactions', () => {
 		});
 	});
 
+	it('applies bin type filter without losing warehouse, zone or text filters', async () => {
+		const state = createWarehouseDetailState(1, true);
+		await state.load(11);
+		await state.searchBins('A-01');
+		await state.filterBinsByType('Pickable');
+		expect(deps.listBins.execute).toHaveBeenLastCalledWith({
+			warehouseId: 1, zoneId: 11, binType: 'Pickable', page: 1, perPage: 50, q: 'A-01'
+		});
+	});
+
 	it('creates a bin with the active warehouse and optional capacity', async () => {
 		const state = createWarehouseDetailState(1, true);
 		await state.load(11);
@@ -94,6 +104,24 @@ describe('WarehouseDetailState zone and bins interactions', () => {
 		expect(deps.createBin.execute).toHaveBeenCalledWith(expect.objectContaining({
 			warehouseId: 1, zoneId: 11, code: 'A-02', maxWeightLbs: 120.5, maxVolumeCuft: 18
 		}));
+	});
+
+	it('loads bin detail and exposes the inventory projection', async () => {
+		const detail = { bin: { id: 3, warehouseId: 1, zoneId: 11, code: 'A-01', binType: 'Pickable' }, inventory: [], occupancy: { quantityOnHand: 0, quantityAllocated: 0, quantityAvailable: 0, inventoryLines: 0 } };
+		deps.getBinDetail.execute.mockResolvedValueOnce(detail);
+		const state = createWarehouseDetailState(1, true);
+		await state.load();
+		expect(await state.viewBin(3)).toBe(true);
+		expect(state.selectedBinDetail).toEqual(detail);
+	});
+
+	it('updates a bin and reloads the current filtered page', async () => {
+		const state = createWarehouseDetailState(1, true);
+		await state.load(11);
+		await state.loadBinsForZone(11, 2);
+		await state.updateBin({ id: 3, pickSequence: 9 });
+		expect(deps.updateBin.execute).toHaveBeenCalledWith({ id: 3, pickSequence: 9 });
+		expect(deps.listBins.execute).toHaveBeenLastCalledWith({ warehouseId: 1, zoneId: 11, page: 2, perPage: 50 });
 	});
 
 	it('keeps stock and preferred-bin deletion conflicts visible', async () => {

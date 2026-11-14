@@ -57,6 +57,8 @@ describe('WarehouseDetailScreen zones workspace', () => {
 		expect(body).toContain('Existencias');
 		expect(body).toContain('Filtrar por zona');
 		expect(body).toContain('Todas las zonas');
+		expect(body).toContain('Filtrar por tipo');
+		expect(body).toContain('Todos los tipos');
 		expect(body).toContain('Picking');
 		expect(body).toContain('11 (3 asignadas)');
 		expect(body).toContain('125 lb · 32 ft³');

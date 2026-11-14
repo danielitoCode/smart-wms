@@ -16,6 +16,9 @@ describe('ListBinsUseCase', () => {
 		await expect(uc.execute({ warehouseId: 0 })).rejects.toThrow(/warehouseId/);
 		await expect(uc.execute({ zoneId: -1 })).rejects.toThrow(/zoneId/);
 		await expect(uc.execute({ page: 0 })).rejects.toThrow(/page/);
+		await expect(uc.execute({ perPage: 1001 })).rejects.toThrow(/perPage/);
+		await expect(uc.execute({ binType: 'INVALID' as never })).rejects.toThrow(/binType/);
+		await expect(uc.execute({ q: 'x'.repeat(129) })).rejects.toThrow(/q/);
 	});
 
 	it('forwards valid params', async () => {
@@ -28,7 +31,7 @@ describe('ListBinsUseCase', () => {
 			listBins: vi.fn().mockResolvedValue([])
 		} as WarehouseRepository;
 		const uc = new ListBinsUseCase(repo);
-		await uc.execute({ warehouseId: 1, zoneId: 4, page: 2 });
-		expect(repo.listBins).toHaveBeenCalledWith({ warehouseId: 1, zoneId: 4, page: 2 });
+		await uc.execute({ warehouseId: 1, zoneId: 4, binType: 'Pickable', page: 2, q: ' A-01 ' });
+		expect(repo.listBins).toHaveBeenCalledWith({ warehouseId: 1, zoneId: 4, binType: 'Pickable', page: 2, q: 'A-01' });
 	});
 });
