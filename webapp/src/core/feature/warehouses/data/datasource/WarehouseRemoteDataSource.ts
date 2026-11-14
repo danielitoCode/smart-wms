@@ -25,9 +25,8 @@ export class WarehouseRemoteDataSource {
 		const body = await this.api.get<WarehouseListResponseDto | WarehouseListItemDto[]>('/api/warehouses/list');
 		return asList(body, ['warehouses', 'items', 'data']);
 	}
-	async listAdmin(page = 1): Promise<WarehouseListItemDto[]> {
-		const body = await this.api.get<WarehouseListResponseDto | WarehouseListItemDto[]>('/api/admin/warehouses?page=' + page);
-		return asList(body, ['warehouses', 'items', 'data']);
+	async listAdminPage(page = 1, perPage = 50): Promise<WarehouseListResponseDto> {
+		return this.api.get<WarehouseListResponseDto>('/api/admin/warehouses?page=' + page + '&per_page=' + perPage);
 	}
 	async getById(id: number): Promise<WarehouseListItemDto> {
 		const response = await this.api.get<WarehouseDetailResponseDto>('/api/admin/warehouses/' + id);
