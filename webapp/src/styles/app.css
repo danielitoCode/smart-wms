@@ -29,4 +29,128 @@ body .workspace .content .page h1,body .workspace .content .inventory h1 { margi
 body .workspace .content .page h2,body .workspace .content .page h3,body .workspace .content .inventory h2 { font-family:var(--disp); color:var(--head-ink,var(--ink)); font-size:var(--fs-xl); line-height:var(--lh-snug); }
 body .workspace .content .subtitle,body .workspace .content .meta { margin:0; color:var(--slate); font-size:var(--fs-md); line-height:var(--lh-body); }
 
-/* Formularios y tablas operativas compartidos — el resto del archivo operativo se conserva en el branch; ver historial si falta contenido. */
+/* Formularios y tablas operativas compartidos */
+
+/* ——— Scrollbars modernos (Abellis) ——— */
+* {
+	scrollbar-width: thin;
+	scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+	width: var(--scrollbar-size);
+	height: var(--scrollbar-size);
+}
+
+*::-webkit-scrollbar-track {
+	background: var(--scrollbar-track);
+	border-radius: var(--radius-pill);
+}
+
+*::-webkit-scrollbar-thumb {
+	background: var(--scrollbar-thumb);
+	border-radius: var(--radius-pill);
+	border: 2px solid transparent;
+	background-clip: padding-box;
+	min-height: 2.5rem;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+	background: var(--scrollbar-thumb-hover);
+	border: 2px solid transparent;
+	background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:active {
+	background: var(--scrollbar-thumb-active);
+	border: 2px solid transparent;
+	background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-corner {
+	background: var(--scrollbar-corner);
+}
+
+/* Sidebar nav: track sutil sobre navy-deep */
+.main-nav {
+	scrollbar-width: thin;
+	scrollbar-color: color-mix(in srgb, var(--gold) 55%, transparent) transparent;
+}
+
+.main-nav::-webkit-scrollbar {
+	width: var(--scrollbar-size-thin);
+}
+
+.main-nav::-webkit-scrollbar-track {
+	background: transparent;
+	margin: 8px 0;
+}
+
+.main-nav::-webkit-scrollbar-thumb {
+	background: color-mix(in srgb, #ffffff 18%, transparent);
+	border-radius: var(--radius-pill);
+	border: 2px solid transparent;
+	background-clip: padding-box;
+}
+
+.main-nav::-webkit-scrollbar-thumb:hover {
+	background: color-mix(in srgb, var(--gold) 70%, #ffffff 15%);
+	border: 2px solid transparent;
+	background-clip: padding-box;
+}
+
+.main-nav::-webkit-scrollbar-thumb:active {
+	background: var(--gold);
+	border: 2px solid transparent;
+	background-clip: padding-box;
+}
+
+/* Contenido principal y tablas con overflow */
+.content,
+.table-wrap {
+	scrollbar-gutter: stable;
+}
+
+.content::-webkit-scrollbar-thumb,
+.table-wrap::-webkit-scrollbar-thumb {
+	background: var(--scrollbar-thumb);
+	border-radius: var(--radius-pill);
+	border: 2px solid transparent;
+	background-clip: padding-box;
+}
+
+/* ——— Scroll-snap: navegación fluida ——— */
+.content {
+	overscroll-behavior: contain;
+	scroll-behavior: smooth;
+}
+
+/* Secciones de página: marcar con .snap-section para anclar al topbar */
+.snap-y {
+	scroll-snap-type: y proximity;
+	scroll-padding-block: 72px 24px;
+}
+
+.snap-section {
+	scroll-snap-align: start;
+	scroll-snap-stop: normal;
+}
+
+/* Tablas anchas: snap suave horizontal opcional */
+.table-wrap.snap-x {
+	scroll-snap-type: x proximity;
+	scroll-padding-inline: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html,
+	.content,
+	.main-nav {
+		scroll-behavior: auto;
+	}
+	.snap-y,
+	.main-nav,
+	.table-wrap.snap-x {
+		scroll-snap-type: none;
+	}
+}
