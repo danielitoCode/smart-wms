@@ -64,7 +64,7 @@ export function createCycleCountState() {
 		}
 	}
 
-	async function loadDetail(countId: number) {
+	async function loadDetail(countId: number, preserveSubmitResult = false) {
 		if (loading) return false;
 		if (!Number.isInteger(countId) || countId <= 0) {
 			error = 'countId inválido';
@@ -73,7 +73,7 @@ export function createCycleCountState() {
 		loading = true;
 		error = null;
 		selectedCountId = countId;
-		submitResult = null;
+		if (!preserveSubmitResult) submitResult = null;
 		try {
 			detail = await deps.getCycleCount.execute(countId);
 			// Blind-count behavior: do not seed counted values from expected stock.
@@ -132,7 +132,7 @@ export function createCycleCountState() {
 			return false;
 		} finally {
 			busy = false;
-			if (submitResult) await loadDetail(countId);
+			if (submitResult) await loadDetail(countId, true);
 		}
 	}
 
