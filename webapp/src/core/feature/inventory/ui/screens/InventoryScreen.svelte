@@ -28,9 +28,10 @@
 		});
 	});
 
-	onMount(async () => {
-		await vm.initialize();
-		warehouseInput = vm.warehouseId == null ? '' : String(vm.warehouseId);
+	onMount(() => {
+		void vm.initialize().then(() => {
+			warehouseInput = vm.warehouseId == null ? '' : String(vm.warehouseId);
+		});
 	});
 
 	let lastGeneration = $state(-1);
