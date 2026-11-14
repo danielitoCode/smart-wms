@@ -6,29 +6,29 @@
 	import { createInventoryOverviewState } from '../state/inventoryState.svelte';
 
 	const i18n = getContext<I18nState>('i18n');
-	const state = createInventoryOverviewState();
+	const vm = createInventoryOverviewState();
 
 	onMount(() => {
-		void state.load();
+		void vm.load();
 	});
 
 	let lastGeneration = $state(-1);
 	$effect(() => {
-		const gen = state.generation;
+		const gen = vm.generation;
 		if (lastGeneration < 0) {
 			lastGeneration = gen;
 			return;
 		}
 		if (gen !== lastGeneration) {
 			lastGeneration = gen;
-			state.invalidate();
-			void state.load();
+			vm.invalidate();
+			void vm.load();
 		}
 	});
 
 	function onFilter(e: Event) {
 		e.preventDefault();
-		void state.load(state.warehouseId);
+		void vm.load(vm.warehouseId);
 	}
 </script>
 
@@ -45,34 +45,34 @@
 				type="number"
 				min="1"
 				placeholder={i18n.t('Todos')}
-				value={state.warehouseId ?? ''}
+				value={vm.warehouseId ?? ''}
 				oninput={(e) => {
 					const v = e.currentTarget.value;
-					state.setWarehouseId(v === '' ? undefined : Number(v));
+					vm.setWarehouseId(v === '' ? undefined : Number(v));
 				}}
-				disabled={state.loading}
+				disabled={vm.loading}
 			/>
 		</label>
-		<button type="submit" class="accent" disabled={state.loading}>
-			{state.loading ? i18n.t('Cargando…') : i18n.t('Filtrar')}
+		<button type="submit" class="accent" disabled={vm.loading}>
+			{vm.loading ? i18n.t('Cargando…') : i18n.t('Filtrar')}
 		</button>
-		<button type="button" class="secondary" onclick={() => state.load()} disabled={state.loading}>
+		<button type="button" class="secondary" onclick={() => vm.load()} disabled={vm.loading}>
 			{i18n.t('Actualizar')}
 		</button>
 	</form>
 
-	{#if state.error}
-		<UiBanner tone="error" message={state.error}>
+	{#if vm.error}
+		<UiBanner tone="error" message={vm.error}>
 			{#snippet action()}
-				<button type="button" onclick={() => state.load()}>{i18n.t('Reintentar')}</button>
+				<button type="button" onclick={() => vm.load()}>{i18n.t('Reintentar')}</button>
 			{/snippet}
 		</UiBanner>
-	{:else if state.loading && !state.loadedOnce}
+	{:else if vm.loading && !vm.loadedOnce}
 		<div class="loading-block" role="status" aria-live="polite">
 			<span class="ui-spinner" aria-hidden="true"></span>
 			<p>{i18n.t('Cargando inventario…')}</p>
 		</div>
-	{:else if state.items.length === 0}
+	{:else if vm.items.length === 0}
 		<p class="empty">{i18n.t('Todavía no hay existencias registradas.')}</p>
 	{:else}
 		<div class="table-wrap">
@@ -87,7 +87,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each state.items as row (row.inventoryId + '-' + row.itemId + '-' + row.binId)}
+					{#each vm.items as row (row.inventoryId + '-' + row.itemId + '-' + row.binId)}
 						<tr>
 							<td>{row.sku ?? row.itemId}</td>
 							<td>{row.itemName ?? '—'}</td>
@@ -99,7 +99,7 @@
 				</tbody>
 			</table>
 		</div>
-		{#if state.loading}
+		{#if vm.loading}
 			<p class="status">{i18n.t('Actualizando…')}</p>
 		{/if}
 	{/if}
