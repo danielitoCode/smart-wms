@@ -223,7 +223,7 @@
 
 <style>
 	.shell { display: grid; grid-template-columns: 16.5rem 1fr; min-height: 100dvh; background: var(--bg); color: var(--ink); }
-	.sidebar { position: sticky; top: 0; height: 100dvh; overflow-x: visible; overflow-y: auto; border-right: 1px solid var(--line); background: var(--surface); padding: 1rem 0.75rem; z-index: 25; }
+	.sidebar { position: sticky; top: 0; height: 100dvh; overflow-x: visible; overflow-y: auto; border-right: 1px solid var(--line); background: var(--surface); padding: 1rem 0.75rem; z-index: 100; }
 	.brand { display: flex; gap: 0.65rem; align-items: center; padding: 0.35rem 0.5rem 1rem; }
 	.mark { width: 2rem; height: 2rem; border-radius: 0.55rem; display: grid; place-items: center; background: var(--navy); color: white; font-weight: 700; }
 	.brand strong { display: block; font-size: 0.95rem; }
@@ -233,8 +233,8 @@
 	.nav-link { display: flex; align-items: center; gap: 0.55rem; padding: 0.45rem 0.55rem; border-radius: 0.55rem; color: var(--ink); text-decoration: none; font-size: 0.9rem; }
 	.nav-link:hover { background: color-mix(in oklab, var(--navy) 8%, transparent); }
 	.nav-link.active { background: color-mix(in oklab, var(--navy) 14%, transparent); font-weight: 600; }
-	.main { min-width: 0; display: flex; flex-direction: column; }
-	.topbar { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; min-height: 3.25rem; padding: 0.55rem 1rem; border-bottom: 1px solid var(--line); background: var(--surface); }
+	.main { min-width: 0; display: flex; flex-direction: column; position: relative; z-index: 1; }
+	.topbar { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; min-height: 3.25rem; padding: 0.55rem 1rem; border-bottom: 1px solid var(--line); background: var(--surface); position: relative; z-index: 30; }
 	.topbar-actions { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
 	.menu-btn { display: none; border: 1px solid var(--line); background: var(--surface); border-radius: 0.5rem; padding: 0.35rem; }
 	.account-action { display: inline-flex; align-items: center; gap: 0.35rem; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 0.5rem; padding: 0.35rem 0.55rem; text-decoration: none; font-size: 0.82rem; cursor: pointer; }
@@ -243,9 +243,9 @@
 	.scrim { display: none; }
 	@media (max-width: 900px) {
 		.shell { grid-template-columns: 1fr; }
-		.sidebar { position: fixed; inset: 0 auto 0 0; width: min(18rem, 88vw); z-index: 40; transform: translateX(-105%); transition: transform 0.2s ease; }
+		.sidebar { position: fixed; inset: 0 auto 0 0; width: min(18rem, 88vw); z-index: 110; transform: translateX(-105%); transition: transform 0.2s ease; }
 		.shell.sidebar-open .sidebar { transform: translateX(0); }
 		.menu-btn { display: inline-grid; place-items: center; }
-		.scrim { display: block; position: fixed; inset: 0; border: 0; background: rgb(0 0 0 / 0.35); z-index: 30; }
+		.scrim { display: block; position: fixed; inset: 0; border: 0; background: rgb(0 0 0 / 0.35); z-index: 100; }
 	}
 </style>
