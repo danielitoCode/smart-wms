@@ -3,6 +3,8 @@
 	import { goto } from '$app/navigation';
 	import type { I18nState } from '#lib/i18n/i18n.svelte';
 	import { createSplashState } from '../state/splashState.svelte';
+	import Starfield from '../../../../../lib/components/Starfield.svelte';
+	import SessionLockIllustration from '../../../../../lib/components/SessionLockIllustration.svelte';
 
 	const i18n = getContext<I18nState>('i18n');
 	const splash = createSplashState();
@@ -80,15 +82,12 @@
 	}
 </script>
 
-<section class="splash" aria-busy={isLoading}>
+<section class="splash starfield-host" aria-busy={isLoading}>
+	<Starfield />
 	<div class="content">
-		<img
-				class="mark"
-				src="/brand/abellis_mark_principal.svg"
-				width="64"
-				height="64"
-				alt="Abellis"
-		/>
+		<div class="hero-visual">
+			<SessionLockIllustration height="150" />
+		</div>
 
 		<div class="titles">
 			<p class="eyebrow">ABELLIS</p>
@@ -144,19 +143,14 @@
 		display: grid;
 		place-items: center;
 		padding: 1.5rem;
-		background:
-				radial-gradient(
-						ellipse at 20% 10%,
-						color-mix(in srgb, var(--lightblue, #8fb4da) 22%, transparent),
-						transparent 55%
-				),
-				radial-gradient(
-						ellipse at 80% 90%,
-						color-mix(in srgb, var(--gold, #e9a50b) 12%, transparent),
-						transparent 50%
-				),
-				var(--bg);
+		background: transparent;
 		color: var(--ink);
+	}
+
+	.hero-visual {
+		width: 100%;
+		display: grid;
+		place-items: center;
 	}
 
 	.content {
@@ -167,10 +161,6 @@
 		gap: 1.75rem;
 		text-align: center;
 		animation: fade-in 400ms ease-out both;
-	}
-
-	.mark {
-		display: block;
 	}
 
 	.titles {
@@ -271,12 +261,8 @@
 	}
 
 	@keyframes fade-in {
-		from {
-			opacity: 0;
-		}
-		to {
-			opacity: 1;
-		}
+		from { opacity: 0; }
+		to { opacity: 1; }
 	}
 
 	@media (prefers-reduced-motion: reduce) {
@@ -284,7 +270,6 @@
 		.phase span {
 			animation: none;
 		}
-
 		.fill {
 			transition: none;
 		}
