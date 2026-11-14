@@ -72,12 +72,14 @@ describe('Warehouse management use cases', () => {
 		await new CreateBinUseCase(repository).execute({ warehouseId: 8, zoneId: 4, code: 'A-01', barcode: 'BC-01', binType: 'Pickable' });
 		expect(repository.createBin).toHaveBeenCalledWith(expect.objectContaining({ warehouseId: 8, zoneId: 4, code: 'A-01', barcode: 'BC-01' }));
 	});
-		it('validates bin capacity updates and rejects empty patches', async () => {
+	it('validates bin capacity updates and rejects empty patches', async () => {
 		const repository = createRepository();
 		const useCase = new UpdateBinUseCase(repository);
 		await expect(useCase.execute({ id: 12 })).rejects.toThrow(/at least one/);
 		await expect(useCase.execute({ id: 12, maxWeightLbs: -0.5 })).rejects.toThrow(/maxWeightLbs/);
 		await expect(useCase.execute({ id: 12, maxVolumeCuft: Number.POSITIVE_INFINITY })).rejects.toThrow(/maxVolumeCuft/);
+		await expect(useCase.execute({ id: 12, maxWeightLbs: 12.345 })).rejects.toThrow(/two decimal places/);
+		await expect(useCase.execute({ id: 12, barcode: ' ' })).rejects.toThrow(/1 to 100/);
 		expect(repository.updateBin).not.toHaveBeenCalled();
 	});
 	it('normalizes zone updates without allowing warehouse reassignment', async () => {
