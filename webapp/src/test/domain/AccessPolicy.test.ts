@@ -12,6 +12,8 @@ describe('AccessPolicy', () => {
 		expect(requiredPageKeysForPath('/data/bins')).toEqual(['bins', 'zones']);
 		expect(requiredPageKeysForPath('/data/preferred-bins')).toEqual(['preferred-bins']);
 		expect(requiredPageKeysForPath('/management/vendors')).toEqual(['vendors']);
+		expect(canAccessPages('USER', [], requiredPageKeysForPath('/management/vendors'))).toBe(false);
+		expect(canAccessPages('USER', ['vendors'], requiredPageKeysForPath('/management/vendors'))).toBe(true);
 		expect(requiredPageKeysForPath('/picking')).toEqual([]);
 	});
 	it('checks warehouse scope independently from page access', () => {
