@@ -15,35 +15,32 @@ function createRepo(overrides: Partial<InventoryRepository> = {}): InventoryRepo
 }
 
 describe('CreateCycleCountUseCase', () => {
-	it('delegates to repository with valid input', async () => {
-		const expected: CycleCountSummary[] = [
-			{
-				countId: 1,
-				binId: 3,
-				binCode: 'A-01-01',
-				status: 'PENDING',
-				lines: 2,
-				assignedTo: 'admin'
-			}
-		];
-		const repo = createRepo({
-			createCycleCounts: vi.fn().mockResolvedValue(expected)
-		});
-		const useCase = new CreateCycleCountUseCase(repo);
-
-		const result = await useCase.execute(1, [3, 4]);
-
+	it('delegates valid warehouse and unique bins to the repository', async () => {
+		const expected: CycleCountSummary[] = [{
+			countId: 1, warehouseId: 1, binId: 3, binCode: 'A-01-01',
+			status: 'PENDING', lineCount: 2, assignedTo: 'admin'
+		}];
+		const repo = createRepo({ createCycleCounts: vi.fn().mockResolvedValue(expected) });
+		const result = await new CreateCycleCountUseCase(repo).execute(1, [3, 4]);
 		expect(repo.createCycleCounts).toHaveBeenCalledWith(1, [3, 4]);
 		expect(result).toEqual(expected);
 	});
 
-	it('rejects invalid warehouseId', async () => {
-		const useCase = new CreateCycleCountUseCase(createRepo());
-		expect(() => useCase.execute(0, [1])).toThrow(/warehouseId/);
+	it('rejects invalid warehouseId', () => {
+		expect(() => new CreateCycleCountUseCase(createRepo()).execute(0, [1])).toThrow(/warehouseId/);
 	});
 
-	it('rejects empty binIds', async () => {
-		const useCase = new CreateCycleCountUseCase(createRepo());
-		expect(() => useCase.execute(1, [])).toThrow(/binIds/);
+	it('rejects empty binIds', () => {
+		expect(() => new CreateCycleCountUseCase(createRepo()).execute(1, [])).toThrow(/binIds/);
+	});
+
+	it('rejects invalid bin identifiers', () => {
+		expect(() => new CreateCycleCountUseCase(createRepo()).execute(1, [1, 0])).toThrow(/binId/);
+	});
+
+	it('rejects duplicate bins before creating duplicate count records', () => {
+		const repo = createRepo();
+		expect(() => new CreateCycleCountUseCase(repo).execute(1, [3, 3])).toThrow(/duplicates/);
+		expect(repo.createCycleCounts).not.toHaveBeenCalled();
 	});
 });
