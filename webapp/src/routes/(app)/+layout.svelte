@@ -6,6 +6,7 @@
 	import LocaleSwitcher from '../../lib/components/LocaleSwitcher.svelte';
 	import ThemeToggle from '../../lib/components/ThemeToggle.svelte';
 	import WarehousePicker from '../../lib/components/WarehousePicker.svelte';
+	import SessionBootView from '../../lib/components/SessionBootView.svelte';
 	import type { I18nState } from '../../lib/i18n/i18n.svelte';
 	import { createAuthGuardState } from '../../core/feature/auth/ui/state/authGuardState.svelte';
 	import { createWarehouseSelectionState } from '../../core/feature/warehouses/ui/state/warehouseSelectionState.svelte';
@@ -53,7 +54,7 @@
 			{ href: '/management/adjustments', label: i18n.t('Ajustes'), icon: 'database', pageKey: 'adjustments' },
 			{ href: '/management/inter-warehouse-transfers', label: i18n.t('Movimientos'), icon: 'truck', pageKey: 'transfer-orders' },
 			{ href: '/management/transfer-orders', label: i18n.t('Órdenes de traslado'), icon: 'truck', pageKey: 'transfer-orders' },
-			{ href: '/data/preferred-bins', label: i18n.t('Ubicaciones preferidas'), icon: 'map-pin', pageKey: 'preferred-bins' },
+			{ href: '/management/preferred-bins', label: i18n.t('Ubicaciones preferidas'), icon: 'map-pin', pageKey: 'preferred-bins' },
 			{ href: '/management/fraud', label: i18n.t('Revisión de pedidos'), icon: 'user', pageKey: 'fraud' },
 			{ href: '/management/pos-activity', label: i18n.t('Actividad POS'), icon: 'database', pageKey: 'pos-activity' },
 			{ href: '/management/refunds', label: i18n.t('Reembolsos'), icon: 'package', pageKey: 'sales-orders' },
@@ -169,12 +170,9 @@
 </script>
 
 {#if guard.status === 'checking'}
-	<p class="boot" role="status">{i18n.t('Validando sesión…')}</p>
+	<SessionBootView status="checking" />
 {:else if guard.status === 'error'}
-	<section class="boot panel" role="alert">
-		<p>{guard.message ?? i18n.t('No se pudo validar la sesión')}</p>
-		<button type="button" onclick={retry}>{i18n.t('Reintentar')}</button>
-	</section>
+	<SessionBootView status="error" message={guard.message} onRetry={retry} />
 {:else if guard.status === 'authenticated'}
 	<div class="shell" class:sidebar-open={sidebarOpen}>
 		<aside class="sidebar" aria-label={i18n.t('Navegación principal')}>
@@ -254,8 +252,6 @@
 	.menu-btn { display: none; border: 1px solid var(--line); background: var(--surface); border-radius: 0.5rem; padding: 0.35rem; }
 	.account-action { display: inline-flex; align-items: center; gap: 0.35rem; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 0.5rem; padding: 0.35rem 0.55rem; text-decoration: none; font-size: 0.82rem; cursor: pointer; }
 	.content { flex: 1; min-width: 0; padding: 0 0 0.5rem; }
-	.boot { display: grid; place-items: center; min-height: 100dvh; gap: 0.75rem; color: var(--slate); }
-	.boot.panel { padding: 2rem; }
 	.denied { max-width: 32rem; margin: 2rem auto; padding: 1.25rem; border: 1px solid var(--line); border-radius: 0.75rem; background: var(--surface); }
 	.scrim { display: none; }
 	@media (max-width: 900px) {
