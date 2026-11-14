@@ -36,6 +36,23 @@ describe('warehouse selection state for zone workflows', () => {
 		expect(state.warehouses.map(item => item.id)).toEqual([1, 2]);
 	});
 
+	it('synchronizes the authenticated user after initial load without loading the catalogue twice', async () => {
+		const state = createWarehouseSelectionState();
+		const user = {
+			userId: 4, username: 'zone-user', fullName: 'Zone User', role: 'USER',
+			warehouseIds: [1, 2], allowedPages: ['zones'], allowedFunctions: [], allowedOverrides: [],
+			mustChangePassword: false
+		};
+		await state.load(user);
+		state.select(2);
+
+		await state.syncFromUser(user);
+
+		expect(dependencies.listAdminWarehouses.execute).toHaveBeenCalledTimes(1);
+		expect(state.warehouseId).toBe(2);
+		expect(state.selectableIds).toEqual([1, 2]);
+	});
+
 	it('does not expose warehouse selection to a user without warehouse, zones or bins grants', async () => {
 		const state = createWarehouseSelectionState();
 		await state.load({
