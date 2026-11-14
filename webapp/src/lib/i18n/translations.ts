@@ -3,6 +3,10 @@ export type Locale = 'it' | 'es' | 'en';
 // Spanish is the source key to keep translations auditable alongside the current UI copy.
 export const translations: Record<Locale, Record<string, string>> = {
 	it: {
+		'Existencias': 'Giacenze', 'asignadas': 'allocate', 'Capacidad': 'Capacità',
+		'Peso máximo': 'Peso massimo', 'Volumen máximo': 'Volume massimo',
+		'Disponibles': 'Disponibili', 'Peso máximo (lb)': 'Peso massimo (lb)',
+		'Volumen máximo (ft³)': 'Volume massimo (ft³)',
 		'Operaciones': 'Operazioni', 'Control': 'Controllo', 'Catálogos': 'Cataloghi',
 		'Recepción': 'Ricevimento', 'Preparación': 'Preparazione', 'Empaque': 'Imballaggio', 'Despacho': 'Spedizione',
 		'Inventario': 'Inventario', 'Conteo cíclico': 'Inventario ciclico', 'Productos': 'Prodotti', 'Almacenes': 'Magazzini', 'Datos maestros': 'Dati principali',
@@ -26,6 +30,10 @@ export const translations: Record<Locale, Record<string, string>> = {
 	},
 	es: {},
 	en: {
+		'Existencias': 'Stock', 'asignadas': 'allocated', 'Capacidad': 'Capacity',
+		'Peso máximo': 'Maximum weight', 'Volumen máximo': 'Maximum volume',
+		'Disponibles': 'Available', 'Peso máximo (lb)': 'Maximum weight (lb)',
+		'Volumen máximo (ft³)': 'Maximum volume (ft³)',
 		'Operaciones': 'Operations', 'Control': 'Control', 'Catálogos': 'Catalogs', 'Recepción': 'Receiving', 'Ubicación': 'Putaway', 'Preparación': 'Picking', 'Empaque': 'Packing', 'Despacho': 'Shipping', 'Inventario': 'Inventory', 'Conteo cíclico': 'Cycle count', 'Productos': 'Products', 'Almacenes': 'Warehouses', 'Datos maestros': 'Master data',
 		'Operaciones de almacén': 'Warehouse operations', 'Almacén activo': 'Active warehouse', 'Contraseña': 'Password', 'Salir': 'Sign out', 'Validando sesión…': 'Checking session…', 'No se pudo conectar con el servidor': 'Could not connect to the server', 'Reintentar': 'Retry', 'Cerrar sesión': 'Sign out', 'Acceso no autorizado': 'Unauthorized access', 'Tu cuenta no tiene permiso para abrir este módulo.': 'Your account is not allowed to open this module.', 'Ir al inventario': 'Go to inventory', 'Redirigiendo…': 'Redirecting…', 'Administrador': 'Administrator', 'Usuario de almacén': 'Warehouse user', 'Usuario': 'User', 'Abrir menú': 'Open menu', 'Cerrar menú': 'Close menu', 'Navegación principal': 'Main navigation',
 		'Inicia sesión para operar el almacén.': 'Sign in to operate the warehouse.', 'Contraseña actualizada. Inicia sesión con tu nueva contraseña.': 'Password updated. Sign in with your new password.', 'Entrando…': 'Signing in…', 'Entrar': 'Sign in', 'Buscar': 'Search', 'Sí': 'Yes', 'No': 'No', 'Paginación': 'Pagination', 'de': 'of', 'Consulta conectada al API Flask. Las acciones de escritura se gestionan desde los módulos especializados y conservan sus permisos propios.': 'Query connected to the Flask API. Write actions are handled by the specialized modules and retain their own permissions.', 'Cargando…': 'Loading…', 'Actualizar': 'Refresh', 'Filtrar': 'Filter',
