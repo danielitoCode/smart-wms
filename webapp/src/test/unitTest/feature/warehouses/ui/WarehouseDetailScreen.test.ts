@@ -17,6 +17,9 @@ const vm = vi.hoisted(() => ({
 vi.mock('../../../../../core/feature/warehouses/ui/state/warehouseDetailState.svelte', () => ({
 	createWarehouseDetailState: () => vm
 }));
+vi.mock('../../../../../core/infrastructure/auth/AuthSession', () => ({
+	authSession: { getUser: () => ({ role: 'ADMIN', allowedPages: ['bins'] }) }
+}));
 
 describe('WarehouseDetailScreen zones workspace', () => {
 	it('renders zone identity, status and the number of associated bins', () => {
