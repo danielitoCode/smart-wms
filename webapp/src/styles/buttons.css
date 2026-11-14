@@ -1,0 +1,179 @@
+/**
+ * Botones — lenguaje del gradient CTA de referencia, con tokens Abellis.
+ * Primary / accent: navy gradient + borde degradado lightblue→gold.
+ */
+
+:root {
+	--btn-primary-fill: linear-gradient(
+		140deg,
+		var(--navy) 12%,
+		var(--navy-2, #013a6b) 55%,
+		var(--navy-deep) 100%
+	);
+	--btn-primary-border: linear-gradient(
+		142deg,
+		color-mix(in srgb, var(--lightblue) 85%, white) 8%,
+		color-mix(in srgb, var(--navy) 70%, var(--gold)) 55%,
+		var(--navy-deep) 92%
+	);
+	--btn-primary-shadow: 6px 8px 18px color-mix(in srgb, var(--navy-deep) 32%, transparent);
+	--btn-gold-fill: linear-gradient(
+		140deg,
+		var(--gold) 10%,
+		color-mix(in srgb, var(--gold) 75%, #b8860b) 100%
+	);
+	--btn-gold-border: linear-gradient(
+		142deg,
+		#ffe7a0 8%,
+		color-mix(in srgb, var(--gold) 60%, var(--navy)) 90%
+	);
+	--btn-danger-fill: linear-gradient(
+		140deg,
+		color-mix(in srgb, var(--danger) 92%, #fff) 10%,
+		var(--danger) 100%
+	);
+	--btn-danger-border: linear-gradient(
+		142deg,
+		#f5b4af 10%,
+		color-mix(in srgb, var(--danger) 80%, #4a0a08) 90%
+	);
+	--btn-danger-shadow: 6px 8px 18px color-mix(in srgb, var(--danger) 28%, transparent);
+}
+
+/* Base clickable buttons in content (exclude pure icon/ghost utilities when marked) */
+body .shell .content button.primary,
+body .shell .content button.accent,
+body .shell .content .btn-primary,
+body .shell .content .button,
+.page button.primary,
+.page button.accent,
+.page .btn-primary,
+.page .button,
+.inventory button.primary,
+.inventory button.accent {
+	background:
+		var(--btn-primary-fill) padding-box,
+		var(--btn-primary-border) border-box;
+	border: 2px solid transparent;
+	border-radius: 8px;
+	color: #fff;
+	font-family: var(--body);
+	font-size: 0.9rem;
+	font-weight: 600;
+	line-height: 1.25;
+	padding: 0.55rem 1.25rem;
+	min-height: 40px;
+	cursor: pointer;
+	text-shadow: 0 1px 1px color-mix(in srgb, var(--navy-deep) 35%, transparent);
+	box-shadow: var(--btn-primary-shadow);
+	transition:
+		box-shadow var(--motion-base, 200ms) var(--ease-out, ease),
+		opacity var(--motion-fast, 140ms) ease,
+		transform var(--motion-fast, 140ms) var(--ease-out, ease);
+}
+
+body .shell .content button.primary:hover,
+body .shell .content button.accent:hover,
+body .shell .content .btn-primary:hover,
+body .shell .content .button:hover,
+.page button.primary:hover,
+.page button.accent:hover,
+.page .btn-primary:hover,
+.page .button:hover,
+.inventory button.primary:hover,
+.inventory button.accent:hover {
+	box-shadow: none;
+	opacity: 0.88;
+}
+
+body .shell .content button.primary:active,
+body .shell .content button.accent:active,
+.page button.primary:active,
+.page .button:active {
+	transform: translateY(1px);
+	opacity: 0.92;
+}
+
+/* Gold / highlight CTA (optional class) */
+body .shell .content button.gold,
+.page button.gold {
+	background:
+		var(--btn-gold-fill) padding-box,
+		var(--btn-gold-border) border-box;
+	border: 2px solid transparent;
+	color: var(--navy-deep);
+	text-shadow: none;
+	box-shadow: 6px 8px 18px color-mix(in srgb, var(--gold) 35%, transparent);
+	font-weight: 700;
+}
+
+body .shell .content button.gold:hover,
+.page button.gold:hover {
+	box-shadow: none;
+	opacity: 0.9;
+}
+
+/* Danger */
+body .shell .content button.danger,
+.page button.danger {
+	background:
+		var(--btn-danger-fill) padding-box,
+		var(--btn-danger-border) border-box;
+	border: 2px solid transparent;
+	color: #fff;
+	text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+	box-shadow: var(--btn-danger-shadow);
+}
+
+body .shell .content button.danger:hover,
+.page button.danger:hover {
+	box-shadow: none;
+	opacity: 0.88;
+}
+
+/* Secondary / default outlined buttons in content */
+body .shell .content button:not(.primary):not(.accent):not(.gold):not(.danger):not(.ghost):not(.link):not(.danger-ghost):not(.menu-btn):not(.account-action):not(.nav-link),
+.page button:not(.primary):not(.accent):not(.gold):not(.danger):not(.ghost):not(.link):not(.danger-ghost) {
+	background: var(--card);
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	color: var(--ink);
+	font-weight: 600;
+	font-size: 0.875rem;
+	padding: 0.5rem 0.9rem;
+	min-height: 40px;
+	box-shadow: var(--shadow-1, 0 1px 2px rgba(16, 38, 64, 0.06));
+	transition:
+		border-color var(--motion-fast, 140ms) ease,
+		background var(--motion-fast, 140ms) ease,
+		box-shadow var(--motion-fast, 140ms) ease;
+}
+
+body .shell .content button:not(.primary):not(.accent):not(.gold):not(.danger):not(.ghost):not(.link):not(.danger-ghost):not(.menu-btn):not(.account-action):hover,
+.page button:not(.primary):not(.accent):not(.gold):not(.danger):not(.ghost):not(.link):not(.danger-ghost):hover {
+	border-color: color-mix(in srgb, var(--navy) 35%, var(--line));
+	background: var(--surface-2);
+	box-shadow: var(--shadow-2, 0 4px 12px rgba(16, 38, 64, 0.08));
+}
+
+body .shell .content button:disabled,
+.page button:disabled {
+	opacity: 0.55;
+	cursor: not-allowed;
+	box-shadow: none;
+	transform: none;
+}
+
+:root[data-theme='dark'] {
+	--btn-primary-shadow: 6px 10px 22px rgba(0, 0, 0, 0.45);
+	--btn-danger-shadow: 6px 10px 22px rgba(0, 0, 0, 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	body .shell .content button.primary,
+	body .shell .content button.accent,
+	.page button.primary,
+	.page .button {
+		transition: none;
+	}
+}
