@@ -1,0 +1,144 @@
+/**
+ * Campos de formulario unificados (estilo reembolsos / Abellis).
+ * Borde de foco fino y elegante (1px gold + halo suave), no anillo grueso.
+ */
+
+:root {
+	--field-radius: 12px;
+	--field-height: 2.5rem;
+	--field-pad-x: 0.9rem;
+	--field-border: 1px solid var(--line);
+	--field-bg: var(--card);
+	--field-ink: var(--ink);
+	--field-placeholder: var(--muted);
+	/* Foco: línea fina + halo discreto (más elegante que ring de 3px) */
+	--field-focus-border: 1px solid color-mix(in srgb, var(--gold) 88%, var(--navy));
+	--field-focus-ring: 0 0 0 1px color-mix(in srgb, var(--gold) 55%, transparent);
+	--field-transition: border-color var(--motion-fast, 140ms) var(--ease-out, ease),
+		box-shadow var(--motion-fast, 140ms) var(--ease-out, ease),
+		background-color var(--motion-fast, 140ms) var(--ease-out, ease);
+}
+
+/* Alta especificidad para ganar a estilos scoped de pantallas */
+body input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']):not([type='submit']):not([type='button']),
+body select,
+body textarea,
+body .shell .content input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']),
+body .shell .content select,
+body .shell .content textarea,
+body .login input:not([type='checkbox']):not([type='radio']),
+body .login select,
+body .login textarea {
+	appearance: none;
+	-webkit-appearance: none;
+	box-sizing: border-box;
+	min-height: var(--field-height);
+	padding: 0.55rem var(--field-pad-x);
+	border: var(--field-border);
+	border-radius: var(--field-radius);
+	background: var(--field-bg);
+	color: var(--field-ink);
+	font: 500 var(--fs-md, 0.9375rem) / 1.4 var(--body, system-ui);
+	box-shadow: none;
+	outline: none;
+	transition: var(--field-transition);
+}
+
+body textarea,
+body .shell .content textarea {
+	min-height: 5.5rem;
+	padding-block: 0.7rem;
+	resize: vertical;
+	line-height: 1.45;
+}
+
+body select,
+body .shell .content select {
+	padding-right: 2.1rem;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%235c6b7d' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 0.85rem center;
+	background-size: 12px 8px;
+	cursor: pointer;
+}
+
+:root[data-theme='dark'] body select,
+:root[data-theme='dark'] body .shell .content select,
+:root:not([data-theme='light']) body select {
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23a9b9cb' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+body input::placeholder,
+body textarea::placeholder,
+body .shell .content input::placeholder,
+body .shell .content textarea::placeholder,
+body .login input::placeholder {
+	color: var(--field-placeholder);
+	opacity: 1;
+}
+
+/* Hover: borde un poco más presente, sin grueso */
+body input:hover:not(:disabled):not(:focus):not([type='checkbox']):not([type='radio']),
+body select:hover:not(:disabled):not(:focus),
+body textarea:hover:not(:disabled):not(:focus),
+body .shell .content input:hover:not(:disabled):not(:focus):not([type='checkbox']):not([type='radio']),
+body .shell .content select:hover:not(:disabled):not(:focus),
+body .shell .content textarea:hover:not(:disabled):not(:focus) {
+	border-color: color-mix(in srgb, var(--line) 40%, var(--slate));
+}
+
+/* Foco: borde fino oro + halo 1px (elegante, no “anillo grueso”) */
+body input:focus:not([type='checkbox']):not([type='radio']),
+body input:focus-visible:not([type='checkbox']):not([type='radio']),
+body select:focus,
+body select:focus-visible,
+body textarea:focus,
+body textarea:focus-visible,
+body .shell .content input:focus:not([type='checkbox']):not([type='radio']),
+body .shell .content input:focus-visible:not([type='checkbox']):not([type='radio']),
+body .shell .content select:focus,
+body .shell .content select:focus-visible,
+body .shell .content textarea:focus,
+body .shell .content textarea:focus-visible,
+body .login input:focus,
+body .login input:focus-visible {
+	border: var(--field-focus-border);
+	box-shadow: var(--field-focus-ring);
+	outline: none;
+}
+
+body input:disabled,
+body select:disabled,
+body textarea:disabled {
+	opacity: 0.65;
+	cursor: not-allowed;
+	background: var(--surface-2, var(--surface));
+}
+
+body input[type='number'],
+body input[type='date'],
+body input[type='time'],
+body input[type='datetime-local'],
+body input[type='search'],
+body input[type='email'],
+body input[type='tel'],
+body input[type='url'] {
+	min-height: var(--field-height);
+}
+
+body .filters input,
+body .toolbar input,
+body .shell .content .filters input,
+body .shell .content .toolbar input {
+	flex: 1 1 auto;
+	min-width: 0;
+	width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	body input,
+	body select,
+	body textarea {
+		transition: none;
+	}
+}
