@@ -1,6 +1,6 @@
 import type { WarehouseManagementRepository } from '../../domain/repository/WarehouseManagementRepository';
 import type {
-	Bin, BinDetail, BinPage, CreateBinInput, CreateWarehouseInput, CreateZoneInput,
+	Bin, BinDetail, BinPage, WarehousePage, CreateBinInput, CreateWarehouseInput, CreateZoneInput,
 	UpdateBinInput, UpdateWarehouseInput, UpdateZoneInput, Warehouse, Zone
 } from '../../domain/entity/Warehouse';
 import type { WarehouseRemoteDataSource } from '../datasource/WarehouseRemoteDataSource';
@@ -9,7 +9,25 @@ import { WarehouseMapper } from '../mapper/WarehouseMapper';
 export class WarehouseRepositoryImpl implements WarehouseManagementRepository {
 	constructor(private readonly datasource: WarehouseRemoteDataSource) {}
 	async listActive(): Promise<Warehouse[]> { return (await this.datasource.listActive()).map(WarehouseMapper.toWarehouse); }
-	async listAdmin(params?: { page?: number }): Promise<Warehouse[]> { return (await this.datasource.listAdmin(params?.page)).map(WarehouseMapper.toWarehouse); }
+	async listAdmin(): Promise<Warehouse[]> {
+		const first = await this.datasource.listAdminPage(1, 1000);
+		const warehouses = (first.warehouses ?? []).map(WarehouseMapper.toWarehouse);
+		for (let page = 2; page <= (first.pages ?? 1); page += 1) {
+			const next = await this.datasource.listAdminPage(page, 1000);
+			warehouses.push(...(next.warehouses ?? []).map(WarehouseMapper.toWarehouse));
+		}
+		return warehouses;
+	}
+	async listAdminPage(params?: { page?: number; perPage?: number }): Promise<WarehousePage> {
+		const response = await this.datasource.listAdminPage(params?.page ?? 1, params?.perPage ?? 50);
+		return {
+			items: (response.warehouses ?? []).map(WarehouseMapper.toWarehouse),
+			total: response.total ?? 0,
+			page: response.page ?? params?.page ?? 1,
+			pages: response.pages ?? 1,
+			perPage: response.per_page ?? params?.perPage ?? 50
+		};
+	}
 	async getById(id: number): Promise<Warehouse> { return WarehouseMapper.toWarehouse(await this.datasource.getById(id)); }
 	async listZones(warehouseId: number): Promise<Zone[]> { return (await this.datasource.listZones(warehouseId)).map(WarehouseMapper.toZone); }
 	async listBins(params?: { warehouseId?: number; zoneId?: number; page?: number; perPage?: number; q?: string }): Promise<BinPage> {
