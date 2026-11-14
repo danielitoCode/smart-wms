@@ -38,7 +38,7 @@ export type BinDetailResponseDto = { bin: BinDto; inventory: BinInventoryDto[] }
 export type MessageDto = { message: string };
 
 export type OperationalBinSearchResultDto = {
-	bin_id: number; bin_code: string; bin_barcode: string | null; bin_type: string;
+	bin_id: number; warehouse_id?: number; bin_code: string; bin_barcode: string | null; bin_type: string;
 	zone_name: string | null; aisle: string | null; row_num: number | null; level_num: number | null;
 };
 export type OperationalBinLookupDto = {
