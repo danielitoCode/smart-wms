@@ -332,13 +332,24 @@ Dependencias: base transversal.
 
 **Pendiente para cerrar el feature agregado F1.3:**
 
-- [~] Completar la matriz de paridad React para Zones y Bins, incluyendo restricciones de integridad, errores de eliminación y edición de relaciones.
-- [~] Añadir/terminar pruebas de UI e integración para los flujos jerárquicos Zones/Bins y sus permisos específicos.
-- [~] Ejecutar regresión dirigida de Inventory, Receiving, Putaway y Picking después de los cambios de catálogos.
+- [x] Zones / Zonas se cierra en F1.4 con contrato Flask, autorización por almacén y pruebas específicas.
+- [~] Completar la matriz de paridad React para Bins, incluyendo restricciones de integridad, errores de eliminación y edición de relaciones.
+- [~] Completar la regresión dirigida de Inventory, Receiving, Putaway y Picking después de cerrar Zones y Bins.
 
 **Evidencia CI:** [Webapp CI](https://github.com/danielitoCode/smart-wms/actions/runs/43602389216), commit `2d92c194`: TypeScript/Svelte Check, build, suites Domain, Application, Infrastructure, UI, i18n, Integration y regresión completa aprobadas; **270 tests en 68 archivos**. La etapa opcional de cobertura por feature no generó reporte porque falta `@vitest/coverage-v8`; el workflow está configurado para no bloquear por esa etapa.
 
 **Salida de fase:** catálogos maestros utilizables por todos los flujos dependientes.
+
+#### F1.4 Zones / Zonas — Completo
+
+- [x] **Domain:** `Zone` conserva `zone_id` y `warehouse_id` como identidades distintas; pertenencia obligatoria al almacén, código (1–32), nombre (1–128), tipo permitido (`RECEIVING`, `STORAGE`, `PICKING`, `STAGING`, `SHIPPING`) y estado.
+- [x] **Application:** List por almacén, Create, Update y Delete. Los casos de uso validan identificadores, campos, tipos y actualizaciones no vacías. El almacén propietario no puede cambiarse desde Update.
+- [x] **Data:** GET `/api/admin/zones?warehouse_id=&page=&per_page=` devuelve `zones`, `total`, `page`, `per_page`, `pages`; POST `/api/admin/zones` admite `warehouse_id`, `zone_code`, `zone_name`, `zone_type`; PUT `/api/admin/zones/{zone_id}` admite `zone_code`, `zone_name`, `zone_type`, `is_active`; DELETE `/api/admin/zones/{zone_id}`. No existe GET de detalle de zona: no se implementó ni se simula.
+- [x] **Integridad backend:** creación comprueba que el almacén exista y devuelve 404 si no existe. PUT y DELETE cargan el almacén propietario y ejecutan `check_warehouse_access`, devolviendo 403 para zonas de otro almacén. DELETE devuelve 409 cuando hay ubicaciones asociadas. El listado incluye `bins_count` para mostrar la relación sin requerir permiso adicional de Bins.
+- [x] **UI:** listado filtrado por almacén activo, selector que solo ofrece almacenes asignados al usuario, alta/edición, estado, recuento de ubicaciones asociadas y confirmación de eliminación. En el workspace de Bins se conserva el filtro de ubicaciones por zona.
+- [x] **Pruebas:** tipos y validaciones; almacén inexistente; zona ajena al usuario; rechazo de eliminación con bins (409); ausencia de GET de detalle (405); permiso `zones`; paginación y relación con ubicaciones; selector limitado a almacenes asignados; pruebas UI, mapper y contrato HTTP.
+- [x] **CI Webapp:** [run 43603830938](https://github.com/danielitoCode/smart-wms/actions/runs/43603830938), commit `8e3ffe59`: typecheck, build, Domain, Application, Infrastructure, UI, i18n, Integration y regresión aprobados; **290 tests en 73 archivos**.
+- [x] **CI Backend:** [run 43603470293](https://github.com/danielitoCode/smart-wms/actions/runs/43603470293), commit `dc617ff5`: suite backend aprobada; **3010 tests passed**.
 
 ### Fase 2 — Inventario, ajustes y conteos
 
