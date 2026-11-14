@@ -41,8 +41,8 @@ class UpdateBinRequest(BaseModel):
     position_num: Optional[int] = Field(None, ge=0)
     pick_sequence: Optional[int] = Field(None, ge=0)
     putaway_sequence: Optional[int] = Field(None, ge=0)
-    max_weight_lbs: Optional[float] = Field(None, ge=0)
-    max_volume_cuft: Optional[float] = Field(None, ge=0)
+    max_weight_lbs: Optional[Decimal] = Field(None, ge=0, max_digits=10, decimal_places=2)
+    max_volume_cuft: Optional[Decimal] = Field(None, ge=0, max_digits=10, decimal_places=2)
     is_active: Optional[bool] = None
     zone_id: Optional[int] = Field(None, gt=0)
 
