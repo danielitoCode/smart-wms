@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { WarehouseManagementRepository } from '../../../../../../core/feature/warehouses/domain/repository/WarehouseManagementRepository';
+import type { BinLookupRepository } from '../../../../../../core/feature/warehouses/domain/repository/BinLookupRepository';
 import { SearchBinsUseCase } from '../../../../../../core/feature/warehouses/domain/usecase/SearchBinsUseCase';
 import { LookupBinByBarcodeUseCase } from '../../../../../../core/feature/warehouses/domain/usecase/LookupBinByBarcodeUseCase';
 
 describe('Operational bin lookup use cases', () => {
 	it('normalizes search text and returns operational matches from the dedicated port', async () => {
-		const repository = { searchOperationalBins: vi.fn().mockResolvedValue([]) } as unknown as WarehouseManagementRepository;
+		const repository = { searchOperationalBins: vi.fn().mockResolvedValue([]) } as unknown as BinLookupRepository;
 		await expect(new SearchBinsUseCase(repository).execute('  A-01  ')).resolves.toEqual([]);
 		expect(repository.searchOperationalBins).toHaveBeenCalledWith('A-01');
 	});
