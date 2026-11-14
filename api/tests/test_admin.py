@@ -362,6 +362,79 @@ class TestBins:
         assert resp.status_code == 200
         assert resp.get_json()["pick_sequence"] == 999
 
+    def test_update_bin_rejects_duplicate_code_in_same_warehouse(self, client, auth_headers):
+        resp = client.put("/api/admin/bins/3", json={"bin_code": "A-01-02"}, headers=auth_headers)
+        assert resp.status_code == 400
+        assert "Duplicate bin_code" in resp.get_json()["error"]
+        unchanged = client.get("/api/admin/bins/3", headers=auth_headers)
+        assert unchanged.get_json()["bin"]["bin_code"] == "A-01-01"
+
+    def test_create_bin_rejects_zone_from_another_warehouse(self, client, auth_headers):
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO warehouses (warehouse_code, warehouse_name) VALUES ('BIN-OTHER-WH', 'Other Bin Warehouse') RETURNING warehouse_id"
+        )
+        other_id = cur.fetchone()[0]
+        cur.execute(
+            "INSERT INTO zones (warehouse_id, zone_code, zone_name, zone_type) VALUES (%s, 'OTHER', 'Other zone', 'STORAGE') RETURNING zone_id",
+            (other_id,),
+        )
+        other_zone_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+
+        resp = client.post("/api/admin/bins", json={
+            "zone_id": other_zone_id, "warehouse_id": 1, "bin_code": "WRONG-ZONE",
+            "bin_barcode": "WRONG-ZONE", "bin_type": "Pickable"
+        }, headers=auth_headers)
+        assert resp.status_code == 400
+        assert "specified warehouse" in resp.get_json()["error"]
+
+    def test_update_bin_rejects_zone_from_another_warehouse(self, client, auth_headers):
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO warehouses (warehouse_code, warehouse_name) VALUES ('BIN-OTHER-UPD', 'Other Bin Warehouse') RETURNING warehouse_id"
+        )
+        other_id = cur.fetchone()[0]
+        cur.execute(
+            "INSERT INTO zones (warehouse_id, zone_code, zone_name, zone_type) VALUES (%s, 'OTHER', 'Other zone', 'STORAGE') RETURNING zone_id",
+            (other_id,),
+        )
+        other_zone_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+
+        resp = client.put("/api/admin/bins/3", json={"zone_id": other_zone_id}, headers=auth_headers)
+        assert resp.status_code == 400
+        assert "does not belong" in resp.get_json()["error"]
+
+    def test_bin_capacity_round_trips_through_admin_api(self, client, auth_headers):
+        created = client.post("/api/admin/bins", json={
+            "zone_id": 2, "warehouse_id": 1, "bin_code": "CAP-01", "bin_barcode": "CAP-01",
+            "bin_type": "Pickable", "max_weight_lbs": 125.5, "max_volume_cuft": 32.25
+        }, headers=auth_headers)
+        assert created.status_code == 201
+        assert created.get_json()["max_weight_lbs"] == 125.5
+        assert created.get_json()["max_volume_cuft"] == 32.25
+
+        bin_id = created.get_json()["bin_id"]
+        updated = client.put(f"/api/admin/bins/{bin_id}", json={"max_weight_lbs": 150.75}, headers=auth_headers)
+        assert updated.status_code == 200
+        assert updated.get_json()["max_weight_lbs"] == 150.75
+        assert updated.get_json()["max_volume_cuft"] == 32.25
+
+    def test_list_bins_includes_inventory_occupancy_and_capacity(self, client, auth_headers):
+        resp = client.get("/api/admin/bins?warehouse_id=1", headers=auth_headers)
+        assert resp.status_code == 200
+        bin_row = next(row for row in resp.get_json()["bins"] if row["bin_id"] == 3)
+        assert bin_row["quantity_on_hand"] == 62
+        assert bin_row["quantity_allocated"] >= 0
+        assert bin_row["inventory_lines"] >= 1
+        assert "max_weight_lbs" in bin_row
+        assert "max_volume_cuft" in bin_row
+
 
 # ── Items ─────────────────────────────────────────────────────────────────────
 
