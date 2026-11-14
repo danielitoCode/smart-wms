@@ -61,6 +61,19 @@ describe('vendors UI state', () => {
 		expect(state.vendors).toEqual([]);
 	});
 
+	it('moves back to the last valid page when a mutation shrinks the result set', async () => {
+		const deps = dependencies();
+		(deps.list.execute as ReturnType<typeof vi.fn>)
+			.mockResolvedValueOnce({ items: [], total: 51, page: 3, perPage: 50, pages: 2 })
+			.mockResolvedValueOnce({ items: [vendor], total: 51, page: 2, perPage: 50, pages: 2 });
+		const state = createVendorsState(deps);
+		state.setPage(3);
+		await state.load();
+		expect(deps.list.execute).toHaveBeenNthCalledWith(1, { search: '', filter: 'active', page: 3, perPage: 50 });
+		expect(deps.list.execute).toHaveBeenNthCalledWith(2, { search: '', filter: 'active', page: 2, perPage: 50 });
+		expect(state.page).toBe(2);
+		expect(state.pagination.page).toBe(2);
+	});
 	it('keeps vendors with duplicate display names distinct by canonical_id', async () => {
 		const deps = dependencies();
 		(deps.list.execute as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
