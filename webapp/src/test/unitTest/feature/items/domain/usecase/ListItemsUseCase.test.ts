@@ -1,26 +1,20 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ListItemsUseCase } from '../../../../../../core/feature/items/domain/usecase/ListItemsUseCase';
-import type { ItemRepository } from '../../../../../../core/feature/items/domain/repository/ItemRepository';
 
 describe('ListItemsUseCase', () => {
-	it('rejects invalid page', async () => {
-		const repo = { list: vi.fn(), search: vi.fn() } as unknown as ItemRepository;
-		const uc = new ListItemsUseCase(repo);
-		expect(() => uc.execute({ page: 0 })).toThrow(/page/);
-	});
-
-	it('trims category and q', async () => {
+	it('defaults filter active and validates page', async () => {
 		const repo = {
-			list: vi.fn().mockResolvedValue([]),
-			search: vi.fn()
-		} as unknown as ItemRepository;
-		const uc = new ListItemsUseCase(repo);
-		await uc.execute({ category: '  A  ', q: '  sku  ', active: true });
-		expect(repo.list).toHaveBeenCalledWith({
-			category: 'A',
-			q: 'sku',
-			active: true,
-			page: undefined
+			listPage: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, perPage: 50, pages: 1 })
+		};
+		const uc = new ListItemsUseCase(repo as never);
+		await uc.execute({ q: ' bolt ' });
+		expect(repo.listPage).toHaveBeenCalledWith({
+			q: 'bolt',
+			filter: 'active',
+			category: undefined,
+			page: 1,
+			perPage: 50
 		});
+		expect(() => uc.execute({ page: 0 })).toThrow(/page/i);
 	});
 });

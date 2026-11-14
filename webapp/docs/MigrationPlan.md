@@ -2,22 +2,20 @@
 
 ## Fase 0 — Seguridad y plataforma
 
-### F0.1–F0.4
-Auth, permisos, warehouse context, cliente HTTP — ver commits previos.
+F0.1–F0.5 cerrados en commits previos (auth, permisos, warehouse, HTTP, i18n/CI).
 
-### F0.5 Traducciones y CI
+## Fase 1 — Datos maestros
 
-| Criterio | Estado | Evidencia |
-|---|---|---|
-| Italiano idioma principal | Hecho | default locale `it` |
-| Español completo | Hecho | identidad canónica |
-| Inglés completo (claves i18n.t) | Hecho | catalog + gapTranslations |
-| Cobertura claves en componentes | Hecho | translations.test.ts |
-| Spot hardcode login | Hecho | LoginScreen test |
-| Suites independientes | Hecho | test:domain/application/infrastructure/ui/integration |
-| CI regresión completa | Hecho | webapp-ci.yml |
-| Cobertura por feature | Hecho | test:coverage:feature |
+### F1.1 Items / Productos
 
-### Gate salida Fase 0
+| Capa | Estado |
+|---|---|
+| Domain Item + ItemDetail + WriteInput | Hecho |
+| Use cases list/detail/create/update/archive/delete/search | Hecho |
+| Data DTO/mapper (wrapper detail) + list page total/page/pages | Hecho |
+| UI list filters Active/Archived/All, search, CRUD modals | Hecho |
+| Tests mapper + create validation + list | Hecho |
 
-CI verde · matriz permisos · warehouse context · contratos F0 · i18n IT/ES/EN → abrir Fase 1.
+**Cierre F1.1:** paridad CRUD/búsqueda con React y contratos Flask `/admin/items`.
+Endpoints: GET/POST `/api/admin/items`, GET/PUT/DELETE `/api/admin/items/{id}`, POST archive.
+Restricciones delete: inventario > 0, historial SO/PO → error Flask (mostrado vía toUserMessage).
