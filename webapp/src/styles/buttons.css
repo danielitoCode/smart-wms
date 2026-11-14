@@ -1,46 +1,51 @@
 /**
- * Botones — lenguaje del gradient CTA de referencia, con tokens Abellis.
- * Primary / accent: navy gradient + borde degradado lightblue→gold.
+ * Botones Abellis — degradados suaves, borde fino, ancho contenido (no full-wide).
+ * Jerarquía: primary > secondary > ghost/link.
  */
 
 :root {
+	/* Suaves: poco contraste entre stops, anclados a navy / lightblue / gold */
 	--btn-primary-fill: linear-gradient(
-		140deg,
-		var(--navy) 12%,
-		var(--navy-2, #013a6b) 55%,
-		var(--navy-deep) 100%
+		145deg,
+		color-mix(in srgb, var(--navy) 88%, white) 0%,
+		var(--navy) 48%,
+		color-mix(in srgb, var(--navy) 82%, var(--navy-deep)) 100%
 	);
 	--btn-primary-border: linear-gradient(
-		142deg,
-		color-mix(in srgb, var(--lightblue) 85%, white) 8%,
-		color-mix(in srgb, var(--navy) 70%, var(--gold)) 55%,
-		var(--navy-deep) 92%
+		145deg,
+		color-mix(in srgb, var(--lightblue) 55%, var(--navy)) 0%,
+		color-mix(in srgb, var(--navy) 78%, var(--gold)) 100%
 	);
-	--btn-primary-shadow: 6px 8px 18px color-mix(in srgb, var(--navy-deep) 32%, transparent);
+	--btn-primary-shadow: 0 4px 12px color-mix(in srgb, var(--navy-deep) 18%, transparent);
+
 	--btn-gold-fill: linear-gradient(
-		140deg,
-		var(--gold) 10%,
-		color-mix(in srgb, var(--gold) 75%, #b8860b) 100%
+		145deg,
+		color-mix(in srgb, var(--gold) 92%, white) 0%,
+		var(--gold) 100%
 	);
 	--btn-gold-border: linear-gradient(
-		142deg,
-		#ffe7a0 8%,
-		color-mix(in srgb, var(--gold) 60%, var(--navy)) 90%
+		145deg,
+		color-mix(in srgb, var(--gold) 50%, white) 0%,
+		color-mix(in srgb, var(--gold) 70%, var(--navy)) 100%
 	);
+
 	--btn-danger-fill: linear-gradient(
-		140deg,
-		color-mix(in srgb, var(--danger) 92%, #fff) 10%,
+		145deg,
+		color-mix(in srgb, var(--danger) 88%, white) 0%,
 		var(--danger) 100%
 	);
 	--btn-danger-border: linear-gradient(
-		142deg,
-		#f5b4af 10%,
-		color-mix(in srgb, var(--danger) 80%, #4a0a08) 90%
+		145deg,
+		color-mix(in srgb, var(--danger) 45%, white) 0%,
+		color-mix(in srgb, var(--danger) 85%, #4a0a08) 100%
 	);
-	--btn-danger-shadow: 6px 8px 18px color-mix(in srgb, var(--danger) 28%, transparent);
+	--btn-danger-shadow: 0 4px 12px color-mix(in srgb, var(--danger) 16%, transparent);
+
+	--btn-radius: 8px;
+	--btn-border-width: 1px;
 }
 
-/* Base clickable buttons in content (exclude pure icon/ghost utilities when marked) */
+/* ——— Primary / accent (acción principal) ——— */
 body .shell .content button.primary,
 body .shell .content button.accent,
 body .shell .content .btn-primary,
@@ -51,25 +56,32 @@ body .shell .content .button,
 .page .button,
 .inventory button.primary,
 .inventory button.accent {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.35rem;
+	width: auto;
+	max-width: max-content;
 	background:
 		var(--btn-primary-fill) padding-box,
 		var(--btn-primary-border) border-box;
-	border: 2px solid transparent;
-	border-radius: 8px;
+	border: var(--btn-border-width) solid transparent;
+	border-radius: var(--btn-radius);
 	color: #fff;
 	font-family: var(--body);
-	font-size: 0.9rem;
+	font-size: 0.8125rem;
 	font-weight: 600;
-	line-height: 1.25;
-	padding: 0.55rem 1.25rem;
-	min-height: 40px;
+	line-height: 1.2;
+	padding: 0.45rem 0.9rem;
+	min-height: 36px;
 	cursor: pointer;
-	text-shadow: 0 1px 1px color-mix(in srgb, var(--navy-deep) 35%, transparent);
+	text-shadow: none;
 	box-shadow: var(--btn-primary-shadow);
 	transition:
 		box-shadow var(--motion-base, 200ms) var(--ease-out, ease),
 		opacity var(--motion-fast, 140ms) ease,
-		transform var(--motion-fast, 140ms) var(--ease-out, ease);
+		transform var(--motion-fast, 140ms) var(--ease-out, ease),
+		filter var(--motion-fast, 140ms) ease;
 }
 
 body .shell .content button.primary:hover,
@@ -82,8 +94,9 @@ body .shell .content .button:hover,
 .page .button:hover,
 .inventory button.primary:hover,
 .inventory button.accent:hover {
-	box-shadow: none;
-	opacity: 0.88;
+	box-shadow: 0 2px 8px color-mix(in srgb, var(--navy-deep) 12%, transparent);
+	filter: brightness(1.04);
+	opacity: 1;
 }
 
 body .shell .content button.primary:active,
@@ -91,82 +104,130 @@ body .shell .content button.accent:active,
 .page button.primary:active,
 .page .button:active {
 	transform: translateY(1px);
-	opacity: 0.92;
+	box-shadow: none;
+	filter: brightness(0.98);
 }
 
-/* Gold / highlight CTA (optional class) */
+/* ——— Gold (destacado ocasional) ——— */
 body .shell .content button.gold,
 .page button.gold {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: auto;
+	max-width: max-content;
 	background:
 		var(--btn-gold-fill) padding-box,
 		var(--btn-gold-border) border-box;
-	border: 2px solid transparent;
+	border: var(--btn-border-width) solid transparent;
+	border-radius: var(--btn-radius);
 	color: var(--navy-deep);
+	font-size: 0.8125rem;
+	font-weight: 650;
+	padding: 0.45rem 0.9rem;
+	min-height: 36px;
 	text-shadow: none;
-	box-shadow: 6px 8px 18px color-mix(in srgb, var(--gold) 35%, transparent);
-	font-weight: 700;
+	box-shadow: 0 4px 12px color-mix(in srgb, var(--gold) 22%, transparent);
 }
 
 body .shell .content button.gold:hover,
 .page button.gold:hover {
-	box-shadow: none;
-	opacity: 0.9;
+	box-shadow: 0 2px 6px color-mix(in srgb, var(--gold) 16%, transparent);
+	filter: brightness(1.03);
 }
 
-/* Danger */
+/* ——— Danger ——— */
 body .shell .content button.danger,
 .page button.danger {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: auto;
+	max-width: max-content;
 	background:
 		var(--btn-danger-fill) padding-box,
 		var(--btn-danger-border) border-box;
-	border: 2px solid transparent;
+	border: var(--btn-border-width) solid transparent;
+	border-radius: var(--btn-radius);
 	color: #fff;
-	text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+	font-size: 0.8125rem;
+	font-weight: 600;
+	padding: 0.45rem 0.85rem;
+	min-height: 36px;
+	text-shadow: none;
 	box-shadow: var(--btn-danger-shadow);
 }
 
 body .shell .content button.danger:hover,
 .page button.danger:hover {
-	box-shadow: none;
-	opacity: 0.88;
+	box-shadow: 0 2px 6px color-mix(in srgb, var(--danger) 14%, transparent);
+	filter: brightness(1.03);
 }
 
-/* Secondary / default outlined buttons in content */
+/* ——— Secondary (acciones de apoyo) ——— */
 body .shell .content button:not(.primary):not(.accent):not(.gold):not(.danger):not(.ghost):not(.link):not(.danger-ghost):not(.menu-btn):not(.account-action):not(.nav-link),
 .page button:not(.primary):not(.accent):not(.gold):not(.danger):not(.ghost):not(.link):not(.danger-ghost) {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: auto;
+	max-width: max-content;
 	background: var(--card);
 	border: 1px solid var(--line);
-	border-radius: 8px;
+	border-radius: var(--btn-radius);
 	color: var(--ink);
 	font-weight: 600;
-	font-size: 0.875rem;
-	padding: 0.5rem 0.9rem;
-	min-height: 40px;
-	box-shadow: var(--shadow-1, 0 1px 2px rgba(16, 38, 64, 0.06));
+	font-size: 0.78rem;
+	padding: 0.4rem 0.75rem;
+	min-height: 34px;
+	box-shadow: none;
 	transition:
 		border-color var(--motion-fast, 140ms) ease,
 		background var(--motion-fast, 140ms) ease,
-		box-shadow var(--motion-fast, 140ms) ease;
+		color var(--motion-fast, 140ms) ease;
 }
 
 body .shell .content button:not(.primary):not(.accent):not(.gold):not(.danger):not(.ghost):not(.link):not(.danger-ghost):not(.menu-btn):not(.account-action):hover,
 .page button:not(.primary):not(.accent):not(.gold):not(.danger):not(.ghost):not(.link):not(.danger-ghost):hover {
-	border-color: color-mix(in srgb, var(--navy) 35%, var(--line));
+	border-color: color-mix(in srgb, var(--navy) 28%, var(--line));
 	background: var(--surface-2);
-	box-shadow: var(--shadow-2, 0 4px 12px rgba(16, 38, 64, 0.08));
+	color: var(--navy);
+}
+
+/* Compacto en toolbars / filas de tabla */
+body .shell .content .toolbar button,
+body .shell .content .actions button,
+body .shell .content td button,
+.page .toolbar button,
+.page .actions button {
+	min-height: 32px;
+	padding-inline: 0.7rem;
+	font-size: 0.78rem;
 }
 
 body .shell .content button:disabled,
 .page button:disabled {
-	opacity: 0.55;
+	opacity: 0.5;
 	cursor: not-allowed;
 	box-shadow: none;
 	transform: none;
+	filter: none;
 }
 
 :root[data-theme='dark'] {
-	--btn-primary-shadow: 6px 10px 22px rgba(0, 0, 0, 0.45);
-	--btn-danger-shadow: 6px 10px 22px rgba(0, 0, 0, 0.4);
+	--btn-primary-fill: linear-gradient(
+		145deg,
+		color-mix(in srgb, var(--navy) 70%, var(--lightblue)) 0%,
+		var(--navy) 50%,
+		color-mix(in srgb, var(--navy) 75%, black) 100%
+	);
+	--btn-primary-border: linear-gradient(
+		145deg,
+		color-mix(in srgb, var(--lightblue) 40%, var(--navy)) 0%,
+		color-mix(in srgb, var(--navy) 65%, var(--gold)) 100%
+	);
+	--btn-primary-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+	--btn-danger-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
 }
 
 @media (prefers-reduced-motion: reduce) {
