@@ -4,7 +4,7 @@ import type { ItemRepository } from '../repository/ItemRepository';
 export class ListItemsUseCase {
 	constructor(private readonly repository: ItemRepository) {}
 
-	execute(query: ItemListQuery = {}): Promise<ItemListPage> {
+	execute(query: ItemListQuery = {}, options?: { signal?: AbortSignal }): Promise<ItemListPage> {
 		const page = query.page ?? 1;
 		const perPage = query.perPage ?? 50;
 		if (!Number.isInteger(page) || page < 1) throw new Error('page must be an integer >= 1');
@@ -17,6 +17,6 @@ export class ListItemsUseCase {
 			category: query.category?.trim() || undefined,
 			page,
 			perPage
-		});
+		}, options);
 	}
 }
