@@ -408,6 +408,14 @@ class TestBins:
         assert resp.status_code == 201
         assert resp.get_json()["bin_code"] == "C-01-01"
 
+    def test_create_bin_rejects_duplicate_code_in_same_warehouse(self, client, auth_headers):
+        response = client.post("/api/admin/bins", json={
+            "zone_id": 2, "warehouse_id": 1, "bin_code": "A-01-01",
+            "bin_barcode": "NEW-BARCODE", "bin_type": "Pickable"
+        }, headers=auth_headers)
+        assert response.status_code == 400
+        assert "Duplicate bin_code" in response.get_json()["error"]
+
     def test_create_bin_invalid_type(self, client, auth_headers):
         resp = client.post("/api/admin/bins", json={
             "zone_id": 2, "warehouse_id": 1, "bin_code": "X", "bin_barcode": "X", "bin_type": "BAD"
