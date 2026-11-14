@@ -65,6 +65,7 @@ describe('Putaway UI state', () => {
 			quantity: 8,
 			lotNumber: null
 		});
+		expect(dependencies.listPending.execute).toHaveBeenCalledTimes(2);
 	});
 
 	it('does not preselect a destination when no preferred or default bin exists', async () => {
