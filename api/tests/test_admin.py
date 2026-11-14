@@ -155,6 +155,18 @@ class TestZones:
         assert resp.status_code == 200
         assert resp.get_json()["zone_name"] == "Updated Receiving"
 
+    def test_zone_list_and_create_respect_assigned_warehouses(self, client):
+        _, headers = _web_user_with_pages(client, ["zones"], username="zones_scope_read_create")
+        foreign_list = client.get("/api/admin/zones?warehouse_id=2", headers=headers)
+        assert foreign_list.status_code == 403
+        unfiltered = client.get("/api/admin/zones", headers=headers)
+        assert unfiltered.status_code == 200
+        assert all(zone["warehouse_id"] == 1 for zone in unfiltered.get_json()["zones"])
+        foreign_create = client.post("/api/admin/zones", json={
+            "warehouse_id": 2, "zone_code": "OUTSIDE", "zone_name": "Outside scope", "zone_type": "STORAGE"
+        }, headers=headers)
+        assert foreign_create.status_code == 403
+
     def test_create_zone_rejects_nonexistent_warehouse(self, client, auth_headers):
         resp = client.post("/api/admin/zones", json={
             "warehouse_id": 999999, "zone_code": "NO-WH", "zone_name": "No warehouse", "zone_type": "STORAGE"
