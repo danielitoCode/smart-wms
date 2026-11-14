@@ -249,14 +249,14 @@ Fuentes inspeccionadas en la rama: `api/routes/admin/admin_items.py`, `api/route
 
 **Efectos secundarios:** alta y cambios persisten en `items`; archive alterna estado; delete puede eliminar físicamente y limpia relaciones solo tras validar que no hay stock positivo ni historial PO/SO. No se debe ofrecer delete como alternativa a archive cuando el backend lo rechaza.
 
-**Brechas concretas detectadas en Svelte (no corregidas todavía):**
-1. `ItemRemoteDataSource.getById()` declara que recibe `ItemDto`, pero Flask devuelve `{ item, inventory, preferred_bins }`; el mapper actual no desempaqueta `item`.
-2. `list()` descarta `total/page/per_page/pages`, y la pantalla no implementa paginación ni los filtros Active / Archived / All presentes en React.
-3. Svelte solo implementa listado/búsqueda; faltan detalle, alta, edición, archive/restore, delete con confirmación y presentación de restricciones del servidor.
-4. El DTO actual no representa campos reales de listado/detalle (por ejemplo `weight_lbs`, `default_bin_code`, `description`, dimensiones, reorden, tracking, inventario y preferred bins).
-5. La búsqueda administrativa y la búsqueda operativa son contratos distintos; no se debe sustituir una por otra ni perder la autorización de almacén de lookup.
+**Cierre de brechas de F1.1 (2026-11-14):**
+1. `getDetail()` consume la respuesta Flask envolvente y `ItemMapper.toDetail()` desempaqueta `{ item, inventory, preferred_bins }`.
+2. `listPage()` conserva `total/page/per_page/pages`; la UI expone paginación y filtros Active / Archived / All.
+3. La vertical Svelte incluye listado/búsqueda, detalle, alta, edición, archive/restore y borrado confirmado; los errores HTTP se traducen y las restricciones de borrado permanecen visibles en el flujo.
+4. Los DTO y mappers conservan los campos relevantes del listado y detalle. La tabla y el detalle igualan los atributos visibles de React (UPC, MPN, categoría, peso, bin por defecto y estado), además de ubicaciones preferidas e inventario.
+5. La búsqueda administrativa usa `/api/admin/items`; la búsqueda/lookup operativa mantiene sus endpoints separados y su filtrado de almacenes autorizado.
+6. Pruebas de estado, repositorio, contrato HTTP y UI protegen estas capacidades. La cobertura visual se reforzó con `ItemsScreen.test.ts` (commit `23b5588`) y las proyecciones con `ItemRepositoryImpl.test.ts` (commit `b17962c`, además de `cb2c6ac`).
 
-**Decisión de arranque:** F1.1 está contractualmente preparada para implementación, pero la Fase 1 no se declara iniciada formalmente hasta cerrar F0-B, F0-C y F0-E. Estos hallazgos se convierten en criterios obligatorios de aceptación de F1.1.
 
 #### Cambios de código vinculados a Fase 0
 
@@ -300,7 +300,7 @@ Dependencias: base transversal.
 - [x] Tests: validación de SKU/peso; estado/UI; errores HTTP 403/409/422; envelope y paginación; filtros Active/Archived/All; detalle; archivado/restauración; eliminación; cancelación de solicitudes y proyecciones de campos de paridad (UPC, MPN, categoría, peso y bin por defecto). **CI verde:** [Webapp CI — commit `6bbe15e`](https://github.com/danielitoCode/smart-wms/actions/runs/43561705576) (61 archivos / 229 tests en regresión completa). La prueba adicional de proyecciones se añadió en `cb2c6ac`.
 - [x] Paridad: comparación con `admin/src/pages/Items.jsx`; columnas, detalle, filtros, búsqueda, paginación y acciones CRUD/archivo cubiertos. Svelte conserva todos los campos relevantes y añade información de bins/zonas.
 
-**Cierre F1.1 (2026-11-14):** la comparación directa con React confirmó paridad de los campos y acciones relevantes. La tabla Svelte presenta bin por defecto y peso; el detalle presenta UPC, MPN, categoría, peso, estado y bin por defecto, además de preferred bins e inventario. Se reforzó `ItemRepositoryImpl.test.ts` para verificar que el mapper conserva UPC, MPN, categoría, peso, `defaultBinId` y `defaultBinCode` en las proyecciones. El pipeline completo previamente aprobado cubrió check, build, domain, application, infrastructure, UI, i18n, integration y regresión total (61 archivos / 229 tests). La prueba adicional de proyecciones se incorporó después de esa ejecución, en el commit `cb2c6ac`; debe quedar incluida en la siguiente ejecución de CI. F1.1 queda funcional y documentalmente cerrada; no se modificó backend ni autorización.
+**Cierre F1.1 (2026-11-14):** la comparación directa con `admin/src/pages/Items.jsx` confirmó paridad funcional y de presentación en columnas, detalle, filtros, búsqueda, paginación y operaciones soportadas. La tabla Svelte presenta UPC, MPN, bin por defecto, categoría, peso y estado; el detalle conserva UPC, MPN, categoría, peso, estado, bin por defecto, preferred bins e inventario. Se verificaron las proyecciones en el repositorio y se añadieron pruebas SSR específicas para impedir regresiones de la UI. Evidencias de código: `cb2c6ac` (proyecciones), `23b5588` (paridad UI) y `b17962c` (proyecciones explícitas adicionales). La regresión completa anterior pasó en Webapp CI (61 archivos / 229 tests); las nuevas pruebas de paridad deben quedar incluidas en el CI del commit candidato antes de considerar el cierre validado por pipeline. No se modificó backend, permisos ni contratos Flask.
 
 #### F1.2 Vendors / Proveedores — Ausente
 
