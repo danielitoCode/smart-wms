@@ -26,7 +26,13 @@ export function createVendorsState(dependencies: VendorDependencies = createVend
 		error = null;
 		try {
 			const result = await dependencies.list.execute({ search, filter, page, perPage: DEFAULT_PAGE_SIZE });
-			if (requestId === listRequestId) pageData = result;
+			if (requestId !== listRequestId) return;
+			if (page > result.pages) {
+				page = Math.max(1, result.pages);
+				await load();
+				return;
+			}
+			pageData = result;
 		} catch (cause) {
 			if (requestId === listRequestId) error = toUserMessage(cause, 'No se pudieron cargar los proveedores');
 		} finally {
