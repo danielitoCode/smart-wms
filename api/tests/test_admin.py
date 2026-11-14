@@ -2923,3 +2923,20 @@ class TestPreferredBinsCatalogScope:
         _, headers = _web_user_with_pages(client, ["preferred-bins"], username="preferred_catalog_only")
         response = client.get("/api/admin/preferred-bins/catalog?warehouse_id=1", headers=headers)
         assert response.status_code == 200
+
+
+    def test_putaway_update_preferred_cannot_resequence_out_of_scope_warehouse_rows(self, client):
+        _warehouse_id, bin_id = self._other_warehouse_bin(client, None)
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute("INSERT INTO preferred_bins (item_id, bin_id, priority) VALUES (1, %s, 1)", (bin_id,))
+        cur.close()
+        _, headers = _web_user_with_pages(client, ["preferred-bins"], username="preferred_scope_putaway")
+        response = client.post(
+            "/api/putaway/update-preferred",
+            json={"item_id": 1, "bin_id": 3, "set_as_primary": True},
+            headers=headers,
+        )
+        assert response.status_code == 403
+        assert _query_val("SELECT default_bin_id FROM items WHERE item_id = 1") == 3
+        assert _query_val("SELECT priority FROM preferred_bins WHERE item_id = 1 AND bin_id = %s", (bin_id,)) == 1

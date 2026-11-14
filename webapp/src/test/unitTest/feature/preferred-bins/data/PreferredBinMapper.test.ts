@@ -37,7 +37,7 @@ describe('PreferredBinMapper', () => {
 			total: 1, page: 1, per_page: 1000, pages: 1
 		})).toEqual({
 			warehouses: [{ id: 3, code: 'WH-3', name: 'Warehouse 3' }],
-			bins: [{ id: 42, warehouseId: 3, zoneId: 8, zoneName: 'Picking', code: 'PICK-42', barcode: 'BC-42', active: true }],
+			bins: [{ id: 42, warehouseId: 3, zoneId: 8, zoneName: 'Picking', code: 'PICK-42', barcode: 'BC-42', binType: 'Pickable', active: true }],
 			total: 1, page: 1, perPage: 1000, pages: 1
 		});
 	});
