@@ -465,13 +465,19 @@ def create_pick_batch(db, so_identifiers, warehouse_id, username, exclude_so_ids
                            b.pick_sequence, b.bin_type, inv.lot_number
                     FROM inventory inv
                     JOIN bins b ON b.bin_id = inv.bin_id
+                    LEFT JOIN preferred_bins pb
+                      ON pb.item_id = inv.item_id
+                     AND pb.bin_id = inv.bin_id
                     WHERE inv.item_id = :item_id
                       AND inv.warehouse_id = :wh
                       AND (inv.quantity_on_hand - inv.quantity_allocated) > 0
                       AND b.bin_type IN (:bin_pickable, :bin_pickable_staging)
                     ORDER BY
+                      CASE WHEN pb.priority IS NULL THEN 1 ELSE 0 END ASC,
+                      pb.priority ASC,
                       b.pick_sequence ASC,
-                      inv.updated_at ASC
+                      inv.updated_at ASC,
+                      inv.inventory_id ASC
                     FOR UPDATE OF inv
                     """
                 ),
