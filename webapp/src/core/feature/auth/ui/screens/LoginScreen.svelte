@@ -89,11 +89,11 @@
 		</header>
 
 		{#if passwordChanged}
-			<UiBanner variant="success" message={i18n.t('Contraseña actualizada. Inicia sesión con tu nueva contraseña.')} />
+			<UiBanner tone="success" message={i18n.t('Contraseña actualizada. Inicia sesión con tu nueva contraseña.')} />
 		{/if}
 
 		{#if state.error}
-			<UiBanner variant="error" message={state.error} />
+			<UiBanner tone="error" message={state.error} />
 		{/if}
 
 		<form class="panel" onsubmit={onSubmit}>
