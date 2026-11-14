@@ -121,7 +121,7 @@ export function createVendorsState(dependencies: VendorDependencies = createVend
 		get detail() { return detail; },
 		setSearch(value: string) { search = value; page = 1; },
 		setFilter(value: VendorFilter) { filter = value; page = 1; },
-		setPage(value: number) { page = Math.max(1, Math.min(value, pageData.pages)); },
+		setPage(value: number) { page = Number.isFinite(value) ? Math.max(1, Math.floor(value)) : 1; },
 		setEditing(value: Vendor | null) { editing = value; },
 		load, loadDetail, closeDetail, create, update, deactivate, remove
 	};
