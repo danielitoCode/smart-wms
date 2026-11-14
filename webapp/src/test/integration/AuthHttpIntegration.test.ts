@@ -119,7 +119,7 @@ describe('Auth HTTP integration', () => {
 		});
 		const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ error: 'down' }, 500));
 		const { repo } = createStack(fetchMock);
-		await new LogoutUseCase(repo).execute();
+		await expect(new LogoutUseCase(repo).execute()).rejects.toMatchObject({ status: 500 });
 		expect(authSession.getUser()).toBeNull();
 	});
 
