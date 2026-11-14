@@ -43,22 +43,29 @@ def pending_putaway(warehouse_id):
             SELECT inv.inventory_id, inv.item_id, i.sku, i.item_name, i.upc,
                    inv.quantity_on_hand AS quantity, inv.bin_id, b.bin_code,
                    inv.lot_number,
-                   COALESCE(
-                       (SELECT pbb.bin_code
-                        FROM preferred_bins pb
-                        JOIN bins pbb ON pbb.bin_id = pb.bin_id
-                        WHERE pb.item_id = inv.item_id
-                          AND pbb.warehouse_id = :warehouse_id
-                        ORDER BY pb.priority ASC
-                        LIMIT 1),
-                       (SELECT db.bin_code
-                        FROM bins db
-                        WHERE db.bin_id = i.default_bin_id
-                          AND db.warehouse_id = :warehouse_id)
-                   ) AS suggested_bin
+                   COALESCE(preferred.bin_code, default_bin.bin_code) AS suggested_bin,
+                   COALESCE(preferred.bin_id, default_bin.bin_id) AS suggested_bin_id,
+                   preferred.priority AS suggested_bin_priority,
+                   COALESCE(preferred.bin_barcode, default_bin.bin_barcode) AS suggested_bin_barcode,
+                   COALESCE(preferred.zone_name, default_bin.zone_name) AS suggested_bin_zone
             FROM inventory inv
             JOIN items i ON i.item_id = inv.item_id
             JOIN bins b ON b.bin_id = inv.bin_id
+            LEFT JOIN LATERAL (
+                SELECT pb.priority, pbb.bin_id, pbb.bin_code, pbb.bin_barcode,
+                       z.zone_name
+                FROM preferred_bins pb
+                JOIN bins pbb ON pbb.bin_id = pb.bin_id
+                LEFT JOIN zones z ON z.zone_id = pbb.zone_id
+                WHERE pb.item_id = inv.item_id
+                  AND pbb.warehouse_id = :warehouse_id
+                ORDER BY pb.priority ASC, pb.preferred_bin_id ASC
+                LIMIT 1
+            ) preferred ON TRUE
+            LEFT JOIN bins default_bin
+              ON default_bin.bin_id = i.default_bin_id
+             AND default_bin.warehouse_id = :warehouse_id
+            LEFT JOIN zones default_zone ON default_zone.zone_id = default_bin.zone_id
             WHERE b.bin_type IN (:bin_staging, :bin_pickable_staging)
               AND inv.quantity_on_hand > 0
               AND inv.warehouse_id = :warehouse_id
@@ -84,6 +91,10 @@ def pending_putaway(warehouse_id):
                 "bin_code": r.bin_code,
                 "lot_number": r.lot_number,
                 "suggested_bin": r.suggested_bin,
+                "suggested_bin_id": r.suggested_bin_id,
+                "suggested_bin_priority": r.suggested_bin_priority,
+                "suggested_bin_barcode": r.suggested_bin_barcode,
+                "suggested_bin_zone": r.suggested_bin_zone,
             }
             for r in rows
         ]
