@@ -16,8 +16,6 @@
 	from { transform: translateY(0); }
 	to { transform: translateY(-2000px); }
 }
-body { background: transparent !important; }
-html { background: var(--bg); }
 .shell, .boot { position: relative; z-index: 1; }
 :root[data-theme='dark'] .shell .sidebar,
 :root[data-theme='dark'] .shell .topbar,
@@ -118,4 +116,18 @@ html { background: var(--bg); }
 		234px 1396px var(--star-color), 1812px 1099px var(--star-color), 1537px 546px var(--star-color), 1574px 1312px var(--star-color),
 		696px 228px var(--star-color), 601px 890px var(--star-color), 323px 929px var(--star-color), 6px 1953px var(--star-color),
 		1478px 1793px var(--star-color), 1473px 539px var(--star-color);
+}
+
+/* Host screens (splash / login / landing) opt into transparent body surface */
+.starfield-host {
+	position: relative;
+	min-height: 100dvh;
+	isolation: isolate;
+}
+.starfield-host > .starfield {
+	z-index: 0;
+}
+.starfield-host > *:not(.starfield) {
+	position: relative;
+	z-index: 1;
 }
