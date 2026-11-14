@@ -20,30 +20,30 @@ describe('Preferred Bins use cases', () => {
 	it('rejects a non-existent/invalid item identifier before calling the API', async () => {
 		const repo = repository();
 		const useCase = new AddPreferredBinUseCase(repo);
-		await expect(useCase.execute({
+		expect(() => useCase.execute({
 			itemId: 0, binId: 20, priority: 1,
 			warehouseId: 3, binWarehouseId: 3, binType: 'Pickable'
-		})).rejects.toThrow('producto válido');
+		})).toThrow('producto válido');
 		expect(repo.create).not.toHaveBeenCalled();
 	});
 
 	it('rejects a bin that belongs to another warehouse', async () => {
 		const repo = repository();
 		const useCase = new AddPreferredBinUseCase(repo);
-		await expect(useCase.execute({
+		expect(() => useCase.execute({
 			itemId: 10, binId: 20, priority: 1,
 			warehouseId: 3, binWarehouseId: 4, binType: 'Pickable'
-		})).rejects.toThrow('otro almacén');
+		})).toThrow('otro almacén');
 		expect(repo.create).not.toHaveBeenCalled();
 	});
 
 	it('rejects non-Pickable bins', async () => {
 		const repo = repository();
 		const useCase = new AddPreferredBinUseCase(repo);
-		await expect(useCase.execute({
+		expect(() => useCase.execute({
 			itemId: 10, binId: 20, priority: 1,
 			warehouseId: 3, binWarehouseId: 3, binType: 'PickableStaging'
-		})).rejects.toThrow('Pickable');
+		})).toThrow('Pickable');
 	});
 
 	it('sends valid assignment identifiers and priority to the repository', async () => {
@@ -76,7 +76,7 @@ describe('Preferred Bins use cases', () => {
 
 	it('validates list item filters', async () => {
 		const repo = repository();
-		await expect(new ListPreferredBinsUseCase(repo).execute({ itemId: -1 })).rejects.toThrow();
+		expect(() => new ListPreferredBinsUseCase(repo).execute({ itemId: -1 })).toThrow();
 		expect(repo.list).not.toHaveBeenCalled();
 	});
 });
