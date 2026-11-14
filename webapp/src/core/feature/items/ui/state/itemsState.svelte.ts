@@ -59,30 +59,48 @@ export function createItemsState() {
 	let editId = $state<number | null>(null);
 	let showForm = $state(false);
 	let deleteId = $state<number | null>(null);
-	let inFlight = false;
+	let listRequestId = 0;
+	let activeListController: AbortController | null = null;
+
+	function cancelLoad() {
+		listRequestId += 1;
+		activeListController?.abort();
+		activeListController = null;
+		loading = false;
+	}
 
 	async function load(nextPage = page) {
-		if (inFlight) return;
-		inFlight = true;
+		activeListController?.abort();
+		const controller = new AbortController();
+		activeListController = controller;
+		const requestId = ++listRequestId;
 		loading = true;
 		error = null;
 		try {
-			const result = await deps.listItems.execute({
-				q: query.trim() || undefined,
-				filter,
-				page: nextPage,
-				perPage
-			});
+			const result = await deps.listItems.execute(
+				{
+					q: query.trim() || undefined,
+					filter,
+					page: nextPage,
+					perPage
+				},
+				{ signal: controller.signal }
+			);
+			if (requestId !== listRequestId) return;
 			items = result.items;
 			total = result.total;
 			page = result.page;
 			pages = result.pages;
 			perPage = result.perPage;
 		} catch (err) {
-			error = toUserMessage(err, 'No se pudo cargar el catálogo de productos');
+			if (requestId === listRequestId && !controller.signal.aborted) {
+				error = toUserMessage(err, 'No se pudo cargar el catálogo de productos');
+			}
 		} finally {
-			loading = false;
-			inFlight = false;
+			if (requestId === listRequestId) {
+				loading = false;
+				activeListController = null;
+			}
 		}
 	}
 
@@ -241,6 +259,7 @@ export function createItemsState() {
 			detail = null;
 		},
 		load,
+		cancelLoad,
 		openDetail,
 		openCreate,
 		openEdit,
