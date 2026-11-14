@@ -3,7 +3,7 @@ export type Locale = 'it' | 'es' | 'en';
 // Spanish is the source key to keep translations auditable alongside the current UI copy.
 export const translations: Record<Locale, Record<string, string>> = {
 	it: {
-		'Existencias': 'Giacenze', 'asignadas': 'allocate', 'Capacidad': 'Capacità',
+		'Existencias': 'Giacenze', 'asignadas': 'assegnate', 'Capacidad': 'Capacità',
 		'Peso máximo': 'Peso massimo', 'Volumen máximo': 'Volume massimo',
 		'Disponibles': 'Disponibili', 'Peso máximo (lb)': 'Peso massimo (lb)',
 		'Volumen máximo (ft³)': 'Volume massimo (ft³)',
