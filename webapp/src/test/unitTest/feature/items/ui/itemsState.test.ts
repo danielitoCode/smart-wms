@@ -121,6 +121,15 @@ describe('Items UI state', () => {
 		expect(state.loading).toBe(false);
 	});
 
+	it('prepopulates weight and default-bin values when editing', () => {
+		const state = createItemsState(dependencies);
+		state.openEdit({ ...item, weightLbs: 12.5, defaultBinId: 4, defaultBinCode: 'A-01' });
+
+		expect(state.form.weightLbs).toBe('12.5');
+		expect(state.form.defaultBinId).toBe('4');
+		expect(state.showForm).toBe(true);
+	});
+
 	it('loads and exposes item detail', async () => {
 		const state = createItemsState(dependencies);
 		await state.openDetail(item.id);
