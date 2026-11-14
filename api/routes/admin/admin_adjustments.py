@@ -28,7 +28,7 @@ def _adjustment_select():
                ccl.expected_quantity, ccl.counted_quantity
         FROM inventory_adjustments ia
         JOIN items i ON i.item_id = ia.item_id
-        JOIN bins b ON b.bin_id = ia.bin_id
+        JOIN bins b ON b.bin_id = ia.bin_id AND b.warehouse_id = ia.warehouse_id
         LEFT JOIN cycle_count_lines ccl
           ON ccl.count_id = ia.cycle_count_id AND ccl.item_id = ia.item_id
     """
@@ -75,7 +75,6 @@ def _apply_inventory_delta(db, item_id, bin_id, warehouse_id, delta):
         """),
         {"item_id": item_id, "bin_id": bin_id},
     ).fetchall()
-    available = sum(row.quantity_on_hand for row in rows)
     unallocated = sum(row.quantity_on_hand - row.quantity_allocated for row in rows)
     required = -delta
     if unallocated < required:
@@ -111,10 +110,14 @@ def list_adjustments():
     if warehouse_id is not None and warehouse_id <= 0:
         return jsonify({"error": "warehouse_id must be positive"}), 400
 
-    scope, params = warehouse_scope_clause("ia.warehouse_id")
+    record_scope, record_params = warehouse_scope_clause("ia.warehouse_id")
+    bin_scope, bin_params = warehouse_scope_clause("b.warehouse_id")
+    params = {**record_params, **bin_params}
     where = ["1 = 1"]
-    if scope:
-        where.append(scope.removeprefix("AND ").strip())
+    if record_scope:
+        where.append(record_scope.removeprefix("AND ").strip())
+    if bin_scope:
+        where.append(bin_scope.removeprefix("AND ").strip())
     if warehouse_id is not None:
         where.append("ia.warehouse_id = :warehouse_id")
         params["warehouse_id"] = warehouse_id
@@ -126,7 +129,9 @@ def list_adjustments():
         params["status"] = status
     where_sql = "WHERE " + " AND ".join(where)
     total = g.db.execute(
-        text("SELECT COUNT(*) FROM inventory_adjustments ia " + where_sql), params
+        text("SELECT COUNT(*) FROM inventory_adjustments ia "
+             "JOIN bins b ON b.bin_id = ia.bin_id AND b.warehouse_id = ia.warehouse_id "
+             + where_sql), params
     ).scalar()
     pages = max(1, math.ceil(total / per_page))
     rows = g.db.execute(
@@ -146,11 +151,14 @@ def list_adjustments():
 @with_db
 def list_pending_adjustments():
     # Keep the same filtering, pagination and warehouse-scope semantics.
-    scope, params = warehouse_scope_clause("ia.warehouse_id")
+    record_scope, record_params = warehouse_scope_clause("ia.warehouse_id")
+    bin_scope, bin_params = warehouse_scope_clause("b.warehouse_id")
+    params = {**record_params, **bin_params, "status": ADJ_PENDING}
     where = ["ia.status = :status"]
-    params["status"] = ADJ_PENDING
-    if scope:
-        where.append(scope.removeprefix("AND ").strip())
+    if record_scope:
+        where.append(record_scope.removeprefix("AND ").strip())
+    if bin_scope:
+        where.append(bin_scope.removeprefix("AND ").strip())
     warehouse_arg = request.args.get("warehouse_id")
     if warehouse_arg is not None:
         try:
@@ -170,7 +178,9 @@ def list_pending_adjustments():
         return jsonify({"error": "invalid pagination"}), 400
     where_sql = "WHERE " + " AND ".join(where)
     total = g.db.execute(
-        text("SELECT COUNT(*) FROM inventory_adjustments ia " + where_sql), params
+        text("SELECT COUNT(*) FROM inventory_adjustments ia "
+             "JOIN bins b ON b.bin_id = ia.bin_id AND b.warehouse_id = ia.warehouse_id "
+             + where_sql), params
     ).scalar()
     rows = g.db.execute(
         text(_adjustment_select() + " " + where_sql +
@@ -262,15 +272,19 @@ def review_adjustments(validated):
     if len(ids) != len(set(ids)):
         return jsonify({"error": "Duplicate adjustment_id in decisions"}), 400
 
-    scope, scope_params = warehouse_scope_clause("ia.warehouse_id")
+    record_scope, record_params = warehouse_scope_clause("ia.warehouse_id")
+    bin_scope, bin_params = warehouse_scope_clause("b.warehouse_id")
     rows = g.db.execute(
         text("""
             SELECT ia.adjustment_id, ia.item_id, ia.bin_id, ia.warehouse_id,
+                   b.warehouse_id AS resolved_warehouse_id,
                    ia.quantity_change, ia.reason_code, ia.reason_detail, ia.status
             FROM inventory_adjustments ia
+            JOIN bins b ON b.bin_id = ia.bin_id AND b.warehouse_id = ia.warehouse_id
             WHERE ia.adjustment_id = ANY(:ids)
-            """ + scope + " ORDER BY ia.adjustment_id FOR UPDATE OF ia"),
-        {"ids": ids, **scope_params},
+            """ + record_scope + bin_scope
+            + " ORDER BY ia.adjustment_id FOR UPDATE OF ia, b"),
+        {"ids": ids, **record_params, **bin_params},
     ).fetchall()
     by_id = {row.adjustment_id: row for row in rows}
     # A missing ID and an out-of-scope ID are intentionally indistinguishable.
@@ -290,7 +304,7 @@ def review_adjustments(validated):
         if decision["action"] == "approve":
             try:
                 _apply_inventory_delta(
-                    g.db, row.item_id, row.bin_id, row.warehouse_id, row.quantity_change
+                    g.db, row.item_id, row.bin_id, row.resolved_warehouse_id, row.quantity_change
                 )
             except ValueError as exc:
                 g.db.rollback()
@@ -308,7 +322,7 @@ def review_adjustments(validated):
             return jsonify({"error": "Adjustment was already reviewed"}), 409
         write_audit_log(
             g.db, ACTION_ADJUST, "ITEM", row.item_id,
-            user_id=g.current_user["user_id"], warehouse_id=row.warehouse_id,
+            user_id=g.current_user["user_id"], warehouse_id=row.resolved_warehouse_id,
             details={"adjustment_id": row.adjustment_id, "decision": decision["action"],
                      "quantity_change": row.quantity_change},
         )
