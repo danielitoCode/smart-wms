@@ -322,7 +322,9 @@ class TestBins:
             (zone_id, other_id),
         )
         bin_id = cur.fetchone()[0]
-        conn.commit()
+        # Keep setup writes inside the per-test transaction. conftest.py
+        # rolls this transaction back after the test; committing here leaks
+        # the warehouse/bin into later tests and changes seeded counts.
         cur.close()
 
         _, headers = _web_user_with_pages(client, ["bins"], username="admin_bin_scope_user")
@@ -331,8 +333,9 @@ class TestBins:
         assert all(row["warehouse_id"] == 1 for row in listed.get_json()["bins"])
 
         filtered = client.get(f"/api/admin/bins?warehouse_id={other_id}", headers=headers)
-        assert filtered.status_code == 200
-        assert filtered.get_json()["total"] == 0
+        # Explicit access to an unassigned warehouse is rejected by
+        # require_auth before the catalogue query executes.
+        assert filtered.status_code == 403
 
         assert client.get(f"/api/admin/bins/{bin_id}", headers=headers).status_code == 404
         assert client.put(f"/api/admin/bins/{bin_id}", json={"bin_code": "CHANGED"}, headers=headers).status_code == 404
@@ -342,7 +345,7 @@ class TestBins:
         conn = get_raw_connection()
         cur = conn.cursor()
         cur.execute(
-            "INSERT INTO warehouses (warehouse_code, warehouse_name) VALUES ('ADMIN-BIN-CREATE-SCOPE', 'Admin Bin Create Scope') RETURNING warehouse_id"
+            "INSERT INTO warehouses (warehouse_code, warehouse_name) VALUES ('BIN-CR-SCOPE', 'Admin Bin Create Scope') RETURNING warehouse_id"
         )
         other_id = cur.fetchone()[0]
         cur.execute(
@@ -350,7 +353,6 @@ class TestBins:
             (other_id,),
         )
         zone_id = cur.fetchone()[0]
-        conn.commit()
         cur.close()
 
         _, headers = _web_user_with_pages(client, ["bins"], username="admin_bin_create_scope_user")
@@ -382,7 +384,6 @@ class TestBins:
             """INSERT INTO bins (zone_id, warehouse_id, bin_code, bin_barcode, bin_type, external_id)
                VALUES (2, 1, 'SCOPEMATCH-LOCAL', 'SCOPEMATCH-LOCAL', 'Pickable', gen_random_uuid())"""
         )
-        conn.commit()
         cur.close()
 
         _, headers = _web_user_with_pages(client, ["bins"], username="bin_lookup_scope_user")
@@ -409,7 +410,6 @@ class TestBins:
                VALUES (%s, %s, 'BARCODE-OUTSIDE', 'BARCODE-OUTSIDE', 'Pickable', gen_random_uuid())""",
             (zone_id, other_id),
         )
-        conn.commit()
         cur.close()
 
         _, headers = _web_user_with_pages(client, ["bins"], username="bin_barcode_scope_user")
@@ -511,7 +511,6 @@ class TestBins:
             (other_id,),
         )
         other_zone_id = cur.fetchone()[0]
-        conn.commit()
         cur.close()
 
         resp = client.post("/api/admin/bins", json={
@@ -533,7 +532,6 @@ class TestBins:
             (other_id,),
         )
         other_zone_id = cur.fetchone()[0]
-        conn.commit()
         cur.close()
 
         resp = client.put("/api/admin/bins/3", json={"zone_id": other_zone_id}, headers=auth_headers)
