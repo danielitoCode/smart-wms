@@ -225,6 +225,13 @@ def list_zones():
 def create_zone(validated):
     data = validated.model_dump()
 
+    warehouse = g.db.execute(
+        text("SELECT warehouse_id FROM warehouses WHERE warehouse_id = :wid"),
+        {"wid": data["warehouse_id"]},
+    ).fetchone()
+    if not warehouse:
+        return jsonify({"error": "Warehouse not found"}), 404
+
     dup = g.db.execute(
         text("SELECT 1 FROM zones WHERE warehouse_id = :wid AND zone_code = :code"),
         {"wid": data["warehouse_id"], "code": data["zone_code"]},
