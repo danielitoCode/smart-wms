@@ -9,7 +9,7 @@ export type CreateBinRequestDto = {
 	max_weight_lbs?: number | null; max_volume_cuft?: number | null;
 };
 export type UpdateBinRequestDto = {
-	zone_id?: number; bin_code?: string; bin_barcode?: string | null; bin_type?: string;
+	zone_id?: number; bin_code?: string; bin_barcode?: string; bin_type?: string;
 	aisle?: string | null; row_num?: number | null; level_num?: number | null; position_num?: number | null;
 	pick_sequence?: number; putaway_sequence?: number; is_active?: boolean;
 	max_weight_lbs?: number | null; max_volume_cuft?: number | null;
