@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createVendorsState } from '../../../../../core/feature/vendors/ui/state/vendorsState.svelte';
+import { ApiError } from '../../../../../core/infrastructure/errors/ApiError';
 import type { Vendor } from '../../../../../core/feature/vendors/domain/entity/Vendor';
 import type { VendorDependencies } from '../../../../../core/feature/vendors/di/vendors.dependencies';
 
@@ -94,8 +95,8 @@ describe('vendors UI state', () => {
 
 	it('keeps errors visible when a create conflicts or a vendor cannot be found', async () => {
 		const deps = dependencies();
-		(deps.create.execute as ReturnType<typeof vi.fn>).mockRejectedValueOnce({ status: 409, code: 'conflict', message: 'Duplicate vendor' });
-		(deps.get.execute as ReturnType<typeof vi.fn>).mockRejectedValueOnce({ status: 404, code: 'not_found', message: 'Vendor not found' });
+		(deps.create.execute as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new ApiError(409, 'Duplicate vendor', 'conflict'));
+		(deps.get.execute as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new ApiError(404, 'Vendor not found', 'not_found'));
 		const state = createVendorsState(deps);
 		expect(await state.create({ vendorName: 'Acme' })).toBe(false);
 		expect(state.error).toContain('Duplicate vendor');
