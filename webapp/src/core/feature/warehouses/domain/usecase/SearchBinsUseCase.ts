@@ -1,8 +1,8 @@
 import type { OperationalBinSearchResult } from '../entity/Warehouse';
-import type { WarehouseManagementRepository } from '../repository/WarehouseManagementRepository';
+import type { BinLookupRepository } from '../repository/BinLookupRepository';
 
 export class SearchBinsUseCase {
-	constructor(private readonly repository: WarehouseManagementRepository) {}
+	constructor(private readonly repository: BinLookupRepository) {}
 
 	async execute(query: string): Promise<OperationalBinSearchResult[]> {
 		const normalized = query.trim();
