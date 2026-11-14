@@ -34,4 +34,24 @@ describe('Items HTTP integration', () => {
 		expect(result.per_page).toBe(25);
 		expect(result.pages).toBe(5);
 	});
+	it('aborts an obsolete list request through the shared API client', async () => {
+		const fetchMock = vi.fn((_url: string, init?: RequestInit) =>
+			new Promise<Response>((_resolve, reject) => {
+				init?.signal?.addEventListener('abort', () => {
+					reject(new DOMException('Aborted', 'AbortError'));
+				});
+			})
+		);
+		vi.stubGlobal('fetch', fetchMock);
+
+		const source = new ItemRemoteDataSource(new ApiClient('https://wms.test'));
+		const controller = new AbortController();
+		const pending = source.listPage({ q: 'obsolete', page: 1, perPage: 50 }, { signal: controller.signal });
+
+		controller.abort();
+
+		await expect(pending).rejects.toMatchObject({ code: 'cancelled' });
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+
 });
