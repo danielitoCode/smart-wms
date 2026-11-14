@@ -174,7 +174,8 @@ export function createPreferredBinsState(dependencies: StateDependencies = defau
 				priority,
 				warehouseId: selectedWarehouseId,
 				binWarehouseId: bin.warehouseId,
-				binType: bin.binType
+				binType: bin.binType,
+				binActive: bin.active
 			});
 			await loadRows();
 			selectedBinId = null;

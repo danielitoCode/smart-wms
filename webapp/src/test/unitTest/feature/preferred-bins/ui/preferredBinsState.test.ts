@@ -83,7 +83,7 @@ describe('Preferred Bins UI state', () => {
 		state.setSelectedBinId(42);
 		await expect(state.add()).resolves.toBe(true);
 		expect(dependencies.preferred.add.execute).toHaveBeenCalledWith({
-			itemId: 7, binId: 42, priority: 1, warehouseId: 3, binWarehouseId: 3, binType: 'Pickable'
+			itemId: 7, binId: 42, priority: 1, warehouseId: 3, binWarehouseId: 3, binType: 'Pickable', binActive: true
 		});
 		expect(dependencies.preferred.list.execute).toHaveBeenCalledTimes(2);
 	});

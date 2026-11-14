@@ -28,6 +28,7 @@ export type PreferredBinAssignmentContext = {
 	warehouseId: number;
 	binWarehouseId: number;
 	binType: string;
+	binActive: boolean;
 };
 
 export type PreferredBinListQuery = {
@@ -74,5 +75,8 @@ export function validatePreferredBinAssignment(context: PreferredBinAssignmentCo
 	}
 	if (context.binType !== 'Pickable') {
 		throw new Error('Solo se pueden asignar ubicaciones de tipo Pickable');
+	}
+	if (!context.binActive) {
+		throw new Error('La ubicación seleccionada debe estar activa');
 	}
 }
