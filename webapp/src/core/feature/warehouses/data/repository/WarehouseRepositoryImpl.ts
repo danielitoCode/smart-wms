@@ -1,6 +1,6 @@
 import type { WarehouseManagementRepository } from '../../domain/repository/WarehouseManagementRepository';
 import type {
-	Bin, BinDetail, BinPage, WarehousePage, CreateBinInput, CreateWarehouseInput, CreateZoneInput,
+	Bin, BinDetail, BinPage, OperationalBinLookup, OperationalBinSearchResult, WarehousePage, CreateBinInput, CreateWarehouseInput, CreateZoneInput,
 	UpdateBinInput, UpdateWarehouseInput, UpdateZoneInput, Warehouse, Zone
 } from '../../domain/entity/Warehouse';
 import type { WarehouseRemoteDataSource } from '../datasource/WarehouseRemoteDataSource';
@@ -63,7 +63,8 @@ export class WarehouseRepositoryImpl implements WarehouseManagementRepository {
 			warehouse_id: input.warehouseId, zone_id: input.zoneId, bin_code: input.code,
 			bin_barcode: input.barcode, bin_type: input.binType, aisle: input.aisle,
 			row_num: input.rowNumber, level_num: input.levelNumber, position_num: input.positionNumber,
-			pick_sequence: input.pickSequence, putaway_sequence: input.putawaySequence
+			pick_sequence: input.pickSequence, putaway_sequence: input.putawaySequence,
+			max_weight_lbs: input.maxWeightLbs, max_volume_cuft: input.maxVolumeCuft
 		}));
 	}
 	async updateBin(input: UpdateBinInput): Promise<Bin> {
@@ -78,9 +79,17 @@ export class WarehouseRepositoryImpl implements WarehouseManagementRepository {
 			...(input.positionNumber !== undefined ? { position_num: input.positionNumber } : {}),
 			...(input.pickSequence !== undefined ? { pick_sequence: input.pickSequence } : {}),
 			...(input.putawaySequence !== undefined ? { putaway_sequence: input.putawaySequence } : {}),
+			...(input.maxWeightLbs !== undefined ? { max_weight_lbs: input.maxWeightLbs } : {}),
+			...(input.maxVolumeCuft !== undefined ? { max_volume_cuft: input.maxVolumeCuft } : {}),
 			...(input.active !== undefined ? { is_active: input.active } : {})
 		}));
 	}
 	async deleteBin(id: number): Promise<void> { await this.datasource.deleteBin(id); }
 	async getBinById(id: number): Promise<BinDetail> { return WarehouseMapper.toBinDetail(await this.datasource.getBinById(id)); }
+	async searchOperationalBins(query: string): Promise<OperationalBinSearchResult[]> {
+		return (await this.datasource.searchOperationalBins(query)).map(WarehouseMapper.toOperationalBinSearchResult);
+	}
+	async lookupOperationalBin(barcode: string): Promise<OperationalBinLookup> {
+		return WarehouseMapper.toOperationalBinLookup(await this.datasource.lookupOperationalBin(barcode));
+	}
 }
