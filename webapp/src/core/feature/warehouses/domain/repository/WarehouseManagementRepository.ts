@@ -1,5 +1,5 @@
 import type {
-	Bin, BinDetail, CreateBinInput, CreateWarehouseInput, CreateZoneInput,
+	Bin, BinDetail, OperationalBinLookup, OperationalBinSearchResult, CreateBinInput, CreateWarehouseInput, CreateZoneInput,
 	UpdateBinInput, UpdateWarehouseInput, UpdateZoneInput, Warehouse, Zone
 } from '../entity/Warehouse';
 import type { WarehouseRepository } from './WarehouseRepository';
@@ -15,4 +15,6 @@ export interface WarehouseManagementRepository extends WarehouseRepository {
 	updateBin(input: UpdateBinInput): Promise<Bin>;
 	deleteBin(id: number): Promise<void>;
 	getBinById(id: number): Promise<BinDetail>;
+	searchOperationalBins(query: string): Promise<OperationalBinSearchResult[]>;
+	lookupOperationalBin(barcode: string): Promise<OperationalBinLookup>;
 }
