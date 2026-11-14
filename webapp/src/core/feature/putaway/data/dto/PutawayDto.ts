@@ -7,6 +7,7 @@ export type PendingPutawayItemDto = {
 	bin_id: number;
 	bin_code: string;
 	lot_number?: string | null;
+	suggested_bin?: string | null;
 };
 
 export type PendingPutawayResponseDto = {
