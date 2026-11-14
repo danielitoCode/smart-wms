@@ -21,6 +21,7 @@ describe('GetWarehouseUseCase', () => {
 		const repo = {
 			listActive: vi.fn(),
 			listAdmin: vi.fn(),
+			listAdminPage: vi.fn(),
 			getById: vi.fn().mockResolvedValue({ id: 2, code: 'WH2', name: 'B', active: true }),
 			listZones: vi.fn(),
 			listBins: vi.fn()
