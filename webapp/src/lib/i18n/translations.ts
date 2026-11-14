@@ -606,7 +606,11 @@ const additionalTranslations: Record<Locale, Record<string, string>> = {
 		'Bin por defecto': 'Ubicazione predefinita',
 		'Peso (lb)': 'Peso (lb)',
 		'Detalles del producto': 'Dettagli prodotto',
-		'Prioridad': 'Priorità'
+		'Prioridad': 'Priorità',
+		'Ubicación sugerida': 'Ubicazione suggerita',
+		'Ubicación predeterminada': 'Ubicazione predefinita',
+		'Sin ubicación sugerida': 'Nessuna ubicazione suggerita',
+		'Destino': 'Destinazione'
 	},
 	es: {},
 	en: {
@@ -626,7 +630,11 @@ const additionalTranslations: Record<Locale, Record<string, string>> = {
 		'Bin por defecto': 'Default Bin',
 		'Peso (lb)': 'Weight (lb)',
 		'Detalles del producto': 'Product details',
-		'Prioridad': 'Priority'
+		'Prioridad': 'Priority',
+		'Ubicación sugerida': 'Suggested location',
+		'Ubicación predeterminada': 'Default location',
+		'Sin ubicación sugerida': 'No suggested location',
+		'Destino': 'Destination'
 	}
 };
 
