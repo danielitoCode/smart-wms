@@ -33,7 +33,7 @@ class CreateBinRequest(BaseModel):
 
 class UpdateBinRequest(BaseModel):
     bin_code: Optional[str] = Field(None, min_length=1, max_length=50)
-    bin_barcode: Optional[str] = Field(None, max_length=100)
+    bin_barcode: Optional[str] = Field(None, min_length=1, max_length=100)
     bin_type: Optional[str] = Field(None, min_length=1, max_length=32)
     aisle: Optional[str] = Field(None, max_length=10)
     row_num: Optional[int] = Field(None, ge=0)
