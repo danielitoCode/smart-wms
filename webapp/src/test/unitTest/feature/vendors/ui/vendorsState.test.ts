@@ -60,6 +60,19 @@ describe('vendors UI state', () => {
 		expect(state.vendors).toEqual([]);
 	});
 
+	it('keeps vendors with duplicate display names distinct by canonical_id', async () => {
+		const deps = dependencies();
+		(deps.list.execute as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+			items: [vendor, { ...vendor, canonicalId: 'b8098c1a-f86e-4e7a-9b7d-2a2d5c9d1f10', externalId: 'EXT-2' }],
+			total: 2, page: 1, perPage: 50, pages: 1
+		});
+		const state = createVendorsState(deps);
+		await state.load();
+		expect(state.vendors).toHaveLength(2);
+		expect(state.vendors.map(item => item.canonicalId)).toEqual([
+			canonicalId, 'b8098c1a-f86e-4e7a-9b7d-2a2d5c9d1f10'
+		]);
+	});
 	it('loads and closes a vendor detail by canonical_id', async () => {
 		const deps = dependencies();
 		const state = createVendorsState(deps);
