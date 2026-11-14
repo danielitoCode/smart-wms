@@ -110,10 +110,18 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 		}, 'No se pudo eliminar la zona');
 	}
 	async function createBin(input: Omit<CreateBinInput, 'warehouseId'>) {
-		return mutate(async () => { await deps.createBin.execute({ ...input, warehouseId }); await loadBinsForZone(selectedZoneId, 1); }, 'No se pudo crear el bin');
+		return mutate(async () => {
+			assertZoneBelongsToWarehouse(input.zoneId, warehouseId, zones);
+			await deps.createBin.execute({ ...input, warehouseId });
+			await loadBinsForZone(selectedZoneId, 1);
+		}, 'No se pudo crear el bin');
 	}
 	async function updateBin(input: UpdateBinInput) {
-		return mutate(async () => { await deps.updateBin.execute(input); await loadBinsForZone(selectedZoneId, binPage); }, 'No se pudo actualizar el bin');
+		return mutate(async () => {
+			if (input.zoneId !== undefined) assertZoneBelongsToWarehouse(input.zoneId, warehouseId, zones);
+			await deps.updateBin.execute(input);
+			await loadBinsForZone(selectedZoneId, binPage);
+		}, 'No se pudo actualizar el bin');
 	}
 	async function removeBin(id: number) {
 		return mutate(async () => { await deps.deleteBin.execute(id); selectedBinDetail = null; await loadBinsForZone(selectedZoneId, binPage); }, 'No se pudo eliminar el bin');

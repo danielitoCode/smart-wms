@@ -13,7 +13,7 @@
 	const canViewBins = currentUser?.role === 'ADMIN' || (currentUser?.allowedPages ?? []).includes('bins');
 
 	type ZoneForm = { code: string; name: string; zoneType: ZoneType; active: boolean };
-	type BinForm = { zoneId: number | null; code: string; barcode: string; binType: BinType; aisle: string; pickSequence: number; maxWeightLbs: number | null; maxVolumeCuft: number | null; active: boolean };
+	type BinForm = { zoneId: number | null; code: string; barcode: string; binType: BinType; aisle: string; rowNumber: number | null; levelNumber: number | null; positionNumber: number | null; pickSequence: number; putawaySequence: number; maxWeightLbs: number | null; maxVolumeCuft: number | null; active: boolean };
 	let showZoneForm = $state(false);
 	let editingZone = $state(null as Zone | null);
 	let deleteZoneTarget = $state(null as Zone | null);
@@ -21,7 +21,7 @@
 	let showBinForm = $state(false);
 	let editingBin = $state(null as Bin | null);
 	let deleteBinTarget = $state(null as Bin | null);
-	let binForm = $state({ zoneId: null, code: '', barcode: '', binType: 'Pickable', aisle: '', pickSequence: 0, maxWeightLbs: null, maxVolumeCuft: null, active: true } as BinForm);
+	let binForm = $state({ zoneId: null, code: '', barcode: '', binType: 'Pickable', aisle: '', rowNumber: null, levelNumber: null, positionNumber: null, pickSequence: 0, putawaySequence: 0, maxWeightLbs: null, maxVolumeCuft: null, active: true } as BinForm);
 	let exporting = $state(false);
 	let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -56,19 +56,19 @@
 		if (deleteZoneTarget && await vm.removeZone(deleteZoneTarget.id)) deleteZoneTarget = null;
 	}
 	function openCreateBin() {
-		editingBin = null; binForm = { zoneId: vm.zones[0]?.id ?? null, code: '', barcode: '', binType: 'Pickable', aisle: '', pickSequence: 0, maxWeightLbs: null, maxVolumeCuft: null, active: true };
+		editingBin = null; binForm = { zoneId: vm.zones[0]?.id ?? null, code: '', barcode: '', binType: 'Pickable', aisle: '', rowNumber: null, levelNumber: null, positionNumber: null, pickSequence: 0, putawaySequence: 0, maxWeightLbs: null, maxVolumeCuft: null, active: true };
 		vm.clearError(); showBinForm = true;
 	}
 	function openEditBin(bin: Bin) {
-		editingBin = bin; binForm = { zoneId: bin.zoneId, code: bin.code, barcode: bin.barcode ?? '', binType: bin.binType, aisle: bin.aisle ?? '', pickSequence: bin.pickSequence, maxWeightLbs: bin.maxWeightLbs, maxVolumeCuft: bin.maxVolumeCuft, active: bin.active };
+		editingBin = bin; binForm = { zoneId: bin.zoneId, code: bin.code, barcode: bin.barcode ?? '', binType: bin.binType, aisle: bin.aisle ?? '', rowNumber: bin.rowNumber, levelNumber: bin.levelNumber, positionNumber: bin.positionNumber, pickSequence: bin.pickSequence, putawaySequence: bin.putawaySequence, maxWeightLbs: bin.maxWeightLbs, maxVolumeCuft: bin.maxVolumeCuft, active: bin.active };
 		vm.clearError(); showBinForm = true;
 	}
 	async function saveBin(event: SubmitEvent) {
 		event.preventDefault();
 		if (binForm.zoneId == null) return;
 		const ok = editingBin
-			? await vm.updateBin({ id: editingBin.id, zoneId: binForm.zoneId, code: binForm.code, barcode: binForm.barcode, binType: binForm.binType, aisle: binForm.aisle || null, pickSequence: binForm.pickSequence, maxWeightLbs: binForm.maxWeightLbs, maxVolumeCuft: binForm.maxVolumeCuft, active: binForm.active })
-			: await vm.createBin({ zoneId: binForm.zoneId, code: binForm.code, barcode: binForm.barcode, binType: binForm.binType, aisle: binForm.aisle || null, pickSequence: binForm.pickSequence, maxWeightLbs: binForm.maxWeightLbs, maxVolumeCuft: binForm.maxVolumeCuft });
+			? await vm.updateBin({ id: editingBin.id, zoneId: binForm.zoneId, code: binForm.code, barcode: binForm.barcode, binType: binForm.binType, aisle: binForm.aisle || null, rowNumber: binForm.rowNumber, levelNumber: binForm.levelNumber, positionNumber: binForm.positionNumber, pickSequence: binForm.pickSequence, putawaySequence: binForm.putawaySequence, maxWeightLbs: binForm.maxWeightLbs, maxVolumeCuft: binForm.maxVolumeCuft, active: binForm.active })
+			: await vm.createBin({ zoneId: binForm.zoneId, code: binForm.code, barcode: binForm.barcode, binType: binForm.binType, aisle: binForm.aisle || null, rowNumber: binForm.rowNumber, levelNumber: binForm.levelNumber, positionNumber: binForm.positionNumber, pickSequence: binForm.pickSequence, putawaySequence: binForm.putawaySequence, maxWeightLbs: binForm.maxWeightLbs, maxVolumeCuft: binForm.maxVolumeCuft });
 		if (ok) showBinForm = false;
 	}
 	async function deleteBin() {
@@ -137,7 +137,7 @@
 	<label>{i18n.t('Código')}<input bind:value={binForm.code} maxlength="50" required disabled={vm.mutating} /></label><label>{i18n.t('Código de barras')}<input bind:value={binForm.barcode} maxlength="100" required disabled={vm.mutating} /></label>
 	<label>{i18n.t('Tipo')}<select bind:value={binForm.binType} disabled={vm.mutating}>{#each ['Staging','PickableStaging','Pickable'] as type}<option value={type}>{binTypeLabel(type as BinType)}</option>{/each}</select></label>
 	<label>{i18n.t("Zona")}<select bind:value={binForm.zoneId} required disabled={vm.mutating}><option value={null}>{i18n.t('Seleccionar zona')}</option>{#each vm.zones as zone}<option value={zone.id}>{zone.code} — {zone.name}</option>{/each}</select></label>
-	<label>{i18n.t('Pasillo')}<input bind:value={binForm.aisle} maxlength="10" disabled={vm.mutating} /></label><label>{i18n.t('Orden de preparación')}<input type="number" min="0" step="1" bind:value={binForm.pickSequence} disabled={vm.mutating} /></label><label>{i18n.t('Peso máximo (lb)')}<input type="number" min="0" step="0.01" bind:value={binForm.maxWeightLbs} disabled={vm.mutating} /></label><label>{i18n.t('Volumen máximo (ft³)')}<input type="number" min="0" step="0.01" bind:value={binForm.maxVolumeCuft} disabled={vm.mutating} /></label>
+	<label>{i18n.t('Pasillo')}<input bind:value={binForm.aisle} maxlength="10" disabled={vm.mutating} /></label><label>{i18n.t('Fila')}<input type="number" min="0" step="1" bind:value={binForm.rowNumber} disabled={vm.mutating} /></label><label>{i18n.t('Nivel')}<input type="number" min="0" step="1" bind:value={binForm.levelNumber} disabled={vm.mutating} /></label><label>{i18n.t('Posición')}<input type="number" min="0" step="1" bind:value={binForm.positionNumber} disabled={vm.mutating} /></label><label>{i18n.t('Orden de preparación')}<input type="number" min="0" step="1" bind:value={binForm.pickSequence} disabled={vm.mutating} /></label><label>{i18n.t('Orden de ubicación')}<input type="number" min="0" step="1" bind:value={binForm.putawaySequence} disabled={vm.mutating} /></label><label>{i18n.t('Peso máximo (lb)')}<input type="number" min="0" step="0.01" bind:value={binForm.maxWeightLbs} disabled={vm.mutating} /></label><label>{i18n.t('Volumen máximo (ft³)')}<input type="number" min="0" step="0.01" bind:value={binForm.maxVolumeCuft} disabled={vm.mutating} /></label>
 	{#if editingBin}<label class="check"><input type="checkbox" bind:checked={binForm.active} /> {i18n.t("Activo")}</label>{/if}
 	{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}<footer><button class="quiet" type="button" onclick={() => showBinForm = false}>{i18n.t('Cancelar')}</button><button class="primary" type="submit" disabled={vm.mutating || binForm.zoneId == null}>{i18n.t('Guardar')}</button></footer>
 </form></section></div>{/if}
