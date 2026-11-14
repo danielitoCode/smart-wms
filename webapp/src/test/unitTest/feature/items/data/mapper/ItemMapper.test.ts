@@ -10,7 +10,9 @@ describe('ItemMapper', () => {
 			upc: '123',
 			mpn: 'M-1',
 			category: 'Parts',
+			weight_lbs: 12.5,
 			is_active: true,
+			default_bin_id: 4,
 			default_bin_code: 'A-01'
 		});
 		expect(item).toMatchObject({
@@ -19,6 +21,8 @@ describe('ItemMapper', () => {
 			name: 'Widget',
 			upc: '123',
 			active: true,
+			weightLbs: 12.5,
+			defaultBinId: 4,
 			defaultBinCode: 'A-01'
 		});
 	});
@@ -30,6 +34,9 @@ describe('ItemMapper', () => {
 				sku: 'A',
 				item_name: 'Alpha',
 				is_active: false,
+				weight_lbs: 3.25,
+				default_bin_id: 9,
+				default_bin_code: 'C-09',
 				barcode_aliases: ['X']
 			},
 			inventory: [
@@ -49,6 +56,8 @@ describe('ItemMapper', () => {
 		expect(detail.item.id).toBe(3);
 		expect(detail.item.barcodeAliases).toEqual(['X']);
 		expect(detail.item.active).toBe(false);
+		expect(detail.item.weightLbs).toBe(3.25);
+		expect(detail.item.defaultBinCode).toBe('C-09');
 		expect(detail.inventory).toHaveLength(1);
 		expect(detail.inventory[0].quantityOnHand).toBe(5);
 		expect(detail.preferredBins[0].priority).toBe(1);
