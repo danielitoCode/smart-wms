@@ -309,11 +309,11 @@ Dependencias: F1.1 no introduce una relación de proveedor-producto en el contra
 - [x] Domain: entidad, campos de contacto/direcciones, estado nullable y UUID canónico.
 - [x] Application: List (filtros/paginación), Detail, Create, Update y Delete.
 - [x] Data: GET/POST `/api/admin/vendors`; GET/PUT/DELETE `/api/admin/vendors/{canonical_id}`; mapeo explícito `canonical_id` y `external_id`.
-- [x] UI: tabla, búsqueda explícita, filtros Active/Inactive/All, paginación con recuperación al reducirse el total, formulario completo, detalle y confirmaciones de desactivación/eliminación.
-- [x] Pruebas: filtros/paginación, IDs canónicos, nombres repetidos conservados como registros distintos, errores 403/404/409/422, estado, concurrencia de cargas y permiso `vendors`.
-- [x] Regresión final: Webapp CI #564 aprobada (typecheck, build, suites Domain/Application/Infrastructure/UI/i18n/Integration y regresión total: 64 archivos / 256 tests).
+- [x] UI: tabla, búsqueda automática con debounce de 300 ms, filtros Active/Inactive/All, paginación visible con recuperación al reducirse el total, formulario completo, detalle y confirmaciones de desactivación/eliminación.
+- [x] Pruebas: filtros/paginación, IDs canónicos, nombres repetidos conservados como registros distintos, errores 403/404/409/422, estado, concurrencia de cargas y gate explícito de ruta para permiso `vendors`.
+- [x] Regresión final tras los últimos ajustes: Webapp CI #567 aprobada (typecheck, build, suites Domain/Application/Infrastructure/UI/i18n/Integration y regresión total: 64 archivos / 257 tests).
 
-**Implementación:** estado y pantalla reestructurados en commits `2f4408d`, `db715fa`, `557ca3c` y `2ea1057`; pruebas de datasource, use cases, estado y UI en `4168cf1`, `66c4cda`, `d06b752`, `5f99711`, `9058c9a`, `65d4802` y `16a64e7`. CI: [Webapp CI #564](https://github.com/danielitoCode/smart-wms/actions/runs/43600746013).
+**Implementación:** estado y pantalla reestructurados en commits `2f4408d`, `db715fa`, `557ca3c` y `2ea1057`; búsqueda con debounce y semántica accesible de diálogos en `5475d5b`; pruebas de datasource, use cases, estado, UI y permiso de ruta en `4168cf1`, `66c4cda`, `d06b752`, `5f99711`, `9058c9a`, `65d4802`, `16a64e7` y `2c7187e`. CI final: [Webapp CI #567](https://github.com/danielitoCode/smart-wms/actions/runs/43601196563).
 
 **Notas contractuales:** Flask filtra con `active=true|false`; omitir `active` significa All. La desactivación es `PUT is_active=false`; DELETE es eliminación física y devuelve `{deleted: true}`. `vendor_name` no tiene restricción única en el esquema actual, por lo que nombres repetidos son válidos y la UI los identifica por `canonical_id`. La ruta Flask protege GET/POST/PUT/DELETE con `require_admin_or_page_permission("vendors")`; el frontend replica el gate de página sin sustituir la autorización del servidor.
 
