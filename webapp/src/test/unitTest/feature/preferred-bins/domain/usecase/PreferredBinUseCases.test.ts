@@ -11,6 +11,7 @@ import {
 function repository(): PreferredBinsRepository {
 	return {
 		list: vi.fn().mockResolvedValue([]),
+		listCatalog: vi.fn().mockResolvedValue({ warehouses: [], bins: [], total: 0, page: 1, perPage: 1000, pages: 1 }),
 		create: vi.fn().mockResolvedValue(undefined),
 		update: vi.fn().mockResolvedValue(undefined),
 		remove: vi.fn().mockResolvedValue(undefined)

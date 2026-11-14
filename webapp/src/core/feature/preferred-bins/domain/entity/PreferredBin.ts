@@ -44,6 +44,7 @@ export type PreferredBinLocationOption = {
 	zoneName: string | null;
 	code: string;
 	barcode: string | null;
+	binType: 'Pickable';
 	active: boolean;
 };
 export type PreferredBinCatalog = {

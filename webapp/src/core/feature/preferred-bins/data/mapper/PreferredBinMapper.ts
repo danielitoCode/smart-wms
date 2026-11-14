@@ -22,7 +22,7 @@ export const PreferredBinMapper = {
 			warehouses: dto.warehouses.map(row => ({ id: row.warehouse_id, code: row.warehouse_code, name: row.warehouse_name })),
 			bins: dto.bins.map(row => ({
 				id: row.bin_id, warehouseId: row.warehouse_id, zoneId: row.zone_id,
-				zoneName: row.zone_name, code: row.bin_code, barcode: row.bin_barcode, active: row.is_active
+				zoneName: row.zone_name, code: row.bin_code, barcode: row.bin_barcode, binType: row.bin_type, active: row.is_active
 			})),
 			total: dto.total, page: dto.page, perPage: dto.per_page, pages: dto.pages
 		};

@@ -8,7 +8,7 @@ import uuid
 from flask import Blueprint, g, jsonify, request
 from sqlalchemy import bindparam, text
 
-from middleware.auth_middleware import require_auth, check_warehouse_access
+from middleware.auth_middleware import require_auth, check_warehouse_access, warehouse_scope_clause
 from middleware.db import with_db
 from schemas.putaway import ConfirmPutawayRequest, UpdatePreferredRequest
 from services.audit_service import write_audit_log
@@ -489,6 +489,25 @@ def update_preferred(validated):
     ok, denied = check_warehouse_access(bin_row.warehouse_id)
     if not ok:
         return denied
+
+    # Priority is global per item (UNIQUE(item_id, priority)). A scoped
+    # operator must not reorder or shift relations in warehouses they
+    # cannot access through this mobile put-away mutation.
+    scope_clause, scope_params = warehouse_scope_clause("b.warehouse_id")
+    if scope_clause:
+        total_relations = g.db.execute(
+            text("SELECT COUNT(*) FROM preferred_bins WHERE item_id = :item_id"),
+            {"item_id": item_id},
+        ).scalar()
+        visible_relations = g.db.execute(
+            text(
+                "SELECT COUNT(*) FROM preferred_bins pb JOIN bins b ON b.bin_id = pb.bin_id "
+                "WHERE pb.item_id = :item_id " + scope_clause
+            ),
+            {"item_id": item_id, **scope_params},
+        ).scalar()
+        if total_relations != visible_relations:
+            return jsonify({"error": "Preferred-bin priorities span warehouses outside your assigned scope"}), 403
 
     username = g.current_user["username"]
 
