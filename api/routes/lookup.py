@@ -295,27 +295,29 @@ def search_bins():
     q = request.args.get("q", "").strip()
     if not q:
         return jsonify([])
+    if len(q) > 128:
+        return jsonify({"error": "Search query cannot exceed 128 characters"}), 400
 
+    # Apply warehouse scope in SQL before LIMIT so authorized matches are
+    # not displaced by rows belonging to other warehouses.
+    scope_clause, scope_params = warehouse_scope_clause("b.warehouse_id")
     rows = g.db.execute(
         text(
-            """
+            f"""
             SELECT b.bin_id, b.bin_code, b.bin_barcode, b.bin_type,
                    b.aisle, b.row_num, b.level_num, z.zone_name, b.warehouse_id
             FROM bins b
             LEFT JOIN zones z ON z.zone_id = b.zone_id
-            WHERE b.bin_code ILIKE :q OR b.bin_barcode ILIKE :q
+            WHERE (b.bin_code ILIKE :q OR b.bin_barcode ILIKE :q)
+              {scope_clause}
+            ORDER BY b.bin_code
             LIMIT 50
             """
         ),
-        {"q": f"%{q}%"},
+        {"q": f"%{q}%", **scope_params},
     ).fetchall()
 
-    # Filter to user's authorized warehouses
-    if g.current_user.get("role") != "ADMIN":
-        allowed_wids = set(g.current_user.get("warehouse_ids") or [])
-        rows = [r for r in rows if r.warehouse_id in allowed_wids]
-
-    results = [
+    return jsonify([
         {
             "bin_id": r.bin_id,
             "bin_code": r.bin_code,
@@ -325,8 +327,7 @@ def search_bins():
             "aisle": r.aisle,
             "row_num": r.row_num,
             "level_num": r.level_num,
+            "warehouse_id": r.warehouse_id,
         }
         for r in rows
-    ]
-
-    return jsonify(results)
+    ])
