@@ -52,6 +52,7 @@ describe('Items UI state', () => {
 
 	it('loads the requested page and publishes pagination state', async () => {
 		const state = createItemsState(dependencies);
+		vi.mocked(dependencies.listItems.execute).mockResolvedValueOnce({ ...firstPage, page: 2 });
 		state.setQuery(' SKU-7 ');
 		await state.load(2);
 
@@ -61,7 +62,7 @@ describe('Items UI state', () => {
 		);
 		expect(state.items).toEqual([item]);
 		expect(state.total).toBe(101);
-		expect(state.page).toBe(1);
+		expect(state.page).toBe(2);
 		expect(state.pages).toBe(3);
 		expect(state.loading).toBe(false);
 	});
