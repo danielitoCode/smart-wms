@@ -26,7 +26,7 @@ export class ItemRemoteDataSource {
 		q?: string;
 		page?: number;
 		perPage?: number;
-	}): Promise<ItemListResponseDto> {
+	}, options?: { signal?: AbortSignal }): Promise<ItemListResponseDto> {
 		return this.api.get<ItemListResponseDto>('/api/admin/items', {
 			query: {
 				category: params.category,
@@ -34,7 +34,8 @@ export class ItemRemoteDataSource {
 				q: params.q,
 				page: params.page,
 				per_page: params.perPage
-			}
+			},
+			signal: options?.signal
 		});
 	}
 
