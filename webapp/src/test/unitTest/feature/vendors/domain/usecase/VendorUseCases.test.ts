@@ -17,6 +17,16 @@ describe('Vendor use cases', () => {
 		await new GetAllVendorsUseCase(repo).execute({ search: '  Acme  ' });
 		expect(repo.list).toHaveBeenCalledWith({ search: 'Acme', filter: 'active', page: 1, perPage: 50 });
 	});
+	it.each(['active', 'archived', 'all'] as const)('passes the %s status and requested page to the repository', async filter => {
+		const repo = repository();
+		await new GetAllVendorsUseCase(repo).execute({ filter, search: 'Acme', page: 3, perPage: 20 });
+		expect(repo.list).toHaveBeenCalledWith({ search: 'Acme', filter, page: 3, perPage: 20 });
+	});
+	it('rejects unknown status filters before repository access', () => {
+		const repo = repository();
+		expect(() => new GetAllVendorsUseCase(repo).execute({ filter: 'deleted' as never })).toThrow(/filter/);
+		expect(repo.list).not.toHaveBeenCalled();
+	});
 	it('rejects invalid pagination before repository access', async () => {
 		const repo = repository();
 		expect(() => new GetAllVendorsUseCase(repo).execute({ page: 0 })).toThrow(/page/);
