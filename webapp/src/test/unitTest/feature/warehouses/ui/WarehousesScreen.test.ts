@@ -21,7 +21,7 @@ describe('WarehousesScreen UI', () => {
 		const i18n = { t: (message: string) => message };
 		const selection = { reload: vi.fn() };
 		const { body } = render(WarehousesScreen, {
-			context: new Map([['i18n', i18n], ['warehouseSelection', selection]])
+			context: new Map<string, any>([['i18n', i18n], ['warehouseSelection', selection]])
 		});
 		expect(body).toContain('Almacenes');
 		expect(body).toContain('WH-08');
@@ -37,7 +37,7 @@ describe('WarehousesScreen UI', () => {
 	it('renders create and destructive action entry points', () => {
 		const i18n = { t: (message: string) => message };
 		const { body } = render(WarehousesScreen, {
-			context: new Map([['i18n', i18n], ['warehouseSelection', { reload: vi.fn() }]])
+			context: new Map<string, any>([['i18n', i18n], ['warehouseSelection', { reload: vi.fn() }]])
 		});
 		expect(body).toContain('Nuevo almacén');
 		expect(body).toContain('Editar');
