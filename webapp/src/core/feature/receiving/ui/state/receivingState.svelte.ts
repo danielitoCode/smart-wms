@@ -1,3 +1,4 @@
+import { getContext } from 'svelte';
 import { createReceivingDependencies } from '../../di/receiving.dependencies';
 import type {
 	CancelReceiptsResult,
@@ -6,6 +7,8 @@ import type {
 	ReceiveResult
 } from '../../domain/entity/PurchaseOrder';
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
+import { beginWarehouseScopedRequest } from '../../../../infrastructure/warehouse/WarehouseRequestScope';
+import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
 
 const deps = createReceivingDependencies();
 
@@ -19,7 +22,34 @@ export type LineDraft = {
 	lotNumber: string;
 };
 
+function isAbort(err: unknown): boolean {
+	return (
+		(err instanceof DOMException && err.name === 'AbortError') ||
+		(err instanceof Error && /abort/i.test(err.message))
+	);
+}
+
+function mapDrafts(detail: PurchaseOrderDetail): LineDraft[] {
+	return detail.lines
+		.filter((line) => line.quantityRemaining > 0)
+		.map((line) => ({
+			itemId: line.itemId,
+			sku: line.sku,
+			itemName: line.itemName,
+			remaining: line.quantityRemaining,
+			quantity: line.quantityRemaining,
+			binId: '',
+			lotNumber: ''
+		}));
+}
+
+/**
+ * Receiving UI state (F0.3).
+ * Each network op is generation-scoped so a warehouse switch drops late responses.
+ */
 export function createReceivingState() {
+	const warehouseSelection = getContext<WarehouseSelectionState | undefined>('warehouseSelection');
+
 	let barcode = $state('');
 	let detail = $state<PurchaseOrderDetail | null>(null);
 	let drafts = $state<LineDraft[]>([]);
@@ -38,6 +68,7 @@ export function createReceivingState() {
 			error = 'Indica un PO number o barcode';
 			return false;
 		}
+		const scope = warehouseSelection?.beginScopedRequest() ?? beginWarehouseScopedRequest();
 		loading = true;
 		error = null;
 		lastResult = null;
@@ -46,22 +77,17 @@ export function createReceivingState() {
 		drafts = [];
 		try {
 			const result = await deps.lookupPurchaseOrder.execute(code);
+			if (!scope.isCurrent()) return false;
 			detail = result;
-			drafts = result.lines
-				.filter((line) => line.quantityRemaining > 0)
-				.map((line) => ({
-					itemId: line.itemId,
-					sku: line.sku,
-					itemName: line.itemName,
-					remaining: line.quantityRemaining,
-					quantity: line.quantityRemaining,
-					binId: '',
-					lotNumber: ''
-				}));
+			drafts = mapDrafts(result);
+			return true;
 		} catch (err) {
+			if (!scope.isCurrent() || isAbort(err)) return false;
 			error = toUserMessage(err, 'No se pudo buscar el PO');
+			return false;
 		} finally {
-			loading = false;
+			scope.release();
+			if (scope.isCurrent()) loading = false;
 		}
 	}
 
@@ -75,6 +101,14 @@ export function createReceivingState() {
 
 	function updateDraft(index: number, patch: Partial<LineDraft>) {
 		drafts = drafts.map((d, i) => (i === index ? { ...d, ...patch } : d));
+	}
+
+	function invalidate() {
+		detail = null;
+		drafts = [];
+		lastResult = null;
+		lastCancel = null;
+		error = null;
 	}
 
 	async function submitReceive(): Promise<boolean> {
@@ -105,35 +139,30 @@ export function createReceivingState() {
 			return false;
 		}
 
+		const scope = warehouseSelection?.beginScopedRequest() ?? beginWarehouseScopedRequest();
 		submitting = true;
 		error = null;
 		lastCancel = null;
+		const poNumber = detail.purchaseOrder.poNumber;
+		const poId = detail.purchaseOrder.poId;
 		try {
-			lastResult = await deps.receiveGoods.execute(detail.purchaseOrder.poId, items);
+			lastResult = await deps.receiveGoods.execute(poId, items);
+			if (!scope.isCurrent()) return false;
 			if (lastResult.receiptIds.length) {
 				receiptIdsInput = lastResult.receiptIds.join(', ');
 			}
-			const refreshed = await deps.lookupPurchaseOrder.execute(
-				detail.purchaseOrder.poNumber
-			);
+			const refreshed = await deps.lookupPurchaseOrder.execute(poNumber);
+			if (!scope.isCurrent()) return false;
 			detail = refreshed;
-			drafts = refreshed.lines
-				.filter((line) => line.quantityRemaining > 0)
-				.map((line) => ({
-					itemId: line.itemId,
-					sku: line.sku,
-					itemName: line.itemName,
-					remaining: line.quantityRemaining,
-					quantity: line.quantityRemaining,
-					binId: '',
-					lotNumber: ''
-				}));
+			drafts = mapDrafts(refreshed);
 			return true;
 		} catch (err) {
+			if (!scope.isCurrent() || isAbort(err)) return false;
 			error = toUserMessage(err, 'No se pudo registrar la recepción');
 			return false;
 		} finally {
-			submitting = false;
+			scope.release();
+			if (scope.isCurrent()) submitting = false;
 		}
 	}
 
@@ -155,71 +184,48 @@ export function createReceivingState() {
 			return false;
 		}
 
+		const scope = warehouseSelection?.beginScopedRequest() ?? beginWarehouseScopedRequest();
 		cancelling = true;
 		error = null;
 		lastResult = null;
+		const poNumber = detail.purchaseOrder.poNumber;
+		const poId = detail.purchaseOrder.poId;
 		try {
-			lastCancel = await deps.cancelReceipts.execute(detail.purchaseOrder.poId, ids);
-			const refreshed = await deps.lookupPurchaseOrder.execute(
-				detail.purchaseOrder.poNumber
-			);
+			lastCancel = await deps.cancelReceipts.execute(poId, ids);
+			if (!scope.isCurrent()) return false;
+			const refreshed = await deps.lookupPurchaseOrder.execute(poNumber);
+			if (!scope.isCurrent()) return false;
 			detail = refreshed;
-			drafts = refreshed.lines
-				.filter((line) => line.quantityRemaining > 0)
-				.map((line) => ({
-					itemId: line.itemId,
-					sku: line.sku,
-					itemName: line.itemName,
-					remaining: line.quantityRemaining,
-					quantity: line.quantityRemaining,
-					binId: '',
-					lotNumber: ''
-				}));
+			drafts = mapDrafts(refreshed);
 			return true;
 		} catch (err) {
+			if (!scope.isCurrent() || isAbort(err)) return false;
 			error = toUserMessage(err, 'No se pudo cancelar los recibos');
 			return false;
 		} finally {
-			cancelling = false;
+			scope.release();
+			if (scope.isCurrent()) cancelling = false;
 		}
 	}
 
 	return {
-		get barcode() {
-			return barcode;
-		},
-		get detail() {
-			return detail;
-		},
-		get drafts() {
-			return drafts;
-		},
-		get loading() {
-			return loading;
-		},
-		get submitting() {
-			return submitting;
-		},
-		get cancelling() {
-			return cancelling;
-		},
-		get error() {
-			return error;
-		},
-		get lastResult() {
-			return lastResult;
-		},
-		get lastCancel() {
-			return lastCancel;
-		},
-		get receiptIdsInput() {
-			return receiptIdsInput;
-		},
+		get barcode() { return barcode; },
+		get detail() { return detail; },
+		get drafts() { return drafts; },
+		get loading() { return loading; },
+		get submitting() { return submitting; },
+		get cancelling() { return cancelling; },
+		get error() { return error; },
+		get lastResult() { return lastResult; },
+		get lastCancel() { return lastCancel; },
+		get receiptIdsInput() { return receiptIdsInput; },
+		get generation() { return warehouseSelection?.generation ?? 0; },
 		setBarcode,
 		setReceiptIdsInput,
 		lookup,
 		updateDraft,
 		submitReceive,
-		cancelReceipts
+		cancelReceipts,
+		invalidate
 	};
 }
