@@ -32,7 +32,7 @@ describe('EnsureAuthenticatedUseCase', () => {
 	it('on 401 tries refresh once then clears session if still unauthorized', async () => {
 		authSession.setUser({
 			userId: 1, username: 'admin', fullName: 'Admin', role: 'ADMIN',
-			warehouseIds: [1], allowedPages: [], allowedFunctions: [], mustChangePassword: false
+			warehouseIds: [1], allowedPages: [], allowedFunctions: [], allowedOverrides: [], mustChangePassword: false
 		});
 		const repo = createRepo({
 			getCurrentUser: vi.fn().mockRejectedValue(new ApiError(401, 'unauthorized')),
@@ -62,7 +62,7 @@ describe('EnsureAuthenticatedUseCase', () => {
 	it('preserves the in-memory user when the API is unavailable', async () => {
 		const current = {
 			userId: 1, username: 'admin', fullName: 'Admin', role: 'ADMIN',
-			warehouseIds: [1], allowedPages: [], allowedFunctions: [], mustChangePassword: false
+			warehouseIds: [1], allowedPages: [], allowedFunctions: [], allowedOverrides: [], mustChangePassword: false
 		};
 		authSession.setUser(current);
 		const repo = createRepo({
