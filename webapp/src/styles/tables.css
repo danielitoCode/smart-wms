@@ -1,10 +1,10 @@
 /**
  * Tablas operativas — lenguaje visual de Órdenes de compra (Compras).
- * Aplicado con especificidad sobre el workspace para ganar a estilos scoped.
+ * Especificidad sobre .shell .content para ganar a estilos scoped de pantallas.
  */
 
-body .workspace .content .table-wrap,
-body .workspace .content .detail.table-wrap,
+body .shell .content .table-wrap,
+body .shell .content .detail.table-wrap,
 .page .table-wrap,
 .inventory .table-wrap {
 	overflow: auto;
@@ -15,8 +15,8 @@ body .workspace .content .detail.table-wrap,
 	box-shadow: none;
 }
 
-body .workspace .content .table-wrap table,
-body .workspace .content table.data-table,
+body .shell .content .table-wrap table,
+body .shell .content table.data-table,
 .page .table-wrap table,
 .page table,
 .inventory .table-wrap table,
@@ -29,10 +29,10 @@ body .workspace .content table.data-table,
 	background: transparent;
 }
 
-body .workspace .content .table-wrap th,
-body .workspace .content .table-wrap td,
-body .workspace .content table.data-table th,
-body .workspace .content table.data-table td,
+body .shell .content .table-wrap th,
+body .shell .content .table-wrap td,
+body .shell .content table.data-table th,
+body .shell .content table.data-table td,
 .page .table-wrap th,
 .page .table-wrap td,
 .page table th,
@@ -47,8 +47,8 @@ body .workspace .content table.data-table td,
 	vertical-align: middle;
 }
 
-body .workspace .content .table-wrap th,
-body .workspace .content table.data-table th,
+body .shell .content .table-wrap th,
+body .shell .content table.data-table th,
 .page .table-wrap th,
 .page table th,
 .inventory .table-wrap th,
@@ -64,28 +64,27 @@ body .workspace .content table.data-table th,
 	z-index: 1;
 }
 
-body .workspace .content .table-wrap tbody tr:hover td,
-body .workspace .content table.data-table tbody tr:hover td,
+body .shell .content .table-wrap tbody tr:hover td,
+body .shell .content table.data-table tbody tr:hover td,
 .page .table-wrap tbody tr:hover td,
 .page table tbody tr:hover td,
 .inventory .table-wrap tbody tr:hover td {
 	background: color-mix(in srgb, var(--surface-selected, var(--surface-2)) 70%, transparent);
 }
 
-body .workspace .content .table-wrap tbody tr:last-child td,
+body .shell .content .table-wrap tbody tr:last-child td,
 .page .table-wrap tbody tr:last-child td,
 .inventory .table-wrap tbody tr:last-child td {
 	border-bottom: none;
 }
 
-/* Numeric / status helpers shared */
-body .workspace .content .table-wrap td.num,
+body .shell .content .table-wrap td.num,
 .page .table-wrap td.num {
 	text-align: right;
 	font-variant-numeric: tabular-nums;
 }
 
-body .workspace .content .table-wrap .link,
+body .shell .content .table-wrap .link,
 .page .table-wrap .link {
 	border: 0;
 	background: none;
@@ -96,15 +95,15 @@ body .workspace .content .table-wrap .link,
 	cursor: pointer;
 }
 
-:root[data-theme='dark'] body .workspace .content .table-wrap th,
+:root[data-theme='dark'] body .shell .content .table-wrap th,
 :root[data-theme='dark'] .page .table-wrap th,
 :root[data-theme='dark'] .inventory .table-wrap th {
 	background: color-mix(in srgb, var(--surface-3) 88%, var(--card));
 }
 
 @media (max-width: 640px) {
-	body .workspace .content .table-wrap th,
-	body .workspace .content .table-wrap td,
+	body .shell .content .table-wrap th,
+	body .shell .content .table-wrap td,
 	.page .table-wrap th,
 	.page .table-wrap td {
 		padding: 0.55rem 0.6rem;
