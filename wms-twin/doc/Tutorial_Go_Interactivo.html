@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tutorial interactivo de Go · gemelo WMS</title>
+<style>
+  :root {
+    --bg: #0f172a; --card: #1e293b; --text: #e2e8f0; --muted: #94a3b8;
+    --accent: #38bdf8; --ok: #4ade80; --bad: #f87171; --code: #0b1220;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: system-ui, Segoe UI, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.5;
+  }
+  header {
+    padding: 1.2rem 1.5rem; border-bottom: 1px solid #334155;
+    position: sticky; top: 0; background: #0b1220ee; backdrop-filter: blur(6px); z-index: 10;
+  }
+  header h1 { margin: 0; font-size: 1.15rem; }
+  header p { margin: .35rem 0 0; color: var(--muted); font-size: .9rem; }
+  main { max-width: 880px; margin: 0 auto; padding: 1rem 1.25rem 3rem; }
+  .progress {
+    margin-top: .75rem; height: 8px; background: #334155; border-radius: 99px; overflow: hidden;
+  }
+  .progress > span { display:block; height:100%; width:0%; background: var(--accent); transition: width .25s; }
+  section.lesson {
+    background: var(--card); border-radius: 12px; padding: 1rem 1.1rem;
+    margin: 1rem 0; border: 1px solid #334155;
+  }
+  section.lesson h2 { margin: 0 0 .5rem; font-size: 1.05rem; color: var(--accent); }
+  pre, code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  pre {
+    background: var(--code); padding: .75rem; border-radius: 8px;
+    overflow-x: auto; font-size: .82rem; border: 1px solid #334155;
+  }
+  .quiz { margin-top: .8rem; padding-top: .6rem; border-top: 1px dashed #475569; }
+  .quiz button, .nav button, .check-btn {
+    background: #0369a1; color: white; border: 0; border-radius: 8px;
+    padding: .45rem .75rem; margin: .25rem .25rem 0 0; cursor: pointer; font-size: .85rem;
+  }
+  .quiz button.secondary, .nav button.secondary { background: #475569; }
+  .feedback { margin-top: .5rem; font-size: .9rem; min-height: 1.2em; }
+  .feedback.ok { color: var(--ok); }
+  .feedback.bad { color: var(--bad); }
+  .nav { display:flex; gap:.5rem; flex-wrap:wrap; margin: 1rem 0; }
+  textarea {
+    width: 100%; min-height: 110px; background: var(--code); color: var(--text);
+    border: 1px solid #475569; border-radius: 8px; padding: .6rem; font-family: inherit; font-size: .85rem;
+  }
+  .tag { display:inline-block; background:#334155; color:#cbd5e1; font-size:.7rem; padding:.1rem .4rem; border-radius:4px; margin-right:.25rem; }
+  ul { padding-left: 1.2rem; }
+  .hidden { display: none; }
+  footer { color: var(--muted); font-size: .8rem; text-align: center; padding: 1rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Tutorial interactivo de Go · gemelo WMS</h1>
+  <p>Funciona offline. Practica conceptos con ejemplos del repositorio wms-twin. Tu progreso se guarda en este navegador.</p>
+  <div class="progress" aria-label="progreso"><span id="bar"></span></div>
+</header>
+<main>
+  <div class="nav">
+    <button type="button" id="prev">Anterior</button>
+    <button type="button" id="next">Siguiente</button>
+    <button type="button" class="secondary" id="reset">Reiniciar progreso</button>
+    <span id="pos" style="color:#94a3b8;align-self:center;font-size:.85rem"></span>
+  </div>
+  <div id="lessons"></div>
+</main>
+<footer>Gemelo WMS · PrismaTec-Core · estudio personal · sin necesidad de internet tras abrir el archivo</footer>
+<script>
+const lessons = [
+{
+  title: "1. Qué es un package",
+  body: `<p>En Go, cada carpeta de código es un <b>package</b>. En el gemelo, la carpeta <code>internal/httpapi</code> declara <code>package httpapi</code> al inicio de cada archivo <code>.go</code>.</p>
+<pre>package httpapi
+
+import (
+  "net/http"
+  "strings"
+)</pre>
+<p>Todos los archivos de esa carpeta deben usar el mismo nombre de package. Así Go agrupa funciones relacionadas.</p>
+<p><span class="tag">wms-twin</span> <code>features/catalog</code> → package <code>catalog</code></p>`,
+  quiz: {
+    q: "¿Qué debe coincidir en todos los .go de una misma carpeta?",
+    options: ["El nombre del package", "El nombre del archivo", "La función main"],
+    answer: 0
+  }
+},
+{
+  title: "2. package main y el ejecutable",
+  body: `<p>Solo un programa con <code>package main</code> y función <code>func main()</code> se convierte en ejecutable.</p>
+<pre>package main
+
+func main() {
+  // punto de entrada
+}</pre>
+<p>En el gemelo eso vive bajo <code>cmd/wms-twin/</code>. El resto de packages son bibliotecas internas que main (o el runtime) enciende.</p>`,
+  quiz: {
+    q: "¿Qué package convierte el código en un programa ejecutable?",
+    options: ["package internal", "package main", "package http"],
+    answer: 1
+  }
+},
+{
+  title: "3. Variables y :=",
+  body: `<p>Puedes declarar con <code>var</code> o, dentro de una función, con <code>:=</code> (declara e infiere el tipo):</p>
+<pre>var nombre string = "operator"
+token := "eyJ..."   // string inferido
+warehouseID := int64(3)</pre>
+<p>En handlers del gemelo verás mucho <code>:=</code> al decodificar JSON o al llamar servicios.</p>`,
+  quiz: {
+    q: "¿Dónde está permitido usar := ?",
+    options: ["Solo fuera de funciones", "Dentro de funciones", "Solo en package main"],
+    answer: 1
+  }
+},
+{
+  title: "4. Structs (datos con forma)",
+  body: `<p>Go no usa clases clásicas. Agrupa datos en <b>structs</b>:</p>
+<pre>type BridgeOrder struct {
+  ID       string \`json:"id"\`
+  SONumber string \`json:"so_number"\`
+  ZyrionCode int  \`json:"zyrion_code"\`
+}</pre>
+<p>Campo con <b>Mayúscula</b> = exportado (visible fuera del package). La etiqueta <code>json:"..."</code> controla el nombre al serializar JSON para el frontend.</p>
+<p>Ejemplos en el gemelo: <code>SalesOrder</code>, <code>PaidOrderInput</code>, <code>BridgeOrder</code>.</p>`,
+  quiz: {
+    q: "¿Qué hace el tag json:\"so_number\"?",
+    options: ["Cambia el tipo a string", "Define el nombre del campo en JSON", "Crea un package"],
+    answer: 1
+  }
+},
+{
+  title: "5. Funciones y métodos",
+  body: `<p>Función libre:</p>
+<pre>func Parse(s string) Outcome { ... }</pre>
+<p>Método (tiene <b>receptor</b>):</p>
+<pre>func (s *Service) IngestPaidOrder(in PaidOrderInput, actor string) (BridgeOrder, error)</pre>
+<p>El receptor <code>(s *Service)</code> liga la función al tipo Service. El <code>*</code> indica puntero: trabajas sobre el mismo servicio en memoria.</p>
+<p>Devolver <code>(BridgeOrder, error)</code> es el estilo idiomático de Go: resultado + error.</p>`,
+  quiz: {
+    q: "En (s *Service), s es…",
+    options: ["Un package", "El receptor del método (puntero a Service)", "Un error"],
+    answer: 1
+  }
+},
+{
+  title: "6. Errores sin try/catch",
+  body: `<p>Go no tiene try/catch. El patrón es:</p>
+<pre>bo, err := svc.IngestPaidOrder(in, actor)
+if err != nil {
+  // responder 400/500
+  return
+}
+// usar bo</pre>
+<p>Errores sentinela del gemelo: <code>contracts.ErrNotFound</code>, <code>contracts.ErrInvalid</code>. Se comparan con <code>errors.Is(err, ...)</code>.</p>`,
+  quiz: {
+    q: "Si err != nil, ¿qué debes hacer normalmente?",
+    options: ["Ignorarlo siempre", "Manejar el error o devolverlo", "Reiniciar el PC"],
+    answer: 1
+  }
+},
+{
+  title: "7. Interfaces = contratos",
+  body: `<p>Una interface describe métodos obligatorios:</p>
+<pre>type AdminResourceRepository interface {
+  List(resource string) ([]map[string]any, error)
+}</pre>
+<p>Cualquier tipo que tenga esos métodos <b>cumple</b> la interface. En el gemelo, <code>ports</code> define contratos y <code>admindata.Store</code> los implementa.</p>
+<pre>var _ ports.AdminResourceRepository = (*Store)(nil)</pre>
+<p>Esa línea obliga al compilador a verificar que Store implementa el port.</p>`,
+  quiz: {
+    q: "¿Para qué sirve una interface en Go?",
+    options: ["Definir solo variables globales", "Declarar un conjunto de métodos que un tipo debe tener", "Reemplazar al package main"],
+    answer: 1
+  }
+},
+{
+  title: "8. JSON Marshal / Unmarshal",
+  body: `<p>Pasar de struct a JSON y viceversa:</p>
+<pre>raw, err := json.Marshal(bo)   // a []byte
+err = json.Unmarshal(raw, &bo) // desde []byte; nota el &</pre>
+<p>El gemelo guarda organismos así: struct/map → Marshal → <code>corestore.Put</code>. Al leer: Get → Unmarshal → struct.</p>
+<p>El <code>&amp;bo</code> es obligatorio en Unmarshal porque la función debe modificar la variable original.</p>`,
+  quiz: {
+    q: "¿Por qué Unmarshal usa &bo?",
+    options: ["Porque JSON solo acepta punteros de moda", "Para modificar la variable original y rellenarla", "Porque bo es un package"],
+    answer: 1
+  }
+},
+{
+  title: "9. HTTP handlers en el gemelo",
+  body: `<p>Firma típica:</p>
+<pre>func (s *Server) integrationsRoute(w http.ResponseWriter, r *http.Request)</pre>
+<ul>
+<li><code>r</code> — petición (método, path, body, headers)</li>
+<li><code>w</code> — respuesta</li>
+</ul>
+<p>Registro:</p>
+<pre>mux.HandleFunc("/api/integrations/", s.RequireAuth(s.integrationsRoute))</pre>
+<p><code>RequireAuth</code> envuelve el handler: sin sesión válida → 401; con sesión → llama a <code>integrationsRoute</code>.</p>`,
+  quiz: {
+    q: "¿Qué hace RequireAuth alrededor del handler?",
+    options: ["Compila el programa", "Exige autenticación antes de ejecutar la ruta", "Borra el package"],
+    answer: 1
+  }
+},
+{
+  title: "10. Slices y append",
+  body: `<p>Una lista dinámica se llama <b>slice</b>:</p>
+<pre>lines := []LineInput{}
+lines = append(lines, LineInput{ItemID: 1, QuantityOrdered: 2})</pre>
+<p>En el puente comercio, se arman las líneas del SO con append antes de llamar a <code>salesorders.Create</code>.</p>`,
+  quiz: {
+    q: "¿Qué hace append?",
+    options: ["Elimina el primer elemento", "Añade elementos al final del slice", "Convierte a JSON"],
+    answer: 1
+  }
+},
+{
+  title: "11. Maps",
+  body: `<pre>m := map[string]any{
+  "status": "ok",
+  "warehouse_id": 3,
+}
+m["extra"] = true</pre>
+<p><code>any</code> (alias de <code>interface{}</code>) significa “cualquier tipo”. Muy usado cuando el JSON es flexible (admin genérico).</p>`,
+  quiz: {
+    q: "map[string]any es…",
+    options: ["Un diccionario de string a valor de cualquier tipo", "Solo para números", "Un error de sintaxis"],
+    answer: 0
+  }
+},
+{
+  title: "12. Mutex y defer",
+  body: `<pre>s.mu.Lock()
+defer s.mu.Unlock()
+// código que toca datos compartidos</pre>
+<p>Varias peticiones HTTP pueden correr a la vez. El mutex evita condiciones de carrera. <code>defer</code> programa el Unlock para cuando la función termine, aunque haya varios <code>return</code>.</p>`,
+  quiz: {
+    q: "¿Para qué sirve defer s.mu.Unlock()?",
+    options: ["Para olvidar el candado", "Para liberar el candado al salir de la función", "Para iniciar el servidor"],
+    answer: 1
+  }
+},
+{
+  title: "13. Flujo real: orden pagada externa",
+  body: `<p>Caso de negocio del líder: la tienda del cliente cobra; el WMS solo recibe la señal.</p>
+<ol>
+<li>POST <code>/api/integrations/orders/paid</code> con JSON de la orden.</li>
+<li><code>integrationsRoute</code> autentica y decodifica a <code>PaidOrderInput</code>.</li>
+<li><code>contracts.IngestPaidOrder</code> valida, crea SO si puede, asigna Zyrion (éxito/fallo/indeterminado).</li>
+<li>Guarda organismo vía <code>corestore.Put</code> y emite evento.</li>
+<li>Responde JSON <code>BridgeOrder</code>.</li>
+</ol>
+<p>Leer ese camino en el código es la mejor práctica para features nuevas.</p>`,
+  quiz: {
+    q: "¿Quién cobra al comprador final en el modelo del proyecto?",
+    options: ["Siempre el WMS con tarjeta", "La tienda e-commerce del comerciante", "Solo PrismaTec-Core"],
+    answer: 1
+  }
+},
+{
+  title: "14. Checklist para una feature nueva",
+  body: `<ol>
+<li>Crear/editar package en <code>internal/features/...</code></li>
+<li>Definir structs de entrada/salida</li>
+<li>Métodos del Service que devuelvan (resultado, error)</li>
+<li>Persistir con corestore + JSON</li>
+<li>Handler delgado en httpapi</li>
+<li>Registrar ruta + RequireAuth</li>
+<li>Cablear en NewWithIdentity</li>
+<li>Test en *_test.go</li>
+</ol>
+<p>Es el mismo esqueleto que <code>contracts</code>, <code>catalog</code>, <code>receiving</code>.</p>`,
+  quiz: {
+    q: "¿Dónde debe vivir la lógica de negocio fuerte?",
+    options: ["Solo en el HTML del admin", "En features (service/repository), no pegada al handler", "Solo en el tag json"],
+    answer: 1
+  }
+},
+{
+  title: "15. Mini reto: lee este fragmento",
+  body: `<pre>bo, err := svc.IngestPaidOrder(in, "merchant")
+if err != nil {
+  return
+}
+if bo.ZyrionCode == 1 {
+  // success
+}</pre>
+<p>Pregunta de comprensión: si ZyrionCode es 1 según el package zyrion del gemelo, el desenlace es éxito (Success).</p>
+<p>0 = fallo, 1 = éxito, 2 = indeterminado.</p>`,
+  quiz: {
+    q: "ZyrionCode == 2 significa…",
+    options: ["Éxito cerrado", "Fallo cerrado", "Indeterminado / en espera"],
+    answer: 2
+  }
+}
+];
+
+const root = document.getElementById('lessons');
+const bar = document.getElementById('bar');
+const pos = document.getElementById('pos');
+let idx = Number(localStorage.getItem('goTwinLesson') || 0);
+const done = new Set(JSON.parse(localStorage.getItem('goTwinDone') || '[]'));
+
+function save() {
+  localStorage.setItem('goTwinLesson', String(idx));
+  localStorage.setItem('goTwinDone', JSON.stringify([...done]));
+  bar.style.width = ((done.size / lessons.length) * 100) + '%';
+  pos.textContent = `Lección ${idx+1} / ${lessons.length} · completadas ${done.size}`;
+}
+
+function render() {
+  const L = lessons[idx];
+  root.innerHTML = `
+    <section class="lesson">
+      <h2>${L.title}</h2>
+      <div class="content">${L.body}</div>
+      <div class="quiz">
+        <p><b>Práctica:</b> ${L.quiz.q}</p>
+        <div id="opts"></div>
+        <div class="feedback" id="fb"></div>
+      </div>
+    </section>`;
+  const opts = document.getElementById('opts');
+  L.quiz.options.forEach((opt, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = opt;
+    b.onclick = () => {
+      const fb = document.getElementById('fb');
+      if (i === L.quiz.answer) {
+        fb.className = 'feedback ok';
+        fb.textContent = 'Correcto. Puedes seguir a la siguiente lección.';
+        done.add(idx);
+        save();
+      } else {
+        fb.className = 'feedback bad';
+        fb.textContent = 'No exactamente. Relee el texto de arriba e inténtalo de nuevo.';
+      }
+    };
+    opts.appendChild(b);
+  });
+  save();
+}
+
+document.getElementById('prev').onclick = () => { idx = Math.max(0, idx-1); render(); };
+document.getElementById('next').onclick = () => { idx = Math.min(lessons.length-1, idx+1); render(); };
+document.getElementById('reset').onclick = () => {
+  localStorage.removeItem('goTwinLesson');
+  localStorage.removeItem('goTwinDone');
+  idx = 0; done.clear(); render();
+};
+render();
+</script>
+</body>
+</html>

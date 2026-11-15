@@ -11,6 +11,8 @@ Gemelo del backend WMS. Motor de datos: **PrismaTec-Core**. Contrato HTTP: `/api
 | [doc/MANUAL_FRAMEWORK_PRISMATEC.pdf](doc/MANUAL_FRAMEWORK_PRISMATEC.pdf) | Manual de framework en PDF |
 | [doc/PatronesEmpleados.pdf](doc/PatronesEmpleados.pdf) | Patrones de diseño y seguridad |
 | [doc/Integracion.pdf](doc/Integracion.pdf) | Integraciones de pago (global e Italia) |
+| [doc/Tutorial_Go_Gemelo.pdf](doc/Tutorial_Go_Gemelo.pdf) | Tutorial de Go |
+| [doc/Tutorial_Go_Interactivo.html](doc/Tutorial_Go_Interactivo.html) | Práctica Go offline |
 | [doc/Guia_Completa_WMS_Twin_PrismaTec.pdf](doc/Guia_Completa_WMS_Twin_PrismaTec.pdf) | Guía de operación en PDF |
 
 ```bash

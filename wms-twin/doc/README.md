@@ -176,6 +176,7 @@ wms-twin/
 | **PatronesEmpleados.md** + **PatronesEmpleados.pdf** | Patrones, Clean Architecture, feature-first y seguridad |
 | **Integracion.md** + **Integracion.pdf** | Integraciones (puente tienda→almacén + fees B2B) |
 | API `/api/integrations/*` | Contrato Zyrion: orden pagada en tienda externa → expedición |
+| **Tutorial_Go_Gemelo.pdf** + **Tutorial_Go_Interactivo.html** | Aprender Go con ejemplos del gemelo |
 | **scripts/e2e-integracion-sin-frontend.sh** | E2E API sin npm/Vite/proxy |
 
 No mantengo más manuales sueltos en `doc/`: dispersan al equipo.
