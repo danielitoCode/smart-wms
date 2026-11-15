@@ -238,12 +238,12 @@ def create_purchase_order(validated):
     )
     po_id = result.fetchone()[0]
 
-    for line in data["lines"]:
+    for index, line in enumerate(data["lines"], start=1):
         g.db.execute(
             text("INSERT INTO purchase_order_lines (po_id, item_id, quantity_ordered, unit_cost, line_number) VALUES (:pid, :iid, :qty, :cost, :ln)"),
             {"pid": po_id, "iid": line["item_id"], "qty": line["quantity_ordered"],
              "cost": float(line["unit_cost"]) if line.get("unit_cost") is not None else None,
-             "ln": line.get("line_number") or 1},
+             "ln": line.get("line_number") or index},
         )
 
     g.db.commit()
