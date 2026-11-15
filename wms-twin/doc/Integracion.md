@@ -198,3 +198,21 @@ La prueba de integración **sin frontend** (`scripts/e2e-integracion-sin-fronten
 | `MANUAL_FRAMEWORK_PRISMATEC` | Motor PrismaTec-Core |
 | `PatronesEmpleados` | Arquitectura y seguridad del gemelo |
 | **Este estudio** | Integraciones de pago futuras |
+
+---
+
+## Nota de producto (modelo real del WMS / Abeli)
+
+El cobro al **comprador final** no ocurre dentro de este almacén. La tienda del cliente (su e-commerce) cobra. Cuando la orden queda pagada o ejecutada, la tienda **notifica** al gemelo. Esa señal arranca la expedición interna. El panel del comerciante (y, si admite webhooks, su plataforma) puede seguir etapas: aceptada, en picking, empaquetada, en courier, etc.
+
+Zyrion clasifica cada paso del puente comercio→almacén (éxito, fallo, indeterminado).  
+Aparte, el comerciante puede pagar **a la plataforma** (transferencia o Stripe B2B): contrato `platform-fee-v1`, no checkout retail.
+
+API del contrato en el gemelo:
+
+- `GET /api/integrations/contracts`
+- `POST /api/integrations/orders/paid`
+- `GET /api/integrations/orders`
+- `POST /api/integrations/orders/{id}/advance`
+- `GET /api/integrations/events`
+- `POST /api/integrations/platform-fees`

@@ -17,6 +17,7 @@ import (
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/corestore"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/admindata"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/catalog"
+	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/contracts"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/cyclecounts"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/dockd"
 	"github.com/danielitoCode/smart-wms/wms-twin/internal/features/events"
@@ -63,6 +64,7 @@ type Server struct {
 	wmsTokens        *wmstoken.Store
 	wmsAudit         *wmsaudit.Service
 	adminData        *admindata.Store
+	contracts        *contracts.Service
 	mesh             *mesh.Mesh
 	token            string
 	users            *identity.Repository
@@ -128,6 +130,7 @@ func NewWithIdentity(node *core.Node, store *corestore.Store, token string, user
 		wmsTokens:   wmstoken.NewStore(store),
 		wmsAudit:    auditSvc,
 		adminData:   admindata.New(store),
+		contracts:   contracts.New(store, sos, master),
 		mesh:        meshLayer,
 		token:       token,
 		users:       users, jwtSecret: append([]byte(nil), jwtSecret...),
@@ -205,6 +208,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/twin/info", s.authorize(s.info))
 	mux.HandleFunc("/api/twin/records/", s.authorize(s.records))
 	mux.HandleFunc("/api/twin/inventory/", s.authorize(s.inventory))
+	mux.HandleFunc("/api/integrations/", s.RequireAuth(s.integrationsRoute))
 	return withCORS(mux)
 }
 
