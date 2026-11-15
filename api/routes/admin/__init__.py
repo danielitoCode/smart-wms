@@ -47,7 +47,6 @@ def _admin_integrity_error(exc):
 
 
 from routes.admin import (  # noqa: E402, F401
-    admin_adjustments,
     admin_channels,
     admin_connectors,
     admin_consumer_groups,

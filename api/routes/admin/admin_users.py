@@ -16,7 +16,7 @@ from constants import (
     ALL_OVERRIDE_KEYS,
     ALL_PAGE_KEYS,
 )
-from middleware.auth_middleware import require_admin_or_page_permission, require_auth
+from middleware.auth_middleware import require_admin_or_page_permission, require_auth, warehouse_scope_clause
 from middleware.db import with_db
 from routes.admin import VALID_ROLES, admin_bp
 from schemas.inventory_adjustments import DirectAdjustmentRequest, ReviewAdjustmentsRequest
@@ -40,6 +40,45 @@ from services.webhook_dispatcher.backorder_notifier import (
     dispatch_backorder_notification,
 )
 from utils.validation import validate_body
+
+
+
+def _apply_adjustment_delta(db, item_id, bin_id, warehouse_id, delta):
+    """Apply a signed adjustment without consuming allocated stock."""
+    # Serialize all changes for this item/bin, including the empty-bin case,
+    # before taking inventory row locks or inserting a new inventory row.
+    db.execute(
+        text("SELECT pg_advisory_xact_lock(:item_id, :bin_id)"),
+        {"item_id": item_id, "bin_id": bin_id},
+    )
+    if delta > 0:
+        add_inventory(db, item_id, bin_id, warehouse_id, delta)
+        return
+    rows = db.execute(
+        text("""
+            SELECT inventory_id, quantity_on_hand, quantity_allocated
+            FROM inventory
+            WHERE item_id = :item_id AND bin_id = :bin_id
+            ORDER BY inventory_id
+            FOR UPDATE
+        """),
+        {"item_id": item_id, "bin_id": bin_id},
+    ).fetchall()
+    available = sum(row.quantity_on_hand - row.quantity_allocated for row in rows)
+    required = -delta
+    if available < required:
+        raise ValueError(
+            f"Insufficient unallocated inventory: requested {required}, available {available}"
+        )
+
+    remaining = required
+    for row in rows:
+        if remaining <= 0:
+            break
+        take = min(max(row.quantity_on_hand - row.quantity_allocated, 0), remaining)
+        if take:
+            set_inventory_quantity(db, row.inventory_id, row.quantity_on_hand - take)
+            remaining -= take
 
 
 # ── Users ─────────────────────────────────────────────────────────────────────
@@ -804,6 +843,15 @@ def list_pending_adjustments():
     # cycle_count_line (keyed by count + item). Correlated subselects so a
     # non-cycle-count adjustment (cycle_count_id NULL) simply yields NULL
     # without fanning the adjustment row out across line matches.
+    record_scope, record_params = warehouse_scope_clause("ia.warehouse_id")
+    bin_scope, bin_params = warehouse_scope_clause("b.warehouse_id")
+    where = ["ia.status = :adj_pending", "b.warehouse_id = ia.warehouse_id"]
+    if record_scope:
+        where.append(record_scope.removeprefix("AND ").strip())
+    if bin_scope:
+        where.append(bin_scope.removeprefix("AND ").strip())
+    params = {"adj_pending": ADJ_PENDING, **record_params, **bin_params}
+    where_sql = " AND ".join(where)
     rows = g.db.execute(
         text("""
             SELECT ia.adjustment_id, ia.item_id, ia.bin_id, ia.warehouse_id,
@@ -822,11 +870,11 @@ def list_pending_adjustments():
                      LIMIT 1) AS counted_quantity
             FROM inventory_adjustments ia
             JOIN items i ON i.item_id = ia.item_id
-            JOIN bins b ON b.bin_id = ia.bin_id
-            WHERE ia.status = :adj_pending
+            JOIN bins b ON b.bin_id = ia.bin_id AND b.warehouse_id = ia.warehouse_id
+            WHERE """ + where_sql + """
             ORDER BY ia.cycle_count_id, ia.adjustment_id
         """),
-        {"adj_pending": ADJ_PENDING},
+        params,
     ).fetchall()
 
     return jsonify({
@@ -882,17 +930,27 @@ def review_adjustments(validated):
         # same adjustment so the status-check-then-update pattern is
         # race-safe and the inventoryadjusted.completed / cycle_count.adjusted
         # event emits in commit order on the integration_events outbox.
+        record_scope, record_params = warehouse_scope_clause("ia.warehouse_id")
+        bin_scope, bin_params = warehouse_scope_clause("b.warehouse_id")
         row = g.db.execute(
             text(
-                "SELECT adjustment_id, item_id, bin_id, warehouse_id, quantity_change,"
-                " reason_code, status, adjusted_by, cycle_count_id, external_id"
-                " FROM inventory_adjustments WHERE adjustment_id = :aid FOR UPDATE"
+                "SELECT ia.adjustment_id, ia.item_id, ia.bin_id, ia.warehouse_id,"
+                " b.warehouse_id AS resolved_warehouse_id, ia.quantity_change,"
+                " ia.reason_code, ia.status, ia.adjusted_by, ia.cycle_count_id, ia.external_id"
+                " FROM inventory_adjustments ia"
+                " JOIN bins b ON b.bin_id = ia.bin_id AND b.warehouse_id = ia.warehouse_id"
+                " WHERE ia.adjustment_id = :aid" + record_scope + bin_scope
+                " FOR UPDATE OF ia, b"
             ),
-            {"aid": adj_id},
+            {"aid": adj_id, **record_params, **bin_params},
         ).fetchone()
 
-        if not row or row.status != ADJ_PENDING:
-            continue
+        if not row:
+            g.db.rollback()
+            return jsonify({"error": "Adjustment not found"}), 404
+        if row.status != ADJ_PENDING:
+            g.db.rollback()
+            return jsonify({"error": "Adjustment is already closed"}), 409
 
         # Separation of duties check for cycle count adjustments
         is_self_approval = row.cycle_count_id and row.adjusted_by == g.current_user["username"]
@@ -905,23 +963,14 @@ def review_adjustments(validated):
                 return jsonify({"error": "Cannot approve your own cycle count"}), 403
 
         if action == "approve":
-            # Apply the inventory adjustment
-            existing = g.db.execute(
-                text("SELECT inventory_id, quantity_on_hand FROM inventory WHERE item_id = :iid AND bin_id = :bid"),
-                {"iid": row.item_id, "bid": row.bin_id},
-            ).fetchone()
-
-            if existing:
-                new_qty = max(0, existing.quantity_on_hand + row.quantity_change)
-                g.db.execute(
-                    text("UPDATE inventory SET quantity_on_hand = :qty, updated_at = NOW() WHERE inventory_id = :inv_id"),
-                    {"qty": new_qty, "inv_id": existing.inventory_id},
+            try:
+                _apply_adjustment_delta(
+                    g.db, row.item_id, row.bin_id,
+                    row.resolved_warehouse_id, row.quantity_change,
                 )
-            elif row.quantity_change > 0:
-                g.db.execute(
-                    text("INSERT INTO inventory (item_id, bin_id, warehouse_id, quantity_on_hand) VALUES (:iid, :bid, :wid, :qty)"),
-                    {"iid": row.item_id, "bid": row.bin_id, "wid": row.warehouse_id, "qty": row.quantity_change},
-                )
+            except ValueError as exc:
+                g.db.rollback()
+                return jsonify({"error": str(exc), "adjustment_id": adj_id}), 409
 
             # this path lands stock with raw SQL rather than
             # add_inventory(), which is why a hook inside that helper would
@@ -936,10 +985,14 @@ def review_adjustments(validated):
                      else RELEASE_SOURCE_ADJUSTMENT)
                 )
 
-            g.db.execute(
-                text("UPDATE inventory_adjustments SET status = :status WHERE adjustment_id = :aid"),
-                {"aid": adj_id, "status": ADJ_APPROVED},
+            updated = g.db.execute(
+                text("UPDATE inventory_adjustments SET status = :status "
+                     "WHERE adjustment_id = :aid AND status = :pending"),
+                {"aid": adj_id, "status": ADJ_APPROVED, "pending": ADJ_PENDING},
             )
+            if updated.rowcount != 1:
+                g.db.rollback()
+                return jsonify({"error": "Adjustment was already reviewed"}), 409
 
             if is_self_approval:
                 write_audit_log(
@@ -1072,10 +1125,14 @@ def review_adjustments(validated):
 
             approved += 1
         else:
-            g.db.execute(
-                text("UPDATE inventory_adjustments SET status = :status WHERE adjustment_id = :aid"),
-                {"aid": adj_id, "status": ADJ_REJECTED},
+            updated = g.db.execute(
+                text("UPDATE inventory_adjustments SET status = :status "
+                     "WHERE adjustment_id = :aid AND status = :pending"),
+                {"aid": adj_id, "status": ADJ_REJECTED, "pending": ADJ_PENDING},
             )
+            if updated.rowcount != 1:
+                g.db.rollback()
+                return jsonify({"error": "Adjustment was already reviewed"}), 409
             rejected += 1
 
     # run the matcher once per (warehouse, item) this batch increased,
@@ -1126,12 +1183,17 @@ def direct_adjustment(validated):
         return jsonify({"error": "Item not found"}), 404
 
     # Validate bin exists and belongs to warehouse
+    bin_scope, bin_scope_params = warehouse_scope_clause("b.warehouse_id")
     bin_row = g.db.execute(
-        text("SELECT bin_id, bin_code, external_id FROM bins WHERE bin_id = :bid AND warehouse_id = :wid"),
-        {"bid": bin_id, "wid": warehouse_id},
+        text("SELECT b.bin_id, b.bin_code, b.external_id, b.warehouse_id FROM bins b "
+             "WHERE b.bin_id = :bid " + bin_scope),
+        {"bid": bin_id, **bin_scope_params},
     ).fetchone()
     if not bin_row:
-        return jsonify({"error": "Bin not found in the specified warehouse"}), 404
+        return jsonify({"error": "Bin not found"}), 404
+    if bin_row.warehouse_id != warehouse_id:
+        return jsonify({"error": "Bin does not belong to the specified warehouse"}), 400
+    warehouse_id = bin_row.warehouse_id
 
     # a direct ADD is how a found-in-the-warehouse unit gets onto the
     # books, and it used to leave a backorder waiting on that exact SKU stuck
@@ -1139,9 +1201,14 @@ def direct_adjustment(validated):
     # Teams send never blocks the response. A REMOVE cannot satisfy anything.
     _deferred_notifications = []
 
+    quantity_change = quantity if adjustment_type == "ADD" else -quantity
+    try:
+        _apply_adjustment_delta(g.db, item_id, bin_id, warehouse_id, quantity_change)
+    except ValueError as exc:
+        g.db.rollback()
+        return jsonify({"error": str(exc)}), 409
+
     if adjustment_type == "ADD":
-        quantity_change = quantity
-        add_inventory(g.db, item_id, bin_id, warehouse_id, quantity)
         release_satisfiable_backorders(
             g.db,
             warehouse_id=warehouse_id,
@@ -1150,24 +1217,6 @@ def direct_adjustment(validated):
             deferred_notifications=_deferred_notifications,
             source=RELEASE_SOURCE_ADJUSTMENT,
         )
-    else:
-        # REMOVE  -  validate sufficient stock
-        # v1.5.0 #119: FOR UPDATE on the inventory row is the
-        # serialisation point for concurrent direct-adjustment REMOVEs
-        # against the same item+bin. The ADD branch goes through
-        # add_inventory() which already locks the target row (V-030);
-        # this branch does its own SELECT so it needs its own lock.
-        inv = g.db.execute(
-            text("SELECT inventory_id, quantity_on_hand FROM inventory WHERE item_id = :iid AND bin_id = :bid FOR UPDATE"),
-            {"iid": item_id, "bid": bin_id},
-        ).fetchone()
-        available = inv.quantity_on_hand if inv else 0
-        if available < quantity:
-            return jsonify({"error": f"Insufficient inventory. Available: {available}"}), 400
-
-        quantity_change = -quantity
-        new_qty = available - quantity
-        set_inventory_quantity(g.db, inv.inventory_id, new_qty)
 
     # Create adjustment record as APPROVED
     adj = g.db.execute(
@@ -1260,19 +1309,41 @@ def direct_adjustment(validated):
 @with_db
 def list_adjustments():
     """Return recent inventory adjustments with item and bin details."""
-    warehouse_id = request.args.get("warehouse_id", type=int)
-    page = request.args.get("page", 1, type=int)
-    per_page = min(request.args.get("per_page", 50, type=int), 1000)
+    try:
+        warehouse_arg = request.args.get("warehouse_id")
+        warehouse_id = int(warehouse_arg) if warehouse_arg is not None else None
+        page = int(request.args.get("page", "1"))
+        per_page = int(request.args.get("per_page", "50"))
+    except ValueError:
+        return jsonify({"error": "warehouse_id, page and per_page must be integers"}), 400
+    if warehouse_id is not None and warehouse_id <= 0:
+        return jsonify({"error": "warehouse_id must be positive"}), 400
+    if page < 1 or not 1 <= per_page <= 1000:
+        return jsonify({"error": "page must be positive and per_page between 1 and 1000"}), 400
 
-    where_clauses, params = [], {}
-    if warehouse_id:
-        where_clauses.append("ia.warehouse_id = :wid")
-        params["wid"] = warehouse_id
-
-    where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+    record_scope, record_params = warehouse_scope_clause("ia.warehouse_id")
+    bin_scope, bin_params = warehouse_scope_clause("b.warehouse_id")
+    where_clauses = ["b.warehouse_id = ia.warehouse_id"]
+    params = {**record_params, **bin_params}
+    if record_scope:
+        where_clauses.append(record_scope.removeprefix("AND ").strip())
+    if bin_scope:
+        where_clauses.append(bin_scope.removeprefix("AND ").strip())
+    if warehouse_id is not None:
+        where_clauses.append("ia.warehouse_id = :warehouse_id")
+        params["warehouse_id"] = warehouse_id
+    status = (request.args.get("status") or "").upper()
+    if status:
+        if status not in (ADJ_PENDING, ADJ_APPROVED, ADJ_REJECTED):
+            return jsonify({"error": "status must be PENDING, APPROVED or REJECTED"}), 400
+        where_clauses.append("ia.status = :status")
+        params["status"] = status
+    where_sql = "WHERE " + " AND ".join(where_clauses)
 
     total = g.db.execute(
-        text(f"SELECT COUNT(*) FROM inventory_adjustments ia {where_sql}"), params,
+        text("SELECT COUNT(*) FROM inventory_adjustments ia "
+             "JOIN bins b ON b.bin_id = ia.bin_id AND b.warehouse_id = ia.warehouse_id "
+             + where_sql), params,
     ).scalar()
     pages = max(1, math.ceil(total / per_page))
 
@@ -1296,7 +1367,7 @@ def list_adjustments():
                    COALESCE(u.username, ia.adjusted_by) AS username
             FROM inventory_adjustments ia
             JOIN items i ON i.item_id = ia.item_id
-            JOIN bins b ON b.bin_id = ia.bin_id
+            JOIN bins b ON b.bin_id = ia.bin_id AND b.warehouse_id = ia.warehouse_id
             -- Cast the column that is guaranteed numeric, not the one
             -- that is not. adjusted_by is VARCHAR and its writers disagree:
             -- the direct and CSV paths store a numeric user_id, the
