@@ -222,3 +222,101 @@ class TestInventoryAdjustmentWarehouseScope:
         assert _query_val(
             "SELECT COALESCE(SUM(quantity_on_hand), 0) FROM inventory WHERE item_id = 1 AND bin_id = 3"
         ) == before
+
+
+class TestConcurrentInventoryAdjustmentReview:
+    def test_two_concurrent_approvals_apply_the_delta_once(self, app, auth_headers):
+        """Separate request sessions race on one pending adjustment.
+
+        The row lock must let one request commit and force the other to
+        observe the terminal status instead of applying stock twice.
+        """
+        import os
+        from concurrent.futures import ThreadPoolExecutor
+
+        import psycopg2
+        from sqlalchemy.orm import sessionmaker
+        import models.database as db
+
+        connection = psycopg2.connect(os.environ["TEST_DATABASE_URL"])
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            SELECT inventory_id, quantity_on_hand
+            FROM inventory
+            WHERE item_id = 1 AND bin_id = 3 AND lot_number IS NULL
+            ORDER BY inventory_id
+            """
+        )
+        original_rows = cursor.fetchall()
+        assert original_rows
+        before_total = sum(row[1] for row in original_rows)
+        cursor.execute(
+            """
+            INSERT INTO inventory_adjustments
+                (item_id, bin_id, warehouse_id, quantity_change, reason_code,
+                 reason_detail, status, adjusted_by, external_id)
+            VALUES (1, 3, 1, 2, 'CORRECTION', 'concurrent approval', 'PENDING',
+                    'concurrency-test', gen_random_uuid())
+            RETURNING adjustment_id
+            """
+        )
+        adjustment_id = cursor.fetchone()[0]
+        connection.commit()
+        cursor.close()
+        connection.close()
+
+        original_session_factory = db.SessionLocal
+        db.SessionLocal = sessionmaker(bind=db.engine, expire_on_commit=False)
+        payload = {"decisions": [{"adjustment_id": adjustment_id, "action": "approve"}]}
+
+        def approve_once():
+            with app.test_client() as test_client:
+                response = test_client.post(
+                    "/api/admin/adjustments/review",
+                    json=payload,
+                    headers=auth_headers,
+                )
+                return response.status_code
+
+        try:
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                statuses = list(executor.map(lambda _index: approve_once(), range(2)))
+            assert sorted(statuses) == [200, 409]
+
+            verify = psycopg2.connect(os.environ["TEST_DATABASE_URL"])
+            verify_cursor = verify.cursor()
+            verify_cursor.execute(
+                "SELECT COALESCE(SUM(quantity_on_hand), 0) FROM inventory "
+                "WHERE item_id = 1 AND bin_id = 3"
+            )
+            assert verify_cursor.fetchone()[0] == before_total + 2
+            verify_cursor.execute(
+                "SELECT status FROM inventory_adjustments WHERE adjustment_id = %s",
+                (adjustment_id,),
+            )
+            assert verify_cursor.fetchone()[0] == "APPROVED"
+            verify_cursor.close()
+            verify.close()
+        finally:
+            db.SessionLocal = original_session_factory
+            cleanup = psycopg2.connect(os.environ["TEST_DATABASE_URL"])
+            cleanup_cursor = cleanup.cursor()
+            for inventory_id, quantity in original_rows:
+                cleanup_cursor.execute(
+                    "UPDATE inventory SET quantity_on_hand = %s WHERE inventory_id = %s",
+                    (quantity, inventory_id),
+                )
+            original_ids = [row[0] for row in original_rows]
+            cleanup_cursor.execute(
+                "DELETE FROM inventory WHERE item_id = 1 AND bin_id = 3 "
+                "AND NOT (inventory_id = ANY(%s))",
+                (original_ids,),
+            )
+            cleanup_cursor.execute(
+                "DELETE FROM inventory_adjustments WHERE adjustment_id = %s",
+                (adjustment_id,),
+            )
+            cleanup.commit()
+            cleanup_cursor.close()
+            cleanup.close()
