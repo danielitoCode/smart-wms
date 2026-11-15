@@ -843,6 +843,18 @@ def list_pending_adjustments():
     # cycle_count_line (keyed by count + item). Correlated subselects so a
     # non-cycle-count adjustment (cycle_count_id NULL) simply yields NULL
     # without fanning the adjustment row out across line matches.
+    try:
+        warehouse_arg = request.args.get("warehouse_id")
+        warehouse_id = int(warehouse_arg) if warehouse_arg is not None else None
+        page = int(request.args.get("page", "1"))
+        per_page = int(request.args.get("per_page", "200"))
+    except ValueError:
+        return jsonify({"error": "warehouse_id, page and per_page must be integers"}), 400
+    if warehouse_id is not None and warehouse_id <= 0:
+        return jsonify({"error": "warehouse_id must be positive"}), 400
+    if page < 1 or not 1 <= per_page <= 1000:
+        return jsonify({"error": "page must be positive and per_page between 1 and 1000"}), 400
+
     record_scope, record_params = warehouse_scope_clause("ia.warehouse_id")
     bin_scope, bin_params = warehouse_scope_clause("b.warehouse_id")
     where = ["ia.status = :adj_pending", "b.warehouse_id = ia.warehouse_id"]
@@ -851,7 +863,16 @@ def list_pending_adjustments():
     if bin_scope:
         where.append(bin_scope.removeprefix("AND ").strip())
     params = {"adj_pending": ADJ_PENDING, **record_params, **bin_params}
+    if warehouse_id is not None:
+        where.append("ia.warehouse_id = :warehouse_id")
+        params["warehouse_id"] = warehouse_id
     where_sql = " AND ".join(where)
+    total = g.db.execute(
+        text("SELECT COUNT(*) FROM inventory_adjustments ia "
+             "JOIN bins b ON b.bin_id = ia.bin_id AND b.warehouse_id = ia.warehouse_id "
+             "WHERE " + where_sql),
+        params,
+    ).scalar()
     rows = g.db.execute(
         text("""
             SELECT ia.adjustment_id, ia.item_id, ia.bin_id, ia.warehouse_id,
@@ -873,8 +894,9 @@ def list_pending_adjustments():
             JOIN bins b ON b.bin_id = ia.bin_id AND b.warehouse_id = ia.warehouse_id
             WHERE """ + where_sql + """
             ORDER BY ia.cycle_count_id, ia.adjustment_id
+            LIMIT :limit OFFSET :offset
         """),
-        params,
+        {**params, "limit": per_page, "offset": (page - 1) * per_page},
     ).fetchall()
 
     return jsonify({
@@ -898,7 +920,9 @@ def list_pending_adjustments():
                 "bin_code": r.bin_code,
             }
             for r in rows
-        ]
+        ],
+        "total": total, "page": page, "per_page": per_page,
+        "pages": max(1, math.ceil(total / per_page)),
     })
 
 
