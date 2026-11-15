@@ -143,6 +143,31 @@ class TestReceiveItems:
         resp = client.post("/api/receiving/receive", json=payload, headers=auth_headers)
         assert resp.status_code == 404
 
+    def test_receive_closed_purchase_order_is_rejected_without_inventory_change(self, client, auth_headers, seed_data):
+        bin_id = seed_data["staging_bin_id"]
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute("UPDATE purchase_orders SET status = 'CLOSED' WHERE po_id = 1")
+        cur.close()
+
+        before = _query_val(
+            "SELECT quantity_on_hand FROM inventory WHERE item_id = 1 AND bin_id = %s",
+            (bin_id,),
+        ) or 0
+        response = client.post("/api/receiving/receive", json={
+            "po_id": 1,
+            "items": [{"item_id": 1, "quantity": 2, "bin_id": bin_id}],
+        }, headers=auth_headers)
+
+        assert response.status_code == 400
+        assert "cannot receive" in response.get_json()["error"].lower()
+        after = _query_val(
+            "SELECT quantity_on_hand FROM inventory WHERE item_id = 1 AND bin_id = %s",
+            (bin_id,),
+        ) or 0
+        assert after == before
+        assert _query_val("SELECT COUNT(*) FROM item_receipts WHERE po_id = 1") == 0
+
     def test_receive_invalid_item(self, client, auth_headers, seed_data):
         payload = {
             "po_id": 1,
@@ -321,6 +346,10 @@ class TestCancelReceiving:
         initial_lines = resp.get_json()["lines"]
         initial_received = initial_lines[0]["quantity_received"]
         item_id = initial_lines[0]["item_id"]
+        initial_inventory = _query_val(
+            "SELECT quantity_on_hand FROM inventory WHERE item_id = %s AND bin_id = %s",
+            (item_id, bin_id),
+        ) or 0
 
         # Receive some items
         resp = client.post("/api/receiving/receive", json={
@@ -331,6 +360,11 @@ class TestCancelReceiving:
         assert resp.status_code == 200
         receipt_ids = resp.get_json()["receipt_ids"]
         assert len(receipt_ids) == 1
+        received_inventory = _query_val(
+            "SELECT quantity_on_hand FROM inventory WHERE item_id = %s AND bin_id = %s",
+            (item_id, bin_id),
+        )
+        assert received_inventory == initial_inventory + 5
 
         # Verify qty increased
         resp = client.get(f"/api/receiving/po/PO-2026-001", headers=auth_headers)
@@ -352,6 +386,15 @@ class TestCancelReceiving:
         after_cancel = resp.get_json()["lines"]
         item_line = [l for l in after_cancel if l["item_id"] == item_id][0]
         assert item_line["quantity_received"] == initial_received
+        restored_inventory = _query_val(
+            "SELECT quantity_on_hand FROM inventory WHERE item_id = %s AND bin_id = %s",
+            (item_id, bin_id),
+        )
+        assert restored_inventory == initial_inventory
+        assert _query_val(
+            "SELECT COUNT(*) FROM item_receipts WHERE receipt_id = ANY(%s)",
+            (receipt_ids,),
+        ) == 0
 
     def test_cancel_empty_list(self, client, auth_headers):
         """Cancelling with no receipt_ids should return 200."""

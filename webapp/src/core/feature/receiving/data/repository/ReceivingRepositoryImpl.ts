@@ -3,7 +3,10 @@ import type {
 	CancelReceiptsResult,
 	PurchaseOrderDetail,
 	ReceiveLineInput,
-	ReceiveResult
+	ReceiveResult,
+	ReceiptHistoryItem,
+	ReceivingBin,
+	UnreceiveResult
 } from '../../domain/entity/PurchaseOrder';
 import type { ReceivingRemoteDataSource } from '../datasource/ReceivingRemoteDataSource';
 import { ReceivingMapper } from '../mapper/ReceivingMapper';
@@ -12,17 +15,23 @@ export class ReceivingRepositoryImpl implements ReceivingRepository {
 	constructor(private readonly datasource: ReceivingRemoteDataSource) {}
 
 	async lookupByBarcode(barcode: string): Promise<PurchaseOrderDetail> {
-		const dto = await this.datasource.lookupByBarcode(barcode);
-		return ReceivingMapper.toDetail(dto);
+		return ReceivingMapper.toDetail(await this.datasource.lookupByBarcode(barcode));
 	}
-
 	async receive(poId: number, items: ReceiveLineInput[]): Promise<ReceiveResult> {
-		const dto = await this.datasource.receive(poId, items);
-		return ReceivingMapper.toReceiveResult(dto);
+		return ReceivingMapper.toReceiveResult(await this.datasource.receive(poId, items));
 	}
-
 	async cancelReceipts(poId: number, receiptIds: number[]): Promise<CancelReceiptsResult> {
-		const dto = await this.datasource.cancelReceipts(poId, receiptIds);
-		return ReceivingMapper.toCancelResult(dto);
+		return ReceivingMapper.toCancelResult(await this.datasource.cancelReceipts(poId, receiptIds));
+	}
+	async listReceipts(poId: number): Promise<ReceiptHistoryItem[]> {
+		const response = await this.datasource.listReceipts(poId);
+		return response.receipts.map(ReceivingMapper.toReceipt);
+	}
+	async listBins(warehouseId: number): Promise<ReceivingBin[]> {
+		const response = await this.datasource.listBins(warehouseId);
+		return response.bins.map(ReceivingMapper.toBin).filter((bin) => bin.isActive);
+	}
+	async unreceiveReceipt(receiptId: number, reason?: string): Promise<UnreceiveResult> {
+		return ReceivingMapper.toUnreceiveResult(await this.datasource.unreceiveReceipt(receiptId, reason));
 	}
 }
