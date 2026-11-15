@@ -198,7 +198,23 @@ class TestInventoryAdjustmentWarehouseScope:
             },
             headers=headers,
         )
-        assert response.status_code == 403
+        assert response.status_code == 404
+
+    def test_assigned_user_can_review_adjustment_in_own_warehouse(self, client):
+        adjustment_id = _insert_adjustment(delta=3)
+        _user_id, headers = _web_user_with_pages(
+            client, ["adjustments"], username="adjustment_own_scope"
+        )
+        response = client.post(
+            "/api/admin/adjustments/review",
+            json={"decisions": [{"adjustment_id": adjustment_id, "action": "approve"}]},
+            headers=headers,
+        )
+        assert response.status_code == 200
+        assert _query_val(
+            "SELECT status FROM inventory_adjustments WHERE adjustment_id = %s",
+            (adjustment_id,),
+        ) == "APPROVED"
 
     def test_batch_review_is_atomic_when_any_adjustment_is_closed(self, client, auth_headers):
         pending_id = _insert_adjustment(delta=6)
