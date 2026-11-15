@@ -174,5 +174,7 @@ wms-twin/
 | **MANUAL_FRAMEWORK_PRISMATEC.pdf** | El mismo manual de framework en PDF |
 | **Guia_Completa_WMS_Twin_PrismaTec.pdf** | Guía de operación en PDF |
 | **PatronesEmpleados.md** + **PatronesEmpleados.pdf** | Patrones, Clean Architecture, feature-first y seguridad |
+| **Integracion.md** + **Integracion.pdf** | Pagos e integraciones futuras con PrismaTec-Core |
+| **scripts/e2e-integracion-sin-frontend.sh** | E2E API sin npm/Vite/proxy |
 
 No mantengo más manuales sueltos en `doc/`: dispersan al equipo.
