@@ -2,6 +2,7 @@
 
 import os
 import sys
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
@@ -61,6 +62,24 @@ def test_create_rejects_non_positive_ordered_quantity(client, app):
     assert response.status_code == 422
 
 
+
+def test_create_assigns_distinct_line_numbers_for_multiple_lines(client, app, seed_data):
+    response = client.post(
+        "/api/admin/purchase-orders",
+        headers=_admin_headers(app),
+        json={
+            "po_number": f"PO-MULTI-{uuid.uuid4().hex[:8]}",
+            "warehouse_id": 1,
+            "lines": [
+                {"item_id": 1, "quantity_ordered": 4},
+                {"item_id": 2, "quantity_ordered": 7},
+            ],
+        },
+    )
+    assert response.status_code == 200, response.get_json()
+    body = response.get_json()
+    assert [line["line_number"] for line in body["lines"]] == [1, 2]
+
 def test_received_line_cannot_be_reduced_below_received_or_deleted(
     client, app, auth_headers, seed_data,
 ):
@@ -95,7 +114,7 @@ def test_received_line_cannot_be_reduced_below_received_or_deleted(
 
 
 def test_close_with_pending_receipt_is_explicit_and_reopen_restores_receiving(
-    client, app, seed_data,
+    client, app, auth_headers, seed_data,
 ):
     admin = _admin_headers(app)
     detail = client.get("/api/admin/purchase-orders/1", headers=admin)
@@ -105,6 +124,12 @@ def test_close_with_pending_receipt_is_explicit_and_reopen_restores_receiving(
     closed = client.post("/api/admin/purchase-orders/1/close", headers=admin)
     assert closed.status_code == 200
     assert closed.get_json()["status"] == "CLOSED"
+    blocked_receive = client.post(
+        "/api/receiving/receive",
+        headers=auth_headers,
+        json={"po_id": 1, "items": [{"item_id": 1, "quantity": 1, "bin_id": seed_data["staging_bin_id"]}]},
+    )
+    assert blocked_receive.status_code == 400
 
     reopened = client.post("/api/admin/purchase-orders/1/reopen", headers=admin)
     assert reopened.status_code == 200
