@@ -943,7 +943,7 @@ def review_adjustments(validated):
                 " FROM inventory_adjustments ia"
                 " JOIN bins b ON b.bin_id = ia.bin_id AND b.warehouse_id = ia.warehouse_id"
                 " WHERE ia.adjustment_id = :aid" + record_scope + bin_scope
-                " FOR UPDATE OF ia, b"
+                + " FOR UPDATE OF ia, b"
             ),
             {"aid": adj_id, **record_params, **bin_params},
         ).fetchone()
