@@ -42,7 +42,7 @@ describe('ConfirmPutawayUseCase', () => {
 		expect(repo.confirm).toHaveBeenCalledWith({ itemId: 1, fromBinBarcode: 'STAGE-1', toBinBarcode: 'PICK-1', quantity: 2, lotNumber: null });
 	});
 
-		it('rejects quantity <= 0', async () => {
+	it('rejects quantity <= 0', () => {
 		const repo = {
 			listPending: vi.fn(),
 			getStagingSummary: vi.fn(),
@@ -56,10 +56,12 @@ describe('ConfirmPutawayUseCase', () => {
 		).toThrow(/quantity/);
 	});
 
-	it('rejects same from/to bin', async () => {
+	it('rejects same from/to bin', () => {
 		const repo = {
 			listPending: vi.fn(),
+			getStagingSummary: vi.fn(),
 			suggest: vi.fn(),
+			updatePreferred: vi.fn(),
 			confirm: vi.fn()
 		} as PutawayRepository;
 		const useCase = new ConfirmPutawayUseCase(repo);
