@@ -21,27 +21,27 @@ export class SubmitCycleCountUseCase {
 				throw new Error('countedQuantity must be an integer between 0 and 1000000');
 			}
 
-			if ('unexpected' in line && line.unexpected === true) {
-				if (!Number.isInteger(line.itemId) || line.itemId <= 0) {
-					throw new Error('itemId must be a positive integer for unexpected lines');
+			if ('countLineId' in line) {
+				if (!Number.isInteger(line.countLineId) || line.countLineId <= 0) {
+					throw new Error('countLineId must be a positive integer');
 				}
-				if (line.sku != null && line.sku.length > 128) {
-					throw new Error('sku must not exceed 128 characters');
+				if (normalLineIds.has(line.countLineId)) {
+					throw new Error('lines must not contain duplicate countLineIds');
 				}
-				if (unexpectedItemIds.has(line.itemId)) {
-					throw new Error('unexpected lines must not contain duplicate itemIds');
-				}
-				unexpectedItemIds.add(line.itemId);
+				normalLineIds.add(line.countLineId);
 				continue;
 			}
 
-			if (!Number.isInteger(line.countLineId) || line.countLineId <= 0) {
-				throw new Error('countLineId must be a positive integer');
+			if (!Number.isInteger(line.itemId) || line.itemId <= 0) {
+				throw new Error('itemId must be a positive integer for unexpected lines');
 			}
-			if (normalLineIds.has(line.countLineId)) {
-				throw new Error('lines must not contain duplicate countLineIds');
+			if (line.sku != null && line.sku.length > 128) {
+				throw new Error('sku must not exceed 128 characters');
 			}
-			normalLineIds.add(line.countLineId);
+			if (unexpectedItemIds.has(line.itemId)) {
+				throw new Error('unexpected lines must not contain duplicate itemIds');
+			}
+			unexpectedItemIds.add(line.itemId);
 		}
 
 		// Read the persisted state before sending: only open counts are submittable.

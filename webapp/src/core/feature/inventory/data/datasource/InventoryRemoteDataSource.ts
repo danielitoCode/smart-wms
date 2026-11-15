@@ -48,16 +48,16 @@ export class InventoryRemoteDataSource {
 		lines: CycleCountSubmitLine[]
 	): Promise<CycleCountSubmitResponseDto> {
 		const payloadLines: CycleCountSubmitLineDto[] = lines.map((line) => {
-			if ('unexpected' in line && line.unexpected === true) {
+			if ('countLineId' in line) {
 				return {
-					unexpected: true,
-					item_id: line.itemId,
-					...(line.sku != null ? { sku: line.sku } : {}),
+					count_line_id: line.countLineId,
 					counted_quantity: line.countedQuantity
 				};
 			}
 			return {
-				count_line_id: line.countLineId,
+				unexpected: true,
+				item_id: line.itemId,
+				...(line.sku != null ? { sku: line.sku } : {}),
 				counted_quantity: line.countedQuantity
 			};
 		});
