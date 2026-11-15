@@ -9,6 +9,7 @@ Gemelo del backend WMS. Motor de datos: **PrismaTec-Core**. Contrato HTTP: `/api
 | [doc/README.md](doc/README.md) | Cómo operar y probar |
 | [doc/MANUAL_FRAMEWORK_PRISMATEC.md](doc/MANUAL_FRAMEWORK_PRISMATEC.md) | PrismaTec-Core, claro y por puntos |
 | [doc/MANUAL_FRAMEWORK_PRISMATEC.pdf](doc/MANUAL_FRAMEWORK_PRISMATEC.pdf) | Manual de framework en PDF |
+| [doc/PatronesEmpleados.pdf](doc/PatronesEmpleados.pdf) | Patrones de diseño y seguridad |
 | [doc/Guia_Completa_WMS_Twin_PrismaTec.pdf](doc/Guia_Completa_WMS_Twin_PrismaTec.pdf) | Guía de operación en PDF |
 
 ```bash
