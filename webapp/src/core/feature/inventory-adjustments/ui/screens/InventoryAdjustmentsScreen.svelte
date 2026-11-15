@@ -69,11 +69,11 @@
 	async function decide(row: InventoryAdjustment, action: 'approve' | 'reject') {
 		if (!AdjustmentApprovalPolicy.canTransition(row.status, action)) return;
 		const rejectionReason = action === 'reject'
-			? window.prompt('Indica el motivo del rechazo (obligatorio, máximo 500 caracteres):')?.trim()
+			? window.prompt(i18n.t('Indica el motivo del rechazo (obligatorio, máximo 500 caracteres):'))?.trim()
 			: undefined;
 		if (action === 'reject' && !rejectionReason) return;
 		if (rejectionReason && rejectionReason.length > 500) {
-			window.alert('El motivo no puede superar 500 caracteres.');
+			window.alert(i18n.t('El motivo no puede superar 500 caracteres.'));
 			return;
 		}
 		const label = action === 'approve' ? 'aprobar' : 'rechazar';

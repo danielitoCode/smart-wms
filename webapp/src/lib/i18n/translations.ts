@@ -27,6 +27,13 @@ export const translations: Record<Locale, Record<string, string>> = {
 		'Idioma': 'Lingua', 'Italiano': 'Italiano', 'Español': 'Spagnolo', 'Inglés': 'Inglese',
 	
 		'Ubicaciones': 'Ubicazioni', 'Actualizando ubicaciones…': 'Aggiornamento ubicazioni…', 'Cargando almacén seleccionado…': 'Caricamento del magazzino selezionato…', 'ID de ubicación': 'ID ubicazione', 'Consulta y busca los productos registrados en el almacén.': 'Consulta e cerca i prodotti registrati nel magazzino.', 'Empaque de pedidos': 'Imballaggio ordini', 'Preparación de pedidos': 'Preparazione ordini', 'Código del pedido (ej. SO-2026-001)': 'Codice ordine (es. SO-2026-001)', 'Identificadores de pedidos (ej. 1, 2, 3)': 'Identificativi degli ordini (es. 1, 2, 3)', 'Números o códigos de pedido (ej. SO-001, SO-002)': 'Numeri o codici degli ordini (es. SO-001, SO-002)', 'Despacho de pedidos': 'Spedizione ordini'
+		'Historial de aprobaciones': 'Cronologia delle approvazioni',
+		'Revisado por': 'Revisionato da',
+		'Fecha de revisión': 'Data di revisione',
+		'Motivo del rechazo': 'Motivo del rifiuto',
+		'Necesitas el permiso Ajustes para consultar y decidir aprobaciones.': 'È necessario il permesso Rettifiche per consultare e decidere le approvazioni.',
+		'Indica el motivo del rechazo (obligatorio, máximo 500 caracteres):': 'Indica il motivo del rifiuto (obbligatorio, massimo 500 caratteri):',
+		'El motivo no puede superar 500 caracteres.': 'Il motivo non può superare 500 caratteri.'
 	},
 	es: {},
 	en: {
@@ -635,6 +642,13 @@ const additionalTranslations: Record<Locale, Record<string, string>> = {
 		'Ubicación predeterminada': 'Default location',
 		'Sin ubicación sugerida': 'No suggested location',
 		'Destino': 'Destination'
+		'Historial de aprobaciones': 'Approval history',
+		'Revisado por': 'Reviewed by',
+		'Fecha de revisión': 'Review date',
+		'Motivo del rechazo': 'Rejection reason',
+		'Necesitas el permiso Ajustes para consultar y decidir aprobaciones.': 'You need the Adjustments permission to view and decide approvals.',
+		'Indica el motivo del rechazo (obligatorio, máximo 500 caracteres):': 'Enter a rejection reason (required, maximum 500 characters):',
+		'El motivo no puede superar 500 caracteres.': 'The reason cannot exceed 500 characters.'
 	}
 };
 
