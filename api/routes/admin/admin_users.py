@@ -1213,7 +1213,7 @@ def direct_adjustment(validated):
     bin_scope, bin_scope_params = warehouse_scope_clause("b.warehouse_id")
     bin_row = g.db.execute(
         text("SELECT b.bin_id, b.bin_code, b.external_id, b.warehouse_id FROM bins b "
-             "WHERE b.bin_id = :bid " + bin_scope),
+             "WHERE b.bin_id = :bid " + bin_scope + " FOR UPDATE OF b"),
         {"bid": bin_id, **bin_scope_params},
     ).fetchone()
     if not bin_row:
