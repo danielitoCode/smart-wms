@@ -12,6 +12,7 @@ export const CycleCountApprovalMapper={
                 itemId:r.item_id,
                 binId:r.bin_id,
                 warehouseId:r.warehouse_id,
+                type:r.quantity_change >= 0 ? 'ADD' : 'REMOVE',
                 quantityChange:r.quantity_change,
                 expectedQuantity:r.expected_quantity,
                 countedQuantity:r.counted_quantity,

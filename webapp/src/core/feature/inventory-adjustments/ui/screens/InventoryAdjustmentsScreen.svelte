@@ -187,7 +187,7 @@
 
 {#if detail}
 	<div class="overlay" role="presentation" onclick={(event) => { if (event.target === event.currentTarget) detail = null; }}>
-		<section class="detail-panel" role="dialog" aria-modal="true" aria-labelledby="adjustment-detail-title">
+		<dialog open class="detail-panel" aria-labelledby="adjustment-detail-title">
 			<div class="detail-header">
 				<div><p class="eyebrow">AJUSTE #{detail.adjustmentId}</p><h2 id="adjustment-detail-title">{detail.sku ?? detail.itemId} · {detail.itemName ?? ''}</h2></div>
 				<button aria-label={i18n.t('Cerrar')} onclick={() => (detail = null)}>×</button>
@@ -211,7 +211,7 @@
 					<button class="primary" disabled={vm.saving} onclick={() => void decide(detail!, 'approve')}>{i18n.t('Aprobar y aplicar')}</button>
 				</div>
 			{/if}
-		</section>
+		</dialog>
 	</div>
 {/if}
 
@@ -227,7 +227,7 @@
 	.editor input,.editor select,.editor textarea,.status-filter select{width:100%;min-height:39px;border:1px solid var(--line);border-radius:8px;padding:.55rem .65rem;background:var(--card);color:var(--ink);font:inherit}
 	.form-actions{display:flex;justify-content:flex-end;gap:.5rem}.toolbar{margin:1.2rem 0}.toolbar p{font-size:.78rem}.status-filter{min-width:150px}
 	.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:var(--card)}table{width:100%;border-collapse:collapse;min-width:900px;font-size:.82rem}th,td{text-align:left;padding:.75rem .7rem;border-bottom:1px solid var(--line);vertical-align:middle}th{color:var(--slate);font-size:.68rem;text-transform:uppercase;letter-spacing:.06em}tbody tr:last-child td{border-bottom:0}small{display:block;color:var(--slate);margin-top:.2rem}.mono{font-variant-numeric:tabular-nums;font-family:var(--mono,monospace)}.reason{max-width:230px;white-space:normal}.type-pill,.status-pill{display:inline-flex;padding:.22rem .5rem;border-radius:999px;font-size:.7rem;font-weight:650}.positive,.approved{color:var(--success);background:color-mix(in srgb,var(--success) 12%,transparent)}.negative,.rejected{color:var(--danger);background:color-mix(in srgb,var(--danger) 12%,transparent)}.pending{color:var(--warning);background:color-mix(in srgb,var(--warning) 14%,transparent)}.text-button{border:0;background:transparent;color:var(--accent);padding:.2rem}.empty,.loading{padding:2.5rem;text-align:center;border:1px dashed var(--line);border-radius:12px;color:var(--slate)}.empty strong{color:var(--ink)}.empty p{margin:.4rem 0 0;font-size:.85rem}
-	.overlay{position:fixed;inset:0;z-index:50;display:flex;justify-content:flex-end;background:rgb(8 15 30 / 48%)}.detail-panel{width:min(38rem,100%);height:100%;overflow:auto;background:var(--card);padding:1.4rem;box-shadow:-12px 0 40px rgb(0 0 0 / 15%)}.detail-header{align-items:flex-start;margin-bottom:1.3rem}.detail-header h2{font-size:1.2rem}.detail-header button{font-size:1.3rem;line-height:1;padding:.25rem .55rem}
+	.overlay{position:fixed;inset:0;z-index:50;display:flex;justify-content:flex-end;background:rgb(8 15 30 / 48%)}.detail-panel{width:min(38rem,100%);height:100%;max-width:none;max-height:none;margin:0;border:0;overflow:auto;background:var(--card);padding:1.4rem;box-shadow:-12px 0 40px rgb(0 0 0 / 15%)}.detail-header{align-items:flex-start;margin-bottom:1.3rem}.detail-header h2{font-size:1.2rem}.detail-header button{font-size:1.3rem;line-height:1;padding:.25rem .55rem}
 	dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.9rem;margin:0}dl div{padding-bottom:.55rem;border-bottom:1px solid var(--line)}dt{font-size:.7rem;color:var(--slate)}dd{margin:.2rem 0 0;font-weight:600}.reason-box{margin-top:1.2rem;padding:1rem;border:1px solid var(--line);border-radius:10px}.reason-box p{margin:.5rem 0 0;white-space:pre-wrap;line-height:1.5}.decision-actions{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1.4rem}
 	@media(max-width:650px){.page-header{align-items:flex-start;flex-direction:column}.editor{grid-template-columns:1fr}.editor-heading,.wide,.form-actions{grid-column:1}.toolbar{align-items:flex-start;flex-direction:column}.detail-panel{padding:1rem}dl{grid-template-columns:1fr 1fr}}
 </style>
