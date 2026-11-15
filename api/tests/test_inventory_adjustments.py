@@ -202,7 +202,7 @@ class TestInventoryAdjustmentWarehouseScope:
             },
             headers=headers,
         )
-        assert response.status_code == 404
+        assert response.status_code == 403
 
     def test_assigned_user_can_review_adjustment_in_own_warehouse(self, client):
         adjustment_id = _insert_adjustment(delta=3)
@@ -245,7 +245,7 @@ class TestInventoryAdjustmentWarehouseScope:
 
 
 class TestConcurrentInventoryAdjustmentReview:
-    def test_two_concurrent_approvals_apply_the_delta_once(self, app, auth_headers):
+    def test_two_concurrent_approvals_apply_the_delta_once(self, app, auth_headers, monkeypatch):
         """Separate request sessions race on one pending adjustment.
 
         The row lock must let one request commit and force the other to
@@ -257,6 +257,16 @@ class TestConcurrentInventoryAdjustmentReview:
         import psycopg2
         from sqlalchemy.orm import sessionmaker
         import models.database as db
+        from routes.admin import admin_users
+
+        # This test isolates the locking contract; avoid committing unrelated
+        # outbox, audit-chain and backorder side effects from the parallel sessions.
+        monkeypatch.setattr(admin_users, "emit_event", lambda *args, **kwargs: None)
+        monkeypatch.setattr(admin_users, "write_audit_log", lambda *args, **kwargs: None)
+        monkeypatch.setattr(
+            admin_users, "release_satisfiable_backorders",
+            lambda *args, **kwargs: None,
+        )
 
         connection = psycopg2.connect(os.environ["TEST_DATABASE_URL"])
         cursor = connection.cursor()

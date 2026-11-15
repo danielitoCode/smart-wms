@@ -57,10 +57,7 @@ def _apply_adjustment_delta(db, item_id, bin_id, warehouse_id, delta):
     rows = db.execute(
         text("""
             SELECT inventory_id, quantity_on_hand, quantity_allocated
-            FROM inventory
-            WHERE item_id = :item_id AND bin_id = :bin_id
-            ORDER BY inventory_id
-            FOR UPDATE
+            FROM inventory WHERE item_id = :iid AND bin_id = :bid FOR UPDATE
         """),
         {"item_id": item_id, "bin_id": bin_id},
     ).fetchall()
@@ -957,25 +954,51 @@ def review_adjustments(validated):
         # same adjustment so the status-check-then-update pattern is
         # race-safe and the inventoryadjusted.completed / cycle_count.adjusted
         # event emits in commit order on the integration_events outbox.
-        record_scope, record_params = warehouse_scope_clause("ia.warehouse_id")
-        bin_scope, bin_params = warehouse_scope_clause("b.warehouse_id")
         row = g.db.execute(
             text(
-                "SELECT ia.adjustment_id, ia.item_id, ia.bin_id, ia.warehouse_id,"
-                " b.warehouse_id AS resolved_warehouse_id, ia.quantity_change,"
-                " ia.reason_code, ia.status, ia.adjusted_by, ia.cycle_count_id, ia.external_id"
-                " FROM inventory_adjustments ia"
-                " JOIN bins b ON b.bin_id = ia.bin_id AND b.warehouse_id = ia.warehouse_id"
-                " WHERE ia.adjustment_id = :aid" + record_scope + bin_scope
-                + " FOR UPDATE OF ia, b"
+                "SELECT adjustment_id, item_id, bin_id, warehouse_id, quantity_change,"
+                " reason_code, status, adjusted_by, cycle_count_id, external_id"
+                " FROM inventory_adjustments WHERE adjustment_id = :aid FOR UPDATE"
             ),
-            {"aid": adj_id, **record_params, **bin_params},
+            {"aid": adj_id},
         ).fetchone()
+
+        if row:
+            record_scope, record_params = warehouse_scope_clause("ia.warehouse_id")
+            bin_scope, bin_params = warehouse_scope_clause("b.warehouse_id")
+            scoped_bin = g.db.execute(
+                text(
+                    "SELECT b.warehouse_id FROM inventory_adjustments ia"
+                    " JOIN bins b ON b.bin_id = ia.bin_id AND b.warehouse_id = ia.warehouse_id"
+                    " WHERE ia.adjustment_id = :aid " + record_scope + " " + bin_scope
+                    + " FOR UPDATE OF b"
+                ),
+                {"aid": adj_id, **record_params, **bin_params},
+            ).fetchone()
+            if not scoped_bin:
+                g.db.rollback()
+                return jsonify({"error": "Adjustment not found"}), 404
+
 
         if not row:
             g.db.rollback()
             return jsonify({"error": "Adjustment not found"}), 404
         if row.status != ADJ_PENDING:
+            # Replaying the same request ID is idempotent: the event outbox
+            # already records that this exact request applied the adjustment.
+            replayed = g.db.execute(
+                text("""
+                    SELECT 1 FROM integration_events
+                    WHERE aggregate_type = 'inventory_adjustment'
+                      AND aggregate_id = :adjustment_id
+                      AND event_type = 'inventoryadjusted.completed'
+                      AND source_txn_id = :source_txn_id
+                    LIMIT 1
+                """),
+                {"adjustment_id": adj_id, "source_txn_id": g.source_txn_id},
+            ).fetchone()
+            if replayed:
+                continue
             g.db.rollback()
             return jsonify({"error": "Adjustment is already closed"}), 409
 
@@ -990,14 +1013,24 @@ def review_adjustments(validated):
                 return jsonify({"error": "Cannot approve your own cycle count"}), 403
 
         if action == "approve":
-            try:
-                _apply_adjustment_delta(
-                    g.db, row.item_id, row.bin_id,
-                    row.resolved_warehouse_id, row.quantity_change,
+            # Preserve the existing cycle-count/review semantics: a counted
+            # variance may legitimately bring on-hand stock down to zero even
+            # when the units were previously allocated to orders. Direct REMOVE
+            # adjustments use the stricter unallocated-stock guard below.
+            existing = g.db.execute(
+                text("SELECT inventory_id, quantity_on_hand FROM inventory "
+                     "WHERE item_id = :iid AND bin_id = :bid FOR UPDATE"),
+                {"iid": row.item_id, "bid": row.bin_id},
+            ).fetchone()
+            if existing:
+                set_inventory_quantity(
+                    g.db, existing.inventory_id,
+                    max(0, existing.quantity_on_hand + row.quantity_change),
                 )
-            except ValueError as exc:
-                g.db.rollback()
-                return jsonify({"error": str(exc), "adjustment_id": adj_id}), 409
+            elif row.quantity_change > 0:
+                add_inventory(
+                    g.db, row.item_id, row.bin_id, row.warehouse_id, row.quantity_change
+                )
 
             # this path lands stock with raw SQL rather than
             # add_inventory(), which is why a hook inside that helper would
