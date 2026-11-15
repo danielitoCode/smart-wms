@@ -171,6 +171,7 @@ wms-twin/
 |---------|-----------|
 | **README.md** (este) | Operar y probar el gemelo |
 | **MANUAL_FRAMEWORK_PRISMATEC.md** | PrismaTec-Core explicado con claridad |
+| **MANUAL_FRAMEWORK_PRISMATEC.pdf** | El mismo manual de framework en PDF |
 | **Guia_Completa_WMS_Twin_PrismaTec.pdf** | Guía de operación en PDF |
 
 No mantengo más manuales sueltos en `doc/`: dispersan al equipo.
