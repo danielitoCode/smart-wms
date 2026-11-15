@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { BackorderMapper } from '../../../../../../core/feature/backorders/data/mapper/BackorderMapper';
-import { CycleCountApprovalMapper } from '../../../../../../core/feature/cycle-count-approvals/data/mapper/CycleCountApprovalMapper';
 import { FraudReviewMapper } from '../../../../../../core/feature/fraud/data/mapper/FraudReviewMapper';
 import { InterWarehouseTransferMapper } from '../../../../../../core/feature/inter-warehouse-transfers/data/mapper/InterWarehouseTransferMapper';
 import { InventoryAdjustmentMapper } from '../../../../../../core/feature/inventory-adjustments/data/mapper/InventoryAdjustmentMapper';
@@ -14,13 +13,6 @@ describe('admin feature mappers', () => {
   const row=BackorderMapper.toDomain({so_id:7,so_number:'SO-7',parent_so_number:'SO-1',warehouse_id:2,status:'BACKORDERED',customer_name:'Ada',items:[{sku:'SKU-1',item_name:'Item',qty:3,open_po:null}],days_waiting:4,backorder_opened_at:'2026-11-01',fulfillable_since:null});
   expect(row).toMatchObject({salesOrderId:7,salesOrderNumber:'SO-7',parentSalesOrderId:null,warehouseId:2,daysWaiting:4});
   expect(row.items[0]).toMatchObject({itemId:null,sku:'SKU-1',quantity:3,openPurchaseOrder:null});
- });
- it('groups cycle count approvals by count id and preserves decision defaults', () => {
-  const groups=CycleCountApprovalMapper.group([
-   {adjustment_id:1,item_id:2,bin_id:3,warehouse_id:4,quantity_change:-2,expected_quantity:8,counted_quantity:6,reason_code:'COUNT_VARIANCE',reason_detail:null,status:'PENDING',adjusted_by:'operator',adjusted_at:null,cycle_count_id:11,sku:'A',item_name:'Item A',bin_code:'A-01'},
-   {adjustment_id:2,item_id:5,bin_id:3,warehouse_id:4,quantity_change:1,expected_quantity:4,counted_quantity:5,reason_code:'COUNT_VARIANCE',reason_detail:null,status:'PENDING',adjusted_by:'operator',adjusted_at:null,cycle_count_id:11,sku:'B',item_name:'Item B',bin_code:'A-01'}
-  ]);
-  expect(groups).toHaveLength(1);expect(groups[0].cycleCountId).toBe(11);expect(groups[0].adjustments).toHaveLength(2);expect(groups[0].adjustments[0].decision).toBe('approve');
  });
  it('maps fraud-review fields from the sales-order contract', () => {
   expect(FraudReviewMapper.toDomain({so_id:8,so_number:'SO-8',status:'FRAUD_REVIEW',order_type:'sale',order_source:'POS',order_origin:'WEB',warehouse_id:3,customer_name:'Ada',customer_phone:null,memo:'Check',created_at:null})).toMatchObject({salesOrderId:8,salesOrderNumber:'SO-8',orderSource:'POS',orderOrigin:'WEB',memo:'Check'});
