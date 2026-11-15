@@ -1,13 +1,13 @@
 // Package contracts implements executable domain contracts on PrismaTec-Core.
 //
 // Business model (project lead):
-// - The WMS is a warehouse, not the shopper-facing checkout.
-// - The merchant already charges customers in their own e-commerce.
-// - When an order is paid/executed there, the shop notifies THIS system.
-// - That signal starts warehouse expedition (pick/pack/ship).
-// - Status progresses are published as events the merchant can consume.
-// - Separately, the merchant may pay Abeli/platform fees (transfer/Stripe B2B);
-//   that is not the same as capturing shopper card data inside the WMS.
+//   - The WMS is a warehouse, not the shopper-facing checkout.
+//   - The merchant already charges customers in their own e-commerce.
+//   - When an order is paid/executed there, the shop notifies THIS system.
+//   - That signal starts warehouse expedition (pick/pack/ship).
+//   - Status progresses are published as events the merchant can consume.
+//   - Separately, the merchant may pay Abeli/platform fees (transfer/Stripe B2B);
+//     that is not the same as capturing shopper card data inside the WMS.
 package contracts
 
 import (
@@ -38,8 +38,8 @@ const (
 )
 
 var (
-	ErrInvalid   = errors.New("invalid contract input")
-	ErrNotFound  = errors.New("not found")
+	ErrInvalid    = errors.New("invalid contract input")
+	ErrNotFound   = errors.New("not found")
 	ErrTransition = errors.New("illegal zyrion transition")
 )
 
@@ -134,16 +134,16 @@ func (s *Service) ListContracts() ([]map[string]any, error) {
 
 // PaidOrderInput is the message the merchant store sends after it charged the shopper.
 type PaidOrderInput struct {
-	ExternalOrderID string             `json:"external_order_id"`
-	ExternalSource  string             `json:"external_source"` // shopify, woocommerce, custom…
-	WarehouseID     int64              `json:"warehouse_id"`
-	SONumber        string             `json:"so_number"`
-	CustomerName    string             `json:"customer_name"`
-	Notes           string             `json:"notes"`
-	PaidAt          string             `json:"paid_at"`
-	Currency        string             `json:"currency"`
-	Lines           []PaidOrderLine    `json:"lines"`
-	Metadata        map[string]any     `json:"metadata"`
+	ExternalOrderID string          `json:"external_order_id"`
+	ExternalSource  string          `json:"external_source"` // shopify, woocommerce, custom…
+	WarehouseID     int64           `json:"warehouse_id"`
+	SONumber        string          `json:"so_number"`
+	CustomerName    string          `json:"customer_name"`
+	Notes           string          `json:"notes"`
+	PaidAt          string          `json:"paid_at"`
+	Currency        string          `json:"currency"`
+	Lines           []PaidOrderLine `json:"lines"`
+	Metadata        map[string]any  `json:"metadata"`
 }
 
 type PaidOrderLine struct {
@@ -383,17 +383,17 @@ func (s *Service) RecordPlatformFee(merchantID, provider, amount, currency strin
 	id := newID("fee")
 	now := time.Now().UTC().Format(time.RFC3339)
 	doc := map[string]any{
-		"id":             id,
-		"contract_id":    ContractPlatformFee,
-		"merchant_id":    merchantID,
-		"provider":       provider, // transfer | stripe | other
-		"amount":         amount,
-		"currency":       currency,
-		"zyrion":         outcome.String(),
-		"zyrion_code":    int(outcome),
-		"visual_anchor":  outcome.VisualAnchor(),
-		"created_at":     now,
-		"updated_at":     now,
+		"id":            id,
+		"contract_id":   ContractPlatformFee,
+		"merchant_id":   merchantID,
+		"provider":      provider, // transfer | stripe | other
+		"amount":        amount,
+		"currency":      currency,
+		"zyrion":        outcome.String(),
+		"zyrion_code":   int(outcome),
+		"visual_anchor": outcome.VisualAnchor(),
+		"created_at":    now,
+		"updated_at":    now,
 	}
 	raw, _ := json.Marshal(doc)
 	if _, err := s.store.Put(feeKind, id, raw); err != nil {
