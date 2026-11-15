@@ -1,5 +1,7 @@
 """Warehouse authorization and lifecycle tests for inventory adjustments."""
 
+from uuid import uuid4
+
 from db_test_context import get_raw_connection
 from test_admin import _query_val, _web_user_with_pages
 
@@ -25,15 +27,17 @@ def _insert_adjustment(item_id=1, bin_id=3, warehouse_id=1, delta=2, status="PEN
 def _other_warehouse_bin():
     conn = get_raw_connection()
     cur = conn.cursor()
+    suffix = uuid4().hex[:10].upper()
     cur.execute(
         "INSERT INTO warehouses (warehouse_code, warehouse_name) "
-        "VALUES ('ADJ-SCOPE', 'Adjustment Scope') RETURNING warehouse_id"
+        "VALUES (%s, %s) RETURNING warehouse_id",
+        (f"ADJ-{suffix}", f"Adjustment Scope {suffix}"),
     )
     warehouse_id = cur.fetchone()[0]
     cur.execute(
         "INSERT INTO zones (warehouse_id, zone_code, zone_name, zone_type) "
-        "VALUES (%s, 'ADJ-Z', 'Adjustment Scope', 'STORAGE') RETURNING zone_id",
-        (warehouse_id,),
+        "VALUES (%s, %s, %s, 'STORAGE') RETURNING zone_id",
+        (warehouse_id, f"ADJ-Z-{suffix}", f"Adjustment Scope {suffix}"),
     )
     zone_id = cur.fetchone()[0]
     cur.execute(
