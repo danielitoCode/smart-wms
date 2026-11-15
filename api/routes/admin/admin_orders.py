@@ -110,13 +110,27 @@ from utils.validation import validate_body
 @require_admin_or_page_permission("purchase-orders")
 @with_db
 def list_purchase_orders():
-    page = request.args.get("page", 1, type=int)
-    per_page = min(request.args.get("per_page", 50, type=int), 1000)
+    page = max(1, request.args.get("page", 1, type=int))
+    per_page = min(1000, max(1, request.args.get("per_page", 50, type=int)))
 
     where_clauses, params = [], {}
     status = request.args.get("status")
     warehouse_id = request.args.get("warehouse_id", type=int)
     search = (request.args.get("q") or "").strip()
+    expected_from = request.args.get("expected_from")
+    expected_to = request.args.get("expected_to")
+    for field_name, value in (("expected_from", expected_from), ("expected_to", expected_to)):
+        if value:
+            try:
+                date.fromisoformat(value)
+            except ValueError:
+                return jsonify({"error": f"{field_name} must be an ISO date (YYYY-MM-DD)"}), 400
+    if expected_from:
+        where_clauses.append("expected_date >= :expected_from")
+        params["expected_from"] = expected_from
+    if expected_to:
+        where_clauses.append("expected_date <= :expected_to")
+        params["expected_to"] = expected_to
     # ARCHIVED is hidden by default so the active list stays focused
     # on POs that still need work. Caller opts in by passing
     # include_archived=true OR by setting status=ARCHIVED explicitly.
@@ -309,7 +323,7 @@ def update_purchase_order(po_id, validated):
         text(
             "SELECT po_id, po_number, po_barcode, vendor_name, expected_date, "
             "notes, external_id, status, warehouse_id "
-            "FROM purchase_orders WHERE po_id = :pid"
+            "FROM purchase_orders WHERE po_id = :pid FOR UPDATE"
         ),
         {"pid": po_id},
     ).fetchone()
@@ -419,7 +433,7 @@ def add_purchase_order_line(po_id, validated):
     data = validated.model_dump()
 
     po = g.db.execute(
-        text("SELECT po_id, po_number, external_id, status, warehouse_id FROM purchase_orders WHERE po_id = :pid"),
+        text("SELECT po_id, po_number, external_id, status, warehouse_id FROM purchase_orders WHERE po_id = :pid FOR UPDATE"),
         {"pid": po_id},
     ).fetchone()
     if not po:
@@ -522,7 +536,7 @@ def update_purchase_order_line(po_id, po_line_id, validated):
     data = validated.model_dump()
 
     po = g.db.execute(
-        text("SELECT po_id, po_number, external_id, status, warehouse_id FROM purchase_orders WHERE po_id = :pid"),
+        text("SELECT po_id, po_number, external_id, status, warehouse_id FROM purchase_orders WHERE po_id = :pid FOR UPDATE"),
         {"pid": po_id},
     ).fetchone()
     if not po:
@@ -538,6 +552,7 @@ def update_purchase_order_line(po_id, po_line_id, validated):
             SELECT pol.po_line_id, pol.quantity_ordered, pol.quantity_received, i.sku
             FROM purchase_order_lines pol JOIN items i ON i.item_id = pol.item_id
             WHERE pol.po_line_id = :plid AND pol.po_id = :pid
+            FOR UPDATE
             """
         ),
         {"plid": po_line_id, "pid": po_id},
@@ -618,7 +633,7 @@ def update_purchase_order_line(po_id, po_line_id, validated):
 @with_db
 def delete_purchase_order_line(po_id, po_line_id):
     po = g.db.execute(
-        text("SELECT po_id, po_number, external_id, status, warehouse_id FROM purchase_orders WHERE po_id = :pid"),
+        text("SELECT po_id, po_number, external_id, status, warehouse_id FROM purchase_orders WHERE po_id = :pid FOR UPDATE"),
         {"pid": po_id},
     ).fetchone()
     if not po:
@@ -634,6 +649,7 @@ def delete_purchase_order_line(po_id, po_line_id):
             SELECT pol.po_line_id, pol.quantity_ordered, pol.quantity_received, i.sku
             FROM purchase_order_lines pol JOIN items i ON i.item_id = pol.item_id
             WHERE pol.po_line_id = :plid AND pol.po_id = :pid
+            FOR UPDATE
             """
         ),
         {"plid": po_line_id, "pid": po_id},
@@ -698,7 +714,7 @@ def delete_purchase_order_line(po_id, po_line_id):
 @with_db
 def close_purchase_order(po_id):
     po = g.db.execute(
-        text("SELECT po_id, status FROM purchase_orders WHERE po_id = :pid"),
+        text("SELECT po_id, status FROM purchase_orders WHERE po_id = :pid FOR UPDATE"),
         {"pid": po_id},
     ).fetchone()
     if not po:
@@ -720,7 +736,7 @@ def close_purchase_order(po_id):
 @with_db
 def reopen_purchase_order(po_id):
     po = g.db.execute(
-        text("SELECT po_id, status FROM purchase_orders WHERE po_id = :pid"),
+        text("SELECT po_id, status FROM purchase_orders WHERE po_id = :pid FOR UPDATE"),
         {"pid": po_id},
     ).fetchone()
     if not po:
