@@ -1,3 +1,11 @@
+/**
+ * Wire contracts for the receiving endpoints.
+ *
+ * These DTOs intentionally model the receiving API response, not the
+ * canonical purchase-orders aggregate. Keep this projection limited to
+ * fields returned by GET /api/receiving/po/{barcode}.
+ */
+
 export type ReceivingPurchaseOrderStatusDto = 'OPEN' | 'PARTIAL' | 'RECEIVED';
 export type ReceivingPoLineStatusDto = 'PENDING' | 'PARTIAL' | 'RECEIVED';
 export type ReceivingSubmitPoStatusDto = 'PARTIAL' | 'RECEIVED';
@@ -40,43 +48,7 @@ export type ReceiveResponseDto = {
 	warnings: string[];
 };
 
-export type CancelResponseDto = { message: string; reversed: number };
-
-export type ReceivingBinDto = {
-	bin_id: number;
-	bin_code: string;
-	bin_type: string | null;
-	is_active: boolean;
-};
-
-export type ReceivingBinsResponseDto = { bins: ReceivingBinDto[] };
-
-export type ReceiptHistoryItemDto = {
-	receipt_id: number;
-	po_line_id: number;
-	line_number: number | null;
-	item_id: number;
-	sku: string;
-	item_name: string;
-	quantity_received: number;
-	bin_id: number;
-	bin_code: string;
-	warehouse_id: number;
-	received_by: string | null;
-	received_at: string | null;
-	lot_number: string | null;
-	serial_number: string | null;
-	notes: string | null;
-	external_id: string;
-};
-
-export type ReceiptsResponseDto = { po_id: number; receipts: ReceiptHistoryItemDto[] };
-export type BinDecrementDto = { bin_id: number; quantity: number };
-export type UnreceiveResponseDto = {
+export type CancelResponseDto = {
 	message: string;
-	receipt_id: number;
-	po_id: number;
-	po_status: string;
-	quantity_reversed: number;
-	bin_decrements: BinDecrementDto[];
+	reversed: number;
 };

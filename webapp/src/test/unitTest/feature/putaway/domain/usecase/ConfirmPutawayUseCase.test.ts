@@ -6,7 +6,9 @@ describe('ConfirmPutawayUseCase', () => {
 	it('confirms valid putaway and trims lot', async () => {
 		const repo: PutawayRepository = {
 			listPending: vi.fn(),
+			getStagingSummary: vi.fn(),
 			suggest: vi.fn(),
+			updatePreferred: vi.fn(),
 			confirm: vi.fn().mockResolvedValue({
 				message: 'ok',
 				transferId: 1,
@@ -34,10 +36,18 @@ describe('ConfirmPutawayUseCase', () => {
 		});
 	});
 
-	it('rejects quantity <= 0', async () => {
+	it('accepts scanned source and destination barcodes', async () => {
+		const repo = { listPending: vi.fn(), getStagingSummary: vi.fn(), suggest: vi.fn(), updatePreferred: vi.fn(), confirm: vi.fn().mockResolvedValue({}) } as unknown as PutawayRepository;
+		await new ConfirmPutawayUseCase(repo).execute({ itemId: 1, fromBinBarcode: ' STAGE-1 ', toBinBarcode: ' PICK-1 ', quantity: 2 });
+		expect(repo.confirm).toHaveBeenCalledWith({ itemId: 1, fromBinBarcode: 'STAGE-1', toBinBarcode: 'PICK-1', quantity: 2, lotNumber: null });
+	});
+
+		it('rejects quantity <= 0', async () => {
 		const repo = {
 			listPending: vi.fn(),
+			getStagingSummary: vi.fn(),
 			suggest: vi.fn(),
+			updatePreferred: vi.fn(),
 			confirm: vi.fn()
 		} as PutawayRepository;
 		const useCase = new ConfirmPutawayUseCase(repo);
@@ -55,6 +65,6 @@ describe('ConfirmPutawayUseCase', () => {
 		const useCase = new ConfirmPutawayUseCase(repo);
 		expect(() => 
 			useCase.execute({ itemId: 1, fromBinId: 5, toBinId: 5, quantity: 1 })
-		).toThrow(/toBinId must differ/);
+		).toThrow(/Destination bin must differ/);
 	});
 });

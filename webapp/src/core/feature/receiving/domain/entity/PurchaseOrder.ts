@@ -1,3 +1,11 @@
+/**
+ * Receiving workflow projection returned by GET /api/receiving/po/{barcode}.
+ *
+ * This is deliberately not the canonical purchasing aggregate. It contains
+ * only the operational fields exposed by the receiving lookup endpoint;
+ * administrative purchasing fields and lifecycle operations remain owned
+ * by the purchase-orders feature.
+ */
 export type PurchaseOrderStatus = 'OPEN' | 'PARTIAL' | 'RECEIVED';
 export type PoLineStatus = 'PENDING' | 'PARTIAL' | 'RECEIVED';
 export type ReceivePurchaseOrderStatus = 'PARTIAL' | 'RECEIVED';
@@ -52,41 +60,4 @@ export type ReceiveResult = {
 export type CancelReceiptsResult = {
 	message: string;
 	reversed: number;
-};
-
-export type ReceivingBin = {
-	binId: number;
-	binCode: string;
-	binType: string | null;
-	isActive: boolean;
-};
-
-export type ReceiptHistoryItem = {
-	receiptId: number;
-	poLineId: number;
-	lineNumber: number | null;
-	itemId: number;
-	sku: string;
-	itemName: string;
-	quantityReceived: number;
-	binId: number;
-	binCode: string;
-	warehouseId: number;
-	receivedBy: string | null;
-	receivedAt: string | null;
-	lotNumber: string | null;
-	serialNumber: string | null;
-	notes: string | null;
-	externalId: string;
-};
-
-export type BinDecrement = { binId: number; quantity: number };
-
-export type UnreceiveResult = {
-	message: string;
-	receiptId: number;
-	poId: number;
-	poStatus: string;
-	quantityReversed: number;
-	binDecrements: BinDecrement[];
 };

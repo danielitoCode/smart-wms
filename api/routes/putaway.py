@@ -41,7 +41,7 @@ def pending_putaway(warehouse_id):
         text(
             """
             SELECT inv.inventory_id, inv.item_id, i.sku, i.item_name, i.upc,
-                   inv.quantity_on_hand AS quantity, inv.bin_id, b.bin_code,
+                   inv.quantity_on_hand AS quantity, inv.bin_id, b.bin_code, b.bin_barcode,
                    inv.lot_number,
                    COALESCE(preferred.bin_code, default_bin.bin_code) AS suggested_bin,
                    COALESCE(preferred.bin_id, default_bin.bin_id) AS suggested_bin_id,
@@ -96,6 +96,7 @@ def pending_putaway(warehouse_id):
                 "quantity": r.quantity,
                 "bin_id": r.bin_id,
                 "bin_code": r.bin_code,
+                "bin_barcode": r.bin_barcode,
                 "lot_number": r.lot_number,
                 "suggested_bin": r.suggested_bin,
                 "suggested_bin_id": r.suggested_bin_id,
@@ -226,6 +227,65 @@ def staging_summary(warehouse_id):
     })
 
 
+@putaway_bp.route("/staging-summary/<int:warehouse_id>")
+@require_auth
+@with_db
+def staging_summary(warehouse_id):
+    """Summarize staging inventory and include empty staging bins."""
+    ok, denied = check_warehouse_access(warehouse_id)
+    if not ok:
+        return denied
+
+    rows = g.db.execute(
+        text(
+            """
+            SELECT b.bin_id, b.bin_code, COUNT(DISTINCT inv.item_id) AS sku_count,
+                   COALESCE(SUM(inv.quantity_on_hand), 0) AS total_qty,
+                   COALESCE(
+                       json_agg(
+                           json_build_object(
+                               'inventory_id', inv.inventory_id,
+                               'item_id', inv.item_id,
+                               'sku', i.sku,
+                               'item_name', i.item_name,
+                               'quantity_on_hand', inv.quantity_on_hand,
+                               'lot_number', inv.lot_number
+                           ) ORDER BY i.sku
+                       ) FILTER (WHERE inv.inventory_id IS NOT NULL),
+                       '[]'::json
+                   ) AS items
+              FROM bins b
+              LEFT JOIN inventory inv
+                ON inv.bin_id = b.bin_id AND inv.quantity_on_hand > 0
+              LEFT JOIN items i ON i.item_id = inv.item_id
+             WHERE b.warehouse_id = :warehouse_id
+               AND b.bin_type IN (:bin_staging, :bin_pickable_staging)
+             GROUP BY b.bin_id, b.bin_code
+             ORDER BY b.bin_code
+            """
+        ),
+        {
+            "warehouse_id": warehouse_id,
+            "bin_staging": BIN_STAGING,
+            "bin_pickable_staging": BIN_PICKABLE_STAGING,
+        },
+    ).fetchall()
+
+    return jsonify({
+        "warehouse_id": warehouse_id,
+        "bins": [
+            {
+                "bin_id": row.bin_id,
+                "bin_code": row.bin_code,
+                "sku_count": row.sku_count,
+                "total_qty": row.total_qty,
+                "items": row.items,
+            }
+            for row in rows
+        ],
+    })
+
+
 @putaway_bp.route("/suggest/<int:item_id>")
 @require_auth
 @with_db
@@ -350,8 +410,6 @@ def suggest_bin(item_id):
 @with_db
 def confirm_putaway(validated):
     item_id = validated.item_id
-    from_bin_id = validated.from_bin_id
-    to_bin_id = validated.to_bin_id
     quantity = validated.quantity
     lot_number = validated.lot_number
 
@@ -362,37 +420,61 @@ def confirm_putaway(validated):
     if not item:
         return jsonify({"error": "Item not found"}), 404
 
-    from_bin = g.db.execute(
-        text("SELECT bin_id, bin_code, warehouse_id FROM bins WHERE bin_id = :bin_id"),
-        {"bin_id": from_bin_id},
-    ).fetchone()
+    # Resolve scanned barcodes in the source warehouse. Legacy ID-based
+    # requests remain supported for existing mobile clients.
+    if validated.from_bin_id is not None:
+        from_bin = g.db.execute(
+            text("SELECT bin_id, bin_code, bin_barcode, bin_type, is_active, warehouse_id "
+                 "FROM bins WHERE bin_id = :bin_id"),
+            {"bin_id": validated.from_bin_id},
+        ).fetchone()
+    else:
+        from_bin = g.db.execute(
+            text("SELECT bin_id, bin_code, bin_barcode, bin_type, is_active, warehouse_id "
+                 "FROM bins WHERE UPPER(bin_barcode) = UPPER(:barcode)"),
+            {"barcode": validated.from_bin_barcode.strip()},
+        ).fetchone()
     if not from_bin:
         return jsonify({"error": "Source bin not found"}), 404
 
-    to_bin = g.db.execute(
-        text("SELECT bin_id, bin_code, warehouse_id FROM bins WHERE bin_id = :bin_id"),
-        {"bin_id": to_bin_id},
-    ).fetchone()
-    if not to_bin:
-        return jsonify({"error": "Destination bin not found"}), 404
-
-    username = g.current_user["username"]
     warehouse_id = from_bin.warehouse_id
+    if validated.to_bin_id is not None:
+        to_bin = g.db.execute(
+            text("SELECT bin_id, bin_code, bin_barcode, bin_type, is_active, warehouse_id "
+                 "FROM bins WHERE bin_id = :bin_id"),
+            {"bin_id": validated.to_bin_id},
+        ).fetchone()
+    else:
+        to_bin = g.db.execute(
+            text("SELECT bin_id, bin_code, bin_barcode, bin_type, is_active, warehouse_id "
+                 "FROM bins WHERE UPPER(bin_barcode) = UPPER(:barcode) "
+                 "AND warehouse_id = :warehouse_id"),
+            {"barcode": validated.to_bin_barcode.strip(), "warehouse_id": warehouse_id},
+        ).fetchone()
+    if not to_bin:
+        return jsonify({"error": "Destination bin not found in the source warehouse"}), 404
 
     if to_bin.warehouse_id != warehouse_id:
         return jsonify({"error": "Destination bin must belong to the source warehouse"}), 400
+    if from_bin.bin_id == to_bin.bin_id:
+        return jsonify({"error": "Source and destination bins must be different"}), 400
+    if from_bin.bin_type not in (BIN_STAGING, BIN_PICKABLE_STAGING):
+        return jsonify({"error": "Source bin must be a Staging or PickableStaging bin"}), 400
+    if to_bin.bin_type != BIN_PICKABLE or not to_bin.is_active:
+        return jsonify({"error": "Destination bin must be an active Pickable bin"}), 400
 
     ok, denied = check_warehouse_access(warehouse_id)
     if not ok:
         return denied
 
-    # 1 & 2. Move inventory (decrement source, upsert destination)
     try:
-        move_inventory(g.db, item_id, from_bin_id, to_bin_id, warehouse_id, quantity, lot_number)
+        # move_inventory locks the exact item/bin/lot source row FOR UPDATE.
+        # A second confirmation after completion sees the reduced quantity
+        # and is rejected, rather than applying the same full task twice.
+        move_inventory(g.db, item_id, from_bin.bin_id, to_bin.bin_id, warehouse_id, quantity, lot_number)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
-    # 3. Transfer record
     result = g.db.execute(
         text(
             """
@@ -405,29 +487,28 @@ def confirm_putaway(validated):
         ),
         {
             "item_id": item_id,
-            "from_bin_id": from_bin_id,
-            "to_bin_id": to_bin_id,
+            "from_bin_id": from_bin.bin_id,
+            "to_bin_id": to_bin.bin_id,
             "warehouse_id": warehouse_id,
             "quantity": quantity,
             "lot_number": lot_number,
-            "transferred_by": username,
+            "transferred_by": g.current_user["username"],
             "ext_id": str(uuid.uuid4()),
         },
     )
     transfer_id = result.fetchone()[0]
 
-    # 4. Audit
     write_audit_log(
         g.db,
         action_type=ACTION_PUTAWAY,
         entity_type="ITEM",
         entity_id=item_id,
-        user_id=username,
+        user_id=g.current_user["username"],
         warehouse_id=warehouse_id,
         details={
-            "from_bin_id": from_bin_id,
+            "from_bin_id": from_bin.bin_id,
             "from_bin_code": from_bin.bin_code,
-            "to_bin_id": to_bin_id,
+            "to_bin_id": to_bin.bin_id,
             "to_bin_code": to_bin.bin_code,
             "quantity": quantity,
             "transfer_id": transfer_id,
@@ -435,7 +516,6 @@ def confirm_putaway(validated):
     )
 
     g.db.commit()
-
     return jsonify({
         "message": "Put-away confirmed",
         "transfer_id": transfer_id,

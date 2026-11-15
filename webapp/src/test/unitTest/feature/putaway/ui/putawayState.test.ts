@@ -11,6 +11,7 @@ const pendingItem: PendingPutawayItem = {
 	quantity: 8,
 	binId: 2,
 	binCode: 'STAGE-02',
+	binBarcode: null,
 	lotNumber: null,
 	suggestedBin: {
 		binId: 9,
@@ -33,6 +34,9 @@ const confirmed: ConfirmPutawayResult = {
 function createDependencies() {
 	return {
 		listPending: { execute: vi.fn().mockResolvedValue([pendingItem]) },
+		stagingSummary: { execute: vi.fn().mockResolvedValue([]) },
+		suggestDestination: { execute: vi.fn().mockResolvedValue({ itemId: 4, sku: 'SKU-004', itemName: 'Test item', preferredBin: pendingItem.suggestedBin, suggestedBin: pendingItem.suggestedBin }) },
+		updatePreferredBin: { execute: vi.fn().mockResolvedValue({ message: 'Preferred bin saved', itemId: 4, binId: 9, binCode: 'PICK-04' }) },
 		confirm: { execute: vi.fn().mockResolvedValue(confirmed) }
 	} as unknown as PutawayDependencies;
 }
@@ -66,6 +70,26 @@ describe('Putaway UI state', () => {
 			lotNumber: null
 		});
 		expect(dependencies.listPending.execute).toHaveBeenCalledTimes(2);
+	});
+
+	it('confirms with a scanned destination barcode and source bin barcode', async () => {
+		const scannedItem = { ...pendingItem, binBarcode: 'STAGE-02-BC' };
+		vi.mocked(dependencies.listPending.execute).mockResolvedValue([scannedItem]);
+		const state = createPutawayState(dependencies);
+		await state.load();
+		state.setToBarcode(scannedItem, 'PICK-04-BC');
+		await expect(state.confirm(scannedItem)).resolves.toBe(true);
+		expect(dependencies.confirm.execute).toHaveBeenCalledWith({
+			itemId: 4, fromBinBarcode: 'STAGE-02-BC', toBinBarcode: 'PICK-04-BC',
+			quantity: 8, lotNumber: null
+		});
+	});
+
+	it('refreshes staging summary after successful putaway', async () => {
+		const state = createPutawayState(dependencies);
+		await state.load();
+		await state.confirm(pendingItem);
+		expect(dependencies.stagingSummary.execute).toHaveBeenCalledTimes(2);
 	});
 
 	it('does not preselect a destination when no preferred or default bin exists', async () => {

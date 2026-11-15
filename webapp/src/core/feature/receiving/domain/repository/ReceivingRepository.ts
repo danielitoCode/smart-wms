@@ -2,17 +2,16 @@ import type {
 	CancelReceiptsResult,
 	PurchaseOrderDetail,
 	ReceiveLineInput,
-	ReceiveResult,
-	ReceiptHistoryItem,
-	ReceivingBin,
-	UnreceiveResult
+	ReceiveResult
 } from '../entity/PurchaseOrder';
 
 export interface ReceivingRepository {
+	/** GET /api/receiving/po/{barcode} */
 	lookupByBarcode(barcode: string): Promise<PurchaseOrderDetail>;
+
+	/** POST /api/receiving/receive */
 	receive(poId: number, items: ReceiveLineInput[]): Promise<ReceiveResult>;
+
+	/** POST /api/receiving/cancel */
 	cancelReceipts(poId: number, receiptIds: number[]): Promise<CancelReceiptsResult>;
-	listReceipts(poId: number): Promise<ReceiptHistoryItem[]>;
-	listBins(warehouseId: number): Promise<ReceivingBin[]>;
-	unreceiveReceipt(receiptId: number, reason?: string): Promise<UnreceiveResult>;
 }

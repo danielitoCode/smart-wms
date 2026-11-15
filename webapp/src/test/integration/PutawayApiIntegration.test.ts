@@ -68,4 +68,30 @@ describe('Putaway HTTP integration', () => {
 			lot_number: 'LOT-1'
 		});
 	});
+	it('loads the warehouse staging summary through the Flask endpoint', async () => {
+		const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
+			warehouse_id: 1,
+			bins: [{ bin_id: 2, bin_code: 'STAGE-02', sku_count: 1, total_qty: 5,
+				items: [{ inventory_id: 8, item_id: 4, sku: 'SKU-004', item_name: 'Item', quantity_on_hand: 5, lot_number: 'LOT' }] }]
+		}), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+		vi.stubGlobal('fetch', fetchMock);
+		const datasource = new PutawayRemoteDataSource(new ApiClient('https://wms.test'));
+		const summary = await datasource.getStagingSummary(1);
+		expect(summary.bins[0].total_qty).toBe(5);
+		expect(fetchMock.mock.calls[0][0]).toBe('https://wms.test/api/putaway/staging-summary/1');
+	});
+
+	it('sends scanned bin barcodes instead of guessed numeric identifiers', async () => {
+		const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
+			message: 'Put-away confirmed', transfer_id: 2, item: 'SKU-1',
+			from_bin: 'STAGE-1', to_bin: 'PICK-1', quantity: 2
+		}), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+		vi.stubGlobal('fetch', fetchMock);
+		const datasource = new PutawayRemoteDataSource(new ApiClient('https://wms.test'));
+		await datasource.confirm({ itemId: 1, fromBinBarcode: 'STAGE-1-BC', toBinBarcode: 'PICK-1-BC', quantity: 2 });
+		expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+			item_id: 1, from_bin_barcode: 'STAGE-1-BC', to_bin_barcode: 'PICK-1-BC', quantity: 2
+		});
+	});
+
 });

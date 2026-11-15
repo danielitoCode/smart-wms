@@ -6,7 +6,9 @@ describe('ListPendingPutawayUseCase', () => {
 	it('rejects invalid warehouseId', async () => {
 		const repo = {
 			listPending: vi.fn(),
+			getStagingSummary: vi.fn(),
 			suggest: vi.fn(),
+			updatePreferred: vi.fn(),
 			confirm: vi.fn()
 		} as PutawayRepository;
 		const uc = new ListPendingPutawayUseCase(repo);
@@ -16,7 +18,9 @@ describe('ListPendingPutawayUseCase', () => {
 	it('delegates to repository', async () => {
 		const repo = {
 			listPending: vi.fn().mockResolvedValue([]),
+			getStagingSummary: vi.fn(),
 			suggest: vi.fn(),
+			updatePreferred: vi.fn(),
 			confirm: vi.fn()
 		} as PutawayRepository;
 		const uc = new ListPendingPutawayUseCase(repo);

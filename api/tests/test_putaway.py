@@ -379,6 +379,82 @@ class TestConfirmPutaway:
         )
         assert resp.status_code == 404
 
+    def test_confirm_putaway_by_source_and_destination_barcode(self, client, auth_headers):
+        _receive_to_staging(client, auth_headers, item_id=1, quantity=4)
+        source = _query_one("SELECT bin_barcode, bin_code FROM bins WHERE bin_id = 1")
+        destination = _query_one("SELECT bin_barcode, bin_code FROM bins WHERE bin_id = 3")
+        source_barcode, source_code = source
+        destination_barcode, destination_code = destination
+
+        response = client.post(
+            "/api/putaway/confirm",
+            json={
+                "item_id": 1,
+                "from_bin_barcode": source_barcode,
+                "to_bin_barcode": destination_barcode,
+                "quantity": 4,
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.get_json()["from_bin"] == source_code
+        assert response.get_json()["to_bin"] == destination_code
+
+    def test_confirm_rejects_pickable_source_and_staging_destination(self, client, auth_headers):
+        _receive_to_staging(client, auth_headers, item_id=1, quantity=4)
+
+        invalid_source = client.post(
+            "/api/putaway/confirm",
+            json={"item_id": 1, "from_bin_id": 3, "to_bin_id": 4, "quantity": 1},
+            headers=auth_headers,
+        )
+        assert invalid_source.status_code == 400
+        assert "source bin" in invalid_source.get_json()["error"].lower()
+
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        zone_id = _query_one("SELECT zone_id FROM zones WHERE warehouse_id = 1 LIMIT 1")[0]
+        cur.execute(
+            """INSERT INTO bins
+                   (zone_id, warehouse_id, bin_code, bin_barcode, bin_type,
+                    pick_sequence, putaway_sequence, external_id)
+               VALUES (%s, 1, 'PUT-STAGE-DEST-INVALID', 'PUT-STAGE-DEST-INVALID',
+                       'Staging', 1, 1, gen_random_uuid())
+               RETURNING bin_id""",
+            (zone_id,),
+        )
+        staging_destination_id = cur.fetchone()[0]
+        cur.close()
+        invalid_destination = client.post(
+            "/api/putaway/confirm",
+            json={"item_id": 1, "from_bin_id": 1, "to_bin_id": staging_destination_id, "quantity": 1},
+            headers=auth_headers,
+        )
+        assert invalid_destination.status_code == 400
+        assert "active Pickable" in invalid_destination.get_json()["error"]
+
+    def test_double_confirmation_of_completed_quantity_is_rejected(self, client, auth_headers):
+        _receive_to_staging(client, auth_headers, item_id=1, quantity=4)
+        payload = {"item_id": 1, "from_bin_id": 1, "to_bin_id": 3, "quantity": 4}
+
+        first = client.post("/api/putaway/confirm", json=payload, headers=auth_headers)
+        second = client.post("/api/putaway/confirm", json=payload, headers=auth_headers)
+
+        assert first.status_code == 200
+        assert second.status_code == 400
+        assert "Insufficient" in second.get_json()["error"]
+        assert _query_one(
+            "SELECT COUNT(*) FROM bin_transfers WHERE item_id = 1 AND transfer_type = 'PUTAWAY'"
+        )[0] == 1
+
+    def test_staging_summary_respects_warehouse_scope(self, client, auth_headers):
+        response = client.get("/api/putaway/staging-summary/1", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["warehouse_id"] == 1
+        assert isinstance(data["bins"], list)
+        assert all("sku_count" in row and "total_qty" in row and "items" in row for row in data["bins"])
+
     def test_putaway_requires_auth(self, client):
         resp = client.get("/api/putaway/pending/1")
         assert resp.status_code == 401

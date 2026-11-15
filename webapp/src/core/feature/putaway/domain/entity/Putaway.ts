@@ -1,9 +1,4 @@
-/**
- * Put-away domain — staging → storage transfers.
- * Contracts: GET /api/putaway/pending/{warehouse_id},
- * GET /api/putaway/suggest/{item_id}, POST /api/putaway/confirm
- */
-
+/** Put-away domain: staging inventory moved into active Pickable bins. */
 export type PendingPutawayItem = {
 	inventoryId: number;
 	itemId: number;
@@ -12,6 +7,7 @@ export type PendingPutawayItem = {
 	quantity: number;
 	binId: number;
 	binCode: string;
+	binBarcode: string | null;
 	lotNumber: string | null;
 	suggestedBin: SuggestedBin | null;
 };
@@ -32,10 +28,29 @@ export type PutawaySuggestion = {
 	suggestedBin: SuggestedBin | null;
 };
 
+export type StagingBinSummary = {
+	binId: number;
+	binCode: string;
+	skuCount: number;
+	totalQuantity: number;
+	items: StagingInventoryItem[];
+};
+
+export type StagingInventoryItem = {
+	inventoryId: number;
+	itemId: number;
+	sku: string;
+	itemName: string;
+	quantity: number;
+	lotNumber: string | null;
+};
+
 export type ConfirmPutawayInput = {
 	itemId: number;
-	fromBinId: number;
-	toBinId: number;
+	fromBinId?: number;
+	fromBinBarcode?: string;
+	toBinId?: number;
+	toBinBarcode?: string;
 	quantity: number;
 	lotNumber?: string | null;
 };
@@ -47,4 +62,11 @@ export type ConfirmPutawayResult = {
 	fromBin: string;
 	toBin: string;
 	quantity: number;
+};
+
+export type UpdatePreferredBinResult = {
+	message: string;
+	itemId: number;
+	binId: number;
+	binCode: string;
 };

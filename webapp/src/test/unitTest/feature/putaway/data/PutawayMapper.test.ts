@@ -58,6 +58,17 @@ describe('PutawayMapper', () => {
 		expect(suggestion.suggestedBin?.binCode).toBe('PICK-04');
 	});
 
+	it('maps staging summary bins including empty bins and inventory breakdown', () => {
+		const bin = PutawayMapper.toStagingBin({
+			bin_id: 4, bin_code: 'STAGE-04', sku_count: 1, total_qty: 6,
+			items: [{ inventory_id: 20, item_id: 5, sku: 'SKU-5', item_name: 'Item 5', quantity_on_hand: 6, lot_number: 'LOT-5' }]
+		});
+		expect(bin).toMatchObject({
+			binId: 4, binCode: 'STAGE-04', skuCount: 1, totalQuantity: 6,
+			items: [{ inventoryId: 20, itemId: 5, quantity: 6, lotNumber: 'LOT-5' }]
+		});
+	});
+
 	it('normalizes a missing suggested bin to null', () => {
 		const item = PutawayMapper.toPending({
 			inventory_id: 18,

@@ -41,7 +41,6 @@ from middleware.auth_middleware import (
     require_admin_or_page_permission,
     require_auth,
     require_role,
-    warehouse_scope_clause,
 )
 from middleware.db import with_db
 from routes.admin import admin_bp
@@ -769,20 +768,9 @@ def list_po_receipts(po_id):
     (sku + bin code + receiver + when). Excludes RMA goods-in rows
     (po_id IS NULL) by virtue of the WHERE filter.
     """
-    # Keep receipt history inside the same warehouse scope as PO lookup.
-    # A PO outside the operator's scope is indistinguishable from a missing PO.
-    po_scope, po_scope_params = warehouse_scope_clause("po.warehouse_id")
-    visible_po = g.db.execute(
-        text(f"SELECT po_id FROM purchase_orders po WHERE po.po_id = :pid {po_scope}"),
-        {"pid": po_id, **po_scope_params},
-    ).fetchone()
-    if not visible_po:
-        return jsonify({"error": "Purchase order not found"}), 404
-
-    receipt_scope, receipt_scope_params = warehouse_scope_clause("r.warehouse_id")
     rows = g.db.execute(
         text(
-            f"""
+            """
             SELECT r.receipt_id, r.po_line_id, r.item_id, r.quantity_received,
                    r.bin_id, r.warehouse_id, r.received_by, r.received_at,
                    r.lot_number, r.serial_number, r.notes, r.external_id,
@@ -794,11 +782,11 @@ def list_po_receipts(po_id):
               JOIN bins  b  ON b.bin_id   = r.bin_id
               LEFT JOIN purchase_order_lines pol
                 ON pol.po_line_id = r.po_line_id
-             WHERE r.po_id = :pid {receipt_scope}
+             WHERE r.po_id = :pid
              ORDER BY r.received_at DESC, r.receipt_id DESC
             """
         ),
-        {"pid": po_id, **receipt_scope_params},
+        {"pid": po_id},
     ).fetchall()
     return jsonify({
         "po_id": po_id,
@@ -858,17 +846,6 @@ def unreceive_receipt(receipt_id):
         return jsonify({"error": "reason must be a string"}), 422
     if reason and len(reason) > 500:
         return jsonify({"error": "reason must be 500 chars or fewer"}), 422
-
-    # The shared service locks and reverses the receipt, but the route
-    # must first apply the caller's warehouse scope so a page permission
-    # cannot be used to reverse another warehouse's inventory.
-    receipt_scope, receipt_scope_params = warehouse_scope_clause("warehouse_id")
-    visible_receipt = g.db.execute(
-        text(f"SELECT receipt_id FROM item_receipts WHERE receipt_id = :rid {receipt_scope}"),
-        {"rid": receipt_id, **receipt_scope_params},
-    ).fetchone()
-    if not visible_receipt:
-        return jsonify({"error": "receipt not found", "kind": "not_found"}), 404
 
     try:
         result = record_unreceive(

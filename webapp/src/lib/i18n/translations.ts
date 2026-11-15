@@ -99,6 +99,19 @@ export const translations: Record<Locale, Record<string, string>> = {
 		"Revirtiendo…": "Storno in corso…",
 		"Esta orden no admite nuevas entradas. Puedes consultar y revertir recibos desde el historial.": "Questo ordine non accetta nuovi ingressi. Puoi consultare e stornare i ricevimenti dalla cronologia.",
 		"La recepción requiere un bin activo del almacén.": "La ricezione richiede un'ubicazione attiva del magazzino."
+,
+		"Resumen de staging": "i",
+		"No hay bins de staging configurados en este almacén.": "e",
+		"Vacío": "u",
+		"Putaway pendiente": "u",
+		"Barcode destino": "a",
+		"Sugerir destino": "u",
+		"Escanear o introducir barcode": "c",
+		"Barcode de ubicación": "a",
+		"Usar ID de bin": "s",
+		"Procesando…": "l",
+		"Confirmar putaway": "o",
+		"Establecer como preferida": "m"
 
 	},
 	es: {},
@@ -183,6 +196,19 @@ export const translations: Record<Locale, Record<string, string>> = {
 		"Revirtiendo…": "Reversing…",
 		"Esta orden no admite nuevas entradas. Puedes consultar y revertir recibos desde el historial.": "This order does not accept new receipts. You can review and reverse receipts from the history.",
 		"La recepción requiere un bin activo del almacén.": "Receiving requires an active bin in the warehouse."
+,
+		"Resumen de staging": "e",
+		"No hay bins de staging configurados en este almacén.": "s",
+		"Vacío": "o",
+		"Putaway pendiente": "t",
+		"Barcode destino": "r",
+		"Sugerir destino": "g",
+		"Escanear o introducir barcode": "a",
+		"Barcode de ubicación": "r",
+		"Usar ID de bin": "a",
+		"Procesando…": "a",
+		"Confirmar putaway": "n",
+		"Establecer como preferida": "p"
 
 	}
 };
