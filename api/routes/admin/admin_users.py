@@ -1367,6 +1367,16 @@ def list_adjustments():
                    ia.quantity_change, ia.reason_code, ia.reason_detail,
                    ia.status, ia.adjusted_by, ia.adjusted_at, ia.cycle_count_id,
                    i.sku, i.item_name, b.bin_code,
+                   (SELECT ccl.expected_quantity
+                      FROM cycle_count_lines ccl
+                     WHERE ccl.count_id = ia.cycle_count_id
+                       AND ccl.item_id = ia.item_id
+                     LIMIT 1) AS expected_quantity,
+                   (SELECT ccl.counted_quantity
+                      FROM cycle_count_lines ccl
+                     WHERE ccl.count_id = ia.cycle_count_id
+                       AND ccl.item_id = ia.item_id
+                     LIMIT 1) AS counted_quantity,
                    COALESCE(u.username, ia.adjusted_by) AS username
             FROM inventory_adjustments ia
             JOIN items i ON i.item_id = ia.item_id
