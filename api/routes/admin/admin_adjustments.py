@@ -57,14 +57,16 @@ def _serialize(row):
 
 def _apply_inventory_delta(db, item_id, bin_id, warehouse_id, delta):
     """Apply a signed adjustment while serializing updates to this item/bin."""
-    db.execute(
-        text("SELECT pg_advisory_xact_lock(:item_id, :bin_id)"),
-        {"item_id": item_id, "bin_id": bin_id},
-    )
     if delta > 0:
         add_inventory(db, item_id, bin_id, warehouse_id, delta)
         return
 
+    # Serialize negative adjustments against add_inventory and other removals,
+    # including the empty-bin case where there is no inventory row to lock.
+    db.execute(
+        text("SELECT pg_advisory_xact_lock(:item_id, :bin_id)"),
+        {"item_id": item_id, "bin_id": bin_id},
+    )
     rows = db.execute(
         text("""
             SELECT inventory_id, quantity_on_hand, quantity_allocated
