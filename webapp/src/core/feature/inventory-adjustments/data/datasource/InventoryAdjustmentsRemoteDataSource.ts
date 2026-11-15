@@ -4,6 +4,7 @@ import type { AdjustmentListDto } from '../dto/InventoryAdjustmentDto';
 export type AdjustmentQueryDto = {
 	warehouseId?: number | null;
 	status?: string | null;
+	adjustmentId?: number;
 	page?: number;
 	perPage?: number;
 };
@@ -18,6 +19,7 @@ export class InventoryAdjustmentsRemoteDataSource {
 		});
 		if (query.warehouseId != null) params.set('warehouse_id', String(query.warehouseId));
 		if (query.status) params.set('status', query.status);
+		if (query.adjustmentId != null) params.set('adjustment_id', String(query.adjustmentId));
 		return params.toString();
 	}
 

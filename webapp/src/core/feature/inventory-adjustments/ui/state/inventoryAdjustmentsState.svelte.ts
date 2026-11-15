@@ -16,6 +16,16 @@ export function createInventoryAdjustmentsState() {
 	let error = $state<string | null>(null);
 	let pendingOnly = $state(false);
 
+	async function getDetail(adjustmentId: number, warehouseId: number | null) {
+		error = null;
+		try {
+			return await dependencies.detail.execute(adjustmentId, warehouseId);
+		} catch (cause) {
+			error = toUserMessage(cause, 'No se pudo cargar el detalle del ajuste');
+			return null;
+		}
+	}
+
 	async function load(
 		warehouseId: number | null,
 		options: { pendingOnly?: boolean; status?: InventoryAdjustmentStatus | null } = {}
@@ -58,7 +68,7 @@ export function createInventoryAdjustmentsState() {
 			if (decision.action === 'approve') {
 				await dependencies.approve.execute(decision.adjustmentId);
 			} else {
-				await dependencies.reject.execute(decision.adjustmentId);
+				await dependencies.reject.execute(decision.adjustmentId, decision.rejectionReason ?? '');
 			}
 			await load(warehouseId, { pendingOnly: true });
 			return true;
@@ -77,6 +87,7 @@ export function createInventoryAdjustmentsState() {
 		get error() { return error; },
 		get pendingOnly() { return pendingOnly; },
 		load,
+		getDetail,
 		createDirect,
 		review
 	};

@@ -23,14 +23,14 @@ export const PERMISSION_MATRIX: readonly PermissionMatrixRow[] = [
 		capability: 'open_page',
 		flaskGate: 'count-approvals',
 		endpoints: [],
-		notes: 'Sidebar grant is count-approvals; pending adjustment APIs use adjustments'
+		notes: 'Page access uses count-approvals; pending/review API calls are authorized by the adjustments grant. Users performing approvals need both grants.'
 	},
 	{
 		sveltePath: '/management/count-approvals#approve',
 		pageKey: 'adjustments',
 		capability: 'approve_or_modify',
 		flaskGate: 'adjustments',
-		endpoints: ['GET /api/admin/adjustments/pending', 'POST /api/admin/adjustments/decide']
+		endpoints: ['GET /api/admin/adjustments/pending', 'POST /api/admin/adjustments/review']
 	},
 	{ sveltePath: '/management/adjustments', pageKey: 'adjustments', capability: 'open_page', flaskGate: 'adjustments', endpoints: ['GET /api/admin/adjustments/pending', 'POST /api/admin/adjustments'] },
 	{ sveltePath: '/receiving', pageKey: 'receiving', capability: 'open_page', flaskGate: 'receiving', endpoints: ['GET|POST /api/receiving/*'] },

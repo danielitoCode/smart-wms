@@ -2,6 +2,7 @@ import type {
 	CreateInventoryAdjustment,
 	InventoryAdjustmentDecision
 } from '../entity/InventoryAdjustment';
+import { AdjustmentApprovalPolicy } from '../policy/AdjustmentApprovalPolicy';
 import type {
 	AdjustmentListQuery,
 	InventoryAdjustmentsRepository
@@ -13,6 +14,22 @@ function validatePositiveInteger(value: number, label: string): void {
 	}
 }
 
+export class GetAdjustmentDetailUseCase {
+	constructor(private readonly repository: InventoryAdjustmentsRepository) {}
+
+	async execute(adjustmentId: number, warehouseId?: number | null) {
+		validatePositiveInteger(adjustmentId, 'Ajuste');
+		if (warehouseId != null) validatePositiveInteger(warehouseId, 'Almacén');
+		const rows = await this.repository.list({
+			adjustmentId,
+			warehouseId: warehouseId ?? null,
+			page: 1,
+			perPage: 1
+		});
+		return rows[0] ?? null;
+	}
+}
+
 export class ListAdjustmentsUseCase {
 	constructor(private readonly repository: InventoryAdjustmentsRepository) {}
 
@@ -20,6 +37,7 @@ export class ListAdjustmentsUseCase {
 		if (query?.warehouseId != null) validatePositiveInteger(query.warehouseId, 'Almacén');
 		if (query?.page != null) validatePositiveInteger(query.page, 'Página');
 		if (query?.perPage != null) validatePositiveInteger(query.perPage, 'Tamaño de página');
+		if (query?.adjustmentId != null) validatePositiveInteger(query.adjustmentId, 'Ajuste');
 		return this.repository.list(query);
 	}
 }
@@ -56,6 +74,11 @@ export class ReviewAdjustmentsUseCase {
 		const ids = decisions.map((decision) => decision.adjustmentId);
 		ids.forEach((id) => validatePositiveInteger(id, 'Ajuste'));
 		if (new Set(ids).size !== ids.length) throw new Error('No se puede revisar el mismo ajuste más de una vez');
+		for (const decision of decisions) {
+			if (decision.action === 'reject') {
+				AdjustmentApprovalPolicy.validateRejectionReason(decision.rejectionReason ?? '');
+			}
+		}
 		return this.repository.review(decisions);
 	}
 }
@@ -71,7 +94,7 @@ export class ApproveAdjustmentUseCase {
 export class RejectAdjustmentUseCase {
 	constructor(private readonly review: ReviewAdjustmentsUseCase) {}
 
-	execute(adjustmentId: number) {
-		return this.review.execute([{ adjustmentId, action: 'reject' }]);
+	execute(adjustmentId: number, rejectionReason: string) {
+		return this.review.execute([{ adjustmentId, action: 'reject', rejectionReason }]);
 	}
 }

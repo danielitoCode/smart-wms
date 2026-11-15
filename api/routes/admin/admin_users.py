@@ -970,8 +970,10 @@ def review_adjustments(validated):
                 text(
                     "SELECT b.warehouse_id FROM inventory_adjustments ia"
                     " JOIN bins b ON b.bin_id = ia.bin_id AND b.warehouse_id = ia.warehouse_id"
-                    " WHERE ia.adjustment_id = :aid " + record_scope + " " + bin_scope
-                    + " FOR UPDATE OF b"
+                    " WHERE ia.adjustment_id = :aid\n"
+                    + (record_scope or "")
+                    + "\n" + (bin_scope or "")
+                    + "\n FOR UPDATE OF b"
                 ),
                 {"aid": adj_id, **record_params, **bin_params},
             ).fetchone()
@@ -1046,9 +1048,11 @@ def review_adjustments(validated):
                 )
 
             updated = g.db.execute(
-                text("UPDATE inventory_adjustments SET status = :status "
+                text("UPDATE inventory_adjustments SET status = :status, "
+                     "reviewed_by = :reviewed_by, reviewed_at = NOW(), rejection_reason = NULL "
                      "WHERE adjustment_id = :aid AND status = :pending"),
-                {"aid": adj_id, "status": ADJ_APPROVED, "pending": ADJ_PENDING},
+                {"aid": adj_id, "status": ADJ_APPROVED, "pending": ADJ_PENDING,
+                 "reviewed_by": g.current_user["username"]},
             )
             if updated.rowcount != 1:
                 g.db.rollback()
@@ -1186,9 +1190,12 @@ def review_adjustments(validated):
             approved += 1
         else:
             updated = g.db.execute(
-                text("UPDATE inventory_adjustments SET status = :status "
+                text("UPDATE inventory_adjustments SET status = :status, "
+                     "reviewed_by = :reviewed_by, reviewed_at = NOW(), rejection_reason = :rejection_reason "
                      "WHERE adjustment_id = :aid AND status = :pending"),
-                {"aid": adj_id, "status": ADJ_REJECTED, "pending": ADJ_PENDING},
+                {"aid": adj_id, "status": ADJ_REJECTED, "pending": ADJ_PENDING,
+                 "reviewed_by": g.current_user["username"],
+                 "rejection_reason": decision.get("rejection_reason")},
             )
             if updated.rowcount != 1:
                 g.db.rollback()
@@ -1392,6 +1399,13 @@ def list_adjustments():
     if warehouse_id is not None:
         where_clauses.append("ia.warehouse_id = :warehouse_id")
         params["warehouse_id"] = warehouse_id
+    adjustment_id = request.args.get("adjustment_id", type=int)
+    if adjustment_id is not None:
+        if adjustment_id <= 0:
+            return jsonify({"error": "adjustment_id must be positive"}), 400
+        where_clauses.append("ia.adjustment_id = :adjustment_id")
+        params["adjustment_id"] = adjustment_id
+
     status = (request.args.get("status") or "").upper()
     if status:
         if status not in (ADJ_PENDING, ADJ_APPROVED, ADJ_REJECTED):
@@ -1423,6 +1437,7 @@ def list_adjustments():
             SELECT ia.adjustment_id, ia.item_id, ia.bin_id, ia.warehouse_id,
                    ia.quantity_change, ia.reason_code, ia.reason_detail,
                    ia.status, ia.adjusted_by, ia.adjusted_at, ia.cycle_count_id,
+                   ia.reviewed_by, ia.reviewed_at, ia.rejection_reason,
                    i.sku, i.item_name, b.bin_code,
                    (SELECT ccl.expected_quantity
                       FROM cycle_count_lines ccl
@@ -1474,6 +1489,9 @@ def list_adjustments():
                 "adjusted_by": r.adjusted_by,
                 "username": r.username,
                 "adjusted_at": r.adjusted_at.isoformat() if r.adjusted_at else None,
+                "reviewed_by": r.reviewed_by,
+                "reviewed_at": r.reviewed_at.isoformat() if r.reviewed_at else None,
+                "rejection_reason": r.rejection_reason,
                 "cycle_count_id": r.cycle_count_id,
             }
             for r in rows

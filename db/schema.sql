@@ -528,6 +528,9 @@ CREATE TABLE inventory_adjustments (
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING',  -- 'PENDING', 'APPROVED', 'REJECTED'
     adjusted_by VARCHAR(100) NOT NULL,
     adjusted_at TIMESTAMPTZ DEFAULT NOW(),
+    reviewed_by VARCHAR(100),
+    reviewed_at TIMESTAMPTZ,
+    rejection_reason VARCHAR(500),
     cycle_count_id INT REFERENCES cycle_counts(count_id),
     external_id UUID UNIQUE NOT NULL
 );

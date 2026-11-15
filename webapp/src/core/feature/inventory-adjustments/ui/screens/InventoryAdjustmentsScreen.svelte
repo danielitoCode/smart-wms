@@ -3,6 +3,9 @@
 	import { page } from '$app/state';
 	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
 	import { createInventoryAdjustmentsState } from '../state/inventoryAdjustmentsState.svelte';
+	import { authSession } from '../../../../infrastructure/auth/AuthSession';
+	import { canPerform } from '../../../auth/domain/policy/AccessPolicy';
+	import { AdjustmentApprovalPolicy } from '../../domain/policy/AdjustmentApprovalPolicy';
 	import type {
 		CreateInventoryAdjustment,
 		InventoryAdjustment,
@@ -27,10 +30,23 @@
 		const isApprovals = approvals;
 		const selectedStatus = status;
 		void vm.load(warehouseId, {
-			pendingOnly: isApprovals,
-			status: !isApprovals && selectedStatus !== 'ALL' ? selectedStatus : null
+			pendingOnly: isApprovals && selectedStatus === 'PENDING',
+			status: selectedStatus !== 'ALL' ? selectedStatus : null
 		});
 	});
+
+	function canReview(): boolean {
+		const user = authSession.getUser();
+		if (!user) return false;
+		return canPerform(user.role, user.allowedPages, user.allowedOverrides ?? [], {
+			pageKey: 'adjustments',
+			capability: 'approve_or_modify'
+		});
+	}
+
+	async function openDetail(row: InventoryAdjustment) {
+		detail = await vm.getDetail(row.adjustmentId, selection?.warehouseId ?? null);
+	}
 
 	async function create() {
 		const input: CreateInventoryAdjustment = {
@@ -51,13 +67,22 @@
 	}
 
 	async function decide(row: InventoryAdjustment, action: 'approve' | 'reject') {
+		if (!AdjustmentApprovalPolicy.canTransition(row.status, action)) return;
+		const rejectionReason = action === 'reject'
+			? window.prompt('Indica el motivo del rechazo (obligatorio, máximo 500 caracteres):')?.trim()
+			: undefined;
+		if (action === 'reject' && !rejectionReason) return;
+		if (rejectionReason && rejectionReason.length > 500) {
+			window.alert('El motivo no puede superar 500 caracteres.');
+			return;
+		}
 		const label = action === 'approve' ? 'aprobar' : 'rechazar';
-		const prompt = action === 'approve'
+		const confirmation = action === 'approve'
 			? 'La aprobación modificará las existencias del almacén. ¿Deseas continuar?'
 			: 'El ajuste quedará rechazado y no modificará las existencias. ¿Deseas continuar?';
-		if (!window.confirm(`¿Confirmas ${label} el ajuste #${row.adjustmentId}?\n\n${prompt}`)) return;
+		if (!window.confirm(`¿Confirmas ${label} el ajuste #${row.adjustmentId}?\\n\\n${confirmation}`)) return;
 		const succeeded = await vm.review(
-			{ adjustmentId: row.adjustmentId, action },
+			{ adjustmentId: row.adjustmentId, action, rejectionReason },
 			selection?.warehouseId ?? null
 		);
 		if (succeeded) detail = null;
@@ -90,6 +115,15 @@
 
 	{#if vm.error}
 		<p class="error" role="alert">{vm.error}</p>
+	{/if}
+	{#if approvals && !canReview()}
+		<p class="error" role="alert">{i18n.t('Necesitas el permiso Ajustes para consultar y decidir aprobaciones.')}</p>
+	{/if}
+	{#if approvals && !canReview()}
+		<p class="error" role="alert">{i18n.t('Necesitas el permiso Ajustes para consultar y decidir aprobaciones.')}</p>
+	{/if}
+	{#if approvals && !canReview()}
+		<p class="error" role="alert">{i18n.t('Necesitas el permiso Ajustes para consultar y decidir aprobaciones.')}</p>
 	{/if}
 
 	{#if editorOpen && !approvals}
@@ -127,11 +161,14 @@
 
 	<div class="toolbar">
 		<div>
-			<h2>{approvals ? i18n.t('Pendientes de revisión') : i18n.t('Registro de ajustes')}</h2>
+			<h2>{approvals
+				? status === 'PENDING'
+					? i18n.t('Pendientes de revisión')
+					: i18n.t('Historial de aprobaciones')
+				: i18n.t('Registro de ajustes')}</h2>
 			<p>{vm.rows.length} {i18n.t('registros')}</p>
 		</div>
-		{#if !approvals}
-			<label class="status-filter">{i18n.t('Estado')}
+		<label class="status-filter">{i18n.t('Estado')}
 				<select bind:value={status}>
 					<option value="ALL">{i18n.t('Todos')}</option>
 					<option value="PENDING">{i18n.t('Pendientes')}</option>
@@ -139,7 +176,6 @@
 					<option value="REJECTED">{i18n.t('Rechazados')}</option>
 				</select>
 			</label>
-		{/if}
 	</div>
 
 	{#if vm.loading}
@@ -176,7 +212,7 @@
 							<td class="reason">{row.reasonDetail ?? row.reasonCode}</td>
 							<td><span class:pending={row.status === 'PENDING'} class:approved={row.status === 'APPROVED'} class:rejected={row.status === 'REJECTED'} class="status-pill">{statusLabel(row.status)}</span></td>
 							<td>{row.adjustedBy}</td>
-							<td><button class="text-button" onclick={() => (detail = row)}>{i18n.t('Ver detalle')}</button></td>
+							<td><button class="text-button" onclick={() => void openDetail(row)}>{i18n.t('Ver detalle')}</button></td>
 						</tr>
 					{/each}
 				</tbody>
@@ -202,10 +238,15 @@
 				<div><dt>{i18n.t('Código de motivo')}</dt><dd>{detail.reasonCode}</dd></div>
 				<div><dt>{i18n.t('Estado')}</dt><dd>{statusLabel(detail.status)}</dd></div>
 				<div><dt>{i18n.t('Registrado por')}</dt><dd>{detail.adjustedBy}</dd></div>
+				<div><dt>{i18n.t('Revisado por')}</dt><dd>{detail.reviewedBy ?? '—'}</dd></div>
+				<div><dt>{i18n.t('Fecha de revisión')}</dt><dd>{detail.reviewedAt ? new Date(detail.reviewedAt).toLocaleString() : '—'}</dd></div>
 				<div><dt>{i18n.t('Fecha')}</dt><dd>{detail.adjustedAt ? new Date(detail.adjustedAt).toLocaleString() : '—'}</dd></div>
 			</dl>
 			<div class="reason-box"><strong>{i18n.t('Motivo / justificación')}</strong><p>{detail.reasonDetail ?? '—'}</p></div>
-			{#if approvals && detail.status === 'PENDING'}
+			{#if detail.rejectionReason}
+				<div class="reason-box rejection-reason"><strong>{i18n.t('Motivo del rechazo')}</strong><p>{detail.rejectionReason}</p></div>
+			{/if}
+			{#if approvals && detail.status === 'PENDING' && canReview()}
 				<div class="decision-actions">
 					<button class="danger" disabled={vm.saving} onclick={() => void decide(detail!, 'reject')}>{i18n.t('Rechazar ajuste')}</button>
 					<button class="primary" disabled={vm.saving} onclick={() => void decide(detail!, 'approve')}>{i18n.t('Aprobar y aplicar')}</button>

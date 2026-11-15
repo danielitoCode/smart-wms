@@ -4,6 +4,7 @@ import type { InventoryAdjustmentsRepository } from '../../../../../../core/feat
 import {
 	ApproveAdjustmentUseCase,
 	CreateDirectAdjustmentUseCase,
+	GetAdjustmentDetailUseCase,
 	ListAdjustmentsUseCase,
 	PendingAdjustmentsUseCase,
 	RejectAdjustmentUseCase,
@@ -27,6 +28,15 @@ function createRepository(overrides: Partial<InventoryAdjustmentsRepository> = {
 }
 
 describe('Inventory adjustment use cases', () => {
+	it('loads an adjustment detail by ID through the existing list endpoint', async () => {
+		const repository = createRepository();
+		const detail = await new GetAdjustmentDetailUseCase(repository).execute(7, 1);
+		expect(detail).toEqual(adjustment);
+		expect(repository.list).toHaveBeenCalledWith({
+			adjustmentId: 7, warehouseId: 1, page: 1, perPage: 1
+		});
+	});
+
 	it('lists adjustments using the selected warehouse and status', async () => {
 		const repository = createRepository();
 		await new ListAdjustmentsUseCase(repository).execute({ warehouseId: 1, status: 'APPROVED' });
@@ -60,14 +70,19 @@ describe('Inventory adjustment use cases', () => {
 		])).toThrow(/mismo ajuste/);
 		expect(() => review.execute([{ adjustmentId: 0, action: 'approve' }])).toThrow(/Ajuste/);
 		expect(repository.review).not.toHaveBeenCalled();
+		expect(() => review.execute([{ adjustmentId: 8, action: 'reject' }])).toThrow(/motivo de rechazo/);
 	});
 
 	it('routes approve and reject through the shared review contract', async () => {
 		const repository = createRepository();
 		const review = new ReviewAdjustmentsUseCase(repository);
 		await new ApproveAdjustmentUseCase(review).execute(7);
-		await new RejectAdjustmentUseCase(review).execute(8);
+		await new RejectAdjustmentUseCase(review).execute(8, 'Variance not verified');
 		expect(repository.review).toHaveBeenNthCalledWith(1, [{ adjustmentId: 7, action: 'approve' }]);
-		expect(repository.review).toHaveBeenNthCalledWith(2, [{ adjustmentId: 8, action: 'reject' }]);
+		expect(repository.review).toHaveBeenNthCalledWith(2, [{
+			adjustmentId: 8,
+			action: 'reject',
+			rejectionReason: 'Variance not verified'
+		}]);
 	});
 });

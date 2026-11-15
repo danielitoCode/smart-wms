@@ -4,6 +4,7 @@ import { InventoryAdjustmentsRepositoryImpl } from '../data/repository/Inventory
 import {
 	ApproveAdjustmentUseCase,
 	CreateDirectAdjustmentUseCase,
+	GetAdjustmentDetailUseCase,
 	ListAdjustmentsUseCase,
 	PendingAdjustmentsUseCase,
 	RejectAdjustmentUseCase,
@@ -16,6 +17,7 @@ export function createInventoryAdjustmentsDependencies() {
 	);
 	const review = new ReviewAdjustmentsUseCase(repository);
 	return {
+		detail: new GetAdjustmentDetailUseCase(repository),
 		list: new ListAdjustmentsUseCase(repository),
 		pending: new PendingAdjustmentsUseCase(repository),
 		createDirect: new CreateDirectAdjustmentUseCase(repository),

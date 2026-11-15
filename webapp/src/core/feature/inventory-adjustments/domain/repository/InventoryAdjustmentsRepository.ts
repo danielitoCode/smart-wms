@@ -7,6 +7,7 @@ import type {
 export type AdjustmentListQuery = {
 	warehouseId?: number | null;
 	status?: InventoryAdjustment['status'] | null;
+	adjustmentId?: number;
 	page?: number;
 	perPage?: number;
 };

@@ -25,6 +25,9 @@ export type InventoryAdjustment = {
 	status: InventoryAdjustmentStatus;
 	adjustedBy: string;
 	adjustedAt: string | null;
+	reviewedBy?: string | null;
+	reviewedAt?: string | null;
+	rejectionReason?: string | null;
 	cycleCountId: number | null;
 	sku?: string | null;
 	itemName?: string | null;
@@ -45,4 +48,5 @@ export type CreateInventoryAdjustment = {
 export type InventoryAdjustmentDecision = {
 	adjustmentId: number;
 	action: 'approve' | 'reject';
+	rejectionReason?: string;
 };

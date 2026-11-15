@@ -2,12 +2,27 @@
 
 from typing import List
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class AdjustmentDecision(BaseModel):
     adjustment_id: int = Field(..., gt=0)
     action: str = Field(..., min_length=1)
+    rejection_reason: str | None = Field(None, max_length=500)
+
+    @field_validator("rejection_reason")
+    @classmethod
+    def validate_rejection_reason(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        return value or None
+
+    @model_validator(mode="after")
+    def require_rejection_reason(self):
+        if self.action == "reject" and not self.rejection_reason:
+            raise ValueError("rejection_reason is required when rejecting an adjustment")
+        return self
 
     @field_validator("action")
     @classmethod

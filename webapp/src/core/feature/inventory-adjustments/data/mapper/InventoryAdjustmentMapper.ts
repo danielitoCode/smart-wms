@@ -19,6 +19,9 @@ export const InventoryAdjustmentMapper = {
 			status: dto.status,
 			adjustedBy: dto.username ?? dto.adjusted_by,
 			adjustedAt: dto.adjusted_at,
+			reviewedBy: dto.reviewed_by ?? null,
+			reviewedAt: dto.reviewed_at ?? null,
+			rejectionReason: dto.rejection_reason ?? null,
 			cycleCountId: dto.cycle_count_id,
 			sku: dto.sku,
 			itemName: dto.item_name,
@@ -43,7 +46,8 @@ export const InventoryAdjustmentMapper = {
 		return {
 			decisions: decisions.map((decision) => ({
 				adjustment_id: decision.adjustmentId,
-				action: decision.action
+				action: decision.action,
+				rejection_reason: decision.rejectionReason
 			}))
 		};
 	}

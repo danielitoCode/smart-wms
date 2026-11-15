@@ -133,7 +133,11 @@ class TestInventoryAdjustmentReview:
         before = _query_val(
             "SELECT COALESCE(SUM(quantity_on_hand), 0) FROM inventory WHERE item_id = 1 AND bin_id = 3"
         )
-        payload = {"decisions": [{"adjustment_id": adjustment_id, "action": "reject"}]}
+        payload = {"decisions": [{
+            "adjustment_id": adjustment_id,
+            "action": "reject",
+            "rejection_reason": "Count variance could not be verified",
+        }]}
         response = client.post("/api/admin/adjustments/review", json=payload, headers=auth_headers)
         assert response.status_code == 200
         assert _query_val(
@@ -141,9 +145,30 @@ class TestInventoryAdjustmentReview:
             (adjustment_id,),
         ) == "REJECTED"
         assert _query_val(
+            "SELECT rejection_reason FROM inventory_adjustments WHERE adjustment_id = %s",
+            (adjustment_id,),
+        ) == "Count variance could not be verified"
+        assert _query_val(
+            "SELECT reviewed_by IS NOT NULL FROM inventory_adjustments WHERE adjustment_id = %s",
+            (adjustment_id,),
+        ) is True
+        assert _query_val(
             "SELECT COALESCE(SUM(quantity_on_hand), 0) FROM inventory WHERE item_id = 1 AND bin_id = 3"
         ) == before
         assert client.post("/api/admin/adjustments/review", json=payload, headers=auth_headers).status_code == 409
+
+    def test_rejection_requires_a_reason(self, client, auth_headers):
+        adjustment_id = _insert_adjustment()
+        response = client.post(
+            "/api/admin/adjustments/review",
+            json={"decisions": [{"adjustment_id": adjustment_id, "action": "reject"}]},
+            headers=auth_headers,
+        )
+        assert response.status_code == 400
+        assert _query_val(
+            "SELECT status FROM inventory_adjustments WHERE adjustment_id = %s",
+            (adjustment_id,),
+        ) == "PENDING"
 
     def test_missing_adjustment_is_404(self, client, auth_headers):
         response = client.post(
@@ -189,6 +214,39 @@ class TestInventoryAdjustmentWarehouseScope:
         assert _query_val(
             "SELECT status FROM inventory_adjustments WHERE adjustment_id = %s",
             (foreign_id,),
+        ) == "PENDING"
+
+    def test_list_supports_a_scoped_adjustment_detail_lookup(self, client, auth_headers):
+        adjustment_id = _insert_adjustment()
+        response = client.get(
+            f"/api/admin/adjustments/list?adjustment_id={adjustment_id}",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        rows = response.get_json()["adjustments"]
+        assert len(rows) == 1
+        assert rows[0]["adjustment_id"] == adjustment_id
+
+        invalid = client.get("/api/admin/adjustments/list?adjustment_id=0", headers=auth_headers)
+        assert invalid.status_code == 400
+
+    def test_review_requires_adjustments_permission(self, client):
+        adjustment_id = _insert_adjustment()
+        _user_id, headers = _web_user_with_pages(
+            client, [], username="adjustment_no_review_permission"
+        )
+        response = client.post(
+            "/api/admin/adjustments/review",
+            json={"decisions": [{
+                "adjustment_id": adjustment_id,
+                "action": "approve",
+            }]},
+            headers=headers,
+        )
+        assert response.status_code == 403
+        assert _query_val(
+            "SELECT status FROM inventory_adjustments WHERE adjustment_id = %s",
+            (adjustment_id,),
         ) == "PENDING"
 
     def test_direct_adjustment_rejects_foreign_bin(self, client):
