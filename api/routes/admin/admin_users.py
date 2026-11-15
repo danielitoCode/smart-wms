@@ -910,6 +910,9 @@ def list_pending_adjustments():
 def review_adjustments(validated):
     """Approve or reject individual adjustments. Approved adjustments update inventory."""
     data = {"decisions": [d.model_dump() for d in validated.decisions]}
+    decision_ids = [decision["adjustment_id"] for decision in data["decisions"]]
+    if len(decision_ids) != len(set(decision_ids)):
+        return jsonify({"error": "Duplicate adjustment_id in decisions"}), 400
 
     approved = 0
     rejected = 0
