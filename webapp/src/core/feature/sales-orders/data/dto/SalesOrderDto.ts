@@ -42,7 +42,7 @@ export interface SalesOrderLineDto {
   status: string | null;
 }
 
-export interface SalesOrderListItemDto extends SalesOrderDto {
+export interface SalesOrderListItemDto extends SalesOrderProjectionDto {
   so_id: number;
   so_number: string;
   so_barcode: string | null;
@@ -71,7 +71,7 @@ export interface SalesOrderListItemDto extends SalesOrderDto {
   line_count?: number;
 }
 
-export interface SalesOrderDetailDto extends SalesOrderDto {
+export interface SalesOrderDetailDto extends SalesOrderProjectionDto {
   so_id: number;
   so_number: string;
   so_barcode: string | null;
@@ -107,7 +107,7 @@ export interface SalesOrderDetailDto extends SalesOrderDto {
   cancellation_reason: string | null;
 }
 
-export interface SalesOrderDto extends SalesOrderAddressDto {
+export interface SalesOrderProjectionDto extends SalesOrderAddressDto {
   so_id?: number | null;
   so_number?: string | null;
   so_barcode?: string | null;
@@ -326,4 +326,8 @@ export interface ReceiveRmaRequestDto {
   bin_id: number;
   notes?: string;
   idempotency_key?: string;
+}
+
+export interface UpdateSalesOrderAllocationRequestDto {
+  delta: number;
 }
