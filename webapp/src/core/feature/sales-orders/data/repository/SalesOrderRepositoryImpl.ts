@@ -2,7 +2,7 @@ import type {
   CreateSalesOrderInput, SalesOrder, SalesOrderPage, UpdateSalesOrder,
   PartialFulfillInput, RevertSalesOrderInput, CreateRmaInput, ReceiveReturnInput,
   RelatedSalesOrder, UpdateSalesOrderAddressInput, AvailableSalesOrderBin,
-  UpdateSalesOrderAllocationInput, UpdateSalesOrderAllocationResult, AdminShipResult
+  UpdateSalesOrderAllocationInput, UpdateSalesOrderAllocationResult, AdminShipResult, SalesOrderShortPick
 } from '../../domain/entity/SalesOrder';
 import type { ListSalesOrdersParams, SalesOrderRepository } from '../../domain/repository/SalesOrderRepository';
 import type { SalesOrderRemoteDataSource } from '../datasource/SalesOrderRemoteDataSource';
@@ -28,6 +28,21 @@ export class SalesOrderRepositoryImpl implements SalesOrderRepository {
     return response.source_systems.map((entry) => ({
       sourceSystem: entry.source_system,
       kind: entry.kind
+    }));
+  }
+
+  async listShortPicks(days = 30, warehouseId?: number): Promise<SalesOrderShortPick[]> {
+    const response = await this.datasource.listShortPicks({ days, warehouseId });
+    return response.short_picks.map((entry) => ({
+      logId: entry.log_id,
+      user: entry.user,
+      sku: entry.sku,
+      quantityExpected: entry.qty_expected,
+      quantityPicked: entry.qty_picked,
+      shortage: entry.shortage,
+      binCode: entry.bin_code,
+      batchId: entry.batch_id,
+      timestamp: entry.timestamp
     }));
   }
   async getById(id: number): Promise<SalesOrder> {
