@@ -7,6 +7,7 @@ type InboundActivityDependencies = ReturnType<typeof createInboundActivityDepend
 export function createInboundActivityState(dependencies: InboundActivityDependencies = createInboundActivityDependencies()) {
 	let rows = $state<InboundActivityRow[]>([]);
 	let detail = $state<InboundActivityDetail | null>(null);
+	let selectedRow = $state<InboundActivityRow | null>(null);
 	let loading = $state(false);
 	let detailLoading = $state(false);
 	let error = $state<string | null>(null);
@@ -64,6 +65,7 @@ export function createInboundActivityState(dependencies: InboundActivityDependen
 
 	async function openDetail(row: InboundActivityRow): Promise<void> {
 		const requestId = ++detailRequestId;
+		selectedRow = row;
 		detail = null;
 		detailError = null;
 		detailLoading = true;
@@ -82,6 +84,7 @@ export function createInboundActivityState(dependencies: InboundActivityDependen
 	function clearDetail(): void {
 		++detailRequestId;
 		detail = null;
+		selectedRow = null;
 		detailError = null;
 		detailLoading = false;
 	}
@@ -89,6 +92,7 @@ export function createInboundActivityState(dependencies: InboundActivityDependen
 	return {
 		get rows() { return rows; },
 		get detail() { return detail; },
+		get selectedRow() { return selectedRow; },
 		get loading() { return loading; },
 		get detailLoading() { return detailLoading; },
 		get error() { return error; },
