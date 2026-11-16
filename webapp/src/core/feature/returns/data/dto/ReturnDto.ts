@@ -1,10 +1,10 @@
 export type ReturnStatusDto = 'OPEN' | 'PARTIALLY_RECEIVED' | 'RECEIVED';
 export type ReturnHeaderDto = {
  so_id:number;so_number:string;so_barcode:string|null;customer_name:string|null;customer_phone:string|null;
- customer_email:string|null;customer_address:string|null;status:ReturnStatusDto;priority:number;warehouse_id:number;
- ship_method:string|null;ship_address:string|null;ship_by_date:string|null;created_at:string|null;order_total:string|null;
- memo:string|null;order_origin:string|null;source_system:string|null;carrier:string|null;tracking_number:string|null;
- order_type:'return';parent_so_id:number|null;parent_so_number:string|null;voided_at?:string|null;voided_by?:string|null;
+ customer_email?:string|null;customer_address:string|null;status:ReturnStatusDto;priority:number;warehouse_id:number;
+ ship_method?:string|null;ship_address?:string|null;ship_by_date?:string|null;created_at?:string|null;order_total?:string|null;
+ memo?:string|null;order_origin?:string|null;source_system?:string|null;carrier?:string|null;tracking_number?:string|null;
+ order_type:'return';parent_so_id:number|null;parent_so_number?:string|null;voided_at?:string|null;voided_by?:string|null;
  billing_address_name?:string|null;billing_address_line1?:string|null;billing_address_line2?:string|null;
  billing_address_city?:string|null;billing_address_state?:string|null;billing_address_postal_code?:string|null;
  billing_address_country?:string|null;billing_address_phone?:string|null;shipping_address_name?:string|null;
