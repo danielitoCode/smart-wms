@@ -1,0 +1,49 @@
+/**
+ * Superficies internas enganchadas al tema (paneles, tablas, toolbars).
+ * Evita “islas” blancas en dark mode por estilos legacy en pantallas.
+ */
+body .shell .content .panel,
+body .shell .content .toolbar,
+body .shell .content .table-wrap,
+body .shell .content .bin-card,
+body .shell .content .card-panel,
+body .shell .content .form-panel,
+body .shell .content .filters,
+body .shell .content .detail-panel {
+	background: var(--card);
+	border-color: var(--line);
+	color: var(--ink);
+}
+
+body .shell .content th {
+	background: color-mix(in srgb, var(--surface) 88%, var(--navy) 12%);
+	color: var(--slate);
+	border-color: var(--line);
+}
+
+body .shell .content td {
+	border-color: var(--line);
+	color: var(--ink);
+}
+
+body .shell .content table {
+	color: var(--ink);
+}
+
+body .shell .content .subtitle,
+body .shell .content .meta,
+body .shell .content .muted,
+body .shell .content .hint,
+body .shell .content .empty,
+body .shell .content .status:not(.error):not(.ok) {
+	color: var(--slate);
+}
+
+body .shell .content .status.error,
+body .shell .content .error {
+	color: var(--danger);
+}
+
+body .shell .content .status.ok {
+	color: var(--success, #166534);
+}
