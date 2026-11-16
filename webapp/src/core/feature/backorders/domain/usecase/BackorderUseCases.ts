@@ -24,7 +24,12 @@ export class GetBackorderDetailUseCase {
     if (!Number.isInteger(backorderId) || backorderId < 1) {
       throw new Error('backorderId must be an integer >= 1');
     }
-    return this.repository.getDetail(backorderId);
+    return this.repository.getDetail(backorderId).then((detail) => {
+      if (detail.order.orderType !== 'backorder' && detail.order.backorderOpenedAt === null) {
+        throw new Error('El pedido indicado no pertenece a la cola de backorders');
+      }
+      return detail;
+    });
   }
 }
 
