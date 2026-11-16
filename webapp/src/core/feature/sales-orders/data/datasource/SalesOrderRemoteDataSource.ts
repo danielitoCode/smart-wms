@@ -7,7 +7,7 @@ import type {
   UpdateSalesOrderAddressRequestDto, AddSalesOrderLineRequestDto,
   UpdateSalesOrderLineRequestDto, AdminPickRequestDto, PartialFulfillRequestDto,
   RevertSalesOrderStatusRequestDto, AdminShipRequestDto, CreateRmaRequestDto,
-  ReceiveRmaRequestDto
+  ReceiveRmaRequestDto, UpdateSalesOrderAllocationRequestDto
 } from '../dto/SalesOrderDto';
 import type { UpdateSalesOrderAllocationInput } from '../../domain/entity/SalesOrder';
 
@@ -54,9 +54,10 @@ export class SalesOrderRemoteDataSource {
     });
   }
   async updateAllocation(id: number, lineId: number, input: UpdateSalesOrderAllocationInput): Promise<SalesOrderAllocationResponseDto> {
+    const payload: UpdateSalesOrderAllocationRequestDto = { delta: input.delta };
     return this.api.request<SalesOrderAllocationResponseDto>(
       `/api/admin/sales-orders/${id}/lines/${lineId}/allocation`,
-      { method: 'PATCH', body: { delta: input.delta } }
+      { method: 'PATCH', body: payload }
     );
   }
 
