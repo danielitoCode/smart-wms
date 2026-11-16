@@ -99,6 +99,10 @@ export interface SalesOrder {
   backorderOpenedAt?: string | null;
   backorderFulfillableAt?: string | null;
   createdAt: string | null;
+  printedAt?: string | null;
+  primaryBinCode?: string | null;
+  primaryBinPickSequence?: number | null;
+  lineCount?: number;
   pickedAt: string | null;
   shippedAt: string | null;
   shippedDateLocal: string | null;
