@@ -58,14 +58,14 @@
     selected = selected.includes(id) ? selected.filter((value) => value !== id) : [...selected, id];
   }
   function openTicket(id: number) { void goto(`/picking-tickets/${id}/print`); }
-  function printSelected() {
-    const ids = selectedVisibleIds.slice(0, batchLimit);
-    if (ids.length) void goto(`/picking-tickets/print-all?status=${status}&so_ids=${ids.join(',')}`);
+  function openPrintBatch(ids: number[]) {
+    if (!ids.length) return;
+    const params = new URLSearchParams({ status, so_ids: ids.join(',') });
+    if (warehouse?.warehouseId != null) params.set('warehouse_id', String(warehouse.warehouseId));
+    if (typeof window !== 'undefined') window.open(`/picking-tickets/print-all?${params.toString()}`, '_blank', 'noopener');
   }
-  function printAll() {
-    const ids = visibleOrders.slice(0, batchLimit).map((order) => order.salesOrderId);
-    if (ids.length) void goto(`/picking-tickets/print-all?status=${status}&so_ids=${ids.join(',')}`);
-  }
+  function printSelected() { openPrintBatch(selectedVisibleIds.slice(0, batchLimit)); }
+  function printAll() { openPrintBatch(visibleOrders.slice(0, batchLimit).map((order) => order.salesOrderId)); }
   function openByNumber() {
     const term = search.trim().toLowerCase();
     const match = orders.find((order) => order.salesOrderNumber.toLowerCase() === term);
