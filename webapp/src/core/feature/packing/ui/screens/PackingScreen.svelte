@@ -97,16 +97,16 @@
 <style>
 	.page { font-family: system-ui, sans-serif; max-width: 40rem; margin: 1.5rem auto; padding: 0 1.25rem; }
 	h1 { margin: 0 0 0.25rem; font-size: 1.75rem; }
-	.subtitle, .meta { color: #64748b; margin: 0 0 1rem; }
+	.subtitle, .meta { color: var(--slate); margin: 0 0 1rem; }
 	.row { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
-	input { padding: 0.45rem 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; }
-	button { padding: 0.45rem 0.9rem; border-radius: 6px; border: 1px solid #0f172a; background: #0f172a; color: #fff; cursor: pointer; }
+	input { padding: 0.45rem 0.6rem; border: 1px solid var(--line); border-radius: 6px; }
+	button { padding: 0.45rem 0.9rem; border-radius: 6px; border: 1px solid var(--navy); background: var(--navy); color: #fff; cursor: pointer; }
 
 	button:disabled { opacity: 0.6; }
-	.err { color: #b91c1c; }
-	.ok { color: #166534; }
-	.table-wrap { border: 1px solid #e2e8f0; border-radius: 8px; overflow-x: auto; background: #fff; margin-bottom: 1rem; }
+	.err { color: var(--danger); }
+	.ok { color: var(--success, #166534); }
+	.table-wrap { border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; background: var(--card); margin-bottom: 1rem; }
 	table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-	th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid #e2e8f0; }
-	th { background: #f8fafc; }
+	th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--line); }
+	th { background: var(--surface); }
 </style>
