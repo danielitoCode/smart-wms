@@ -65,6 +65,13 @@ describe('AccessPolicy F0.2', () => {
 		expect(canAccessPages('USER', ['sales-orders'], required)).toBe(true);
 	});
 
+	it('backorder detail route remains gated by the backorders page grant', () => {
+		const required = requiredPageKeysForPath('/management/backorders/41');
+		expect(required).toEqual(['backorders']);
+		expect(canAccessPages('USER', ['backorders'], required)).toBe(true);
+		expect(canAccessPages('USER', ['sales-orders'], required)).toBe(false);
+	});
+
 	it('count-approvals page open uses count-approvals key', () => {
 		expect(requiredPageKeysForPath('/management/count-approvals')).toEqual(['count-approvals']);
 	});
