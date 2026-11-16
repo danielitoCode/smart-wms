@@ -235,6 +235,23 @@ export interface SalesOrderSourceSystemsResponseDto {
   source_systems: SalesOrderSourceSystemDto[];
 }
 
+export interface ShortPickDto {
+  log_id: number;
+  user: string;
+  sku: string;
+  qty_expected: number;
+  qty_picked: number;
+  shortage: number;
+  bin_code: string | null;
+  batch_id: string | null;
+  timestamp: string | null;
+}
+
+export interface ShortPicksResponseDto {
+  short_picks: ShortPickDto[];
+  total: number;
+}
+
 export interface SalesOrderAllocationResponseDto {
   so_line_id: number;
   quantity_allocated: number;
