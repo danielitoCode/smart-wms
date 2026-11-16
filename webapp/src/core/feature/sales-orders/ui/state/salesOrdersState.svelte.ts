@@ -10,7 +10,8 @@ import type {
   SalesOrder,
   SalesOrderPage,
   UpdateSalesOrder,
-  UpdateSalesOrderAddressInput
+  UpdateSalesOrderAddressInput,
+  UpdateSalesOrderAllocationResult
 } from '../../domain/entity/SalesOrder';
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 
@@ -161,6 +162,27 @@ export function createSalesOrdersState() {
       () => deps.updateSalesOrderAddress.execute(id, input),
       'No se pudieron actualizar las direcciones del pedido'
     );
+  }
+
+  async function updateAllocation(lineId: number, delta: number): Promise<UpdateSalesOrderAllocationResult | null> {
+    if (!selected || saving) return null;
+    saving = true;
+    error = null;
+    try {
+      const result = await deps.updateSalesOrderAllocation.execute(
+        selected.salesOrderId,
+        lineId,
+        { delta }
+      );
+      await load();
+      await refreshSelected();
+      return result;
+    } catch (err) {
+      error = toUserMessage(err, 'No se pudo ajustar la asignación de inventario');
+      return null;
+    } finally {
+      saving = false;
+    }
   }
 
   async function addLine(itemId: number, quantity: number): Promise<boolean> {
@@ -366,6 +388,7 @@ export function createSalesOrdersState() {
     close,
     update,
     updateAddress,
+    updateAllocation,
     addLine,
     updateLine,
     deleteLine,
