@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getContext, onMount } from 'svelte';
+  import { getContext } from 'svelte';
   import { goto } from '$app/navigation';
   import PageHeader from '#lib/components/PageHeader.svelte';
   import UiBanner from '#lib/components/UiBanner.svelte';
@@ -51,12 +51,22 @@
   });
   const visibleOrders = $derived(displayRows.map((row) => row.order));
   const selectedVisibleIds = $derived(visibleOrders.filter((order) => selected.includes(order.salesOrderId)).map((order) => order.salesOrderId));
-  onMount(() => { void load(); });
+  let observedWarehouseId: number | null | undefined = undefined;
+  $effect(() => {
+    const id = warehouse?.warehouseId ?? null;
+    if (id === observedWarehouseId) return;
+    observedWarehouseId = id;
+    selected = [];
+    if (id == null) { orders = []; return; }
+    void load();
+  });
   async function load() {
+    const selectedWarehouseId = warehouse?.warehouseId;
+    if (selectedWarehouseId == null) { orders = []; loading = false; return; }
     loading = true; error = '';
     try {
       const page = await queue.getAllPrintableTickets.execute({
-        warehouseId: warehouse?.warehouseId ?? undefined, status, hidePrinted
+        warehouseId: selectedWarehouseId, status, hidePrinted
       });
       orders = page.items.filter((order) => ['OPEN', 'PICKED'].includes(order.status) &&
         !['return', 'refund'].includes(order.orderType ?? ''));
@@ -123,7 +133,7 @@
       <button onclick={printAll} disabled={!visibleOrders.length}>{visibleOrders.length > batchLimit ? `Print first ${batchLimit} of ${visibleOrders.length}` : `Print all (${visibleOrders.length})`}</button>
     </div>
     {#if loading}<p class="muted">Loading printable orders…</p>
-    {:else if visibleOrders.length === 0}<p class="empty">{multiOrders ? 'No multi-order groups in this queue.' : longOrders ? 'No long orders in this queue.' : 'No orders ready for picking.'}</p>
+    {:else if visibleOrders.length === 0}<p class="empty">{warehouse?.warehouseId == null ? 'Select a warehouse to load picking tickets.' : multiOrders ? 'No multi-order groups in this queue.' : longOrders ? 'No long orders in this queue.' : 'No orders ready for picking.'}</p>
     {:else}
       <div class="table-wrap">
         <table>
