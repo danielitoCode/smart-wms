@@ -24,7 +24,7 @@ describe('BackorderMapper', () => {
       }
     });
     expect(result.parentSalesOrderNumber).toBe('SO-10');
-    expect(result.parentSalesOrderId).toBeNull();
+    expect(result.parentSalesOrderId).toBeUndefined();
   });
 
   it('maps a partially resolved row into the ready-to-ship queue without changing its quantities', () => {
