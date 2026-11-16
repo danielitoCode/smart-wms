@@ -109,6 +109,26 @@
 		return page.url.pathname === href || page.url.pathname.startsWith(href + '/');
 	}
 
+	/** Breadcrumb for capsule topbar (section / page). */
+	const crumb = $derived.by(() => {
+		const path = page.url.pathname;
+		for (const group of navGroups) {
+			for (const item of group.items) {
+				if (isActive(item.href)) {
+					return { section: group.label, page: item.label };
+				}
+			}
+		}
+		if (path.startsWith('/change-password')) {
+			return { section: 'ABELLIS', page: i18n.t('Contraseña') };
+		}
+		return { section: 'Smart WMS', page: path.replace(/^\//, '') || 'app' };
+	});
+
+	const userInitial = $derived(
+		(guard.user?.fullName || guard.user?.username || '?').trim().charAt(0).toUpperCase()
+	);
+
 	function scrollActiveNavIntoView() {
 		if (typeof document === 'undefined') return;
 		const active = document.querySelector('.main-nav a.nav-link.active');
@@ -212,19 +232,40 @@
 		</aside>
 		<div class="main">
 			<header class="topbar">
-				<button type="button" class="menu-btn" onclick={() => (sidebarOpen = !sidebarOpen)} aria-label={i18n.t('Menú')}>
-					<AppIcon name="menu" size={20} />
-				</button>
-				<div class="topbar-actions">
-					<ThemeToggle />
-					<LocaleSwitcher />
-					{#if warehouseSelection.canSelect && warehouseSelection.warehouses.length > 0}
-						<WarehousePicker />
-					{/if}
-					{#if !guard.user?.mustChangePassword}<a class="account-action" href="/change-password" aria-label={i18n.t('Cambiar contraseña')}><AppIcon name="lock" size={17} /><span>{i18n.t('Contraseña')}</span></a>{/if}
-					<button type="button" class="account-action" onclick={logout} aria-label={i18n.t('Cerrar sesión')}>
-						<AppIcon name="logout" size={17} /><span>{i18n.t('Salir')}</span>
+				<div class="topbar-pill">
+					<button type="button" class="menu-btn" onclick={() => (sidebarOpen = !sidebarOpen)} aria-label={i18n.t('Menú')}>
+						<AppIcon name="menu" size={18} />
 					</button>
+					<nav class="crumbs" aria-label="Breadcrumb">
+						<span class="crumb-section">{crumb.section}</span>
+						<span class="crumb-sep" aria-hidden="true">/</span>
+						<span class="crumb-page">{crumb.page}</span>
+					</nav>
+					<div class="topbar-spacer"></div>
+					<div class="topbar-actions">
+						{#if warehouseSelection.canSelect && warehouseSelection.warehouses.length > 0}
+							<div class="pill-slot warehouse-slot">
+								<WarehousePicker />
+							</div>
+						{/if}
+						<div class="pill-slot locale-slot">
+							<LocaleSwitcher />
+						</div>
+						<div class="icon-tools">
+							<div class="icon-tool theme-slot">
+								<ThemeToggle />
+							</div>
+							{#if !guard.user?.mustChangePassword}
+								<a class="icon-btn" href="/change-password" aria-label={i18n.t('Cambiar contraseña')} title={i18n.t('Contraseña')}>
+									<AppIcon name="lock" size={16} />
+								</a>
+							{/if}
+							<button type="button" class="icon-btn" onclick={logout} aria-label={i18n.t('Cerrar sesión')} title={i18n.t('Salir')}>
+								<AppIcon name="logout" size={16} />
+							</button>
+							<span class="avatar" title={guard.user?.fullName || guard.user?.username || ''} aria-hidden="true">{userInitial}</span>
+						</div>
+					</div>
 				</div>
 			</header>
 			<main class="content">
@@ -353,7 +394,6 @@
 		transform: rotate(180deg);
 	}
 
-	/* Rail estrecho: marca arriba, botón expandir debajo (sin solaparse) */
 	.shell.nav-collapsed .brand-row {
 		flex-direction: column;
 		align-items: center;
@@ -534,45 +574,162 @@
 	}
 
 	.topbar {
+		position: sticky;
+		top: 0;
+		z-index: 30;
+		padding: 0.75rem 1rem 0.35rem;
+		background: transparent;
+		pointer-events: none;
+	}
+
+	.topbar-pill {
+		pointer-events: auto;
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		gap: 0.75rem;
-		min-height: 3.25rem;
-		padding: 0.55rem 1rem;
-		border-bottom: 1px solid var(--line);
-		background: var(--surface);
-		position: relative;
-		z-index: 30;
+		gap: 0.65rem;
+		min-height: 3.15rem;
+		padding: 0.35rem 0.55rem 0.35rem 1rem;
+		border-radius: 999px;
+		border: 1px solid color-mix(in srgb, var(--line) 85%, transparent);
+		background: color-mix(in srgb, var(--surface) 88%, transparent);
+		backdrop-filter: blur(14px) saturate(1.15);
+		-webkit-backdrop-filter: blur(14px) saturate(1.15);
+		box-shadow:
+			0 10px 28px -18px color-mix(in srgb, var(--navy) 40%, transparent),
+			0 1px 0 color-mix(in srgb, #fff 6%, transparent) inset;
+		color: var(--ink);
+	}
+
+	:global([data-theme='dark']) .topbar-pill,
+	:global(.theme-dark) .topbar-pill {
+		background: color-mix(in srgb, #0c1219 82%, transparent);
+		border-color: color-mix(in srgb, #ffffff 10%, transparent);
+		box-shadow:
+			0 12px 32px -16px rgb(0 0 0 / 0.55),
+			0 1px 0 color-mix(in srgb, #fff 5%, transparent) inset;
+	}
+
+	.crumbs {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		min-width: 0;
+		font-size: 0.8125rem;
+		line-height: 1.2;
+		white-space: nowrap;
+	}
+
+	.crumb-section {
+		color: var(--slate);
+		font-weight: 500;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.crumb-sep {
+		color: color-mix(in srgb, var(--slate) 70%, transparent);
+		font-weight: 400;
+	}
+
+	.crumb-page {
+		color: var(--ink);
+		font-weight: 600;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.topbar-spacer {
+		flex: 1 1 auto;
+		min-width: 0.5rem;
 	}
 
 	.topbar-actions {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
-		margin-left: auto;
+		gap: 0.4rem;
+		flex: none;
+	}
+
+	.pill-slot {
+		display: flex;
+		align-items: center;
+	}
+
+	.icon-tools {
+		display: flex;
+		align-items: center;
+		gap: 0.2rem;
+		padding-right: 0.15rem;
+	}
+
+	.icon-btn {
+		display: inline-grid;
+		place-items: center;
+		width: 2.15rem;
+		height: 2.15rem;
+		border: 0;
+		border-radius: 999px;
+		background: transparent;
+		color: var(--slate);
+		cursor: pointer;
+		text-decoration: none;
+		transition:
+			background 0.15s ease,
+			color 0.15s ease;
+	}
+
+	.icon-btn:hover {
+		background: color-mix(in srgb, var(--navy) 12%, transparent);
+		color: var(--ink);
+	}
+
+	.icon-tool {
+		display: grid;
+		place-items: center;
+	}
+
+	.avatar {
+		display: inline-grid;
+		place-items: center;
+		width: 2rem;
+		height: 2rem;
+		margin-left: 0.15rem;
+		border-radius: 999px;
+		background: linear-gradient(
+			145deg,
+			color-mix(in srgb, var(--navy) 75%, white),
+			var(--navy-deep, #012a50)
+		);
+		color: #fff;
+		font: 700 0.78rem / 1 var(--disp, system-ui);
+		letter-spacing: 0.02em;
+		box-shadow: 0 0 0 2px color-mix(in srgb, var(--surface) 80%, transparent);
+		user-select: none;
 	}
 
 	.menu-btn {
 		display: none;
-		border: 1px solid var(--line);
-		background: var(--surface);
-		border-radius: 0.5rem;
-		padding: 0.35rem;
+		border: 0;
+		background: transparent;
+		border-radius: 999px;
+		padding: 0.4rem;
+		color: var(--ink);
+		cursor: pointer;
 	}
 
-	.account-action {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.35rem;
-		border: 1px solid var(--line);
-		background: var(--surface);
-		color: var(--ink);
-		border-radius: 0.5rem;
-		padding: 0.35rem 0.55rem;
-		text-decoration: none;
-		font-size: 0.82rem;
-		cursor: pointer;
+	.menu-btn:hover {
+		background: color-mix(in srgb, var(--navy) 12%, transparent);
+	}
+
+	.topbar-pill :global(.theme-switch),
+	.topbar-pill :global(.theme-toggle) {
+		transform: scale(0.88);
+		transform-origin: center;
+	}
+
+	.topbar-pill :global(button),
+	.topbar-pill :global(select) {
+		border-radius: 999px;
 	}
 
 	.content {
