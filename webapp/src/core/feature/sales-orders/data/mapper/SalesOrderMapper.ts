@@ -14,33 +14,59 @@ function numberOrNull(value: string | number | null | undefined): number | null 
 }
 
 function toAddress(dto: SalesOrderDto, prefix: 'billing' | 'shipping'): SalesOrderAddress {
-  const read = (suffix: string): string | null => {
-    const value = dto[`${prefix}_address_${suffix}`];
-    return typeof value === 'string' && value.length > 0 ? value : null;
-  };
+  const fields = prefix === 'billing'
+    ? {
+        name: dto.billing_address_name,
+        line1: dto.billing_address_line1,
+        line2: dto.billing_address_line2,
+        city: dto.billing_address_city,
+        state: dto.billing_address_state,
+        postalCode: dto.billing_address_postal_code,
+        country: dto.billing_address_country,
+        phone: dto.billing_address_phone
+      }
+    : {
+        name: dto.shipping_address_name,
+        line1: dto.shipping_address_line1,
+        line2: dto.shipping_address_line2,
+        city: dto.shipping_address_city,
+        state: dto.shipping_address_state,
+        postalCode: dto.shipping_address_postal_code,
+        country: dto.shipping_address_country,
+        phone: dto.shipping_address_phone
+      };
+
+  const normalize = (value: string | null | undefined): string | null =>
+    value == null || value === '' ? null : value;
+
   return {
-    name: read('name'), line1: read('line1'), line2: read('line2'),
-    city: read('city'), state: read('state'), postalCode: read('postal_code'),
-    country: read('country'), phone: read('phone')
+    name: normalize(fields.name),
+    line1: normalize(fields.line1),
+    line2: normalize(fields.line2),
+    city: normalize(fields.city),
+    state: normalize(fields.state),
+    postalCode: normalize(fields.postalCode),
+    country: normalize(fields.country),
+    phone: normalize(fields.phone)
   };
 }
 
 function toLine(dto: SalesOrderLineDto): SalesOrderLine {
-  const lineId = dto.so_line_id ?? dto.line_id ?? dto.id;
+  const lineId = dto.so_line_id;
   if (lineId == null || !Number.isInteger(lineId) || lineId < 1) {
     throw new Error('La respuesta del pedido contiene una línea sin so_line_id válido');
   }
   return {
     soLineId: lineId, lineId,
-    lineNumber: dto.line_number ?? null, itemId: dto.item_id ?? null,
+    lineNumber: dto.line_number, itemId: dto.item_id,
     sku: dto.sku ?? '', itemName: dto.item_name ?? '', upc: dto.upc ?? null,
-    quantityOrdered: Number(dto.quantity_ordered ?? dto.qty_ordered ?? 0),
-    quantityAllocated: Number(dto.quantity_allocated ?? 0),
-    quantityPicked: Number(dto.quantity_picked ?? 0),
-    quantityPacked: Number(dto.quantity_packed ?? 0),
-    quantityShipped: Number(dto.quantity_shipped ?? 0),
-    quantityReceived: Number(dto.quantity_received ?? 0),
-    status: dto.status ?? null
+    quantityOrdered: dto.quantity_ordered,
+    quantityAllocated: dto.quantity_allocated,
+    quantityPicked: dto.quantity_picked,
+    quantityPacked: dto.quantity_packed,
+    quantityShipped: dto.quantity_shipped,
+    quantityReceived: dto.quantity_received,
+    status: dto.status
   };
 }
 
@@ -54,7 +80,7 @@ function toPickTask(dto: SalesOrderPickTaskDto): SalesOrderPickTask {
 }
 
 function toDomain(dto: SalesOrderDto): SalesOrder {
-  const id = dto.so_id ?? dto.id;
+  const id = dto.so_id;
   if (id == null || !Number.isInteger(id) || id < 1) {
     throw new Error('La respuesta del pedido no contiene un so_id válido');
   }
