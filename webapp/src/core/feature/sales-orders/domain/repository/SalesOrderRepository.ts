@@ -3,7 +3,7 @@ import type {
   RevertSalesOrderInput, CreateRmaInput, RelatedSalesOrder,
   SalesOrder, SalesOrderPage, UpdateSalesOrder, UpdateSalesOrderAddressInput,
   UpdateSalesOrderAllocationInput, UpdateSalesOrderAllocationResult,
-  SalesOrderSourceSystem
+  SalesOrderSourceSystem, AdminShipResult
 } from '../entity/SalesOrder';
 
 export type ListSalesOrdersParams = {
@@ -33,7 +33,7 @@ export interface SalesOrderRepository {
   addLine(id: number, input: { itemId: number; quantityOrdered: number }): Promise<void>;
   updateLine(id: number, lineId: number, quantity: number): Promise<void>;
   deleteLine(id: number, lineId: number): Promise<void>;
-  adminShip(id: number): Promise<void>;
+  adminShip(id: number, acknowledgeShortfall?: boolean): Promise<AdminShipResult>;
   getAvailableBins(id: number, lineId: number): Promise<import('../entity/SalesOrder').AvailableSalesOrderBin[]>;
   adminPick(id: number, lines: Array<{ soLineId: number; binId: number; quantity: number }>): Promise<void>;
   partialFulfill(id: number, input: PartialFulfillInput): Promise<void>;
