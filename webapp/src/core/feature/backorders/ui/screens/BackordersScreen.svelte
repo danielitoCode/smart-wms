@@ -1,245 +1,199 @@
 <script lang="ts">
-    import {getContext} from 'svelte'
-    import type {I18nState} from '#lib/i18n/i18n.svelte.ts'
-    import {createBackordersState} from '../state/backordersState.svelte'
+  import { getContext } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { page } from '$app/state';
+  import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
+  import type { User } from '../../../auth/domain/entity/User';
+  import { createBackordersState } from '../state/backordersState.svelte';
+  import type { BackorderQueueTab } from '../../domain/entity/Backorder';
 
-    const i18n=getContext<I18nState>('i18n')
-    const selection=getContext<{warehouseId:number|null}>('warehouseSelection')
-    const vm=createBackordersState()
-    let reason=$state('other'),target=$state<number|null>(null)
+  const i18n = getContext<I18nState>('i18n');
+  const selection = getContext<{ warehouseId: number | null }>('warehouseSelection');
+  const guard = getContext<{ status: string; user: User | null }>('authGuard');
+  const vm = createBackordersState();
 
-    $effect( ()=>{
-        const w=selection?.warehouseId,t=vm.tab
-        void vm.load(w??null,t)
-    })
+  let search = $state('');
+  let scopeError = $state(false);
+  let successMessage = $state('');
 
-    async function cancel(){
-        if(target!==null&&await vm.cancel(target,reason,selection?.warehouseId??null)) target=null
+  const canBrowseAllWarehouses = $derived(
+    guard.user?.role === 'ADMIN' || guard.user?.allowedPages.includes('warehouses') === true
+  );
+  const canOpenSalesOrderDetail = $derived(
+    guard.user?.role === 'ADMIN' || guard.user?.allowedPages.includes('sales-orders') === true
+  );
+  const activeTab = $derived<BackorderQueueTab>(
+    page.url.searchParams.get('tab') === 'ready-to-ship' ? 'ready-to-ship' : 'waiting'
+  );
+  const visibleRows = $derived.by(() => {
+    const query = search.trim().toLocaleLowerCase();
+    if (!query) return vm.rows;
+    return vm.rows.filter((row) =>
+      [
+        row.salesOrderNumber,
+        row.parentSalesOrderNumber,
+        row.customerName,
+        ...row.items.flatMap((item) => [item.sku, item.itemName, item.openPurchaseOrder?.purchaseOrderNumber ?? ''])
+      ].some((value) => value?.toLocaleLowerCase().includes(query))
+    );
+  });
+
+  $effect(() => {
+    if (guard.status !== 'authenticated') return;
+    const warehouseId = selection?.warehouseId ?? null;
+    if (warehouseId === null && !canBrowseAllWarehouses) {
+      scopeError = true;
+      return;
     }
+    scopeError = false;
+    void vm.load(warehouseId, activeTab);
+  });
 
+  async function changeTab(tab: BackorderQueueTab): Promise<void> {
+    const url = new URL(page.url);
+    url.searchParams.set('tab', tab);
+    await goto(url, { replaceState: true, keepFocus: true, noScroll: true });
+  }
+
+  function formatDateOnly(value: string | null): string {
+    if (!value) return '—';
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+    if (!match) return value;
+    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])).toLocaleDateString();
+  }
 </script>
 
 <section class="page">
-    <header>
-        <div>
-            <p class="eyebrow">ABELLIS · SMART WMS</p>
-            <h1>{i18n.t('Pedidos pendientes')}</h1>
-            <p>{i18n.t('Controla pedidos bloqueados por falta de existencias y los que ya pueden despacharse.')}</p>
-        </div>
-    </header>
-    <div class="tabs">
-        <button
-                class:active={vm.tab==='waiting'}
-                onclick={()=>
-                    vm.load(selection?.warehouseId??null,'waiting')
-                }
-        >
-            {i18n.t('Pendientes de inventario')}
-        </button>
-        <button
-                class:active={vm.tab==='ready-to-ship'}
-                onclick={()=>void vm.load(selection?.warehouseId??null,'ready-to-ship')}
-        >
-            {i18n.t('Listos para despacho')}
-        </button>
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">SMART WMS · OPERACIONES</p>
+      <h1>{i18n.t('Pedidos pendientes')}</h1>
+      <p>{i18n.t('Pedidos retenidos por falta de inventario y pedidos que ya pueden continuar a despacho.')}</p>
     </div>
-    {#if vm.error}
-        <p class="error" role="alert">{vm.error}</p>
-    {/if}
-    {#if target!==null}
-        <div class="cancel">
-            <label>{i18n.t('Motivo de cancelación')}
-                <select bind:value={reason}>
-                    <option value="other">{i18n.t('Otro')}</option>
-                    <option value="found">{i18n.t('Existencias encontradas')}</option>
-                    <option value="customer_asked">{i18n.t('Solicitado por cliente')}</option>
-                    <option value="refunded">{i18n.t('Reembolsado')}</option>
-                    <option value="parent_cancelled">{i18n.t('Pedido original cancelado')}</option>
-                </select>
-            </label>
-            <button onclick={()=>target=null}>{i18n.t('Volver')}</button>
-            <button class="danger" disabled={vm.saving} onclick={()=>void cancel()}>
-                {i18n.t('Confirmar cancelación')}
-            </button>
-        </div>
-    {/if}
-    {#if vm.loading}
-        <p>{i18n.t('Cargando…')}</p>
-    {:else if vm.rows.length===0}
-        <p class="empty">{i18n.t('No hay pedidos en esta cola.')}</p>
-    {:else}
-        <div class="cards">
-            {#each vm.rows as r (r.salesOrderId)}
-                <article>
-                    <div class="card-head">
-                        <div>
-                            <strong>{r.salesOrderNumber}</strong>
-                            <span>{i18n.t('Pedido original')}: {r.parentSalesOrderNumber||'—'}</span>
-                        </div>
-                        <span class="status">{r.status}</span>
-                    </div><p>{r.customerName??'—'} · {r.daysWaiting} {i18n.t('días pendientes')}</p>
-                    <div class="items">
-                        {#each r.items as item,i}
-                            <div>
-                                <span>{item.sku} · {item.itemName}</span>
-                                <b>× {item.quantity}</b>
-                                {#if item.openPurchaseOrder}
-                                    <small>
-                                        {i18n.t('Compra abierta')}: {item.openPurchaseOrder.purchaseOrderNumber} · {item.openPurchaseOrder.quantityRemaining}</small>
-                                {:else}
-                                    <small>{i18n.t('Sin orden de compra abierta')}</small>
-                                {/if}
-                            </div>
-                        {/each}
-                    </div>
-                    {#if vm.tab==='waiting'}
-                        <button class="danger" onclick={()=>target=r.salesOrderId}>
-                            {i18n.t('Cancelar pedido pendiente')}
-                        </button>
-                    {:else}
-                        <span class="ready">{i18n.t('Disponible para despacho')}</span>
-                    {/if}
-                </article>
+    <div class="summary">
+      <span>{i18n.t('Pedidos en esta cola')}</span>
+      <strong>{visibleRows.length}</strong>
+    </div>
+  </header>
+
+  <nav class="tabs" aria-label={i18n.t('Colas de pedidos pendientes')}>
+    <button type="button" class:active={activeTab === 'waiting'} aria-pressed={activeTab === 'waiting'} onclick={() => void changeTab('waiting')}>
+      {i18n.t('Pendientes de inventario')}
+    </button>
+    <button type="button" class:active={activeTab === 'ready-to-ship'} aria-pressed={activeTab === 'ready-to-ship'} onclick={() => void changeTab('ready-to-ship')}>
+      {i18n.t('Listos para despacho')}
+    </button>
+  </nav>
+
+  <div class="filters">
+    <label>
+      <span>{i18n.t('Buscar')}</span>
+      <input bind:value={search} type="search" placeholder={i18n.t('Pedido, original, cliente o SKU')} />
+    </label>
+    <span class="filter-hint">{i18n.t('La cola se limita al almacén seleccionado.')}</span>
+  </div>
+
+  {#if scopeError}
+    <p class="message error" role="alert">{i18n.t('No tienes un almacén asignado. Selecciona un almacén autorizado o solicita acceso a Almacenes.')}</p>
+  {:else if vm.error}
+    <p class="message error" role="alert">{vm.error}</p>
+  {/if}
+  {#if successMessage}
+    <p class="message success" role="status">{successMessage}</p>
+  {/if}
+
+  {#if vm.loading}
+    <p class="empty">{i18n.t('Cargando pedidos pendientes…')}</p>
+  {:else if !scopeError && visibleRows.length === 0}
+    <p class="empty">{search.trim() ? i18n.t('No hay resultados para este filtro.') : activeTab === 'waiting' ? i18n.t('No hay pedidos esperando inventario.') : i18n.t('No hay pedidos listos para despacho.')}</p>
+  {:else}
+    <div class="cards">
+      {#each visibleRows as row (row.salesOrderId)}
+        <article class="card">
+          <div class="card-head">
+            <div>
+              <p class="eyebrow">{i18n.t('Backorder')}</p>
+              <h2>{row.salesOrderNumber}</h2>
+            </div>
+            <span class:ready={row.status !== 'WAITING_STOCK'} class="status">{row.status}</span>
+          </div>
+          <div class="metadata">
+            <span><b>{i18n.t('Pedido original')}:</b> {row.parentSalesOrderNumber || '—'}</span>
+            <span><b>{i18n.t('Cliente')}:</b> {row.customerName || '—'}</span>
+            <span><b>{i18n.t('Almacén')}:</b> {row.warehouseId}</span>
+            <span><b>{i18n.t('Días pendientes')}:</b> {row.daysWaiting}</span>
+            {#if activeTab === 'ready-to-ship'}
+              <span><b>{i18n.t('Disponible desde')}:</b> {formatDateOnly(row.fulfillableSince)}</span>
+            {/if}
+          </div>
+          <div class="items">
+            <h3>{i18n.t('Artículos pendientes')}</h3>
+            {#each row.items as item, index}
+              <div class="item" class:last={index === row.items.length - 1}>
+                <div>
+                  <strong>{item.sku}</strong>
+                  <span>{item.itemName}</span>
+                </div>
+                <b>× {item.quantity}</b>
+                <small>
+                  {#if item.openPurchaseOrder}
+                    {i18n.t('Compra abierta')}: {item.openPurchaseOrder.purchaseOrderNumber}
+                    · {i18n.t('Pendiente')}: {item.openPurchaseOrder.quantityRemaining}
+                    · {i18n.t('Fecha estimada')}: {formatDateOnly(item.openPurchaseOrder.expectedDate)}
+                  {:else}
+                    {i18n.t('No se encontró una orden de compra abierta para este artículo en este almacén.')}
+                  {/if}
+                </small>
+              </div>
             {/each}
-        </div>
-    {/if}
+          </div>
+          {#if canOpenSalesOrderDetail}
+            <a class="detail-link" href={'/management/backorders/' + row.salesOrderId}>{i18n.t('Ver detalle del pedido')}</a>
+          {:else}
+            <p class="permission-note">{i18n.t('Para abrir el detalle del pedido original necesitas el permiso Pedidos de venta.')}</p>
+          {/if}
+        </article>
+      {/each}
+    </div>
+  {/if}
 </section>
 
 <style>
-    .page{
-        max-width:78rem;
-        margin:1.4rem auto;
-        padding:0 1.1rem;
-        color:var(--ink)
-    }
-
-    header{
-        margin-bottom:1rem
-    }
-
-    h1{
-        margin:0;
-        font:700 1.6rem var(--disp)
-    }
-
-    header p{
-        color:var(--slate);
-        font-size:.9rem
-    }
-
-    .eyebrow{
-        font:600 .65rem var(--disp);
-        letter-spacing:.14em
-    }
-
-    .tabs{
-        display:flex;
-        gap:.5rem;
-        margin:1rem 0
-    }
-
-    .tabs button,.cancel button{
-        border:1px solid var(--line);
-        border-radius:8px;
-        padding:.55rem .8rem;
-        background:var(--card);
-        color:var(--ink);
-        cursor:pointer
-    }
-
-    .tabs button.active{
-        background:var(--navy);
-        color:white
-    }
-
-    .cards{
-        display:grid;
-        grid-template-columns:repeat(auto-fill,minmax(290px,1fr));
-        gap:.8rem
-    }
-
-    .cards article,.cancel{
-        padding:1rem;
-        border:1px solid var(--line);
-        border-radius:12px;
-        background:var(--card)
-    }
-
-    .card-head{
-        display:flex;
-        justify-content:space-between;
-        gap:.7rem
-    }
-
-    .card-head div{
-        display:grid;
-        gap:.2rem
-    }
-
-    .card-head strong{
-        font:700 1.05rem var(--disp)
-    }
-
-    .card-head span,.cards p,.items small{
-        color:var(--slate);
-        font-size:.8rem
-    }
-
-    .status{font-size:.72rem}
-
-    .items{
-        border-top:1px solid var(--line);
-        margin:.8rem 0
-    }
-
-    .items div{
-        display:grid;
-        grid-template-columns:1fr auto;
-        gap:.3rem;
-        padding:.55rem 0;
-        border-bottom:1px solid var(--line);
-        font-size:.82rem
-    }
-
-    .items small{
-        grid-column:1/-1
-    }
-
-    .danger,.error{
-        color:var(--danger)
-    }
-
-    .ready{
-        color:var(--success);
-        font-size:.82rem
-    }
-
-    .cancel{
-        display:flex;
-        align-items:end;
-        gap:.6rem;
-        margin:1rem 0;
-        flex-wrap:wrap
-    }
-
-    .cancel label{
-        display:grid;
-        gap:.3rem;
-        color:var(--slate);
-        font-size:.8rem
-    }
-
-    .cancel select{
-        min-height:39px;
-        border:1px solid var(--line);
-        border-radius:8px;
-        padding:.5rem;
-        background:var(--card);
-        color:var(--ink)
-    }
-
-    .empty{
-        color:var(--slate);
-        padding:2rem 0
-    }
+  .page{max-width:82rem;margin:1.5rem auto;padding:0 1.25rem;color:var(--ink)}
+  .page-header{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;margin-bottom:1.25rem}
+  h1{margin:0;font:700 1.7rem var(--disp)}
+  .page-header>div:first-child>p:last-child{color:var(--slate);margin:.45rem 0 0;font-size:.9rem}
+  .eyebrow{font:600 .65rem var(--disp);letter-spacing:.13em;color:var(--slate);margin:0 0 .35rem}
+  .summary{display:grid;gap:.2rem;text-align:right;color:var(--slate);font-size:.78rem}
+  .summary strong{font:700 1.5rem var(--disp);color:var(--ink)}
+  .tabs{display:flex;gap:.5rem;border-bottom:1px solid var(--line);margin-bottom:1rem}
+  .tabs button{border:0;border-bottom:2px solid transparent;background:transparent;color:var(--slate);padding:.7rem .9rem;cursor:pointer;font:600 .85rem var(--disp)}
+  .tabs button.active{color:var(--ink);border-bottom-color:var(--accent)}
+  .filters{display:flex;align-items:end;gap:1rem;flex-wrap:wrap;margin:1rem 0}
+  .filters label{display:grid;gap:.3rem;width:min(100%,25rem);font-size:.78rem;color:var(--slate)}
+  .filters input{min-height:40px;border:1px solid var(--line);border-radius:8px;padding:.55rem .7rem;background:var(--card);color:var(--ink)}
+  .filter-hint{font-size:.75rem;color:var(--slate);padding-bottom:.65rem}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,350px),1fr));gap:.9rem}
+  .card{border:1px solid var(--line);border-radius:12px;background:var(--card);padding:1rem;min-width:0}
+  .card-head{display:flex;justify-content:space-between;gap:.7rem;align-items:flex-start}
+  h2{margin:0;font:700 1.1rem var(--disp)}
+  .status{border:1px solid var(--line);border-radius:99px;padding:.25rem .55rem;font-size:.7rem;color:var(--slate)}
+  .status.ready{color:var(--success);border-color:var(--success)}
+  .metadata{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem;margin:.9rem 0;color:var(--slate);font-size:.76rem}
+  .metadata b{color:var(--ink);font-weight:600}
+  .items{border-top:1px solid var(--line);margin-top:.8rem;padding-top:.65rem}
+  h3{margin:0 0 .4rem;font:650 .8rem var(--disp)}
+  .item{display:grid;grid-template-columns:1fr auto;gap:.2rem .5rem;padding:.55rem 0;border-bottom:1px solid var(--line);font-size:.78rem}
+  .item.last{border-bottom:0}
+  .item>div{display:grid;gap:.1rem}
+  .item>div span,.item small{color:var(--slate)}
+  .item small{grid-column:1/-1;font-size:.7rem;line-height:1.4}
+  .detail-link{display:inline-flex;margin-top:.75rem;color:var(--accent);font-size:.82rem;font-weight:650;text-decoration:none}
+  .detail-link:hover{text-decoration:underline}
+  .permission-note,.empty{color:var(--slate);font-size:.82rem}
+  .empty{padding:2rem 0}
+  .message{padding:.7rem .85rem;border:1px solid var(--line);border-radius:8px;font-size:.82rem}
+  .error{color:var(--danger)}
+  .success{color:var(--success)}
+  @media(max-width:600px){.page-header{align-items:flex-start}.summary{display:none}.metadata{grid-template-columns:1fr}.tabs{overflow-x:auto}.tabs button{white-space:nowrap}}
 </style>
