@@ -23,7 +23,6 @@
     guard.user?.role === 'ADMIN' || guard.user?.allowedPages.includes('sales-orders') === true
   );
   const order = $derived(vm.detail?.order ?? null);
-  const parentOrder = $derived(vm.detail?.parentSalesOrder ?? null);
   const cancelable = $derived(
     order !== null &&
     hasSalesOrderPermission &&
@@ -111,13 +110,13 @@
           <dt>{i18n.t('Tipo de pedido')}</dt><dd>{order.orderType ?? '—'}</dd>
           <dt>{i18n.t('Pedido original')}</dt>
           <dd>
-            {#if parentOrder}
-              <a href={'/sales-orders/' + parentOrder.salesOrderId}>{parentOrder.salesOrderNumber}</a>
+            {#if order.parentSoId !== null}
+              <a href={'/sales-orders/' + order.parentSoId}>{order.parentSoNumber || order.parentSalesOrderNumber || order.parentSoId}</a>
             {:else}
               {order.parentSoNumber || order.parentSalesOrderNumber || '—'}
             {/if}
           </dd>
-          <dt>{i18n.t('Estado del pedido original')}</dt><dd>{parentOrder?.status ?? '—'}</dd>
+          <dt>{i18n.t('Estado del pedido original')}</dt><dd>{order.parentSoId === null ? '—' : i18n.t('Abre el pedido original para consultar su estado.')}</dd>
           <dt>{i18n.t('Motivo de cancelación')}</dt><dd>{order.cancellationReason || '—'}</dd>
         </dl>
         {#if !parentOrder && order.parentSoId === null}
@@ -180,7 +179,7 @@
       <div class="overlay">
         <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="cancel-title">
           <h2 id="cancel-title">{i18n.t('Confirmar cancelación')}</h2>
-          <p>{i18n.t('Se cancelará únicamente el backorder')} <strong>{order.salesOrderNumber}</strong>. {i18n.t('El pedido original')} <strong>{parentOrder?.salesOrderNumber ?? order.parentSalesOrderNumber}</strong> {i18n.t('no se cancelará por esta acción.')}</p>
+          <p>{i18n.t('Se cancelará únicamente el backorder')} <strong>{order.salesOrderNumber}</strong>. {i18n.t('El pedido original')} <strong>{order.parentSoNumber || order.parentSalesOrderNumber || order.parentSoId}</strong> {i18n.t('no se cancelará por esta acción.')}</p>
           {#if order.status === 'WAITING_STOCK'}
             <p class="hint">{i18n.t('Este estado no mantiene reservas de inventario; la cancelación no requiere liberar cantidades recogidas.')}</p>
           {:else if order.status === 'OPEN'}
