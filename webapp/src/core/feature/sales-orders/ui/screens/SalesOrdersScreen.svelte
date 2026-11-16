@@ -660,7 +660,17 @@
 {#if showAdminPick && vm.selected}
   <div class="so-overlay so-nested"><section class="so-dialog" role="dialog" aria-modal="true"><header class="so-dialog-head"><h2>{i18n.t('Picking administrativo')}</h2><button type="button" onclick={() => showAdminPick = false}>×</button></header>
     {#each vm.selected.lines.filter((line) => line.quantityOrdered > line.quantityPicked) as line (line.soLineId)}
-      <div class="so-pick-row"><strong>{line.sku}</strong><select value={pickBinByLine[line.soLineId] ?? ''} onchange={(event) => pickBinByLine[line.soLineId] = event.currentTarget.value}><option value="">{i18n.t('Seleccionar bin')}</option>{#each vm.availableBinsByLine[line.soLineId] ?? [] as bin}<option value={bin.binId}>{bin.binCode} · {bin.quantityAvailable}</option>{/each}</select><input type="number" min="1" max={line.quantityOrdered - line.quantityPicked} value={pickQuantityByLine[line.soLineId] ?? ''} oninput={(event) => pickQuantityByLine[line.soLineId] = event.currentTarget.value} /></div>
+      <div class="so-pick-group">
+        <strong>{line.sku} · {line.itemName}</strong>
+        {#each pickEntriesByLine[line.soLineId] ?? [] as entry, index}
+          <div class="so-pick-row">
+            <select value={entry.binId} onchange={(event) => updatePickEntry(line.soLineId, index, 'binId', event.currentTarget.value)}><option value="">{i18n.t('Seleccionar bin')}</option>{#each vm.availableBinsByLine[line.soLineId] ?? [] as bin}<option value={bin.binId}>{bin.binCode} · {bin.quantityAvailable}</option>{/each}</select>
+            <input type="number" min="1" max={line.quantityOrdered - line.quantityPicked} value={entry.quantity} oninput={(event) => updatePickEntry(line.soLineId, index, 'quantity', event.currentTarget.value)} />
+            {#if (pickEntriesByLine[line.soLineId] ?? []).length > 1}<button type="button" onclick={() => removePickEntry(line.soLineId, index)}>×</button>{/if}
+          </div>
+        {/each}
+        <button type="button" onclick={() => addPickEntry(line.soLineId)}>{i18n.t('Añadir otro bin')}</button>
+      </div>
     {/each}
     <footer class="so-dialog-actions"><button type="button" onclick={() => showAdminPick = false}>{i18n.t('Cerrar')}</button><button class="so-primary" type="button" disabled={vm.saving} onclick={() => vm.selected && void submitAdminPick(vm.selected)}>{i18n.t('Registrar picking')}</button></footer>
   </section></div>
