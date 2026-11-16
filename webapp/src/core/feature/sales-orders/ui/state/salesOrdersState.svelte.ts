@@ -58,6 +58,7 @@ export function createSalesOrdersState() {
   let sourceSystems = $state<SalesOrderSourceSystem[]>([]);
   let shortPicks = $state<SalesOrderShortPick[]>([]);
   let loadingShortPicks = $state(false);
+  let loadedShortPicks = $state(false);
   let loadingSourceSystems = $state(false);
   let loadingRelated = $state(false);
   let adminShipShortfall = $state<AdminShipShortfallLine[] | null>(null);
@@ -285,6 +286,7 @@ export function createSalesOrdersState() {
     error = null;
     try {
       shortPicks = await deps.listSalesOrderShortPicks.execute(days, selectedWarehouseId);
+      loadedShortPicks = true;
       return true;
     } catch (err) {
       error = toUserMessage(err, 'No se pudieron cargar los faltantes recientes');
@@ -436,6 +438,7 @@ export function createSalesOrdersState() {
     get sourceSystems() { return sourceSystems; },
     get shortPicks() { return shortPicks; },
     get loadingShortPicks() { return loadingShortPicks; },
+    get loadedShortPicks() { return loadedShortPicks; },
     get loadingSourceSystems() { return loadingSourceSystems; },
     get loadingRelated() { return loadingRelated; },
     get adminShipShortfall() { return adminShipShortfall; },
