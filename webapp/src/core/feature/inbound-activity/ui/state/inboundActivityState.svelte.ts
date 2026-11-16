@@ -9,7 +9,7 @@ export function createInboundActivityState() {
 	let status = $state<InboundActivityStatus | ''>(''), since = $state(''), until = $state('');
 	let page = $state(1), perPage = $state(50), total = $state(0), hasNext = $state(false);
 	function query(): InboundActivityQuery { return { resource: resource || undefined, sourceSystem: sourceSystem.trim() || undefined,
-		status: status || undefined, since: since || undefined, until: until || undefined, page, perPage }; }
+		status: status || undefined, since: since ? new Date(since).toISOString() : undefined, until: until ? new Date(until).toISOString() : undefined, page, perPage }; }
 	async function load() {
 		loading = true; error = null;
 		try { const result = await deps.list.execute(query()); rows = result.rows; page = result.page;
