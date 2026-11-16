@@ -342,33 +342,34 @@
   }
 
   let showAdminPick = $state(false);
-  let pickBinByLine = $state<Record<number, string>>({});
-  let pickQuantityByLine = $state<Record<number, string>>({});
+  let pickEntriesByLine = $state<Record<number, Array<{ binId: string; quantity: string }>>>({});
 
   async function openAdminPick(order: SalesOrder): Promise<void> {
     if (order.status !== 'OPEN') return;
     showAdminPick = true;
-    pickBinByLine = {};
-    pickQuantityByLine = {};
+    pickEntriesByLine = {};
     const eligibleLines = order.lines.filter((line) => line.quantityOrdered > line.quantityPicked);
     await Promise.all(eligibleLines.map((line) => vm.loadAvailableBins(line.soLineId)));
     for (const line of eligibleLines) {
       const firstBin = vm.availableBinsByLine[line.soLineId]?.[0];
-      if (!firstBin) continue;
-      pickBinByLine[line.soLineId] = String(firstBin.binId);
-      pickQuantityByLine[line.soLineId] = String(
-        Math.min(line.quantityOrdered - line.quantityPicked, firstBin.quantityAvailable)
-      );
+      pickEntriesByLine[line.soLineId] = [{
+        binId: firstBin ? String(firstBin.binId) : '',
+        quantity: firstBin
+          ? String(Math.min(line.quantityOrdered - line.quantityPicked, firstBin.quantityAvailable))
+          : ''
+      }];
     }
   }
 
   async function submitAdminPick(order: SalesOrder): Promise<void> {
-    const picks = order.lines.flatMap((line) => {
-      const binId = Number(pickBinByLine[line.soLineId]);
-      const quantity = Number(pickQuantityByLine[line.soLineId]);
-      if (!Number.isInteger(binId) || binId < 1 || !Number.isInteger(quantity) || quantity < 1) return [];
-      return [{ soLineId: line.soLineId, binId, quantity }];
-    });
+    const picks = order.lines.flatMap((line) =>
+      (pickEntriesByLine[line.soLineId] ?? []).flatMap((entry) => {
+        const binId = Number(entry.binId);
+        const quantity = Number(entry.quantity);
+        if (!Number.isInteger(binId) || binId < 1 || !Number.isInteger(quantity) || quantity < 1) return [];
+        return [{ soLineId: line.soLineId, binId, quantity }];
+      })
+    );
     if (!picks.length) {
       feedback = i18n.t('Selecciona al menos una ubicación y una cantidad válida.');
       pushToast(feedback, 'warning');
@@ -380,6 +381,25 @@
       feedback = i18n.t('Picking administrativo registrado.');
       pushToast(feedback, 'success');
     }
+  }
+
+  function updatePickEntry(lineId: number, index: number, field: 'binId' | 'quantity', value: string): void {
+    const entries = [...(pickEntriesByLine[lineId] ?? [])];
+    if (!entries[index]) return;
+    entries[index] = { ...entries[index], [field]: value };
+    pickEntriesByLine = { ...pickEntriesByLine, [lineId]: entries };
+  }
+
+  function addPickEntry(lineId: number): void {
+    pickEntriesByLine = {
+      ...pickEntriesByLine,
+      [lineId]: [...(pickEntriesByLine[lineId] ?? []), { binId: '', quantity: '' }]
+    };
+  }
+
+  function removePickEntry(lineId: number, index: number): void {
+    const entries = (pickEntriesByLine[lineId] ?? []).filter((_, entryIndex) => entryIndex !== index);
+    pickEntriesByLine = { ...pickEntriesByLine, [lineId]: entries };
   }
 
   function displayDate(value: string | null): string {
