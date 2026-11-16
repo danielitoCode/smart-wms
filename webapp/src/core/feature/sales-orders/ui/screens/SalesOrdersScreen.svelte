@@ -454,7 +454,7 @@
         {#if editMode}<button type="button" onclick={() => editMode = false}>{i18n.t('Vista')}</button>{:else}<button type="button" onclick={() => beginEdit(order)}>{i18n.t('Editar')}</button>{/if}
         {#if order.status !== 'CANCELLED' && order.status !== 'REFUNDED' && order.status !== 'SHIPPED'}<button class="so-danger" type="button" disabled={vm.saving} onclick={() => void cancelOrder(order)}>{i18n.t('Cancelar pedido')}</button>{/if}
         {#if order.status === 'OPEN'}<button type="button" onclick={() => void openAdminPick(order)}>{i18n.t('Picking administrativo')}</button>{/if}
-        {#if order.status === 'PICKED' || order.status === 'PACKED'}<button type="button" onclick={() => void shipOrder(order)}>{i18n.t('Registrar despacho')}</button>{/if}
+        {#if ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status) && order.lines.some((line) => line.quantityPicked > line.quantityShipped)}<button type="button" onclick={() => void shipOrder(order)}>{i18n.t('Despacho administrativo')}</button>{/if}
         {#if (order.status === 'OPEN' || order.status === 'PICKED') && order.orderType !== 'backorder'}<button type="button" onclick={() => partialShorts = {}}>{i18n.t('Fulfillment parcial')}</button>{/if}
         {#if ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status)}<button type="button" onclick={() => { revertTargetStatus = order.status === 'SHIPPED' ? 'PACKED' : order.status === 'PACKED' ? 'PICKED' : 'OPEN'; releasePickTaskIds = []; }}>{i18n.t('Revertir estado')}</button>{/if}
         {#if order.status === 'SHIPPED'}<button type="button" onclick={() => showRma = true}>{i18n.t('Crear RMA')}</button>{/if}
@@ -548,6 +548,15 @@
         {/if}
       </section>
 
+      {#if vm.adminShipShortfall}
+        <section class="so-section so-shortfall" role="alert">
+          <h3>{i18n.t('Faltantes que requieren confirmación')}</h3>
+          <p class="so-hint">{i18n.t('El servidor bloqueó el despacho porque estas líneas no tienen una marca SHORT. Si confirmas, solo se despachará la cantidad ya recogida; el resto quedará sin enviar.')}</p>
+          <ul>{#each vm.adminShipShortfall as shortfall (shortfall.sku)}<li><strong>{shortfall.sku}</strong>: {i18n.t('pedidas')} {shortfall.ordered}, {i18n.t('recogidas')} {shortfall.picked}</li>{/each}</ul>
+          <button class="so-danger" type="button" disabled={vm.saving} onclick={() => void vm.adminShip(true)}>{vm.saving ? i18n.t('Despachando…') : i18n.t('Confirmar despacho de cantidades recogidas')}</button>
+        </section>
+      {/if}
+
       <section class="so-section">
         <div class="so-section-head"><h3>{i18n.t('Pedidos relacionados')}</h3><button type="button" onclick={() => void vm.loadRelated()} disabled={vm.loadingRelated}>{i18n.t('Actualizar')}</button></div>
         {#if vm.loadingRelated}<p>{i18n.t('Cargando…')}</p>{:else if vm.relatedOrders.length === 0}<p>{i18n.t('No hay pedidos relacionados.')}</p>{:else}
@@ -562,7 +571,7 @@
         {/if}
       </section>
 
-      {#if order.status === 'OPEN' || order.status === 'PICKED'}
+      {#if (order.status === 'OPEN' || order.status === 'PICKED') && order.orderType !== 'backorder'}
         <section class="so-section">
           <h3>{i18n.t('Fulfillment parcial')}</h3>
           <p class="so-hint">{i18n.t('Indica unidades no disponibles. El servidor reduce las líneas originales y crea un backorder; vuelve a validar los límites antes de aplicar cambios.')}</p>
