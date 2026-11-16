@@ -55,9 +55,9 @@
   });
 
   async function changeTab(tab: BackorderQueueTab): Promise<void> {
-    const url = new URL(page.url);
-    url.searchParams.set('tab', tab);
-    await goto(url, { replaceState: true, keepFocus: true, noScroll: true });
+    const params = new URLSearchParams(page.url.searchParams);
+    params.set('tab', tab);
+    await goto(page.url.pathname + '?' + params.toString(), { replaceState: true, noScroll: true });
   }
 
   function formatDateOnly(value: string | null): string {
@@ -193,6 +193,5 @@
   .empty{padding:2rem 0}
   .message{padding:.7rem .85rem;border:1px solid var(--line);border-radius:8px;font-size:.82rem}
   .error{color:var(--danger)}
-  .success{color:var(--success)}
   @media(max-width:600px){.page-header{align-items:flex-start}.summary{display:none}.metadata{grid-template-columns:1fr}.tabs{overflow-x:auto}.tabs button{white-space:nowrap}}
 </style>
