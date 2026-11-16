@@ -1,50 +1,84 @@
-import {createBackordersDependencies} from '../../di/backorders.dependencies'
-import type {Backorder,BackorderQueueTab} from '../../domain/entity/Backorder'
-import {toUserMessage} from '#core/infrastructure/errors/ApiError.ts'
+import { createBackordersDependencies } from '../../di/backorders.dependencies';
+import type {
+  Backorder, BackorderDetail, BackorderQueueTab, CancelBackorderReason
+} from '../../domain/entity/Backorder';
+import { toUserMessage } from '#core/infrastructure/errors/ApiError.ts';
 
-const d=createBackordersDependencies();
-export function createBackordersState(){
-    let rows=$state<Backorder[]>([]),
-        tab=$state<BackorderQueueTab>('waiting'),
-        loading=$state(false),
-        saving=$state(false),
-        error=$state<string|null>(null)
-    async function load(warehouseId:number|null,nextTab=tab){
-        loading=true
-        error=null
-        tab=nextTab
-        try{
-            rows=await d.list.execute(warehouseId,tab)
-        }
-        catch(e){
-            error=toUserMessage(e,'No se pudieron cargar los pedidos pendientes')
-        }
-        finally{ loading=false }
-        }
+const dependencies = createBackordersDependencies();
 
-    async function cancel(id:number,reason:string,warehouseId:number|null){
-        saving=true
-        error=null
-        try{
-            await d.cancel.execute(id,reason)
-            await load(warehouseId)
-            return true
-        }
-        catch(e){
-            error=toUserMessage(e,'No se pudo cancelar el pedido pendiente')
-            return false
-        }
-        finally{ saving=false
-        }
+export function createBackordersState() {
+  let rows = $state<Backorder[]>([]);
+  let detail = $state<BackorderDetail | null>(null);
+  let tab = $state<BackorderQueueTab>('waiting');
+  let loading = $state(false);
+  let detailLoading = $state(false);
+  let saving = $state(false);
+  let error = $state<string | null>(null);
+  let detailError = $state<string | null>(null);
+
+  async function load(warehouseId: number | null, nextTab: BackorderQueueTab = tab): Promise<void> {
+    loading = true;
+    error = null;
+    tab = nextTab;
+    try {
+      rows = await dependencies.list.execute(warehouseId, tab);
+    } catch (cause) {
+      rows = [];
+      error = toUserMessage(cause, 'No se pudieron cargar los pedidos pendientes');
+    } finally {
+      loading = false;
     }
+  }
 
-    return {
-        get rows(){return rows;},
-        get tab(){return tab;},
-        get loading(){return loading;},
-        get saving(){return saving;},
-        get error(){return error;},
-        load,
-        cancel
+  async function loadDetail(backorderId: number): Promise<void> {
+    detailLoading = true;
+    detailError = null;
+    detail = null;
+    try {
+      detail = await dependencies.detail.execute(backorderId);
+    } catch (cause) {
+      detailError = toUserMessage(cause, 'No se pudo cargar el detalle del pedido pendiente');
+    } finally {
+      detailLoading = false;
     }
+  }
+
+  async function cancel(
+    id: number,
+    reason: CancelBackorderReason,
+    warehouseId: number | null
+  ): Promise<boolean> {
+    saving = true;
+    error = null;
+    try {
+      await dependencies.cancel.execute(id, reason);
+      await load(warehouseId);
+      return true;
+    } catch (cause) {
+      error = toUserMessage(cause, 'No se pudo cancelar el pedido pendiente');
+      return false;
+    } finally {
+      saving = false;
+    }
+  }
+
+  function clearError(): void {
+    error = null;
+    detailError = null;
+  }
+
+  return {
+    get rows() { return rows; },
+    get detail() { return detail; },
+    get tab() { return tab; },
+    get loading() { return loading; },
+    get detailLoading() { return detailLoading; },
+    get saving() { return saving; },
+    get error() { return error; },
+    get detailError() { return detailError; },
+    load,
+    loadDetail,
+    cancel,
+    clearError
+  };
 }
