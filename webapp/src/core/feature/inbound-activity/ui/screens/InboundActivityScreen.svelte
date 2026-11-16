@@ -5,6 +5,7 @@
 	import UiBanner from '#lib/components/UiBanner.svelte';
 	import { createInboundActivityState } from '../state/inboundActivityState.svelte';
 	import { INBOUND_RESOURCES, type InboundActivityResource, type InboundActivityStatus } from '../../domain/entity/InboundActivity';
+	import { resolveInboundCanonicalLink } from '../links/inboundCanonicalLink';
 	const i18n = getContext<I18nState>('i18n');
 	const vm = createInboundActivityState();
 	onMount(() => { void vm.load(); });
@@ -16,6 +17,7 @@
 		sales_orders: '/management/sales-orders', items: '/items', customers: '/management/customers',
 		vendors: '/management/vendors', purchase_orders: '/management/purchase-orders'
 	};
+	const canonicalLink = $derived(vm.detail ? resolveInboundCanonicalLink(vm.detail.row.resource, vm.detail.canonicalPayload) : null);
 	function formatDate(value: string | null) {
 		if (!value) return '—';
 		const date = new Date(value);
@@ -27,7 +29,7 @@
 </script>
 <section class="page">
 	<PageHeader title={i18n.t('Actividad entrante')} subtitle={i18n.t('Consulta los eventos inbound aceptados, su origen, estado y registro canónico asociado.')} />
-	{#if vm.error}<UiBanner tone="error" message={vm.error} />{/if}
+	{#if vm.error}<UiBanner tone="error" message={vm.error} /><button class="secondary retry" type="button" onclick={() => void vm.load()} disabled={vm.loading}>{i18n.t('Reintentar')}</button>{/if}
 	<form class="filters" onsubmit={(event) => { event.preventDefault(); void vm.applyFilters(); }}>
 		<label>{i18n.t('Sistema origen')}<input value={vm.sourceSystem} oninput={(event) => vm.setSourceSystem(event.currentTarget.value)} placeholder="fabric" /></label>
 		<label>{i18n.t('Recurso')}<select value={vm.resource} onchange={(event) => vm.setResource(event.currentTarget.value as InboundActivityResource | '')}>
@@ -41,9 +43,10 @@
 		<div class="actions"><button type="submit" disabled={vm.loading}>{i18n.t('Aplicar filtros')}</button>
 			<button type="button" class="secondary" onclick={() => void vm.load()} disabled={vm.loading}>{i18n.t('Actualizar')}</button></div>
 	</form>
-	{#if vm.loading}<p class="muted">{i18n.t('Cargando…')}</p>
-	{:else if vm.rows.length === 0}<p class="empty">{i18n.t('No hay actividad entrante para estos filtros.')}</p>
+	{#if vm.loading && vm.rows.length === 0}<p class="muted" role="status">{i18n.t('Cargando actividad entrante…')}</p>
+	{:else if vm.rows.length === 0}<p class="empty">{vm.loading ? i18n.t('Cargando actividad entrante…') : i18n.t('No hay actividad entrante para estos filtros.')}</p>
 	{:else}
+		{#if vm.loading}<p class="muted" role="status">{i18n.t('Actualizando actividad…')}</p>{/if}
 		<div class="table-wrap"><table><thead><tr>
 			<th>{i18n.t('Recibido')}</th><th>{i18n.t('Recurso')}</th><th>{i18n.t('Sistema origen')}</th>
 			<th>{i18n.t('ID externo')}</th><th>{i18n.t('Versión')}</th><th>{i18n.t('Estado')}</th><th>{i18n.t('Acciones')}</th>
@@ -60,8 +63,8 @@
 			<button class="secondary" type="button" disabled={!vm.hasNext || vm.loading} onclick={() => { vm.setPage(vm.page + 1); void vm.load(); }}>{i18n.t('Siguiente')}</button>
 		</div></footer>
 	{/if}
-	{#if vm.detailLoading}<section class="detail"><p>{i18n.t('Cargando detalle…')}</p></section>{/if}
-	{#if vm.detailError}<UiBanner tone="error" message={vm.detailError} />{/if}
+	{#if vm.detailLoading}<section class="detail" aria-live="polite"><p>{i18n.t('Cargando detalle…')}</p><div class="skeleton-line"></div><div class="skeleton-line short"></div></section>{/if}
+	{#if vm.detailError}<UiBanner tone="error" message={vm.detailError} />{#if vm.selectedRow}<button class="secondary retry" type="button" onclick={() => void vm.openDetail(vm.selectedRow!)} disabled={vm.detailLoading}>{i18n.t('Reintentar detalle')}</button>{/if}{/if}
 	{#if vm.detail}
 		<section class="detail"><header><div><p class="eyebrow">{i18n.t('Detalle del evento')}</p><h2>{resourceLabels[vm.detail.row.resource]} #{vm.detail.row.inboundId}</h2></div>
 			<button class="secondary" type="button" onclick={() => vm.clearDetail()}>{i18n.t('Cerrar')}</button></header>
@@ -74,7 +77,7 @@
 				<dt>{i18n.t('Sustituido')}</dt><dd>{formatDate(vm.detail.row.supersededAt)}</dd>
 				<dt>{i18n.t('ID canónico')}</dt><dd class="mono">{vm.detail.row.canonicalId ?? '—'}</dd>
 				<dt>{i18n.t('Token de ingesta')}</dt><dd>{vm.detail.row.ingestedViaTokenId ?? '—'}</dd>
-				<dt>{i18n.t('Registro relacionado')}</dt><dd><a href={moduleLinks[vm.detail.row.resource]}>{i18n.t('Abrir módulo')} · {resourceLabels[vm.detail.row.resource]}</a></dd>
+				<dt>{i18n.t('Registro canónico')}</dt><dd>{#if canonicalLink}<a href={canonicalLink.href}>{i18n.t('Buscar registro')} · {canonicalLink.label}</a>{:else}<a href={moduleLinks[vm.detail.row.resource]}>{i18n.t('Abrir módulo')} · {resourceLabels[vm.detail.row.resource]}</a><span class="hint">{i18n.t('No existe una ruta de detalle verificable para este identificador canónico; el enlace abre el módulo, no un registro específico.')}</span>{/if}</dd>
 			</dl>
 			{#if !vm.detail.sourcePayloadRetained}<p class="notice">{i18n.t('El payload de origen fue eliminado por la política de retención.')}</p>{/if}
 			<div class="payloads"><section><h3>{i18n.t('Payload de origen')}</h3><pre>{prettyPayload(vm.detail.sourcePayload)}</pre></section>
@@ -102,6 +105,6 @@
 	dl{display:grid;grid-template-columns:minmax(8rem,12rem) minmax(0,1fr);gap:.45rem .8rem;font-size:.84rem}dt{color:var(--slate)}dd{margin:0;overflow-wrap:anywhere}
 	.payloads{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr));gap:1rem;margin-top:1rem}h3{font-size:.9rem}
 	pre{max-height:22rem;overflow:auto;padding:.8rem;border:1px solid var(--line);border-radius:var(--radius-field);background:var(--bg);font-size:.76rem;white-space:pre-wrap;overflow-wrap:anywhere}
-	.notice{padding:.65rem;background:var(--surface);border-left:3px solid var(--slate)}.hint,.muted,.empty{color:var(--slate);font-size:.82rem}
+	.notice{padding:.65rem;background:var(--surface);border-left:3px solid var(--slate)}.hint,.muted,.empty{color:var(--slate);font-size:.82rem}.hint{display:block;margin-top:.25rem}.retry{margin:.25rem 0 .8rem}.skeleton-line{height:.75rem;width:70%;margin:.65rem 0;border-radius:6px;background:var(--line);animation:pulse 1.2s ease-in-out infinite}.skeleton-line.short{width:42%}@keyframes pulse{50%{opacity:.45}}
 	@media(max-width:600px){.actions{grid-column:1/-1;justify-content:flex-start}.pagination{align-items:flex-start;flex-direction:column}dl{grid-template-columns:1fr;gap:.2rem}dd{margin-bottom:.5rem}}
 </style>
