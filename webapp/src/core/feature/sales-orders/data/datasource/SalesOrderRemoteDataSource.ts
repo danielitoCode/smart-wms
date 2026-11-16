@@ -4,11 +4,7 @@ import type {
   RelatedSalesOrdersResponseDto, AvailableSalesOrderBinsResponseDto,
   SalesOrderAllocationResponseDto, SalesOrderSourceSystemsResponseDto
 } from '../dto/SalesOrderDto';
-import type {
-  UpdateSalesOrderAllocationInput,
-  CreateRmaInput,
-  ReceiveReturnInput
-} from '../../domain/entity/SalesOrder';
+import type { UpdateSalesOrderAllocationInput } from '../../domain/entity/SalesOrder';
 
 
 export class SalesOrderRemoteDataSource {
