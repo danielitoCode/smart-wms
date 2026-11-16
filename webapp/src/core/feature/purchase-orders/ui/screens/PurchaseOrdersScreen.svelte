@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, getContext } from 'svelte';
+  import { page as route } from '$app/state';
   import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
   import { createPurchaseOrdersState } from '../state/purchaseOrdersState.svelte';
   import type { CreatePurchaseOrder, CreatePurchaseOrderLine, UpdatePurchaseOrder } from '../../domain/entity/PurchaseOrder';
@@ -21,7 +22,10 @@
   let newLine = $state({ itemId: '', quantity: '1', unitCost: '' });
   let quantityEdits = $state<Record<number, string>>({});
 
-  onMount(() => { void vm.load(selection?.warehouseId ?? null); });
+  onMount(() => {
+    vm.setFilter('search', route.url.searchParams.get('q') ?? '');
+    void vm.load(selection?.warehouseId ?? null);
+  });
 
   function resetCreate() {
     poNumber = ''; vendorName = ''; expectedDate = ''; notes = '';
