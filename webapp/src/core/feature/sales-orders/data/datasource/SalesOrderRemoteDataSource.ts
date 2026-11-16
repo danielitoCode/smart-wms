@@ -41,13 +41,13 @@ export class SalesOrderRemoteDataSource {
   async getById(id: number): Promise<SalesOrderDetailResponseDto> {
     return this.api.get<SalesOrderDetailResponseDto>(`/api/admin/sales-orders/${id}`);
   }
-  async create(payload: Record<string, unknown>): Promise<SalesOrderDetailResponseDto> {
+  async create(payload: CreateSalesOrderRequestDto): Promise<SalesOrderDetailResponseDto> {
     return this.api.post<SalesOrderDetailResponseDto>('/api/admin/sales-orders', payload);
   }
-  async update(id: number, payload: Record<string, unknown>): Promise<void> {
+  async update(id: number, payload: UpdateSalesOrderRequestDto): Promise<void> {
     await this.api.put(`/api/admin/sales-orders/${id}`, payload);
   }
-  async updateAddress(id: number, payload: Record<string, string>): Promise<void> {
+  async updateAddress(id: number, payload: UpdateSalesOrderAddressRequestDto): Promise<void> {
     await this.api.request(`/api/admin/sales-orders/${id}/address`, {
       method: 'PATCH',
       body: payload
@@ -67,12 +67,12 @@ export class SalesOrderRemoteDataSource {
   async cancel(id: number): Promise<void> {
     await this.api.post(`/api/admin/sales-orders/${id}/cancel`);
   }
-  async addLine(id: number, payload: { item_id: number; quantity_ordered: number }): Promise<void> {
+  async addLine(id: number, payload: AddSalesOrderLineRequestDto): Promise<void> {
     await this.api.post(`/api/admin/sales-orders/${id}/lines`, payload);
   }
-  async updateLine(id: number, lineId: number, quantity: number): Promise<void> {
+  async updateLine(id: number, lineId: number, payload: UpdateSalesOrderLineRequestDto): Promise<void> {
     await this.api.request(`/api/admin/sales-orders/${id}/lines/${lineId}`, {
-      method: 'PATCH', body: { quantity_ordered: quantity }
+      method: 'PATCH', body: payload
     });
   }
   async deleteLine(id: number, lineId: number): Promise<void> {
@@ -87,45 +87,23 @@ export class SalesOrderRemoteDataSource {
     );
   }
 
-  async adminPick(id: number, lines: Array<{ soLineId: number; binId: number; quantity: number }>): Promise<void> {
-    await this.api.post(`/api/admin/sales-orders/${id}/admin-pick`, {
-      lines: lines.map(({ soLineId, binId, quantity }) => ({
-        so_line_id: soLineId, bin_id: binId, quantity
-      }))
-    });
+  async adminPick(id: number, payload: AdminPickRequestDto): Promise<void> {
+    await this.api.post(`/api/admin/sales-orders/${id}/admin-pick`, payload);
   }
-  async partialFulfill(id: number, input: import('../../domain/entity/SalesOrder').PartialFulfillInput): Promise<void> {
-    await this.api.post(`/api/admin/sales-orders/${id}/partial-fulfill`, {
-      lines: input.lines.map(({ soLineId, shortQuantity }) => ({
-        so_line_id: soLineId, short_qty: shortQuantity
-      })),
-      reason_detail: input.reason
-    });
+  async partialFulfill(id: number, payload: PartialFulfillRequestDto): Promise<void> {
+    await this.api.post(`/api/admin/sales-orders/${id}/partial-fulfill`, payload);
   }
-  async revertStatus(id: number, input: import('../../domain/entity/SalesOrder').RevertSalesOrderInput): Promise<void> {
-    await this.api.post(`/api/admin/sales-orders/${id}/revert-status`, {
-      new_status: input.newStatus, release_pick_task_ids: input.releasePickTaskIds
-    });
+  async revertStatus(id: number, payload: RevertSalesOrderStatusRequestDto): Promise<void> {
+    await this.api.post(`/api/admin/sales-orders/${id}/revert-status`, payload);
   }
   async related(id: number): Promise<RelatedSalesOrdersResponseDto> {
     return this.api.get(`/api/admin/sales-orders/${id}/related`);
   }
-  async createRma(id: number, input: CreateRmaInput): Promise<void> {
-    await this.api.post(`/api/admin/sales-orders/${id}/create-rma`, {
-      lines: input.lines.map((line) => ({
-        item_id: line.itemId, quantity: line.quantity,
-        original_so_line_id: line.originalSoLineId ?? undefined
-      })),
-      memo: input.reason ?? null
-    });
+  async createRma(id: number, payload: CreateRmaRequestDto): Promise<void> {
+    await this.api.post(`/api/admin/sales-orders/${id}/create-rma`, payload);
   }
-  async receiveReturn(id: number, input: ReceiveReturnInput): Promise<void> {
-    await this.api.post(`/api/admin/sales-orders/${id}/receive-return`, {
-      item_id: input.itemId, quantity: input.quantity,
-      warehouse_id: input.warehouseId, bin_id: input.binId,
-      notes: input.notes ?? undefined,
-      idempotency_key: input.idempotencyKey ?? undefined
-    });
+  async receiveReturn(id: number, payload: ReceiveRmaRequestDto): Promise<void> {
+    await this.api.post(`/api/admin/sales-orders/${id}/receive-return`, payload);
   }
   async voidReturn(id: number): Promise<void> {
     await this.api.post(`/api/admin/sales-orders/${id}/void-return`);
