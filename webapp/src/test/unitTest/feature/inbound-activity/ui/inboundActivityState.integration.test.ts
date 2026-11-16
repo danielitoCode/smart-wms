@@ -81,7 +81,7 @@ describe('Inbound activity UI state + application + repository integration', () 
 			status: 'applied', supersededAt: null, ingestedViaTokenId: 4
 		});
 
-		expect(api.get).toHaveBeenCalledWith('/api/admin/inbound/activity/purchase_orders/17');
+		expect(get).toHaveBeenCalledWith('/api/admin/inbound/activity/purchase_orders/17');
 		expect(state.detail?.canonicalPayload).toEqual({ po_number: 'PO-2026-17' });
 		expect(state.detail?.sourcePayload).toBeNull();
 		expect(state.detail?.sourcePayloadRetained).toBe(false);
