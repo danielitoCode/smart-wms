@@ -90,6 +90,14 @@ describe('GetBackorderDetailUseCase', () => {
     await expect(new GetBackorderDetailUseCase(repo).execute(41)).rejects.toThrow(/pedido original/);
   });
 
+  it('keeps a cancelled parent visible in detail so the UI can explain the cascade state', async () => {
+    const cancelledParent = makeParent();
+    cancelledParent.status = 'CANCELLED';
+    const repo = repository(makeOrder(), cancelledParent);
+    const detail = await new GetBackorderDetailUseCase(repo).execute(41);
+    expect(detail.parentSalesOrder?.status).toBe('CANCELLED');
+  });
+
   it('rejects invalid identifiers and unrelated sales orders', async () => {
     const repo = repository(makeOrder({ orderType: 'sale', backorderOpenedAt: null }));
     const useCase = new GetBackorderDetailUseCase(repo);
@@ -121,6 +129,14 @@ describe('CancelBackorderUseCase', () => {
   it('rejects a missing or mismatched parent before posting cancellation', async () => {
     const repo = repository(makeOrder(), null);
     await expect(new CancelBackorderUseCase(repo).execute(41, 'other')).rejects.toThrow(/pedido original/);
+    expect(repo.cancel).not.toHaveBeenCalled();
+  });
+
+  it('does not cancel an active child when its original sales order is already cancelled', async () => {
+    const cancelledParent = makeParent();
+    cancelledParent.status = 'CANCELLED';
+    const repo = repository(makeOrder({ status: 'WAITING_STOCK' }), cancelledParent);
+    await expect(new CancelBackorderUseCase(repo).execute(41, 'other')).rejects.toThrow(/pedido original ya está cancelado/);
     expect(repo.cancel).not.toHaveBeenCalled();
   });
 
