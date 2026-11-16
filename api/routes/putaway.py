@@ -227,65 +227,6 @@ def staging_summary(warehouse_id):
     })
 
 
-@putaway_bp.route("/staging-summary/<int:warehouse_id>")
-@require_auth
-@with_db
-def staging_summary(warehouse_id):
-    """Summarize staging inventory and include empty staging bins."""
-    ok, denied = check_warehouse_access(warehouse_id)
-    if not ok:
-        return denied
-
-    rows = g.db.execute(
-        text(
-            """
-            SELECT b.bin_id, b.bin_code, COUNT(DISTINCT inv.item_id) AS sku_count,
-                   COALESCE(SUM(inv.quantity_on_hand), 0) AS total_qty,
-                   COALESCE(
-                       json_agg(
-                           json_build_object(
-                               'inventory_id', inv.inventory_id,
-                               'item_id', inv.item_id,
-                               'sku', i.sku,
-                               'item_name', i.item_name,
-                               'quantity_on_hand', inv.quantity_on_hand,
-                               'lot_number', inv.lot_number
-                           ) ORDER BY i.sku
-                       ) FILTER (WHERE inv.inventory_id IS NOT NULL),
-                       '[]'::json
-                   ) AS items
-              FROM bins b
-              LEFT JOIN inventory inv
-                ON inv.bin_id = b.bin_id AND inv.quantity_on_hand > 0
-              LEFT JOIN items i ON i.item_id = inv.item_id
-             WHERE b.warehouse_id = :warehouse_id
-               AND b.bin_type IN (:bin_staging, :bin_pickable_staging)
-             GROUP BY b.bin_id, b.bin_code
-             ORDER BY b.bin_code
-            """
-        ),
-        {
-            "warehouse_id": warehouse_id,
-            "bin_staging": BIN_STAGING,
-            "bin_pickable_staging": BIN_PICKABLE_STAGING,
-        },
-    ).fetchall()
-
-    return jsonify({
-        "warehouse_id": warehouse_id,
-        "bins": [
-            {
-                "bin_id": row.bin_id,
-                "bin_code": row.bin_code,
-                "sku_count": row.sku_count,
-                "total_qty": row.total_qty,
-                "items": row.items,
-            }
-            for row in rows
-        ],
-    })
-
-
 @putaway_bp.route("/suggest/<int:item_id>")
 @require_auth
 @with_db
