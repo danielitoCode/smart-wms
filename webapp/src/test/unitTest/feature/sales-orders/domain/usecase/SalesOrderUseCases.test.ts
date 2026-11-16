@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CreateSalesOrderUseCase } from '../../../../../../core/feature/sales-orders/domain/usecase/CreateSalesOrderUseCase';
-import { GetAvailableSalesOrderBinsUseCase } from '../../../../../../core/feature/sales-orders/domain/usecase/FulfillSalesOrderUseCases';
+import { AdminShipSalesOrderUseCase, GetAvailableSalesOrderBinsUseCase } from '../../../../../../core/feature/sales-orders/domain/usecase/FulfillSalesOrderUseCases';
 import { UpdateSalesOrderAllocationUseCase } from '../../../../../../core/feature/sales-orders/domain/usecase/UpdateSalesOrderAllocationUseCase';
 import { ListSalesOrdersUseCase } from '../../../../../../core/feature/sales-orders/domain/usecase/ListSalesOrdersUseCase';
 import type { SalesOrderRepository } from '../../../../../../core/feature/sales-orders/domain/repository/SalesOrderRepository';
@@ -55,6 +55,20 @@ describe('Sales order use cases', () => {
     })).toThrow(/duplicate/);
     expect(create).not.toHaveBeenCalled();
   });
+  it('passes the explicit silent-shortfall acknowledgement to admin ship', async () => {
+    const adminShip = vi.fn().mockResolvedValue({
+      fulfillmentId: 5, linesShipped: 2, totalQuantity: 8
+    });
+    const useCase = new AdminShipSalesOrderUseCase({
+      adminShip
+    } as unknown as SalesOrderRepository);
+
+    await expect(useCase.execute(7, true)).resolves.toEqual({
+      fulfillmentId: 5, linesShipped: 2, totalQuantity: 8
+    });
+    expect(adminShip).toHaveBeenCalledWith(7, true);
+  });
+
   it('validates allocation delta and returns the actual server allocation result', async () => {
     const updateAllocation = vi.fn().mockResolvedValue({
       soLineId: 20, quantityAllocated: 3, unchanged: false
