@@ -3,6 +3,7 @@
   import { createPickingTicketsDependencies } from '../../di/pickingTickets.dependencies';
   import { createPickingQueueDependencies } from '../../di/pickingQueue.dependencies';
   import type { PickingTicket } from '../../domain/entity/PickingTicket';
+  import { groupOrdersByAddress } from '../../domain/policy/pickingGroups';
   const deps = createPickingTicketsDependencies();
   const queue = createPickingQueueDependencies();
   let { salesOrderIds, status, warehouseId, combine = false }: { salesOrderIds: number[]; status: string; warehouseId?: number; combine?: boolean } = $props();
@@ -13,6 +14,32 @@
   let marking = $state(false);
   const limit = 200;
   let failedCount = $state(0);
+  const combineBySalesOrderId = $derived.by(() => {
+    const result = new Map<number, string[]>();
+    if (!combine) return result;
+    const groups = groupOrdersByAddress(tickets.map((ticket) => ({
+      customerName: ticket.order.customerName,
+      shipAddress: ticket.order.legacyShippingAddress,
+      shipByDate: ticket.order.shipByDate,
+      shippingAddress: ticket.order.shippingAddress
+    })));
+    for (const group of groups) {
+      const numbers = group.orders.map((order) => tickets.find((ticket) =>
+        ticket.order.salesOrderNumber === (order as typeof group.orders[number] & { salesOrderNumber?: string }).salesOrderNumber
+      )?.order.salesOrderNumber).filter((value): value is string => Boolean(value));
+      // Map by the original ticket order using the shared normalized address key.
+      for (const ticket of tickets) {
+        const key = groupOrdersByAddress([{
+          customerName: ticket.order.customerName,
+          shipAddress: ticket.order.legacyShippingAddress,
+          shipByDate: ticket.order.shipByDate,
+          shippingAddress: ticket.order.shippingAddress
+        }])[0]?.key;
+        if (key === group.key) result.set(ticket.order.salesOrderId, numbers.filter((number) => number !== ticket.order.salesOrderNumber));
+      }
+    }
+    return result;
+  });
   onMount(() => { void load(); });
   async function load() {
     loading = true; error = ''; markFailed = false;
@@ -59,7 +86,7 @@
     {#each tickets as ticket, index (ticket.order.salesOrderId)}
       <article class="ticket">
         <header><div class="brand">{#if ticket.branding.logoUrl}<img src={ticket.branding.logoUrl} alt={ticket.branding.companyName || 'Company logo'} />{/if}<div><strong>{ticket.branding.companyName || ''}</strong>{#each (ticket.branding.companyAddress || '').split(/\r?\n/).filter(Boolean) as line}<div>{line}</div>{/each}</div></div><div class="heading"><h1>Picking Ticket</h1><strong>Order #{ticket.order.salesOrderNumber}</strong><span>Must ship by: {ticket.order.shipByDate || '—'}</span></div></header>
-        {#if combine}<div class="combine-banner no-print">Combined shipment group</div>{/if}
+        {#if combineBySalesOrderId.get(ticket.order.salesOrderId)?.length}<div class="combine-banner">SHIP WITH: {combineBySalesOrderId.get(ticket.order.salesOrderId)?.join(', ')}</div>{/if}
         <section class="address"><strong>Ship to</strong>{#each addressLines(ticket) as line}<div>{line}</div>{/each}</section>
         <section class="meta"><span>Ship method: {ticket.order.shipMethod || '—'}</span><span>Order date: {ticket.order.orderDate || ticket.order.createdAt || '—'}</span></section>
         {#if ticket.lines.length}<table><thead><tr><th>Qty</th><th>Shipped</th><th>Item</th><th>Box</th><th>Bin</th><th>UPC</th></tr></thead><tbody>{#each ticket.lines as line (line.salesOrderLineId)}<tr><td class="center">{line.quantityOrdered}</td><td class="center">{line.quantityShipped}</td><td><strong>{line.sku}</strong> {line.itemName}</td><td></td><td>{line.preferredBinCode || ''}</td><td>{line.upc || ''}</td></tr>{/each}</tbody></table>{:else}<p>No lines on this order.</p>{/if}
