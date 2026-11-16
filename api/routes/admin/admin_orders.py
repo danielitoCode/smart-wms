@@ -3249,6 +3249,47 @@ def admin_ship_sales_order(so_id):
     })
 
 
+@admin_bp.route("/sales-orders/<int:so_id>/return-receipts", methods=["GET"])
+@require_auth
+@require_admin_or_page_permission("sales-orders")
+@with_db
+def list_return_receipts(so_id):
+    """Return the physical receipt history for a single RMA."""
+    rma = g.db.execute(
+        text("SELECT so_id FROM sales_orders WHERE so_id = :sid AND order_type = 'return'"),
+        {"sid": so_id},
+    ).fetchone()
+    if rma is None:
+        return jsonify({"error": "Return order not found"}), 404
+
+    rows = g.db.execute(
+        text("""
+            SELECT ir.receipt_id, ir.so_line_id, ir.item_id, i.sku, i.item_name,
+                   ir.quantity_received, ir.bin_id, b.bin_code,
+                   ir.warehouse_id, w.warehouse_code, ir.received_by,
+                   ir.received_at, ir.notes
+              FROM item_receipts ir
+              JOIN items i ON i.item_id = ir.item_id
+              JOIN bins b ON b.bin_id = ir.bin_id
+              JOIN warehouses w ON w.warehouse_id = ir.warehouse_id
+             WHERE ir.so_id = :sid
+             ORDER BY ir.received_at DESC, ir.receipt_id DESC
+        """),
+        {"sid": so_id},
+    ).fetchall()
+    return jsonify({"receipts": [
+        {
+            "receipt_id": row.receipt_id, "so_line_id": row.so_line_id,
+            "item_id": row.item_id, "sku": row.sku, "item_name": row.item_name,
+            "quantity_received": row.quantity_received, "bin_id": row.bin_id,
+            "bin_code": row.bin_code, "warehouse_id": row.warehouse_id,
+            "warehouse_code": row.warehouse_code, "received_by": row.received_by,
+            "received_at": row.received_at.isoformat() if row.received_at else None,
+            "notes": row.notes,
+        } for row in rows
+    ]})
+
+
 # RMA (returns): create the goods-in RMA, then receive against it.
 
 
