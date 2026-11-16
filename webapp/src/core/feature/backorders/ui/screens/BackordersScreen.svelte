@@ -41,7 +41,6 @@
     try {
       const warehouseId = resolveBackorderWarehouseScope({
         role: guard.user?.role ?? 'USER',
-        allowedPages: guard.user?.allowedPages ?? [],
         assignedWarehouseIds: guard.user?.warehouseIds ?? [],
         selectedWarehouseId: selection?.warehouseId ?? null
       });
