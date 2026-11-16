@@ -7,22 +7,21 @@ import type { SalesOrder } from '../../../../../core/feature/sales-orders/domain
 const order = {
   salesOrderId: 41, parentSoId: 10, parentSoNumber: 'SO-10', orderType: 'backorder'
 } as SalesOrder;
+const parentOrder = {
+  salesOrderId: 10, salesOrderNumber: 'SO-10', soNumber: 'SO-10', status: 'OPEN'
+} as SalesOrder;
 
 describe('BackordersRepositoryImpl', () => {
   it('resolves the original order through the related-sales-orders contract', async () => {
     const remote = { list: vi.fn().mockResolvedValue([]), cancel: vi.fn() } as unknown as BackordersRemoteDataSource;
     const salesOrders = {
-      getById: vi.fn().mockResolvedValue(order),
-      related: vi.fn().mockResolvedValue([
-        { soId: 41, isCurrent: true },
-        { soId: 10, soNumber: 'SO-10', isCurrent: false }
-      ])
+      getById: vi.fn().mockResolvedValueOnce(order).mockResolvedValueOnce(parentOrder)
     } as unknown as SalesOrderRepository;
     const repository = new BackordersRepositoryImpl(remote, salesOrders);
     const detail = await repository.getDetail(41);
     expect(salesOrders.getById).toHaveBeenCalledWith(41);
-    expect(salesOrders.related).toHaveBeenCalledWith(41);
-    expect(detail.parentSalesOrder?.soId).toBe(10);
+    expect(salesOrders.getById).toHaveBeenNthCalledWith(2, 10);
+    expect(detail.parentSalesOrder?.salesOrderId).toBe(10);
   });
 
   it('keeps list and cancel delegated to their own data contracts', async () => {
