@@ -10,7 +10,7 @@ import { ManagedUserMapper } from '../../../../../../core/feature/users/data/map
 
 describe('admin feature mappers', () => {
  it('maps backorder projections without inventing unavailable identifiers', () => {
-  const row=BackorderMapper.toDomain({so_id:7,so_number:'SO-7',parent_so_number:'SO-1',warehouse_id:2,status:'BACKORDERED',customer_name:'Ada',items:[{sku:'SKU-1',item_name:'Item',qty:3,open_po:null}],days_waiting:4,backorder_opened_at:'2026-11-01',fulfillable_since:null});
+  const row=BackorderMapper.toDomain({so_id:7,so_number:'SO-7',parent_so_number:'SO-1',warehouse_id:2,status:'WAITING_STOCK',customer_name:'Ada',items:[{sku:'SKU-1',item_name:'Item',qty:3,open_po:null}],days_waiting:4,backorder_opened_at:'2026-11-01',fulfillable_since:null});
   expect(row).toMatchObject({salesOrderId:7,salesOrderNumber:'SO-7',parentSalesOrderId:null,warehouseId:2,daysWaiting:4});
   expect(row.items[0]).toMatchObject({itemId:null,sku:'SKU-1',quantity:3,openPurchaseOrder:null});
  });
