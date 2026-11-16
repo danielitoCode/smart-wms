@@ -1,6 +1,5 @@
 <script lang="ts">
   import { getContext } from 'svelte';
-  import { goto } from '$app/navigation';
   import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
   import type { User } from '../../../auth/domain/entity/User';
   import type { CancelBackorderReason } from '../../domain/entity/Backorder';
@@ -26,8 +25,9 @@
   const order = $derived(vm.detail?.order ?? null);
   const parentOrder = $derived(vm.detail?.parentSalesOrder ?? null);
   const cancelable = $derived(
+    order !== null &&
     hasSalesOrderPermission &&
-    order?.orderType === 'backorder' &&
+    order.orderType === 'backorder' &&
     order.parentSoId !== null &&
     ['WAITING_STOCK', 'OPEN', 'PICKED', 'PACKED'].includes(order.status)
   );
@@ -180,7 +180,7 @@
       <div class="overlay">
         <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="cancel-title">
           <h2 id="cancel-title">{i18n.t('Confirmar cancelación')}</h2>
-          <p>{i18n.t('Se cancelará únicamente el backorder')} <strong>{order.salesOrderNumber}</strong>. {i18n.t('El pedido original')} <strong>{parentOrder?.soNumber ?? order.parentSalesOrderNumber}</strong> {i18n.t('no se cancelará por esta acción.')}</p>
+          <p>{i18n.t('Se cancelará únicamente el backorder')} <strong>{order.salesOrderNumber}</strong>. {i18n.t('El pedido original')} <strong>{parentOrder?.salesOrderNumber ?? order.parentSalesOrderNumber}</strong> {i18n.t('no se cancelará por esta acción.')}</p>
           {#if order.status === 'WAITING_STOCK'}
             <p class="hint">{i18n.t('Este estado no mantiene reservas de inventario; la cancelación no requiere liberar cantidades recogidas.')}</p>
           {:else if order.status === 'OPEN'}
