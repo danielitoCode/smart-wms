@@ -240,6 +240,7 @@
     if (currentRank !== undefined && targetRank !== undefined && targetRank < currentRank) {
       revertTargetStatus = editStatus;
       releasePickTaskIds = [];
+      releaseOnly = false;
       showRevertForm = true;
       return;
     }
@@ -308,8 +309,10 @@
     const ok = await vm.revertStatus({ newStatus: targetStatus, releasePickTaskIds });
     if (ok) {
       showRevertForm = false;
+      const wasReleaseOnly = releaseOnly;
+      releaseOnly = false;
       editStatus = targetStatus;
-      if (vm.selected) await saveHeader(vm.selected);
+      if (!wasReleaseOnly && vm.selected) await saveHeader(vm.selected);
       feedback = i18n.t('Estado del pedido revertido.');
       pushToast(feedback, 'success');
     } else if (vm.error) pushToast(vm.error, 'error');
@@ -659,8 +662,8 @@
         {#if order.status === 'OPEN' && canAdminFulfillment(order)}<button type="button" onclick={() => void openAdminPick(order)}>{i18n.t('Picking administrativo')}</button>{/if}
         {#if ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status) && canAdminFulfillment(order) && order.lines.some((line) => line.quantityPicked > line.quantityShipped)}<button type="button" onclick={() => void shipOrder(order)}>{i18n.t('Despacho administrativo')}</button>{/if}
         {#if canPartialFulfill(order)}<button type="button" aria-expanded={showPartialFulfill} onclick={() => { if (!showPartialFulfill) { partialShorts = {}; partialReason = ''; } showPartialFulfill = !showPartialFulfill; }}>{i18n.t('Fulfillment parcial')}</button>{/if}
-        {#if ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status) && canAdminFulfillment(order)}<button type="button" onclick={() => { revertTargetStatus = order.status === 'SHIPPED' ? 'PACKED' : order.status === 'PACKED' ? 'PICKED' : 'OPEN'; releasePickTaskIds = []; showRevertForm = !showRevertForm; }}>{i18n.t('Revertir estado')}</button>{/if}
-        {#if order.pickTasks.length > 0 && order.orderType !== 'return'}<button type="button" onclick={() => { revertTargetStatus = order.status; releasePickTaskIds = []; showRevertForm = true; }}>{i18n.t('Liberar cantidades recogidas')}</button>{/if}
+        {#if ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status) && canAdminFulfillment(order)}<button type="button" onclick={() => { revertTargetStatus = order.status === 'SHIPPED' ? 'PACKED' : order.status === 'PACKED' ? 'PICKED' : 'OPEN'; releasePickTaskIds = []; releaseOnly = false; showRevertForm = !showRevertForm; }}>{i18n.t('Revertir estado')}</button>{/if}
+        {#if order.pickTasks.length > 0 && order.orderType !== 'return'}<button type="button" onclick={() => { revertTargetStatus = order.status; releasePickTaskIds = []; releaseOnly = true; showRevertForm = true; }}>{i18n.t('Liberar cantidades recogidas')}</button>{/if}
         {#if order.status === 'SHIPPED' && order.orderType !== 'return' && order.orderType !== 'refund' && order.lines.some((line) => line.quantityShipped > 0)}<button type="button" onclick={() => { rmaQuantities = {}; showRma = true; }}>{i18n.t('Crear RMA')}</button>{/if}
         {#if order.orderType === 'return' && order.status === 'OPEN'}<button type="button" onclick={() => { returnWarehouseId = String(order.warehouseId ?? ''); returnIdempotencyKey = crypto.randomUUID(); showReceiveReturn = true; }}>{i18n.t('Recibir devolución')}</button>{#if authGuard?.user?.role === 'ADMIN'}<button class="so-danger" type="button" onclick={() => void voidCurrentReturn()}>{i18n.t('Anular RMA')}</button>{/if}{/if}
       </nav>
@@ -792,10 +795,10 @@
         </section>
       {/if}
 
-      {#if showRevertForm && ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status)}
+      {#if showRevertForm && (['PICKED', 'PACKED', 'SHIPPED'].includes(order.status) || order.pickTasks.length > 0)}
         <section class="so-section">
           <h3>{i18n.t('Revertir estado')}</h3>
-          <label>{i18n.t('Nuevo estado')}<select bind:value={revertTargetStatus}>{#if order.status !== 'OPEN'}<option value="OPEN">OPEN</option>{/if}{#if ['PACKED', 'SHIPPED'].includes(order.status)}<option value="PICKED">PICKED</option>{/if}{#if order.status === 'SHIPPED'}<option value="PACKED">PACKED</option>{/if}{#if order.status === 'PICKED' || order.status === 'PACKED' || order.status === 'SHIPPED'}<option value={order.status}>{order.status} · {i18n.t('Solo liberar picking')}</option>{/if}</select></label>
+          <label>{i18n.t('Nuevo estado')}<select bind:value={revertTargetStatus}><option value="OPEN">OPEN</option>{#if ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status)}<option value="PICKED">PICKED</option>{/if}{#if ['PACKED', 'SHIPPED'].includes(order.status)}<option value="PACKED">PACKED</option>{/if}{#if order.status === 'SHIPPED'}<option value="SHIPPED">SHIPPED · {i18n.t('Solo liberar picking')}</option>{/if}</select></label>
           <p class="so-hint">{i18n.t('Las tareas seleccionadas se liberan y devuelven unidades al bin. Las no seleccionadas permanecen recogidas; el servidor impide estados incompatibles.')}</p>
           {#each order.pickTasks as task (task.pickTaskId)}
             <label class="so-short-row"><span>{task.sku} · {task.binCode} · {task.quantityPicked}</span><input type="checkbox" checked={releasePickTaskIds.includes(task.pickTaskId)} onchange={(event) => releasePickTaskIds = event.currentTarget.checked ? [...releasePickTaskIds, task.pickTaskId] : releasePickTaskIds.filter((id) => id !== task.pickTaskId)} /></label>
