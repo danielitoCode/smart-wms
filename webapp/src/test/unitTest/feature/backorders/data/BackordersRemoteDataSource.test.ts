@@ -6,7 +6,7 @@ function createApi() {
   return {
     get: vi.fn().mockResolvedValue({ backorders: [] }),
     post: vi.fn().mockResolvedValue({
-      message: 'Backorder cancelled', bo_so_id: 41, cancellation_reason: 'found', audit_log_id: 8
+      message: 'Backorder cancelled', bo_so_id: 41, cancellation_reason: 'refunded', audit_log_id: 8
     })
   } as unknown as ApiClient;
 }
@@ -32,6 +32,6 @@ describe('BackordersRemoteDataSource', () => {
       { cancellation_reason: 'refunded' }
     );
     expect(response.bo_so_id).toBe(41);
-    expect(response.cancellation_reason).toBe('found');
+    expect(response.cancellation_reason).toBe('refunded');
   });
 });
