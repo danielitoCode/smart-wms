@@ -20,7 +20,7 @@ export class EnsureAuthenticatedUseCase {
 			return { ok: true, user };
 		} catch (err) {
 			// Tokens / cookie inválidos: limpia siempre y trata como no autenticado
-			if (err instanceof ApiError && (err.status === 401 || err.status === 403 || err.isUnauthorized)) {
+			if (err instanceof ApiError && (err.isAuth)) {
 				authSession.clear();
 				return {
 					ok: false,
