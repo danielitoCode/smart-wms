@@ -220,7 +220,9 @@
         </article>
       {/each}
     </div>
-  {/if}  {#if cancelTarget}
+  {/if}
+
+  {#if cancelTarget}
     <div class="overlay">
       <dialog open class="dialog" aria-labelledby="queue-cancel-title">
         <h2 id="queue-cancel-title">{i18n.t('Confirmar cancelación')}</h2>
