@@ -217,3 +217,14 @@ export interface ReceiveReturnInput {
   notes?: string | null;
   idempotencyKey?: string | null;
 }
+
+export interface UpdateSalesOrderAllocationInput {
+  /** Signed adjustment: positive reserves available stock, negative releases it. */
+  delta: number;
+}
+
+export interface UpdateSalesOrderAllocationResult {
+  soLineId: number;
+  quantityAllocated: number;
+  unchanged: boolean;
+}
