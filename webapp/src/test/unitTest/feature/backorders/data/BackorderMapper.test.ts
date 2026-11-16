@@ -27,6 +27,18 @@ describe('BackorderMapper', () => {
     expect(result.parentSalesOrderId).toBeUndefined();
   });
 
+  it('keeps an explicit no-open-PO state when inventory is unavailable', () => {
+    const result = BackorderMapper.toDomain({
+      ...waitingDto,
+      items: [{ sku: 'SKU-2', item_name: 'Unavailable item', qty: 7, open_po: null }]
+    });
+    expect(result.items[0]).toMatchObject({
+      sku: 'SKU-2',
+      quantity: 7,
+      openPurchaseOrder: null
+    });
+  });
+
   it('maps a partially resolved row into the ready-to-ship queue without changing its quantities', () => {
     const result = BackorderMapper.toDomain({
       ...waitingDto,
