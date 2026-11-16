@@ -87,7 +87,7 @@ function toDomain(dto: SalesOrderDto): SalesOrder {
   const number = dto.so_number ?? '';
   return {
     salesOrderId: id, salesOrderNumber: number, soNumber: number, id,
-    barcode: dto.so_barcode ?? dto.barcode ?? null,
+    barcode: dto.so_barcode ?? null,
     status: dto.status ?? 'OPEN', priority: dto.priority ?? 0,
     warehouseId: dto.warehouse_id ?? null, customerId: dto.customer_id ?? null,
     customerName: dto.customer_name ?? null, customerEmail: dto.customer_email ?? null,
