@@ -104,17 +104,17 @@
   <section class="panel">
     <div class="toolbar">
       <label class="search">Find ticket or order
-        <input bind:value={search} placeholder="Sales order number or customer" onkeydown={(event) => event.key === 'Enter' && openByNumber()} />
+        <input bind:value={search} placeholder="Sales order number or customer" onkeydown={(event) => { if (event.key === 'Enter') void openByNumber(); }} />
       </label>
       <button class="secondary" onclick={openByNumber} disabled={!search.trim() || lookupLoading}>{lookupLoading ? 'Searching…' : 'Open ticket'}</button>
     </div>
     <div class="toolbar filters">
       <label>Status
-        <select bind:value={status} onchange={() => { selected = []; void load(); }}>
+        <select value={status} onchange={(event) => { status = event.currentTarget.value as typeof status; selected = []; void load(); }}>
           <option value="OPEN">OPEN</option><option value="PICKED">PICKED</option><option value="ALL">ALL (OPEN + PICKED)</option>
         </select>
       </label>
-      <label class="check"><input type="checkbox" bind:checked={hidePrinted} onchange={() => { selected = []; void load(); }} /> Hide printed</label>
+      <label class="check"><input type="checkbox" checked={hidePrinted} onchange={(event) => { hidePrinted = event.currentTarget.checked; selected = []; void load(); }} /> Hide printed</label>
       <label class="check"><input type="checkbox" bind:checked={multiOrders} /> Multi-Orders</label>
       <label class="check"><input type="checkbox" bind:checked={longOrders} /> Long Orders (5+ lines)</label>
       <button class="secondary" onclick={load} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button>
