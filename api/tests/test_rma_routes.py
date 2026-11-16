@@ -301,3 +301,47 @@ def test_return_excluded_from_picking_queue(client, auth_headers, _db_transactio
         headers=auth_headers,
     ).get_json()["sales_orders"]
     assert return_id in {r["so_id"] for r in returns_page}
+
+
+def test_return_receipts_endpoint_lists_rma_receipts(client, auth_headers, _db_transaction):
+    db = _db_transaction
+    parent_id = _insert_so(f"POS-{uuid.uuid4().hex[:8]}")
+    item = _insert_item()
+    line = _insert_so_line(parent_id, item, qty=3)
+    bin_id = db.execute(
+        sa_text("SELECT bin_id FROM bins WHERE warehouse_id = 1 ORDER BY bin_id LIMIT 1")
+    ).scalar()
+    created = client.post(
+        f"/api/admin/sales-orders/{parent_id}/create-rma",
+        json={"lines": [{"item_id": item, "quantity": 2, "original_so_line_id": line}]},
+        headers=auth_headers,
+    )
+    assert created.status_code == 201, created.get_data(as_text=True)
+    rma_id = created.get_json()["so_id"]
+
+    received = client.post(
+        f"/api/admin/sales-orders/{rma_id}/receive-return",
+        json={"item_id": item, "quantity": 1, "warehouse_id": 1, "bin_id": bin_id,
+              "notes": "Caja dañada"},
+        headers=auth_headers,
+    )
+    assert received.status_code == 200, received.get_data(as_text=True)
+
+    history = client.get(
+        f"/api/admin/sales-orders/{rma_id}/return-receipts", headers=auth_headers
+    )
+    assert history.status_code == 200
+    rows = history.get_json()["receipts"]
+    assert len(rows) == 1
+    assert rows[0]["so_line_id"] is not None
+    assert rows[0]["item_id"] == item
+    assert rows[0]["quantity_received"] == 1
+    assert rows[0]["bin_id"] == bin_id
+    assert rows[0]["notes"] == "Caja dañada"
+
+
+def test_return_receipts_endpoint_rejects_non_return_sales_order(client, auth_headers):
+    response = client.get(
+        "/api/admin/sales-orders/999999999/return-receipts", headers=auth_headers
+    )
+    assert response.status_code == 404
