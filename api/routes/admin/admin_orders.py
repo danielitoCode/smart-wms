@@ -1148,7 +1148,7 @@ def get_sales_order(so_id):
     lines = g.db.execute(
         text("""
             SELECT sol.so_line_id, sol.line_number, sol.item_id, i.sku, i.item_name, i.upc,
-                   sol.quantity_ordered, sol.quantity_allocated, sol.quantity_picked, sol.quantity_packed, sol.quantity_shipped, sol.quantity_received, sol.status
+                   sol.quantity_ordered, sol.quantity_allocated, sol.quantity_picked, sol.quantity_packed, sol.quantity_shipped, sol.quantity_received, sol.original_so_line_id, sol.status
             FROM sales_order_lines sol JOIN items i ON i.item_id = sol.item_id
             WHERE sol.so_id = :sid ORDER BY sol.line_number
         """),
@@ -1246,7 +1246,7 @@ def get_sales_order(so_id):
              "quantity_ordered": l.quantity_ordered, "quantity_allocated": l.quantity_allocated,
              "quantity_picked": l.quantity_picked, "quantity_packed": l.quantity_packed,
              "quantity_shipped": l.quantity_shipped, "quantity_received": l.quantity_received,
-             "status": l.status}
+             "original_so_line_id": l.original_so_line_id, "status": l.status}
             for l in lines
         ],
         "pick_tasks": [
