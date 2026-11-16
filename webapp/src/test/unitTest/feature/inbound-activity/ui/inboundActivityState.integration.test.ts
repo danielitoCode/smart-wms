@@ -30,9 +30,10 @@ function setup() {
 	const response: InboundActivityListResponseDto = {
 		rows: [dto], page: 1, per_page: 25, limit: 25, total: 1, has_next: false
 	};
-	const api = {
-		get: vi.fn(async (path: string) => path.includes('/17') ? dto : response)
-	} as unknown as ApiClient;
+	const get = vi.fn(async (path: string): Promise<InboundActivityDto | InboundActivityListResponseDto> =>
+		path.includes('/17') ? dto : response
+	);
+	const api = { get } as unknown as ApiClient;
 	const remote = new InboundActivityRemoteDataSource(api);
 	const repository = new InboundActivityRepositoryImpl(remote);
 	const dependencies = {
@@ -40,15 +41,15 @@ function setup() {
 		filter: new FilterInboundActivityUseCase(repository),
 		getDetail: new GetInboundActivityDetailUseCase(repository)
 	};
-	return { api, state: createInboundActivityState(dependencies) };
+	return { get, state: createInboundActivityState(dependencies) };
 }
 
 describe('Inbound activity UI state + application + repository integration', () => {
 	it('loads list rows through the real datasource, repository and mapper', async () => {
-		const { api, state } = setup();
+		const { get, state } = setup();
 		await state.load();
 
-		expect(api.get).toHaveBeenCalledWith('/api/admin/inbound/activity?page=1&per_page=50');
+		expect(get).toHaveBeenCalledWith('/api/admin/inbound/activity?page=1&per_page=50');
 		expect(state.rows).toMatchObject([{ inboundId: 17, resource: 'purchase_orders', canonicalId: dto.canonical_id }]);
 		expect(state.total).toBe(1);
 		expect(state.loading).toBe(false);
@@ -63,7 +64,7 @@ describe('Inbound activity UI state + application + repository integration', () 
 		state.setSince('2026-11-01T00:00');
 		await state.applyFilters();
 
-		const requestedPath = String(vi.mocked(api.get).mock.calls[0][0]);
+		const requestedPath = String(get.mock.calls[0][0]);
 		const url = new URL(requestedPath, 'http://localhost');
 		expect(url.searchParams.get('page')).toBe('1');
 		expect(url.searchParams.get('resource')).toBe('purchase_orders');
@@ -90,7 +91,7 @@ describe('Inbound activity UI state + application + repository integration', () 
 	it('preserves the previous list and exposes a retryable error after a failed refresh', async () => {
 		const { api, state } = setup();
 		await state.load();
-		vi.mocked(api.get).mockRejectedValueOnce(new Error('offline'));
+		get.mockRejectedValueOnce(new Error('offline'));
 		await state.load();
 
 		expect(state.rows).toHaveLength(1);
@@ -102,8 +103,7 @@ describe('Inbound activity UI state + application + repository integration', () 
 		const { api, state } = setup();
 		let resolveOld!: (value: InboundActivityListResponseDto) => void;
 		const pending = new Promise<InboundActivityListResponseDto>(resolve => { resolveOld = resolve; });
-		vi.mocked(api.get)
-			.mockReturnValueOnce(pending)
+		get.mockReturnValueOnce(pending as Promise<InboundActivityDto | InboundActivityListResponseDto>)
 			.mockResolvedValueOnce({ rows: [], page: 1, per_page: 50, limit: 50, total: 0, has_next: false });
 		const oldRequest = state.load();
 		const latestRequest = state.applyFilters();
