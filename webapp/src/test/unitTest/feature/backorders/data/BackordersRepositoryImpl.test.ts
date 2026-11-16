@@ -12,7 +12,7 @@ const parentOrder = {
 } as SalesOrder;
 
 describe('BackordersRepositoryImpl', () => {
-  it('resolves the original order through the related-sales-orders contract', async () => {
+  it('resolves the original order using the parent sales-order id', async () => {
     const remote = { list: vi.fn().mockResolvedValue([]), cancel: vi.fn() } as unknown as BackordersRemoteDataSource;
     const salesOrders = {
       getById: vi.fn().mockResolvedValueOnce(order).mockResolvedValueOnce(parentOrder)
