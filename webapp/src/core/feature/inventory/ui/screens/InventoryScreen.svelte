@@ -195,17 +195,24 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: flex-end;
-		gap: 0.75rem;
+		gap: 0.75rem 1rem;
 		margin-bottom: 1.15rem;
+		padding: 0.9rem 1.05rem;
+		border: 1px solid var(--line);
+		border-radius: 12px;
+		background: var(--card);
 	}
 	.filters label {
 		display: flex;
 		flex-direction: column;
-		gap: 0.3rem;
+		gap: 0.35rem;
 		min-width: 10rem;
+		color: var(--slate);
+		font-size: var(--fs-sm, 0.8125rem);
+		font-weight: 500;
 	}
 	.filters .search { flex: 1 1 18rem; }
-	.filter-actions { display: flex; gap: 0.5rem; }
+	.filter-actions { display: flex; gap: 0.5rem; align-items: center; }
 	.table-meta, .pagination {
 		display: flex;
 		align-items: center;
