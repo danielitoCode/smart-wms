@@ -60,6 +60,9 @@ export class CancelBackorderUseCase {
     if (!detail.parentSalesOrder || detail.parentSalesOrder.salesOrderId !== order.parentSoId) {
       throw new Error('No se pudo verificar el pedido original del backorder');
     }
+    if (detail.parentSalesOrder.status === 'CANCELLED') {
+      throw new Error('No se puede cancelar el backorder porque el pedido original ya está cancelado');
+    }
     if (!(CANCELLABLE_BACKORDER_STATUSES as readonly string[]).includes(order.status)) {
       throw new Error('No se puede cancelar un backorder en estado ' + order.status);
     }
