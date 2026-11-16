@@ -260,6 +260,29 @@ class TestActivityPaginationAndSafePayload:
         assert body["source_payload"]["orderNumber"] == "SO-1"
         assert body["canonical_payload"]["shipping_address"] == "[REDACTED]"
 
+    def test_detail_redacts_sensitive_camel_case_fields(self, client, auth_headers, seeded):
+        inbound_id = _exec(
+            "SELECT inbound_id FROM inbound_sales_orders WHERE source_system = %s AND external_id = 'SO-1'",
+            (seeded["ss_a"],),
+        )[0][0]
+        _exec(
+            "UPDATE inbound_sales_orders SET source_payload = %s::jsonb WHERE inbound_id = %s",
+            (json.dumps({
+                "customerName": "Private Customer",
+                "firstName": "Private",
+                "taxId": "TAX-123",
+                "safeField": "visible",
+            }), inbound_id),
+        )
+        body = client.get(
+            f"/api/admin/inbound/activity/sales_orders/{inbound_id}",
+            headers=auth_headers,
+        ).get_json()
+        assert body["source_payload"]["customerName"] == "[REDACTED]"
+        assert body["source_payload"]["firstName"] == "[REDACTED]"
+        assert body["source_payload"]["taxId"] == "[REDACTED]"
+        assert body["source_payload"]["safeField"] == "visible"
+
     def test_detail_supports_payload_removed_by_retention(self, client, auth_headers, seeded):
         inbound_id = _exec("SELECT inbound_id FROM inbound_sales_orders WHERE source_system = %s AND external_id = 'SO-1'", (seeded["ss_a"],))[0][0]
         _exec("UPDATE inbound_sales_orders SET source_payload = NULL WHERE inbound_id = %s", (inbound_id,))
