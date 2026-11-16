@@ -5,7 +5,7 @@
   import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
   import type { User } from '../../../auth/domain/entity/User';
   import { createBackordersState } from '../state/backordersState.svelte';
-  import type { BackorderQueueTab } from '../../domain/entity/Backorder';
+  import type { Backorder, BackorderQueueTab, CancelBackorderReason } from '../../domain/entity/Backorder';
   import { resolveBackorderWarehouseScope } from '../../domain/policy/BackorderScopePolicy';
 
   const i18n = getContext<I18nState>('i18n');
@@ -53,6 +53,61 @@
     }
   });
 
+  function canAccessWarehouse(warehouseId: number): boolean {
+    try {
+      resolveBackorderWarehouseScope({
+        role: guard.user?.role ?? 'USER',
+        assignedWarehouseIds: guard.user?.warehouseIds ?? [],
+        selectedWarehouseId: warehouseId
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function openCancel(row: Backorder): void {
+    if (!canOpenSalesOrderDetail || !canAccessWarehouse(row.warehouseId)) return;
+    cancelTarget = row;
+    cancelReason = 'other';
+    cancelError = '';
+  }
+
+  async function submitCancel(): Promise<void> {
+    if (!cancelTarget || vm.saving) return;
+    cancelError = '';
+    if (!canAccessWarehouse(cancelTarget.warehouseId)) {
+      cancelError = i18n.t('No tienes acceso al almacén de este backorder.');
+      return;
+    }
+
+    const target = cancelTarget;
+    const ok = await vm.cancel(target.salesOrderId, cancelReason);
+    if (!ok) {
+      cancelError = vm.error || i18n.t('No se pudo cancelar el backorder.');
+      return;
+    }
+
+    cancelTarget = null;
+    successMessage = cancelReason === 'refunded'
+      ? i18n.t('Backorder marcado como reembolsado. El pedido original no fue cancelado.')
+      : i18n.t('Backorder cancelado. El pedido original no fue modificado.');
+
+    try {
+      const warehouseId = resolveBackorderWarehouseScope({
+        role: guard.user?.role ?? 'USER',
+        assignedWarehouseIds: guard.user?.warehouseIds ?? [],
+        selectedWarehouseId: selection?.warehouseId ?? null
+      });
+      await vm.load(warehouseId, activeTab);
+    } catch (cause) {
+      scopeError = true;
+      scopeErrorMessage = cause instanceof Error
+        ? cause.message
+        : i18n.t('No tienes acceso al almacén seleccionado.');
+    }
+  }
+
   async function changeTab(tab: BackorderQueueTab): Promise<void> {
     const params = new URLSearchParams(page.url.search);
     params.set('tab', tab);
@@ -88,6 +143,10 @@
       {i18n.t('Listos para despacho')}
     </button>
   </nav>
+
+  {#if successMessage}
+    <p class="message success" role="status">{successMessage}</p>
+  {/if}
 
   <div class="filters">
     <label>
@@ -146,15 +205,56 @@
               </div>
             {/each}
           </div>
-          {#if canOpenSalesOrderDetail}
-            <a class="detail-link" href={'/management/backorders/' + row.salesOrderId}>{i18n.t('Ver detalle del pedido')}</a>
-          {:else}
-            <p class="permission-note">{i18n.t('Para abrir el detalle del pedido original necesitas el permiso Pedidos de venta.')}</p>
-          {/if}
+          <div class="card-actions">
+            {#if canOpenSalesOrderDetail}
+              <a class="detail-link" href={'/management/backorders/' + row.salesOrderId}>{i18n.t('Ver detalle')}</a>
+              {#if canAccessWarehouse(row.warehouseId)}
+                <button class="cancel-link" type="button" onclick={() => openCancel(row)}>
+                  {i18n.t('Cancelar backorder')}
+                </button>
+              {/if}
+            {:else}
+              <p class="permission-note">{i18n.t('Para abrir el detalle o cancelar necesitas el permiso Pedidos de venta.')}</p>
+            {/if}
+          </div>
         </article>
       {/each}
     </div>
-  {/if}</section>
+  {/if}  {#if cancelTarget}
+    <div class="overlay">
+      <dialog open class="dialog" aria-labelledby="queue-cancel-title">
+        <h2 id="queue-cancel-title">{i18n.t('Confirmar cancelación')}</h2>
+        <p>
+          {i18n.t('Se cancelará únicamente el backorder')}
+          <strong>{cancelTarget.salesOrderNumber}</strong>.
+          {i18n.t('El pedido original')}
+          <strong>{cancelTarget.parentSalesOrderNumber || '—'}</strong>
+          {i18n.t('no se cancelará por esta acción.')}
+        </p>
+        <p class="dialog-hint">{i18n.t('El servidor validará que sea un backorder cancelable, comprobará su pedido original y aplicará la liberación operativa correspondiente. Las órdenes POS sin padre no pueden cancelarse desde esta acción.')}</p>
+        <label>{i18n.t('Motivo')}
+          <select bind:value={cancelReason}>
+            <option value="found">{i18n.t('Existencias encontradas')}</option>
+            <option value="customer_asked">{i18n.t('Solicitado por el cliente')}</option>
+            <option value="refunded">{i18n.t('Reembolsado')}</option>
+            <option value="other">{i18n.t('Otro')}</option>
+          </select>
+        </label>
+        {#if cancelError}
+          <p class="message error" role="alert">{cancelError}</p>
+        {/if}
+        <footer>
+          <button type="button" disabled={vm.saving} onclick={() => cancelTarget = null}>
+            {i18n.t('Conservar backorder')}
+          </button>
+          <button class="danger" type="button" disabled={vm.saving} onclick={() => void submitCancel()}>
+            {vm.saving ? i18n.t('Cancelando…') : i18n.t('Confirmar cancelación')}
+          </button>
+        </footer>
+      </dialog>
+    </div>
+  {/if}
+</section>
 
 <style>
   .page{max-width:82rem;margin:1.5rem auto;padding:0 1.25rem;color:var(--ink)}
@@ -186,11 +286,24 @@
   .item>div{display:grid;gap:.1rem}
   .item>div span,.item small{color:var(--slate)}
   .item small{grid-column:1/-1;font-size:.7rem;line-height:1.4}
-  .detail-link{display:inline-flex;margin-top:.75rem;color:var(--accent);font-size:.82rem;font-weight:650;text-decoration:none}
+  .card-actions{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-top:.75rem}
+  .detail-link{display:inline-flex;color:var(--accent);font-size:.82rem;font-weight:650;text-decoration:none}
+  .cancel-link{border:0;background:transparent;color:var(--danger);padding:0;font:650 .82rem var(--disp);cursor:pointer}
+  .cancel-link:hover{text-decoration:underline}
   .detail-link:hover{text-decoration:underline}
   .permission-note,.empty{color:var(--slate);font-size:.82rem}
   .empty{padding:2rem 0}
   .message{padding:.7rem .85rem;border:1px solid var(--line);border-radius:8px;font-size:.82rem}
-  .error{color:var(--danger)}
+  .error{color:var(--danger)} .success{color:var(--success)}
+  .overlay{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;background:#0008;padding:1rem}
+  .dialog{width:min(100%,34rem);max-height:calc(100vh - 2rem);overflow:auto;margin:auto;padding:1.2rem;border:1px solid var(--line);border-radius:14px;background:var(--card);box-shadow:0 20px 60px #0003}
+  .dialog p{font-size:.84rem;line-height:1.5}
+  .dialog-hint{color:var(--slate)}
+  .dialog label{display:grid;gap:.35rem;font-size:.8rem;color:var(--slate);margin:1rem 0}
+  .dialog select{min-height:40px;border:1px solid var(--line);border-radius:8px;padding:.5rem;background:var(--card);color:var(--ink)}
+  .dialog footer{display:flex;justify-content:flex-end;gap:.5rem;flex-wrap:wrap;margin-top:1rem}
+  .dialog button{border:1px solid var(--line);border-radius:8px;padding:.55rem .8rem;background:var(--card);color:var(--ink);cursor:pointer}
+  .dialog button.danger{border-color:var(--danger);color:var(--danger)}
+  .dialog button:disabled{opacity:.55;cursor:not-allowed}
   @media(max-width:600px){.page-header{align-items:flex-start}.summary{display:none}.metadata{grid-template-columns:1fr}.tabs{overflow-x:auto}.tabs button{white-space:nowrap}}
 </style>
