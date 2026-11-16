@@ -23,10 +23,12 @@
 
 	let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
-	onMount(async () => {
-		await vm.load();
-		const canonicalId = route.url.searchParams.get('canonical_id');
-		if (canonicalId) await vm.loadDetail(canonicalId);
+	onMount(() => {
+		void (async () => {
+			await vm.load();
+			const canonicalId = route.url.searchParams.get('canonical_id');
+			if (canonicalId) await vm.loadDetail(canonicalId);
+		})();
 		return () => {
 			if (searchTimer) clearTimeout(searchTimer);
 		};
