@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { page as route } from '$app/state';
 	import { getContext } from 'svelte';
 	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
 	import { createVendorsState } from '../state/vendorsState.svelte';
@@ -22,8 +23,10 @@
 
 	let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
-	onMount(() => {
-		void vm.load();
+	onMount(async () => {
+		await vm.load();
+		const canonicalId = route.url.searchParams.get('canonical_id');
+		if (canonicalId) await vm.loadDetail(canonicalId);
 		return () => {
 			if (searchTimer) clearTimeout(searchTimer);
 		};
