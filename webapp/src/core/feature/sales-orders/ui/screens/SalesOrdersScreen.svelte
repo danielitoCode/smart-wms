@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getContext, onMount } from 'svelte';
   import { page as route } from '$app/state';
+  import { goto } from '$app/navigation';
   import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
   import { createSalesOrdersState } from '../state/salesOrdersState.svelte';
   import type {
@@ -26,6 +27,9 @@
       phone: address?.phone ?? ''
     };
   }
+
+  interface Props { initialOrderId?: number; }
+  let { initialOrderId }: Props = $props();
 
   const i18n = getContext<I18nState>('i18n');
   const vm = createSalesOrdersState();
@@ -79,6 +83,10 @@
   let returnNotes = $state('');
 
   onMount(() => {
+    if (initialOrderId) {
+      void openOrder(initialOrderId);
+      return;
+    }
     const initialSearch = route.url.searchParams.get('q') ?? route.url.searchParams.get('focus') ?? '';
     vm.setSearch(initialSearch);
     void vm.load().then(() => {
@@ -402,6 +410,16 @@
     pickEntriesByLine = { ...pickEntriesByLine, [lineId]: entries };
   }
 
+  function closeDetail(): void {
+    if (initialOrderId) {
+      void goto('/sales-orders');
+      return;
+    }
+    vm.close();
+    relatedTrail = [];
+    editMode = false;
+  }
+
   function displayDate(value: string | null): string {
     if (!value) return '—';
     const date = new Date(value);
@@ -409,6 +427,7 @@
   }
 </script>
 
+{#if !initialOrderId}
 <section class="page">
   <PageHeader
     title={i18n.t('Pedidos de venta')}
@@ -472,6 +491,7 @@
     </footer>
   {/if}
 </section>
+{/if}
 
 {#if showCreate}
   <div class="so-overlay">
@@ -504,7 +524,7 @@
     <section class="so-dialog so-detail" role="dialog" aria-modal="true" aria-labelledby="so-detail-title">
       <header class="so-dialog-head">
         <div><h2 id="so-detail-title">{order.salesOrderNumber}</h2><p><span class="status">{order.status}</span> · {order.orderType ?? 'sale'} · {i18n.t('Almacén')} {order.warehouseId ?? '—'}</p></div>
-        <button type="button" aria-label={i18n.t('Cerrar')} onclick={() => { vm.close(); relatedTrail = []; editMode = false; }}>×</button>
+        <button type="button" aria-label={i18n.t('Cerrar')} onclick={closeDetail}>×</button>
       </header>
       {#if vm.error}<UiBanner tone="error" message={vm.error} />{/if}
       <nav class="so-actions">
