@@ -18,8 +18,9 @@ _INBOUND_TABLES = {
 _VALID_STATUSES = {"applied", "superseded"}
 _SENSITIVE_KEY = re.compile(
     r"(password|passwd|secret|token|authorization|api[_-]?key|email|e_mail|"
-    r"phone|mobile|address|street|postal|zip|first[_-]?name|last[_-]?name|"
-    r"full[_-]?name|recipient)",
+    r"phone|mobile|address|street|postal|zip|ssn|tax[_-]?id|birth|"
+    r"account[_-]?number|card[_-]?number|first[_-]?name|last[_-]?name|"
+    r"full[_-]?name|recipient|(^|[_-])name([_-]|$))",
     re.IGNORECASE,
 )
 

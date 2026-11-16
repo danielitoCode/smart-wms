@@ -265,3 +265,11 @@ class TestActivityPaginationAndSafePayload:
         _exec("UPDATE inbound_sales_orders SET source_payload = NULL WHERE inbound_id = %s", (inbound_id,))
         body = client.get(f"/api/admin/inbound/activity/sales_orders/{inbound_id}", headers=auth_headers).get_json()
         assert body["source_payload"] is None and body["source_payload_retained"] is False
+
+
+class TestFailedInboundStatus:
+    def test_failed_is_not_a_persisted_staging_status(self, client, auth_headers):
+        response = client.get("/api/admin/inbound/activity?status=failed", headers=auth_headers)
+        assert response.status_code == 400
+        assert response.get_json()["error"] == "unknown_status"
+        assert set(response.get_json()["valid"]) == {"applied", "superseded"}

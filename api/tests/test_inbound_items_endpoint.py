@@ -218,3 +218,34 @@ class TestItemsEndpoint:
         assert r1.status_code == 201
         assert r2.status_code == 200
         assert r2.get_json()["inbound_id"] == r1.get_json()["inbound_id"]
+
+
+class TestRejectedInboundPayloads:
+    def test_incomplete_body_is_rejected_without_creating_activity(self, client, app, scenario):
+        ss = scenario["ss"]
+        _build_registry(app, ss, _ITEMS_MAPPING.format(ss=ss))
+        _insert_token_via_test_conn(ss, "items-incomplete")
+        response = _post(client, "items-incomplete", {
+            "external_id": "ITEM-INCOMPLETE", "external_version": "v1",
+        })
+        assert response.status_code == 422
+        count = _query(
+            "SELECT COUNT(*) FROM inbound_items WHERE source_system = %s AND external_id = 'ITEM-INCOMPLETE'",
+            (ss,),
+        )[0][0]
+        assert count == 0
+
+    def test_mapping_failure_does_not_create_processed_activity(self, client, app, scenario):
+        ss = scenario["ss"]
+        _build_registry(app, ss, _ITEMS_MAPPING.format(ss=ss))
+        _insert_token_via_test_conn(ss, "items-map-failure")
+        response = _post(client, "items-map-failure", {
+            "external_id": "ITEM-MAP-FAIL", "external_version": "v1",
+            "source_payload": {"sku": "SKU-MAP-FAIL"},
+        })
+        assert response.status_code in (400, 422)
+        count = _query(
+            "SELECT COUNT(*) FROM inbound_items WHERE source_system = %s AND external_id = 'ITEM-MAP-FAIL'",
+            (ss,),
+        )[0][0]
+        assert count == 0
