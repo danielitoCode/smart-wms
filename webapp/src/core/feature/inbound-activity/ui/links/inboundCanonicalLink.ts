@@ -13,13 +13,22 @@ export type InboundCanonicalLink = {
  */
 export function resolveInboundCanonicalLink(
 	resource: InboundActivityResource,
-	canonicalPayload: unknown
+	canonicalPayload: unknown,
+	canonicalId: string | null = null
 ): InboundCanonicalLink | null {
 	if (!canonicalPayload || typeof canonicalPayload !== 'object' || Array.isArray(canonicalPayload)) {
 		return null;
 	}
 
 	const payload = canonicalPayload as Record<string, unknown>;
+	if (resource === 'vendors' && canonicalId?.trim()) {
+		return {
+			href: `/management/vendors?canonical_id=${encodeURIComponent(canonicalId.trim())}`,
+			searchValue: canonicalId.trim(),
+			label: canonicalId.trim()
+		};
+	}
+
 	const candidates: Partial<Record<InboundActivityResource, string[]>> = {
 		items: ['sku'],
 		purchase_orders: ['po_number'],
