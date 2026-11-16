@@ -22,9 +22,28 @@
     guard.user?.role === 'ADMIN' || guard.user?.allowedPages.includes('sales-orders') === true
   );
   const order = $derived(vm.detail?.order ?? null);
+
+  function canAccessOrderWarehouse(warehouseId: number | null): boolean {
+    try {
+      resolveBackorderWarehouseScope({
+        role: guard.user?.role ?? 'USER',
+        allowedPages: guard.user?.allowedPages ?? [],
+        assignedWarehouseIds: guard.user?.warehouseIds ?? [],
+        selectedWarehouseId: warehouseId
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  const hasOrderWarehouseAccess = $derived(
+    order === null || canAccessOrderWarehouse(order.warehouseId)
+  );
   const cancelable = $derived(
     order !== null &&
     hasSalesOrderPermission &&
+    hasOrderWarehouseAccess &&
     order.orderType === 'backorder' &&
     order.parentSoId !== null &&
     ['WAITING_STOCK', 'OPEN', 'PICKED', 'PACKED'].includes(order.status)
@@ -83,6 +102,8 @@
     <p class="empty">{i18n.t('Cargando detalle del backorder…')}</p>
   {:else if vm.detailError}
     <p class="message error" role="alert">{vm.detailError}</p>
+  {:else if order && !hasOrderWarehouseAccess}
+    <p class="message error" role="alert">{i18n.t('No tienes acceso al almacén de este pedido.')}</p>
   {:else if order}
     <header class="header">
       <div>
