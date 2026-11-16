@@ -7,7 +7,7 @@ import type {
 import type { ListSalesOrdersParams, SalesOrderRepository } from '../../domain/repository/SalesOrderRepository';
 import type { SalesOrderRemoteDataSource } from '../datasource/SalesOrderRemoteDataSource';
 import type {
-  CreateSalesOrderRequestDto, UpdateSalesOrderRequestDto,
+  CreateSalesOrderRequestDto, UpdateSalesOrderRequestDto, UpdateSalesOrderAllocationRequestDto,
   UpdateSalesOrderAddressRequestDto, AdminPickRequestDto,
   PartialFulfillRequestDto, RevertSalesOrderStatusRequestDto,
   CreateRmaRequestDto, ReceiveRmaRequestDto
@@ -99,7 +99,8 @@ export class SalesOrderRepositoryImpl implements SalesOrderRepository {
     await this.datasource.updateAddress(id, payload);
   }
   async updateAllocation(id: number, lineId: number, input: UpdateSalesOrderAllocationInput): Promise<UpdateSalesOrderAllocationResult> {
-    const response = await this.datasource.updateAllocation(id, lineId, input);
+    const payload: UpdateSalesOrderAllocationRequestDto = { delta: input.delta };
+    const response = await this.datasource.updateAllocation(id, lineId, payload);
     return {
       soLineId: response.so_line_id,
       quantityAllocated: response.quantity_allocated,
