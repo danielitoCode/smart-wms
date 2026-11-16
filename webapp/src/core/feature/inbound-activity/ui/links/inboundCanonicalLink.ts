@@ -16,11 +16,6 @@ export function resolveInboundCanonicalLink(
 	canonicalPayload: unknown,
 	canonicalId: string | null = null
 ): InboundCanonicalLink | null {
-	if (!canonicalPayload || typeof canonicalPayload !== 'object' || Array.isArray(canonicalPayload)) {
-		return null;
-	}
-
-	const payload = canonicalPayload as Record<string, unknown>;
 	if (resource === 'vendors' && canonicalId?.trim()) {
 		return {
 			href: `/management/vendors?canonical_id=${encodeURIComponent(canonicalId.trim())}`,
@@ -29,6 +24,11 @@ export function resolveInboundCanonicalLink(
 		};
 	}
 
+	if (!canonicalPayload || typeof canonicalPayload !== 'object' || Array.isArray(canonicalPayload)) {
+		return null;
+	}
+
+	const payload = canonicalPayload as Record<string, unknown>;
 	const candidates: Partial<Record<InboundActivityResource, string[]>> = {
 		items: ['sku'],
 		purchase_orders: ['po_number'],
