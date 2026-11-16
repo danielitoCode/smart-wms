@@ -233,3 +233,15 @@ export interface SalesOrderSourceSystem {
   sourceSystem: string;
   kind: string;
 }
+
+export interface AdminShipShortfallLine {
+  sku: string;
+  ordered: number;
+  picked: number;
+}
+
+export interface AdminShipResult {
+  fulfillmentId: number;
+  linesShipped: number;
+  totalQuantity: number;
+}
