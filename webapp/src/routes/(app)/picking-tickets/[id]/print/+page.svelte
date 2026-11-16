@@ -1,5 +1,6 @@
 <script lang="ts">
+  import { page } from '$app/state';
   import PickingTicketPrintScreen from '#core/feature/picking-tickets/ui/screens/PickingTicketPrintScreen.svelte';
-  let { params } = $props();
+  const salesOrderId = $derived(Number(page.params.id));
 </script>
-<PickingTicketPrintScreen salesOrderId={Number(params.id)} />
+<PickingTicketPrintScreen {salesOrderId} />
