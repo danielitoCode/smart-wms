@@ -1,5 +1,6 @@
 <script lang="ts">
   import { getContext } from 'svelte';
+  import { page } from '$app/state';
   import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
   import type { User } from '../../../auth/domain/entity/User';
   import type { CancelBackorderReason } from '../../domain/entity/Backorder';
@@ -22,7 +23,7 @@
     guard.user?.role === 'ADMIN' || guard.user?.allowedPages.includes('sales-orders') === true
   );
   const order = $derived(vm.detail?.order ?? null);
-  const parentOrder = $derived(vm.detail?.parentSalesOrder ?? null);
+  const parentSalesOrder = $derived(vm.detail?.parentSalesOrder ?? null);
   const lineProgress = $derived(vm.detail?.lines ?? []);
 
   function canAccessOrderWarehouse(warehouseId: number | null): boolean {
@@ -47,7 +48,7 @@
     hasOrderWarehouseAccess &&
     order.orderType === 'backorder' &&
     order.parentSoId !== null &&
-    parentOrder !== null &&
+    parentSalesOrder !== null &&
     ['WAITING_STOCK', 'OPEN', 'PICKED', 'PACKED'].includes(order.status)
   );
 
@@ -90,7 +91,7 @@
 </script>
 
 <section class="page">
-  <a class="back-link" href="/management/backorders">{i18n.t('Volver a pedidos pendientes')}</a>
+  <a class="back-link" href={'/management/backorders' + (page.url.searchParams.get('tab') ? '?tab=' + encodeURIComponent(page.url.searchParams.get('tab')!) : '')}>{i18n.t('Volver a pedidos pendientes')}</a>
 
   {#if guard.status !== 'authenticated'}
     <p class="message">{i18n.t('Verificando permisos…')}</p>
@@ -130,13 +131,13 @@
           <dt>{i18n.t('Tipo de pedido')}</dt><dd>{order.orderType ?? '—'}</dd>
           <dt>{i18n.t('Pedido original')}</dt>
           <dd>
-            {#if parentOrder}
-              <a href={'/sales-orders/' + parentOrder.salesOrderId}>{parentOrder.salesOrderNumber}</a>
+            {#if parentSalesOrder}
+              <a href={'/sales-orders/' + parentSalesOrder.salesOrderId} aria-label={i18n.t('Abrir pedido original') + ' ' + parentSalesOrder.salesOrderNumber}>{parentSalesOrder.salesOrderNumber}</a>
             {:else}
               {order.parentSoNumber || order.parentSalesOrderNumber || '—'}
             {/if}
           </dd>
-          <dt>{i18n.t('Estado del pedido original')}</dt><dd>{parentOrder?.status ?? '—'}</dd>
+          <dt>{i18n.t('Estado del pedido original')}</dt><dd>{parentSalesOrder?.status ?? '—'}</dd>
           <dt>{i18n.t('Motivo de cancelación')}</dt><dd>{order.cancellationReason || '—'}</dd>
         </dl>
         {#if order.parentSoId === null}
@@ -204,7 +205,7 @@
       <div class="overlay">
         <dialog open class="dialog" aria-labelledby="cancel-title">
           <h2 id="cancel-title">{i18n.t('Confirmar cancelación')}</h2>
-          <p>{i18n.t('Se cancelará únicamente el backorder')} <strong>{order.salesOrderNumber}</strong>. {i18n.t('El pedido original')} <strong>{parentOrder?.salesOrderNumber ?? order.parentSalesOrderNumber ?? order.parentSoId}</strong> {i18n.t('no se cancelará por esta acción.')}</p>
+          <p>{i18n.t('Se cancelará únicamente el backorder')} <strong>{order.salesOrderNumber}</strong>. {i18n.t('El pedido original')} <strong>{parentSalesOrder?.salesOrderNumber ?? order.parentSalesOrderNumber ?? order.parentSoId}</strong> {i18n.t('no se cancelará por esta acción.')}</p>
           {#if order.status === 'WAITING_STOCK'}
             <p class="hint">{i18n.t('Este estado no mantiene reservas de inventario; la cancelación no requiere liberar cantidades recogidas.')}</p>
           {:else if order.status === 'OPEN'}
