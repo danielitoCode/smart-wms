@@ -2,7 +2,7 @@ import type {
   CreateSalesOrderInput, SalesOrder, SalesOrderPage, UpdateSalesOrder,
   PartialFulfillInput, RevertSalesOrderInput, CreateRmaInput, ReceiveReturnInput,
   RelatedSalesOrder, UpdateSalesOrderAddressInput, AvailableSalesOrderBin,
-  UpdateSalesOrderAllocationInput, UpdateSalesOrderAllocationResult
+  UpdateSalesOrderAllocationInput, UpdateSalesOrderAllocationResult, AdminShipResult
 } from '../../domain/entity/SalesOrder';
 import type { ListSalesOrdersParams, SalesOrderRepository } from '../../domain/repository/SalesOrderRepository';
 import type { SalesOrderRemoteDataSource } from '../datasource/SalesOrderRemoteDataSource';
@@ -114,7 +114,14 @@ export class SalesOrderRepositoryImpl implements SalesOrderRepository {
     return this.datasource.updateLine(id, lineId, quantity);
   }
   deleteLine(id: number, lineId: number): Promise<void> { return this.datasource.deleteLine(id, lineId); }
-  adminShip(id: number): Promise<void> { return this.datasource.adminShip(id); }
+  async adminShip(id: number, acknowledgeShortfall = false): Promise<AdminShipResult> {
+    const response = await this.datasource.adminShip(id, acknowledgeShortfall);
+    return {
+      fulfillmentId: response.fulfillment_id,
+      linesShipped: response.lines_shipped,
+      totalQuantity: response.total_quantity
+    };
+  }
   async getAvailableBins(id: number, lineId: number): Promise<AvailableSalesOrderBin[]> {
     const response = await this.datasource.getAvailableBins(id, lineId);
     return response.bins.map((bin) => ({
