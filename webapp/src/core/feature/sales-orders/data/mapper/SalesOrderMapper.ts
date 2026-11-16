@@ -100,6 +100,8 @@ function toDomain(dto: SalesOrderProjectionDto): SalesOrder {
     memo: dto.memo ?? null, orderTotal: numberOrNull(dto.order_total),
     customerShippingPaid: numberOrNull(dto.customer_shipping_paid),
     sourceSystem: dto.source_system ?? null, cancellationReason: dto.cancellation_reason ?? null,
+    backorderOpenedAt: dto.backorder_opened_at ?? null,
+    backorderFulfillableAt: dto.backorder_fulfillable_at ?? null,
     createdAt: dto.created_at ?? null, pickedAt: dto.picked_at ?? null,
     shippedAt: dto.shipped_at ?? null, shippedDateLocal: dto.shipped_date_local ?? null,
     billingAddress: toAddress(dto, 'billing'), shippingAddress: toAddress(dto, 'shipping'),
