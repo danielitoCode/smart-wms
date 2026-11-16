@@ -39,10 +39,16 @@ def _activity_union_sql(resource):
 def _safe_payload(value):
     """Redact credentials and direct-contact/address fields recursively."""
     if isinstance(value, dict):
-        return {
-            key: "[REDACTED]" if _SENSITIVE_KEY.search(str(key)) else _safe_payload(item)
-            for key, item in value.items()
-        }
+        sanitized = {}
+        for key, item in value.items():
+            # Normalize camelCase before matching so customerName,
+            # firstName and taxId receive the same protection as snake_case.
+            normalized_key = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", str(key)).lower()
+            sanitized[key] = (
+                "[REDACTED]" if _SENSITIVE_KEY.search(normalized_key)
+                else _safe_payload(item)
+            )
+        return sanitized
     if isinstance(value, list):
         return [_safe_payload(item) for item in value]
     return value
