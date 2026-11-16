@@ -228,3 +228,40 @@ class TestNoMutationEndpoints:
             headers=auth_headers,
         )
         assert resp.status_code in (404, 405)
+
+
+class TestActivityPaginationAndSafePayload:
+    def test_paginates_filtered_rows_without_duplicates(self, client, auth_headers, seeded):
+        base = f"/api/admin/inbound/activity?source_system={seeded['ss_a']}"
+        first = client.get(base + "&page=1&per_page=1", headers=auth_headers)
+        second = client.get(base + "&page=2&per_page=1", headers=auth_headers)
+        assert first.status_code == second.status_code == 200
+        one, two = first.get_json(), second.get_json()
+        assert one["total"] == two["total"] == 2
+        assert one["page"] == 1 and two["page"] == 2
+        assert one["rows"][0]["inbound_id"] != two["rows"][0]["inbound_id"]
+        assert one["has_next"] is True and two["has_next"] is False
+
+    def test_rejects_invalid_page_and_date_range(self, client, auth_headers):
+        invalid_page = client.get("/api/admin/inbound/activity?page=0", headers=auth_headers)
+        invalid_dates = client.get("/api/admin/inbound/activity?since=2026-05-02T00:00:00Z&until=2026-05-01T00:00:00Z", headers=auth_headers)
+        assert invalid_page.status_code == 400 and invalid_page.get_json()["error"] == "invalid_page"
+        assert invalid_dates.status_code == 400 and invalid_dates.get_json()["error"] == "invalid_date_range"
+
+    def test_detail_redacts_sensitive_fields_recursively(self, client, auth_headers, seeded):
+        inbound_id = _exec("SELECT inbound_id FROM inbound_sales_orders WHERE source_system = %s AND external_id = 'SO-1'", (seeded["ss_a"],))[0][0]
+        _exec("UPDATE inbound_sales_orders SET source_payload = %s::jsonb, canonical_payload = %s::jsonb WHERE inbound_id = %s",
+            (json.dumps({"orderNumber": "SO-1", "customer": {"email": "private@example.test", "phone": "555-0100"}, "api_token": "secret"}),
+             json.dumps({"so_number": "SO-1", "shipping_address": {"street": "Private"}}), inbound_id))
+        body = client.get(f"/api/admin/inbound/activity/sales_orders/{inbound_id}", headers=auth_headers).get_json()
+        assert body["source_payload"]["customer"]["email"] == "[REDACTED]"
+        assert body["source_payload"]["customer"]["phone"] == "[REDACTED]"
+        assert body["source_payload"]["api_token"] == "[REDACTED]"
+        assert body["source_payload"]["orderNumber"] == "SO-1"
+        assert body["canonical_payload"]["shipping_address"] == "[REDACTED]"
+
+    def test_detail_supports_payload_removed_by_retention(self, client, auth_headers, seeded):
+        inbound_id = _exec("SELECT inbound_id FROM inbound_sales_orders WHERE source_system = %s AND external_id = 'SO-1'", (seeded["ss_a"],))[0][0]
+        _exec("UPDATE inbound_sales_orders SET source_payload = NULL WHERE inbound_id = %s", (inbound_id,))
+        body = client.get(f"/api/admin/inbound/activity/sales_orders/{inbound_id}", headers=auth_headers).get_json()
+        assert body["source_payload"] is None and body["source_payload_retained"] is False
