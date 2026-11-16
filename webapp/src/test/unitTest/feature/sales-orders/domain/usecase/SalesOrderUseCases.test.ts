@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CreateSalesOrderUseCase } from '../../../../../../core/feature/sales-orders/domain/usecase/CreateSalesOrderUseCase';
 import { GetAvailableSalesOrderBinsUseCase } from '../../../../../../core/feature/sales-orders/domain/usecase/FulfillSalesOrderUseCases';
+import { UpdateSalesOrderAllocationUseCase } from '../../../../../../core/feature/sales-orders/domain/usecase/UpdateSalesOrderAllocationUseCase';
 import { ListSalesOrdersUseCase } from '../../../../../../core/feature/sales-orders/domain/usecase/ListSalesOrdersUseCase';
 import type { SalesOrderRepository } from '../../../../../../core/feature/sales-orders/domain/repository/SalesOrderRepository';
 import type { SalesOrderPage } from '../../../../../../core/feature/sales-orders/domain/entity/SalesOrder';
@@ -54,4 +55,20 @@ describe('Sales order use cases', () => {
     })).toThrow(/duplicate/);
     expect(create).not.toHaveBeenCalled();
   });
+  it('validates allocation delta and returns the actual server allocation result', async () => {
+    const updateAllocation = vi.fn().mockResolvedValue({
+      soLineId: 20, quantityAllocated: 3, unchanged: false
+    });
+    const useCase = new UpdateSalesOrderAllocationUseCase({
+      updateAllocation
+    } as unknown as SalesOrderRepository);
+
+    expect(() => useCase.execute(7, 20, { delta: 1_000_001 })).toThrow(/ajuste de asignación/);
+    expect(() => useCase.execute(7, 0, { delta: 1 })).toThrow(/línea/);
+    await expect(useCase.execute(7, 20, { delta: 5 })).resolves.toEqual({
+      soLineId: 20, quantityAllocated: 3, unchanged: false
+    });
+    expect(updateAllocation).toHaveBeenCalledWith(7, 20, { delta: 5 });
+  });
+
 });
