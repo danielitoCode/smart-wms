@@ -19,10 +19,9 @@ export class BackordersRepositoryImpl implements BackordersRepository {
 
   async getDetail(backorderId: number): Promise<BackorderDetail> {
     const order = await this.salesOrders.getById(backorderId);
-    const relatedOrders = await this.salesOrders.related(backorderId);
     const parentSalesOrder = order.parentSoId === null
       ? null
-      : relatedOrders.find((related) => related.soId === order.parentSoId) ?? null;
+      : await this.salesOrders.getById(order.parentSoId);
     return { order, parentSalesOrder };
   }
 
