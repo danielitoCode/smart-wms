@@ -17,6 +17,13 @@ export class SalesOrderRepositoryImpl implements SalesOrderRepository {
   async listPage(params?: ListSalesOrdersParams): Promise<SalesOrderPage> {
     return SalesOrderMapper.toPage(await this.datasource.list(params));
   }
+  async listSourceSystems(): Promise<import('../../domain/entity/SalesOrder').SalesOrderSourceSystem[]> {
+    const response = await this.datasource.listSourceSystems();
+    return response.source_systems.map((entry) => ({
+      sourceSystem: entry.source_system,
+      kind: entry.kind
+    }));
+  }
   async getById(id: number): Promise<SalesOrder> {
     return SalesOrderMapper.toDetail(await this.datasource.getById(id));
   }
