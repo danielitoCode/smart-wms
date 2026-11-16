@@ -13,7 +13,7 @@
 
 	async function onCreate() {
 		const types = eventTypes.split(',').map((s) => s.trim()).filter(Boolean);
-		const ok = await vm.create({ targetUrl, eventTypes: types });
+		const ok = await vm.create({ name: targetUrl.trim(), url: targetUrl.trim(), eventTypes: types });
 		if (ok) {
 			targetUrl = '';
 			eventTypes = '';
@@ -49,12 +49,12 @@
 		<div class="table-wrap"><table>
 			<thead><tr><th>{i18n.t('URL')}</th><th>{i18n.t('Eventos')}</th><th>{i18n.t('Estado')}</th><th>{i18n.t('Acciones')}</th></tr></thead>
 			<tbody>
-			{#each vm.rows as row (row.id)}
+			{#each vm.rows as row (row.subscriptionId)}
 				<tr>
-					<td class="mono">{row.targetUrl}</td>
+					<td class="mono">{row.url}</td>
 					<td>{Array.isArray(row.eventTypes) ? row.eventTypes.join(', ') : row.eventTypes}</td>
 					<td>{row.status ?? '—'}</td>
-					<td><button type="button" class="danger" disabled={vm.saving} onclick={() => void vm.remove(row.id)}>{i18n.t('Eliminar')}</button></td>
+					<td><button type="button" class="danger" disabled={vm.saving} onclick={() => void vm.remove(row.subscriptionId)}>{i18n.t('Eliminar')}</button></td>
 				</tr>
 			{/each}
 			</tbody>
