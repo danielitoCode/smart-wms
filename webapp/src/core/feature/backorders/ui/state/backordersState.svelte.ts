@@ -15,31 +15,42 @@ export function createBackordersState() {
   let saving = $state(false);
   let error = $state<string | null>(null);
   let detailError = $state<string | null>(null);
+  let listEpoch = 0;
+  let detailEpoch = 0;
 
   async function load(warehouseId: number | null, nextTab: BackorderQueueTab = tab): Promise<void> {
+    const epoch = ++listEpoch;
     loading = true;
+    rows = [];
     error = null;
     tab = nextTab;
     try {
-      rows = await dependencies.list.execute(warehouseId, tab);
+      const result = await dependencies.list.execute(warehouseId, tab);
+      if (epoch === listEpoch) rows = result;
     } catch (cause) {
-      rows = [];
-      error = toUserMessage(cause, 'No se pudieron cargar los pedidos pendientes');
+      if (epoch === listEpoch) {
+        rows = [];
+        error = toUserMessage(cause, 'No se pudieron cargar los pedidos pendientes');
+      }
     } finally {
-      loading = false;
+      if (epoch === listEpoch) loading = false;
     }
   }
 
   async function loadDetail(backorderId: number): Promise<void> {
+    const epoch = ++detailEpoch;
     detailLoading = true;
     detailError = null;
     detail = null;
     try {
-      detail = await dependencies.detail.execute(backorderId);
+      const result = await dependencies.detail.execute(backorderId);
+      if (epoch === detailEpoch) detail = result;
     } catch (cause) {
-      detailError = toUserMessage(cause, 'No se pudo cargar el detalle del pedido pendiente');
+      if (epoch === detailEpoch) {
+        detailError = toUserMessage(cause, 'No se pudo cargar el detalle del pedido pendiente');
+      }
     } finally {
-      detailLoading = false;
+      if (epoch === detailEpoch) detailLoading = false;
     }
   }
 
