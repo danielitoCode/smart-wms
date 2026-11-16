@@ -82,7 +82,9 @@
   function toggleSelected(id: number) {
     selected = selected.includes(id) ? selected.filter((value) => value !== id) : [...selected, id];
   }
-  function openTicket(id: number) { void goto(`/picking-tickets/${id}/print`); }
+  function openTicket(id: number) {
+    if (typeof window !== 'undefined') window.open(`/picking-tickets/${id}/print`, '_blank', 'noopener');
+  }
   function openPrintBatch(ids: number[]) {
     if (!ids.length) return;
     const params = new URLSearchParams({ status, so_ids: ids.join(',') });
