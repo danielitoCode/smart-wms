@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { SalesOrderRepository } from '../../../../../core/feature/sales-orders/domain/repository/SalesOrderRepository';
-import { ListSalesOrderShortPicksUseCase } from '../../../../../core/feature/sales-orders/domain/usecase/ListSalesOrderShortPicksUseCase';
+import type { SalesOrderRepository } from '../../../../../../core/feature/sales-orders/domain/repository/SalesOrderRepository';
+import { ListSalesOrderShortPicksUseCase } from '../../../../../../core/feature/sales-orders/domain/usecase/ListSalesOrderShortPicksUseCase';
 
 describe('ListSalesOrderShortPicksUseCase', () => {
   it('loads the requested period and warehouse scope', async () => {
