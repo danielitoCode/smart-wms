@@ -16,7 +16,6 @@
   let search = $state('');
   let scopeError = $state(false);
   let scopeErrorMessage = $state('');
-  let successMessage = $state('');
 
   const canOpenSalesOrderDetail = $derived(
     guard.user?.role === 'ADMIN' || guard.user?.allowedPages.includes('sales-orders') === true
@@ -103,14 +102,9 @@
     <p class="message error" role="alert">{scopeErrorMessage}</p>
   {:else if vm.error}
     <p class="message error" role="alert">{vm.error}</p>
-  {/if}
-  {#if successMessage}
-    <p class="message success" role="status">{successMessage}</p>
-  {/if}
-
-  {#if vm.loading}
+  {:else if vm.loading}
     <p class="empty">{i18n.t('Cargando pedidos pendientes…')}</p>
-  {:else if !scopeError && visibleRows.length === 0}
+  {:else if visibleRows.length === 0}
     <p class="empty">{search.trim() ? i18n.t('No hay resultados para este filtro.') : activeTab === 'waiting' ? i18n.t('No hay pedidos esperando inventario.') : i18n.t('No hay pedidos listos para despacho.')}</p>
   {:else}
     <div class="cards">
@@ -161,8 +155,7 @@
         </article>
       {/each}
     </div>
-  {/if}
-</section>
+  {/if}</section>
 
 <style>
   .page{max-width:82rem;margin:1.5rem auto;padding:0 1.25rem;color:var(--ink)}
