@@ -44,6 +44,13 @@ describe('SalesOrderRemoteDataSource', () => {
     expect(api.put).toHaveBeenCalledWith('/api/admin/sales-orders/17', { priority: 2 });
   });
 
+  it('requests recent short-pick events with the backend filters', async () => {
+    const api = createApi();
+    const source = new SalesOrderRemoteDataSource(api);
+    await source.listShortPicks({ days: 14, warehouseId: 6 });
+    expect(api.get).toHaveBeenCalledWith('/api/admin/short-picks?days=14&warehouse_id=6');
+  });
+
   it('uses dedicated PATCH contracts for structured addresses and allocation delta', async () => {
     const api = createApi();
     const source = new SalesOrderRemoteDataSource(api);
