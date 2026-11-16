@@ -84,6 +84,42 @@ describe('SalesOrderRemoteDataSource', () => {
     });
   });
 
+  it('covers cancellation, line CRUD and return-management routes', async () => {
+    const api = createApi();
+    const source = new SalesOrderRemoteDataSource(api);
+
+    await source.cancel(17);
+    await source.addLine(17, { item_id: 3, quantity_ordered: 2 });
+    await source.updateLine(17, 29, { quantity_ordered: 4 });
+    await source.deleteLine(17, 29);
+    await source.createRma(17, {
+      lines: [{ item_id: 3, quantity: 1, original_so_line_id: 29 }],
+      memo: 'damaged'
+    });
+    await source.receiveReturn(18, {
+      item_id: 3, quantity: 1, warehouse_id: 2, bin_id: 8,
+      notes: 'checked', idempotency_key: 'receive-uuid'
+    });
+    await source.voidReturn(18);
+
+    expect(api.post).toHaveBeenNthCalledWith(1, '/api/admin/sales-orders/17/cancel');
+    expect(api.post).toHaveBeenNthCalledWith(2, '/api/admin/sales-orders/17/lines', {
+      item_id: 3, quantity_ordered: 2
+    });
+    expect(api.request).toHaveBeenCalledWith('/api/admin/sales-orders/17/lines/29', {
+      method: 'PATCH', body: { quantity_ordered: 4 }
+    });
+    expect(api.delete).toHaveBeenCalledWith('/api/admin/sales-orders/17/lines/29');
+    expect(api.post).toHaveBeenNthCalledWith(3, '/api/admin/sales-orders/17/create-rma', {
+      lines: [{ item_id: 3, quantity: 1, original_so_line_id: 29 }], memo: 'damaged'
+    });
+    expect(api.post).toHaveBeenNthCalledWith(4, '/api/admin/sales-orders/18/receive-return', {
+      item_id: 3, quantity: 1, warehouse_id: 2, bin_id: 8,
+      notes: 'checked', idempotency_key: 'receive-uuid'
+    });
+    expect(api.post).toHaveBeenNthCalledWith(5, '/api/admin/sales-orders/18/void-return');
+  });
+
   it('maps partial fulfillment, revert, bins, related orders and source-system endpoints', async () => {
     const api = createApi();
     const source = new SalesOrderRemoteDataSource(api);
