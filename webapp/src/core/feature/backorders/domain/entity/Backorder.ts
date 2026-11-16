@@ -34,7 +34,7 @@ export type Backorder = {
   salesOrderNumber: string;
   /** Not supplied by GET /admin/backorders; resolved from sales-order detail only. */
   parentSalesOrderId?: number | null;
-  parentSalesOrderNumber: string;
+  parentSalesOrderNumber: string | null;
   warehouseId: number;
   customerName: string | null;
   status: BackorderStatus;
