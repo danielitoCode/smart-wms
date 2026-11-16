@@ -17,7 +17,7 @@
 		sales_orders: '/management/sales-orders', items: '/items', customers: '/management/customers',
 		vendors: '/management/vendors', purchase_orders: '/management/purchase-orders'
 	};
-	const canonicalLink = $derived(vm.detail ? resolveInboundCanonicalLink(vm.detail.row.resource, vm.detail.canonicalPayload) : null);
+	const canonicalLink = $derived(vm.detail ? resolveInboundCanonicalLink(vm.detail.row.resource, vm.detail.canonicalPayload, vm.detail.row.canonicalId) : null);
 	function formatDate(value: string | null) {
 		if (!value) return '—';
 		const date = new Date(value);
