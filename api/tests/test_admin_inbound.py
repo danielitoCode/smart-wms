@@ -210,6 +210,36 @@ class TestDetailEndpoint:
 # ----------------------------------------------------------------------
 
 
+class TestInboundPagePermission:
+    def test_non_admin_requires_explicit_inbound_page_grant(self, client):
+        username = f"inbound_permission_{uuid.uuid4().hex[:8]}"
+        _exec(
+            """INSERT INTO users (username, password_hash, full_name, role,
+                   warehouse_id, warehouse_ids, allowed_functions, external_id)
+               VALUES (%s, '$2b$12$zDGRKFLmc6v/A4mVhxOzb.7uoW1ulnXn0AisK5uJ5iWk33vC2EpSK',
+                       'Inbound Permission Test', 'PICKER', 1, '{1}', '{pick}', gen_random_uuid())""",
+            (username,),
+        )
+        login = client.post("/api/auth/login", json={"username": username, "password": "admin"})
+        assert login.status_code == 200
+        headers = {"Authorization": f"Bearer {login.get_json()['token']}"}
+
+        list_url = "/api/admin/inbound/activity"
+        detail_url = "/api/admin/inbound/activity/sales_orders/999999999"
+        assert client.get(list_url, headers=headers).status_code == 403
+        assert client.get(detail_url, headers=headers).status_code == 403
+
+        _exec(
+            "INSERT INTO user_page_permissions (user_id, page_key) "
+            "SELECT user_id, 'inbound' FROM users WHERE username = %s",
+            (username,),
+        )
+        assert client.get(list_url, headers=headers).status_code == 200
+        # This grant exposes the integration-wide feed: staging rows have
+        # no warehouse_id and therefore cannot be isolated by warehouse.
+        assert client.get(detail_url, headers=headers).status_code == 404
+
+
 class TestNoMutationEndpoints:
     @pytest.mark.parametrize("verb", ["post", "put", "patch", "delete"])
     def test_mutation_verb_not_allowed_on_list(self, client, auth_headers, verb):
