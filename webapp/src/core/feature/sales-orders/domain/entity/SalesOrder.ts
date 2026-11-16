@@ -96,6 +96,8 @@ export interface SalesOrder {
   customerShippingPaid: number | null;
   sourceSystem: string | null;
   cancellationReason: string | null;
+  backorderOpenedAt: string | null;
+  backorderFulfillableAt: string | null;
   createdAt: string | null;
   pickedAt: string | null;
   shippedAt: string | null;
