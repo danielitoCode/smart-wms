@@ -1,33 +1,36 @@
-import type {Backorder,BackorderItem,BackorderQueueTab} from '../../domain/entity/Backorder'
-import type {BackorderDto} from '../dto/BackorderDto'
+import type { Backorder, BackorderItem, BackorderQueueTab } from '../../domain/entity/Backorder';
+import type { BackorderDto } from '../dto/BackorderDto';
 
-export const BackorderMapper={
-    toDomain(d:BackorderDto):Backorder{
-        return {
-            salesOrderId:d.so_id,
-            salesOrderNumber:d.so_number,
-            parentSalesOrderId:null,
-            parentSalesOrderNumber:d.parent_so_number??'',
-            warehouseId:d.warehouse_id,
-            customerName:d.customer_name,
-            status:d.status,
-            openedAt:d.backorder_opened_at,
-            fulfillableSince:d.fulfillable_since,
-            daysWaiting:d.days_waiting,
-            items:(d.items??[]).map(
-                x=>({
-                    itemId:null,
-                    sku:x.sku,
-                    itemName:x.item_name,
-                    quantity:x.qty,
-                    openPurchaseOrder:x.open_po?{
-                        purchaseOrderNumber:x.open_po.po_number,
-                        expectedDate:x.open_po.expected_date,
-                        quantityRemaining:x.open_po.quantity_remaining
-                    }:null})
-            )}
-    },
-    tab(v:BackorderQueueTab){
-        return v
-    }
-}
+export const BackorderMapper = {
+  toDomain(dto: BackorderDto): Backorder {
+    const items: BackorderItem[] = dto.items.map((item) => ({
+      itemId: null,
+      sku: item.sku,
+      itemName: item.item_name,
+      quantity: item.qty,
+      openPurchaseOrder: item.open_po === null ? null : {
+        purchaseOrderNumber: item.open_po.po_number,
+        expectedDate: item.open_po.expected_date,
+        quantityRemaining: item.open_po.quantity_remaining
+      }
+    }));
+
+    return {
+      salesOrderId: dto.so_id,
+      salesOrderNumber: dto.so_number,
+      parentSalesOrderId: null,
+      parentSalesOrderNumber: dto.parent_so_number ?? '',
+      warehouseId: dto.warehouse_id,
+      customerName: dto.customer_name,
+      status: dto.status,
+      openedAt: dto.backorder_opened_at,
+      fulfillableSince: dto.fulfillable_since,
+      daysWaiting: dto.days_waiting,
+      items
+    };
+  },
+
+  tab(value: BackorderQueueTab): BackorderQueueTab {
+    return value;
+  }
+};
