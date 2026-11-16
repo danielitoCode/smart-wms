@@ -314,6 +314,13 @@ export interface AdminShipRequestDto {
   acknowledge_shortfall: boolean;
 }
 
+export interface AdminShipResponseDto {
+  message: string;
+  fulfillment_id: number;
+  lines_shipped: number;
+  total_quantity: number;
+}
+
 export interface CreateRmaRequestDto {
   lines: Array<{ item_id: number; quantity: number; original_so_line_id?: number }>;
   memo?: string | null;
