@@ -196,7 +196,7 @@
 
     {#if confirmCancel}
       <div class="overlay">
-        <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="cancel-title">
+        <dialog open class="dialog" aria-labelledby="cancel-title">
           <h2 id="cancel-title">{i18n.t('Confirmar cancelación')}</h2>
           <p>{i18n.t('Se cancelará únicamente el backorder')} <strong>{order.salesOrderNumber}</strong>. {i18n.t('El pedido original')} <strong>{order.parentSoNumber || order.parentSalesOrderNumber || order.parentSoId}</strong> {i18n.t('no se cancelará por esta acción.')}</p>
           {#if order.status === 'WAITING_STOCK'}
@@ -223,7 +223,7 @@
               {vm.saving ? i18n.t('Cancelando…') : i18n.t('Confirmar cancelación')}
             </button>
           </footer>
-        </section>
+        </dialog>
       </div>
     {/if}
   {:else}
@@ -260,7 +260,7 @@
   .error{color:var(--danger)} .success{color:var(--success)} .warning{color:var(--slate)}
   .empty{padding:2rem 0;color:var(--slate)}
   .overlay{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;background:#0008;padding:1rem}
-  .dialog{width:min(100%,34rem);padding:1.2rem;border:1px solid var(--line);border-radius:14px;background:var(--card);box-shadow:0 20px 60px #0003}
+   .dialog{width:min(100%,34rem);max-height:calc(100vh - 2rem);overflow:auto;margin:auto;padding:1.2rem;border:1px solid var(--line);border-radius:14px;background:var(--card);box-shadow:0 20px 60px #0003}
   .dialog p{font-size:.84rem;line-height:1.5}
   .dialog label{display:grid;gap:.35rem;font-size:.8rem;color:var(--slate);margin:1rem 0}
   .dialog select{min-height:40px;border:1px solid var(--line);border-radius:8px;padding:.5rem;background:var(--card);color:var(--ink)}
