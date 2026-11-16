@@ -3,6 +3,8 @@ import type {
 } from '../entity/Backorder';
 import type { BackordersRepository } from '../repository/BackordersRepository';
 
+const CANCELLABLE_BACKORDER_STATUSES = ['WAITING_STOCK', 'OPEN', 'PICKED', 'PACKED'] as const;
+
 export class ListBackordersUseCase {
   constructor(private readonly repository: BackordersRepository) {}
 
@@ -25,8 +27,15 @@ export class GetBackorderDetailUseCase {
       throw new Error('backorderId must be an integer >= 1');
     }
     return this.repository.getDetail(backorderId).then((detail) => {
-      if (detail.order.orderType !== 'backorder' && !detail.order.backorderOpenedAt) {
+      const { order } = detail;
+      if (order.orderType !== 'backorder' && !order.backorderOpenedAt) {
         throw new Error('El pedido indicado no pertenece a la cola de backorders');
+      }
+      if (order.parentSoId === null && detail.parentSalesOrder !== null) {
+        throw new Error('La relación con el pedido original no coincide con el detalle del backorder');
+      }
+      if (order.parentSoId !== null && detail.parentSalesOrder?.salesOrderId !== order.parentSoId) {
+        throw new Error('No se pudo resolver el pedido original del backorder');
       }
       return detail;
     });
@@ -44,11 +53,14 @@ export class CancelBackorderUseCase {
     if (!allowed.includes(reason)) throw new Error('Motivo de cancelación no válido');
 
     const detail = await this.repository.getDetail(backorderId);
-    const order = detail.order;
+    const { order } = detail;
     if (order.orderType !== 'backorder' || order.parentSoId === null) {
       throw new Error('Este pedido no es un backorder cancelable mediante esta operación');
     }
-    if (['CANCELLED', 'REFUNDED', 'SHIPPED'].includes(order.status)) {
+    if (!detail.parentSalesOrder || detail.parentSalesOrder.salesOrderId !== order.parentSoId) {
+      throw new Error('No se pudo verificar el pedido original del backorder');
+    }
+    if (!(CANCELLABLE_BACKORDER_STATUSES as readonly string[]).includes(order.status)) {
       throw new Error('No se puede cancelar un backorder en estado ' + order.status);
     }
     await this.repository.cancel(backorderId, reason);
