@@ -58,6 +58,13 @@ describe('AccessPolicy F0.2', () => {
 		expect(canAccessPages('USER', ['fraud'], requiredPageKeysForPath('/management/fraud'))).toBe(true);
 	});
 
+	it('direct sales-order detail URLs require the sales-orders page grant', () => {
+		const required = requiredPageKeysForPath('/sales-orders/42');
+		expect(required).toEqual(['sales-orders']);
+		expect(canAccessPages('USER', [], required)).toBe(false);
+		expect(canAccessPages('USER', ['sales-orders'], required)).toBe(true);
+	});
+
 	it('count-approvals page open uses count-approvals key', () => {
 		expect(requiredPageKeysForPath('/management/count-approvals')).toEqual(['count-approvals']);
 	});
