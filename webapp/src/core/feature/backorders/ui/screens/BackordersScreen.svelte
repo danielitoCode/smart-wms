@@ -55,7 +55,7 @@
   });
 
   async function changeTab(tab: BackorderQueueTab): Promise<void> {
-    const params = new URLSearchParams(page.url.searchParams);
+    const params = new URLSearchParams(page.url.search);
     params.set('tab', tab);
     await goto(page.url.pathname + '?' + params.toString(), { replaceState: true, noScroll: true });
   }
