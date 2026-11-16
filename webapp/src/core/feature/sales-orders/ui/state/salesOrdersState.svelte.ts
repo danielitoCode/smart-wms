@@ -13,7 +13,8 @@ import type {
   UpdateSalesOrder,
   UpdateSalesOrderAddressInput,
   UpdateSalesOrderAllocationResult,
-  AdminShipShortfallLine
+  AdminShipShortfallLine,
+  SalesOrderShortPick
 } from '../../domain/entity/SalesOrder';
 import { ApiError, toUserMessage } from '../../../../infrastructure/errors/ApiError';
 
@@ -55,6 +56,8 @@ export function createSalesOrdersState() {
   let selected = $state<SalesOrder | null>(null);
   let relatedOrders = $state<RelatedSalesOrder[]>([]);
   let sourceSystems = $state<SalesOrderSourceSystem[]>([]);
+  let shortPicks = $state<SalesOrderShortPick[]>([]);
+  let loadingShortPicks = $state(false);
   let loadingSourceSystems = $state(false);
   let loadingRelated = $state(false);
   let adminShipShortfall = $state<AdminShipShortfallLine[] | null>(null);
@@ -276,6 +279,22 @@ export function createSalesOrdersState() {
     }
   }
 
+  async function loadShortPicks(days = 30, selectedWarehouseId = warehouseId ?? undefined): Promise<boolean> {
+    if (loadingShortPicks) return false;
+    loadingShortPicks = true;
+    error = null;
+    try {
+      shortPicks = await deps.listSalesOrderShortPicks.execute(days, selectedWarehouseId);
+      return true;
+    } catch (err) {
+      error = toUserMessage(err, 'No se pudieron cargar los faltantes recientes');
+      shortPicks = [];
+      return false;
+    } finally {
+      loadingShortPicks = false;
+    }
+  }
+
   async function loadRelated(id = selected?.salesOrderId): Promise<boolean> {
     if (!id || loadingRelated) return false;
     loadingRelated = true;
@@ -415,6 +434,8 @@ export function createSalesOrdersState() {
     get selected() { return selected; },
     get relatedOrders() { return relatedOrders; },
     get sourceSystems() { return sourceSystems; },
+    get shortPicks() { return shortPicks; },
+    get loadingShortPicks() { return loadingShortPicks; },
     get loadingSourceSystems() { return loadingSourceSystems; },
     get loadingRelated() { return loadingRelated; },
     get adminShipShortfall() { return adminShipShortfall; },
@@ -427,6 +448,7 @@ export function createSalesOrdersState() {
     setWarehouseId,
     load,
     loadSourceSystems,
+    loadShortPicks,
     create,
     open,
     close,
