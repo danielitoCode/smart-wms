@@ -249,3 +249,100 @@ class TestTransferAndPickFromNewLocation:
         item3_tasks = [t for t in tasks if t["sku"] == "TST-003"]
         assert len(item3_tasks) > 0
         assert item3_tasks[0]["bin_code"] == "A-01-01", "Should pick from new location"
+
+
+class TestCycleCountApprovalGate:
+    """Gate: count discrepancy -> pending adjustment -> review -> inventory."""
+
+    def _create_and_submit_variance(self, client, auth_headers, counted_quantity):
+        created = client.post(
+            "/api/inventory/cycle-count/create",
+            json={"warehouse_id": 1, "bin_ids": [3]},
+            headers=auth_headers,
+        )
+        assert created.status_code == 200, created.get_json()
+        count_id = created.get_json()["counts"][0]["count_id"]
+        detail = client.get(f"/api/inventory/cycle-count/{count_id}", headers=auth_headers)
+        assert detail.status_code == 200, detail.get_json()
+        lines = detail.get_json()["lines"]
+        target = next(line for line in lines if line["item_id"] == 1)
+        submitted = [
+            {
+                "count_line_id": line["count_line_id"],
+                "counted_quantity": counted_quantity if line["item_id"] == 1 else line["expected_quantity"],
+            }
+            for line in lines
+        ]
+        response = client.post(
+            "/api/inventory/cycle-count/submit",
+            json={"count_id": count_id, "lines": submitted},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200, response.get_json()
+        assert response.get_json()["status"] == "VARIANCE"
+        adjustment = response.get_json()["summary"]["adjustments"][0]
+        assert adjustment["adjustment_id"] > 0
+        return count_id, adjustment["adjustment_id"], target["expected_quantity"]
+
+    def test_approval_applies_variance_and_rejection_keeps_inventory_unchanged(
+        self, client, auth_headers
+    ):
+        original = _query_val(
+            "SELECT quantity_on_hand FROM inventory WHERE item_id = 1 AND bin_id = 3"
+        )
+        assert original == 50
+
+        # Positive discrepancy is not applied until explicit approval.
+        _, approve_id, expected = self._create_and_submit_variance(
+            client, auth_headers, counted_quantity=55
+        )
+        assert expected == original
+        assert _query_val(
+            "SELECT quantity_on_hand FROM inventory WHERE item_id = 1 AND bin_id = 3"
+        ) == original
+        pending_delta = _query_val(
+            "SELECT quantity_change FROM inventory_adjustments WHERE adjustment_id = %s",
+            (approve_id,),
+        )
+        assert pending_delta == 5
+
+        approved = client.post(
+            "/api/admin/adjustments/review",
+            json={"decisions": [{"adjustment_id": approve_id, "action": "approve"}]},
+            headers=auth_headers,
+        )
+        assert approved.status_code == 200, approved.get_json()
+        assert _query_val(
+            "SELECT status FROM inventory_adjustments WHERE adjustment_id = %s",
+            (approve_id,),
+        ) == "APPROVED"
+        assert _query_val(
+            "SELECT quantity_on_hand FROM inventory WHERE item_id = 1 AND bin_id = 3"
+        ) == 55
+
+        # Negative discrepancy is rejected; rejection is a non-posting decision.
+        _, reject_id, expected_after_approval = self._create_and_submit_variance(
+            client, auth_headers, counted_quantity=52
+        )
+        assert expected_after_approval == 55
+        rejected = client.post(
+            "/api/admin/adjustments/review",
+            json={"decisions": [{
+                "adjustment_id": reject_id,
+                "action": "reject",
+                "rejection_reason": "Discrepancia no confirmada durante la revisión",
+            }]},
+            headers=auth_headers,
+        )
+        assert rejected.status_code == 200, rejected.get_json()
+        assert _query_val(
+            "SELECT status FROM inventory_adjustments WHERE adjustment_id = %s",
+            (reject_id,),
+        ) == "REJECTED"
+        assert _query_val(
+            "SELECT rejection_reason FROM inventory_adjustments WHERE adjustment_id = %s",
+            (reject_id,),
+        ) == "Discrepancia no confirmada durante la revisión"
+        assert _query_val(
+            "SELECT quantity_on_hand FROM inventory WHERE item_id = 1 AND bin_id = 3"
+        ) == 55
