@@ -228,3 +228,8 @@ export interface UpdateSalesOrderAllocationResult {
   quantityAllocated: number;
   unchanged: boolean;
 }
+
+export interface SalesOrderSourceSystem {
+  sourceSystem: string;
+  kind: string;
+}
