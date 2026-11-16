@@ -6,6 +6,7 @@ import { CreateSalesOrderUseCase } from '../domain/usecase/CreateSalesOrderUseCa
 import { GetSalesOrderUseCase } from '../domain/usecase/GetSalesOrderUseCase';
 import { GetRelatedSalesOrdersUseCase } from '../domain/usecase/GetRelatedSalesOrdersUseCase';
 import { ListSalesOrdersUseCase } from '../domain/usecase/ListSalesOrdersUseCase';
+import { ListSalesOrderSourceSystemsUseCase } from '../domain/usecase/ListSalesOrderSourceSystemsUseCase';
 import { UpdateSalesOrderUseCase } from '../domain/usecase/UpdateSalesOrderUseCase';
 import { UpdateSalesOrderAddressUseCase } from '../domain/usecase/UpdateSalesOrderAddressUseCase';
 import { UpdateSalesOrderAllocationUseCase } from '../domain/usecase/UpdateSalesOrderAllocationUseCase';
@@ -27,6 +28,7 @@ export function createSalesOrdersDependencies() {
   return {
     repository,
     listSalesOrders: new ListSalesOrdersUseCase(repository),
+    listSalesOrderSourceSystems: new ListSalesOrderSourceSystemsUseCase(repository),
     getSalesOrder: new GetSalesOrderUseCase(repository),
     getRelatedSalesOrders: new GetRelatedSalesOrdersUseCase(repository),
     createSalesOrder: new CreateSalesOrderUseCase(repository),
