@@ -126,13 +126,29 @@
   {#if vm.selected}
     <aside class="detail">
       <header>
-        <div><h2>{vm.selected.salesOrderNumber}</h2><p>{vm.selected.status} · {vm.selected.customerName ?? '—'}</p></div>
+        <div><h2>{vm.selected.salesOrderNumber}</h2><p>{vm.selected.status} · {vm.selected.customerName ?? '—'}</p><p>Pedido original: {vm.selected.parentSalesOrderNumber ?? vm.selected.parentSalesOrderId ?? '—'}</p></div>
         <button onclick={() => vm.close()}>{i18n.t('Cerrar')}</button>
       </header>
       <section>
         <h3>{i18n.t('Nota de operación')}</h3>
         <textarea rows="2" maxlength="4000" bind:value={memoDraft}></textarea>
         <button onclick={() => void saveMemo()} disabled={vm.saving}>{i18n.t('Guardar nota')}</button>
+      </section>
+
+      <section class="receipt-history">
+        <h3>{i18n.t('Historial de recepciones')}</h3>
+        {#if vm.selected.receipts.length === 0}
+          <p>{i18n.t('Todavía no hay recepciones registradas.')}</p>
+        {:else}
+          <table>
+            <thead><tr><th>{i18n.t('Fecha')}</th><th>SKU</th><th>{i18n.t('Cantidad')}</th><th>{i18n.t('Ubicación')}</th><th>{i18n.t('Almacén')}</th><th>{i18n.t('Recibido por')}</th><th>{i18n.t('Notas')}</th></tr></thead>
+            <tbody>
+              {#each vm.selected.receipts as receipt (receipt.receiptId)}
+                <tr><td>{receipt.receivedAt ?? '—'}</td><td>{receipt.sku}</td><td>{receipt.quantityReceived}</td><td>{receipt.binCode}</td><td>{receipt.warehouseCode}</td><td>{receipt.receivedBy}</td><td>{receipt.notes ?? '—'}</td></tr>
+              {/each}
+            </tbody>
+          </table>
+        {/if}
       </section>
 
       {#if vm.selected.status !== 'RECEIVED'}
