@@ -93,7 +93,7 @@
 							</tr>
 						</thead>
 						<tbody>
-							{#each state.detail.lines as line (line.lineId)}
+							{#each state.detail.lines as line (line.countLineId)}
 								<tr>
 									<td>{line.sku}</td>
 									<td>{line.expectedQuantity}</td>
@@ -101,8 +101,8 @@
 										<input
 											type="number"
 											min="0"
-											value={state.countedByLine[line.lineId] ?? line.countedQuantity ?? line.expectedQuantity}
-											oninput={(e) => state.setCounted(line.lineId, Number(e.currentTarget.value))}
+											value={state.countsByLine[line.countLineId] ?? line.countedQuantity ?? 0}
+											oninput={(e) => state.setCounted(line.countLineId, Number(e.currentTarget.value))}
 											disabled={state.busy || state.detail.status === 'COMPLETED'}
 										/>
 									</td>
