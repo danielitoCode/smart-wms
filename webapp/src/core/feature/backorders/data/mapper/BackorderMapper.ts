@@ -18,7 +18,8 @@ export const BackorderMapper = {
     return {
       salesOrderId: dto.so_id,
       salesOrderNumber: dto.so_number,
-      parentSalesOrderId: null,
+      // The list contract exposes only parent_so_number, not parent_so_id.
+      parentSalesOrderId: undefined,
       parentSalesOrderNumber: dto.parent_so_number ?? '',
       warehouseId: dto.warehouse_id,
       customerName: dto.customer_name,
