@@ -68,10 +68,15 @@
   let partialReason = $state('');
   let revertTargetStatus = $state('OPEN');
   let releasePickTaskIds = $state<number[]>([]);
-  let rmaItemId = $state('');
-  let rmaQuantity = $state('1');
+  let rmaQuantities = $state<Record<number, string>>({});
   let rmaReason = $state('');
   let showRma = $state(false);
+  let showReceiveReturn = $state(false);
+  let returnItemId = $state('');
+  let returnQuantity = $state('1');
+  let returnWarehouseId = $state('');
+  let returnBinId = $state('');
+  let returnNotes = $state('');
 
   onMount(() => {
     const initialSearch = route.url.searchParams.get('q') ?? route.url.searchParams.get('focus') ?? '';
@@ -171,6 +176,7 @@
     if (!opened || !vm.selected) return;
     relatedTrail = relatedTrail.slice(0, -1);
     beginEdit(vm.selected);
+    editMode = false;
     await vm.loadRelated();
   }
 
@@ -241,20 +247,52 @@
   async function submitRma(): Promise<void> {
     const order = vm.selected;
     if (!order) return;
-    const line = order.lines.find((candidate) => candidate.itemId === Number(rmaItemId));
-    const ok = await vm.createRma({
-      lines: [{ itemId: Number(rmaItemId), quantity: Number(rmaQuantity), originalSoLineId: line?.soLineId ?? null }],
-      reason: rmaReason || null
-    });
+    const lines = Object.entries(rmaQuantities)
+      .map(([itemId, quantity]) => {
+        const line = order.lines.find((candidate) => candidate.itemId === Number(itemId));
+        return { itemId: Number(itemId), quantity: Number(quantity), originalSoLineId: line?.soLineId ?? null };
+      })
+      .filter((line) => Number.isInteger(line.quantity) && line.quantity > 0);
+    const ok = await vm.createRma({ lines, reason: rmaReason || null });
     if (ok) {
       showRma = false;
-      rmaItemId = '';
-      rmaQuantity = '1';
+      rmaQuantities = {};
       rmaReason = '';
       await vm.loadRelated();
       feedback = i18n.t('RMA creado correctamente.');
       pushToast(feedback, 'success');
     }
+  }
+
+  async function submitReceiveReturn(): Promise<void> {
+    const order = vm.selected;
+    if (!order) return;
+    const ok = await vm.receiveReturn({
+      itemId: Number(returnItemId),
+      quantity: Number(returnQuantity),
+      warehouseId: Number(returnWarehouseId || order.warehouseId),
+      binId: Number(returnBinId),
+      notes: returnNotes || null
+    });
+    if (ok) {
+      showReceiveReturn = false;
+      returnItemId = '';
+      returnQuantity = '1';
+      returnWarehouseId = '';
+      returnBinId = '';
+      returnNotes = '';
+      feedback = i18n.t('Recepción de devolución registrada.');
+      pushToast(feedback, 'success');
+    }
+  }
+
+  async function voidCurrentReturn(): Promise<void> {
+    if (!confirm(i18n.t('¿Anular este RMA? Esta operación es exclusiva de ADMIN y deja el registro auditado.'))) return;
+    const ok = await vm.voidReturn();
+    if (ok) {
+      feedback = i18n.t('RMA anulado.');
+      pushToast(feedback, 'success');
+    } else if (vm.error) pushToast(vm.error, 'error');
   }
 
   async function addLine(): Promise<void> {
