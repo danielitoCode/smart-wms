@@ -69,6 +69,8 @@
   let editTrackingNumber = $state('');
   let editShippedDate = $state('');
   let partialShorts = $state<Record<number, string>>({});
+  let showPartialFulfill = $state(false);
+  let showRevertForm = $state(false);
   let partialReason = $state('');
   let revertTargetStatus = $state('OPEN');
   let releasePickTaskIds = $state<number[]>([]);
@@ -81,6 +83,7 @@
   let returnWarehouseId = $state('');
   let returnBinId = $state('');
   let returnNotes = $state('');
+  let returnIdempotencyKey = $state('');
 
   onMount(() => {
     if (initialOrderId) {
@@ -239,6 +242,7 @@
     if (ok) {
       partialShorts = {};
       partialReason = '';
+      showPartialFulfill = false;
       feedback = i18n.t('Fulfillment parcial registrado; se creó el pedido pendiente.');
       pushToast(feedback, 'success');
     } else if (vm.error) pushToast(vm.error, 'error');
@@ -247,6 +251,7 @@
   async function submitRevert(): Promise<void> {
     const ok = await vm.revertStatus({ newStatus: revertTargetStatus, releasePickTaskIds });
     if (ok) {
+      showRevertForm = false;
       feedback = i18n.t('Estado del pedido revertido.');
       pushToast(feedback, 'success');
     } else if (vm.error) pushToast(vm.error, 'error');
@@ -280,7 +285,8 @@
       quantity: Number(returnQuantity),
       warehouseId: Number(returnWarehouseId || order.warehouseId),
       binId: Number(returnBinId),
-      notes: returnNotes || null
+      notes: returnNotes || null,
+      idempotencyKey: returnIdempotencyKey || null
     });
     if (ok) {
       showReceiveReturn = false;
@@ -289,6 +295,7 @@
       returnWarehouseId = '';
       returnBinId = '';
       returnNotes = '';
+      returnIdempotencyKey = '';
       feedback = i18n.t('Recepción de devolución registrada.');
       pushToast(feedback, 'success');
     }
@@ -466,7 +473,7 @@
       <table>
         <thead><tr>
           <th>{i18n.t('Pedido')}</th><th>{i18n.t('Cliente')}</th><th>{i18n.t('Almacén')}</th>
-          <th>{i18n.t('Fecha límite')}</th><th>{i18n.t('Estado')}</th><th>{i18n.t('Tipo')}</th>
+          <th>{i18n.t('Fecha límite')}</th><th>{i18n.t('Creado')}</th><th>{i18n.t('Estado')}</th><th>{i18n.t('Tipo')}</th><th>{i18n.t('Acciones')}</th>
         </tr></thead>
         <tbody>
           {#each vm.orders as order (order.salesOrderId)}
@@ -475,8 +482,10 @@
               <td>{order.customerName ?? '—'}</td>
               <td>{order.warehouseId}</td>
               <td>{displayDate(order.shipByDate)}</td>
+              <td>{displayDate(order.createdAt)}</td>
               <td><span class="status">{order.status}</span></td>
               <td>{order.orderType}</td>
+              <td><button class="link" type="button" onclick={() => void openOrder(order.salesOrderId)}>{i18n.t('Abrir')}</button></td>
             </tr>
           {/each}
         </tbody>
@@ -533,10 +542,10 @@
         {#if order.status !== 'CANCELLED' && order.status !== 'REFUNDED' && order.status !== 'SHIPPED'}<button class="so-danger" type="button" disabled={vm.saving} onclick={() => void cancelOrder(order)}>{i18n.t('Cancelar pedido')}</button>{/if}
         {#if order.status === 'OPEN' && order.orderType !== 'return' && order.orderType !== 'refund'}<button type="button" onclick={() => void openAdminPick(order)}>{i18n.t('Picking administrativo')}</button>{/if}
         {#if ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status) && order.orderType !== 'return' && order.orderType !== 'refund' && order.lines.some((line) => line.quantityPicked > line.quantityShipped)}<button type="button" onclick={() => void shipOrder(order)}>{i18n.t('Despacho administrativo')}</button>{/if}
-        {#if (order.status === 'OPEN' || order.status === 'PICKED') && !['backorder', 'return', 'refund'].includes(order.orderType ?? '')}<button type="button" onclick={() => partialShorts = {}}>{i18n.t('Fulfillment parcial')}</button>{/if}
-        {#if ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status)}<button type="button" onclick={() => { revertTargetStatus = order.status === 'SHIPPED' ? 'PACKED' : order.status === 'PACKED' ? 'PICKED' : 'OPEN'; releasePickTaskIds = []; }}>{i18n.t('Revertir estado')}</button>{/if}
-        {#if order.status === 'SHIPPED' && order.orderType !== 'return' && order.orderType !== 'refund'}<button type="button" onclick={() => { rmaQuantities = {}; showRma = true; }}>{i18n.t('Crear RMA')}</button>{/if}
-        {#if order.orderType === 'return' && order.status !== 'CANCELLED'}<button type="button" onclick={() => { returnWarehouseId = String(order.warehouseId ?? ''); showReceiveReturn = true; }}>{i18n.t('Recibir devolución')}</button><button class="so-danger" type="button" onclick={() => void voidCurrentReturn()}>{i18n.t('Anular RMA')}</button>{/if}
+        {#if showPartialFulfill && (order.status === 'OPEN' || order.status === 'PICKED') && !['backorder', 'return', 'refund'].includes(order.orderType ?? '')}<button type="button" onclick={() => { partialShorts = {}; showPartialFulfill = !showPartialFulfill; }}>{i18n.t('Fulfillment parcial')}</button>{/if}
+        {#if ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status)}<button type="button" onclick={() => { revertTargetStatus = order.status === 'SHIPPED' ? 'PACKED' : order.status === 'PACKED' ? 'PICKED' : 'OPEN'; releasePickTaskIds = order.status === 'PICKED' ? order.pickTasks.map((task) => task.pickTaskId) : []; showRevertForm = !showRevertForm; }}>{i18n.t('Revertir estado')}</button>{/if}
+        {#if order.status === 'SHIPPED' && order.orderType !== 'return' && order.orderType !== 'refund' && order.lines.some((line) => line.quantityShipped > 0)}<button type="button" onclick={() => { rmaQuantities = {}; showRma = true; }}>{i18n.t('Crear RMA')}</button>{/if}
+        {#if order.orderType === 'return' && order.status === 'OPEN'}<button type="button" onclick={() => { returnWarehouseId = String(order.warehouseId ?? ''); returnIdempotencyKey = crypto.randomUUID(); showReceiveReturn = true; }}>{i18n.t('Recibir devolución')}</button><button class="so-danger" type="button" onclick={() => void voidCurrentReturn()}>{i18n.t('Anular RMA')}</button>{/if}
       </nav>
 
       <section class="so-section">
@@ -662,7 +671,7 @@
         </section>
       {/if}
 
-      {#if ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status)}
+      {#if showRevertForm && ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status)}
         <section class="so-section">
           <h3>{i18n.t('Revertir estado')}</h3>
           <label>{i18n.t('Nuevo estado')}<select bind:value={revertTargetStatus}><option value="OPEN">OPEN</option><option value="PICKED">PICKED</option><option value="PACKED">PACKED</option></select></label>
