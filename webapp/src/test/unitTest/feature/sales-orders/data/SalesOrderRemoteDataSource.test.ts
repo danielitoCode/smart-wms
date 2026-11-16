@@ -68,11 +68,11 @@ describe('SalesOrderRemoteDataSource', () => {
   it('sends split-bin picks and the explicit shortfall acknowledgement', async () => {
     const api = createApi();
     const source = new SalesOrderRemoteDataSource(api);
-    await source.adminPick(17, [
-      { soLineId: 29, binId: 3, quantity: 2 },
-      { soLineId: 29, binId: 4, quantity: 1 }
-    ]);
-    await source.adminShip(17, true);
+    await source.adminPick(17, { lines: [
+      { so_line_id: 29, bin_id: 3, quantity: 2 },
+      { so_line_id: 29, bin_id: 4, quantity: 1 }
+    ] });
+    await source.adminShip(17, { acknowledge_shortfall: true });
     expect(api.post).toHaveBeenNthCalledWith(1, '/api/admin/sales-orders/17/admin-pick', {
       lines: [
         { so_line_id: 29, bin_id: 3, quantity: 2 },
@@ -123,8 +123,8 @@ describe('SalesOrderRemoteDataSource', () => {
   it('maps partial fulfillment, revert, bins, related orders and source-system endpoints', async () => {
     const api = createApi();
     const source = new SalesOrderRemoteDataSource(api);
-    await source.partialFulfill(17, { lines: [{ soLineId: 29, shortQuantity: 2 }], reason: 'damaged' });
-    await source.revertStatus(17, { newStatus: 'OPEN', releasePickTaskIds: [101] });
+    await source.partialFulfill(17, { lines: [{ so_line_id: 29, short_qty: 2 }], reason_detail: 'damaged' });
+    await source.revertStatus(17, { new_status: 'OPEN', release_pick_task_ids: [101] });
     await source.getAvailableBins(17, 29);
     await source.related(17);
     await source.listSourceSystems();
