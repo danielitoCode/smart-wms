@@ -64,6 +64,16 @@ describe('GetBackorderDetailUseCase', () => {
     expect(result.order.salesOrderId).toBe(41);
   });
 
+  it('accepts a POS order included by the backorder lifecycle timestamp', async () => {
+    const posBackorder = makeOrder({
+      orderType: 'sale', parentSoId: null, backorderOpenedAt: '2026-11-02T00:00:00Z'
+    });
+    const repo = repository(posBackorder);
+    const detail = await new GetBackorderDetailUseCase(repo).execute(41);
+    expect(detail.order.orderType).toBe('sale');
+    expect(detail.order.backorderOpenedAt).toBe('2026-11-02T00:00:00Z');
+  });
+
   it('rejects invalid identifiers and unrelated sales orders', async () => {
     const repo = repository(makeOrder({ orderType: 'sale', backorderOpenedAt: null }));
     const useCase = new GetBackorderDetailUseCase(repo);
