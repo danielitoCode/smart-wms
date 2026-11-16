@@ -6,7 +6,6 @@ import type {
 } from '../../domain/entity/SalesOrder';
 import type { ListSalesOrdersParams, SalesOrderRepository } from '../../domain/repository/SalesOrderRepository';
 import type { SalesOrderRemoteDataSource } from '../datasource/SalesOrderRemoteDataSource';
-import type { SalesOrderDetailResponseDto } from '../dto/SalesOrderDto';
 import { SalesOrderMapper } from '../mapper/SalesOrderMapper';
 
 
