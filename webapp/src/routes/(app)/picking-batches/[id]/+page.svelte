@@ -1,0 +1,1 @@
+<script lang="ts">import {page} from '$app/state';import PickingBatchDetailScreen from '#core/feature/picking-batches/ui/screens/PickingBatchDetailScreen.svelte';const batchId=$derived(Number(page.params.id));</script>{#if Number.isInteger(batchId)&&batchId>0}<PickingBatchDetailScreen {batchId}/>{:else}<p>Identificador de lote no válido.</p>{/if}
