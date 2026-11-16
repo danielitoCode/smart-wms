@@ -54,16 +54,11 @@ export function createBackordersState() {
     }
   }
 
-  async function cancel(
-    id: number,
-    reason: CancelBackorderReason,
-    warehouseId: number | null
-  ): Promise<boolean> {
+  async function cancel(id: number, reason: CancelBackorderReason): Promise<boolean> {
     saving = true;
     error = null;
     try {
       await dependencies.cancel.execute(id, reason);
-      await load(warehouseId);
       return true;
     } catch (cause) {
       error = toUserMessage(cause, 'No se pudo cancelar el pedido pendiente');
