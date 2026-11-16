@@ -74,6 +74,7 @@ export function resolveHomePath(input: {
  * Aligned to Flask gates; discrepancies documented in PermissionMatrix.
  */
 export function requiredPageKeysForPath(pathname: string): string[] {
+	if (pathname === '/sales-orders' || pathname.startsWith('/sales-orders/')) return ['sales-orders'];
 	if (pathname === '/inventory' || pathname.startsWith('/inventory/')) return ['inventory'];
 	if (pathname === '/cycle-count' || pathname.startsWith('/cycle-count/')) return ['cycle-counts'];
 	if (pathname === '/receiving' || pathname.startsWith('/receiving/')) return ['receiving'];
