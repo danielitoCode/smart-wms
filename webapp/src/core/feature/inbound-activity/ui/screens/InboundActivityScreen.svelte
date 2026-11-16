@@ -52,7 +52,7 @@
 			<th>{i18n.t('Recibido')}</th><th>{i18n.t('Recurso')}</th><th>{i18n.t('Sistema origen')}</th>
 			<th>{i18n.t('ID externo')}</th><th>{i18n.t('Versión')}</th><th>{i18n.t('Estado')}</th><th>{i18n.t('Acciones')}</th>
 		</tr></thead><tbody>
-			{#each vm.rows as row (`${row.resource}-${row.inboundId})}
+			{#each vm.rows as row (row.resource + '-' + String(row.inboundId))}
 				<tr><td>{formatDate(row.receivedAt)}</td><td>{resourceLabels[row.resource]}</td><td class="mono">{row.sourceSystem}</td>
 					<td class="mono">{row.externalId}</td><td class="mono">{row.externalVersion}</td>
 					<td><span class:processed={row.status === 'applied'} class="status">{row.status === 'applied' ? i18n.t('Procesado') : i18n.t('Sustituido')}</span></td>
