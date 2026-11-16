@@ -234,6 +234,18 @@ export interface SalesOrderSourceSystem {
   kind: string;
 }
 
+export interface SalesOrderShortPick {
+  logId: number;
+  user: string;
+  sku: string;
+  quantityExpected: number;
+  quantityPicked: number;
+  shortage: number;
+  binCode: string | null;
+  batchId: string | null;
+  timestamp: string | null;
+}
+
 export interface AdminShipShortfallLine {
   sku: string;
   ordered: number;
