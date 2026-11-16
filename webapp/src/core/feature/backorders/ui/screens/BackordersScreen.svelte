@@ -16,6 +16,10 @@
   let search = $state('');
   let scopeError = $state(false);
   let scopeErrorMessage = $state('');
+  let cancelTarget = $state<Backorder | null>(null);
+  let cancelReason = $state<CancelBackorderReason>('other');
+  let cancelError = $state('');
+  let successMessage = $state('');
 
   const canOpenSalesOrderDetail = $derived(
     guard.user?.role === 'ADMIN' || guard.user?.allowedPages.includes('sales-orders') === true
@@ -208,7 +212,7 @@
           <div class="card-actions">
             {#if canOpenSalesOrderDetail}
               <a class="detail-link" href={'/management/backorders/' + row.salesOrderId}>{i18n.t('Ver detalle')}</a>
-              {#if canAccessWarehouse(row.warehouseId)}
+              {#if row.parentSalesOrderNumber && canAccessWarehouse(row.warehouseId)}
                 <button class="cancel-link" type="button" onclick={() => openCancel(row)}>
                   {i18n.t('Cancelar backorder')}
                 </button>
