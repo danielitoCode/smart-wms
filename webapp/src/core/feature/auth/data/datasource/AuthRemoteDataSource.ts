@@ -20,7 +20,7 @@ export class AuthRemoteDataSource {
 	}
 
 	refresh(): Promise<RefreshResponseDto> {
-		return this.api.post<RefreshResponseDto>('/api/auth/refresh');
+		return this.api.post<RefreshResponseDto>('c');
 	}
 
 	logout(): Promise<LogoutResponseDto> {
