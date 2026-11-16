@@ -5,19 +5,22 @@
   import UiBanner from '#lib/components/UiBanner.svelte';
   import { createPickingQueueDependencies } from '../../di/pickingQueue.dependencies';
   import type { SalesOrder } from '#core/feature/sales-orders/domain/entity/SalesOrder';
+  import { groupOrdersByAddress } from '../../domain/policy/pickingGroups';
   const queue = createPickingQueueDependencies();
   const warehouse = getContext<{ warehouseId: number | null }>('warehouseSelection');
   let orders = $state<SalesOrder[]>([]);
   let status = $state<'OPEN' | 'PICKED' | 'ALL'>('OPEN');
   let hidePrinted = $state(true);
   let search = $state('');
+  let multiOrders = $state(false);
+  let longOrders = $state(false);
   let sortKey = $state<'shipByDate' | 'salesOrderNumber' | 'customerName' | 'primaryBinPickSequence'>('shipByDate');
   let sortDirection = $state<'asc' | 'desc'>('asc');
   let selected = $state<number[]>([]);
   let loading = $state(false);
   let error = $state('');
   const batchLimit = 200;
-  const visibleOrders = $derived.by(() => {
+  const sortedOrders = $derived.by(() => {
     const term = search.trim().toLowerCase();
     return [...orders].filter((order) => !term ||
       order.salesOrderNumber.toLowerCase().includes(term) ||
@@ -35,6 +38,17 @@
         return result * (sortDirection === 'asc' ? 1 : -1);
       });
   });
+  const displayRows = $derived.by(() => {
+    let base = sortedOrders;
+    if (longOrders) base = base.filter((order) => Number(order.lineCount) >= 5);
+    if (!multiOrders) return base.map((order) => ({ order, groupIndex: null as number | null, groupSize: null as number | null }));
+    const rows: Array<{ order: SalesOrder; groupIndex: number; groupSize: number }> = [];
+    groupOrdersByAddress(base).forEach((group, index) => {
+      group.orders.forEach((order) => rows.push({ order, groupIndex: index + 1, groupSize: group.orders.length }));
+    });
+    return rows;
+  });
+  const visibleOrders = $derived(displayRows.map((row) => row.order));
   const selectedVisibleIds = $derived(visibleOrders.filter((order) => selected.includes(order.salesOrderId)).map((order) => order.salesOrderId));
   onMount(() => { void load(); });
   async function load() {
@@ -62,6 +76,7 @@
     if (!ids.length) return;
     const params = new URLSearchParams({ status, so_ids: ids.join(',') });
     if (warehouse?.warehouseId != null) params.set('warehouse_id', String(warehouse.warehouseId));
+    if (multiOrders) params.set('combine', '1');
     if (typeof window !== 'undefined') window.open(`/picking-tickets/print-all?${params.toString()}`, '_blank', 'noopener');
   }
   function printSelected() { openPrintBatch(selectedVisibleIds.slice(0, batchLimit)); }
@@ -91,32 +106,37 @@
         </select>
       </label>
       <label class="check"><input type="checkbox" bind:checked={hidePrinted} onchange={() => { selected = []; void load(); }} /> Hide printed</label>
+      <label class="check"><input type="checkbox" bind:checked={multiOrders} /> Multi-Orders</label>
+      <label class="check"><input type="checkbox" bind:checked={longOrders} /> Long Orders (5+ lines)</label>
       <button class="secondary" onclick={load} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button>
       <span class="spacer"></span>
       <button class="secondary" onclick={printSelected} disabled={!selectedVisibleIds.length}>Print selected ({selectedVisibleIds.length})</button>
       <button onclick={printAll} disabled={!visibleOrders.length}>{visibleOrders.length > batchLimit ? `Print first ${batchLimit} of ${visibleOrders.length}` : `Print all (${visibleOrders.length})`}</button>
     </div>
     {#if loading}<p class="muted">Loading printable orders…</p>
-    {:else if visibleOrders.length === 0}<p class="empty">No orders ready for picking.</p>
+    {:else if visibleOrders.length === 0}<p class="empty">{multiOrders ? 'No multi-order groups in this queue.' : longOrders ? 'No long orders in this queue.' : 'No orders ready for picking.'}</p>
     {:else}
       <div class="table-wrap">
         <table>
           <thead><tr>
             <th><input type="checkbox" aria-label="Select visible tickets" checked={visibleOrders.length > 0 && selectedVisibleIds.length === visibleOrders.length} onchange={(event) => selected = event.currentTarget.checked ? visibleOrders.map((order) => order.salesOrderId) : []} /></th>
+            {#if multiOrders}<th>Group</th>{/if}
             <th><button class="sort" onclick={() => toggleSort('salesOrderNumber')}>SO Number</button></th>
             <th><button class="sort" onclick={() => toggleSort('customerName')}>Customer</button></th>
             <th><button class="sort" onclick={() => toggleSort('shipByDate')}>Ship by</button></th>
             <th>Ship method</th><th><button class="sort" onclick={() => toggleSort('primaryBinPickSequence')}>Primary bin</button></th>
-            <th>Status</th><th>Items</th><th></th>
+            <th>Status</th>{#if longOrders}<th>Items</th>{/if}<th></th>
           </tr></thead>
           <tbody>
-            {#each visibleOrders as order (order.salesOrderId)}
+            {#each displayRows as row (row.order.salesOrderId)}
+              {@const order = row.order}
               <tr>
                 <td><input type="checkbox" checked={selected.includes(order.salesOrderId)} onchange={() => toggleSelected(order.salesOrderId)} aria-label={`Select ${order.salesOrderNumber}`} /></td>
+                {#if multiOrders}<td class="mono">#{row.groupIndex} ({row.groupSize})</td>{/if}
                 <td class="mono">{order.salesOrderNumber}</td><td>{order.customerName || '—'}</td>
                 <td class="mono">{order.shipByDate || '—'}</td><td>{order.shipMethod || '—'}</td>
                 <td class="mono">{order.primaryBinCode || '—'}</td><td><span class="status">{order.status}</span></td>
-                <td>{order.lineCount ?? '—'}</td><td><button class="small" onclick={() => openTicket(order.salesOrderId)}>Print ticket</button></td>
+                {#if longOrders}<td>{order.lineCount ?? '—'}</td>{/if}<td><button class="small" onclick={() => openTicket(order.salesOrderId)}>Print ticket</button></td>
               </tr>
             {/each}
           </tbody>
