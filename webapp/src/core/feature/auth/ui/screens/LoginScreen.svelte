@@ -55,7 +55,7 @@
 
 		const redirect = page.url.searchParams.get('redirect');
 		const safeRedirect =
-				redirect && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : null;
+			redirect && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : null;
 
 		const home = resolveHomePath({
 			role: state.user?.role ?? 'USER',
@@ -77,11 +77,11 @@
 	<main class="content">
 		<header class="brand">
 			<img
-					class="mark"
-					src="/brand/abellis_mark_principal.svg"
-					width="56"
-					height="56"
-					alt="Abellis"
+				class="mark"
+				src="/brand/abellis_mark_principal.svg"
+				width="56"
+				height="56"
+				alt="Abellis"
 			/>
 			<p class="eyebrow">ABELLIS</p>
 			<h1>Smart WMS</h1>
@@ -89,37 +89,78 @@
 		</header>
 
 		{#if passwordChanged}
-			<UiBanner tone="success" message={i18n.t('Contraseña actualizada. Inicia sesión con tu nueva contraseña.')} />
+			<UiBanner
+				tone="success"
+				message={i18n.t('Contraseña actualizada. Inicia sesión con tu nueva contraseña.')}
+			/>
 		{/if}
 
 		{#if state.error}
 			<UiBanner tone="error" message={state.error} />
 		{/if}
 
-		<form class="panel" onsubmit={onSubmit}>
-			<label>
-				<span>{i18n.t('Usuario')}</span>
+		<form class="form" onsubmit={onSubmit}>
+			<div class="flex-column">
+				<label for="login-username">{i18n.t('Usuario')}</label>
+			</div>
+			<div class="inputForm">
+				<svg
+					class="field-icon"
+					height="20"
+					width="20"
+					viewBox="0 0 16 16"
+					xmlns="http://www.w3.org/2000/svg"
+					aria-hidden="true"
+				>
+					<path
+						fill="currentColor"
+						d="m1.5 13v1a.5.5 0 0 0 .3379.4731 18.9718 18.9718 0 0 0 6.1621 1.0269 18.9629 18.9629 0 0 0 6.1621-1.0269.5.5 0 0 0 .3379-.4731v-1a6.5083 6.5083 0 0 0 -4.461-6.1676 3.5 3.5 0 1 0 -4.078 0 6.5083 6.5083 0 0 0 -4.461 6.1676zm4-9a2.5 2.5 0 1 1 2.5 2.5 2.5026 2.5026 0 0 1 -2.5-2.5zm2.5 3.5a5.5066 5.5066 0 0 1 5.5 5.5v.6392a18.08 18.08 0 0 1 -11 0v-.6392a5.5066 5.5066 0 0 1 5.5-5.5z"
+					/>
+				</svg>
 				<input
-						type="text"
-						name="username"
-						autocomplete="username"
-						bind:value={state.username}
-						disabled={state.submitting}
-						required
+					id="login-username"
+					class="input"
+					type="text"
+					name="username"
+					autocomplete="username"
+					placeholder={i18n.t('Usuario')}
+					bind:value={state.username}
+					disabled={state.submitting}
+					required
 				/>
-			</label>
-			<label>
-				<span>{i18n.t('Contraseña')}</span>
+			</div>
+
+			<div class="flex-column">
+				<label for="login-password">{i18n.t('Contraseña')}</label>
+			</div>
+			<div class="inputForm">
+				<svg
+					class="field-icon"
+					height="20"
+					width="20"
+					viewBox="0 0 24 24"
+					xmlns="http://www.w3.org/2000/svg"
+					aria-hidden="true"
+				>
+					<path
+						fill="currentColor"
+						d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5zm-3 5a3 3 0 0 1 6 0v3H9V6zm-1 5h8v8H8v-8z"
+					/>
+				</svg>
 				<input
-						type="password"
-						name="password"
-						autocomplete="current-password"
-						bind:value={state.password}
-						disabled={state.submitting}
-						required
+					id="login-password"
+					class="input"
+					type="password"
+					name="password"
+					autocomplete="current-password"
+					placeholder={i18n.t('Contraseña')}
+					bind:value={state.password}
+					disabled={state.submitting}
+					required
 				/>
-			</label>
-			<button class="primary" type="submit" disabled={state.submitting}>
+			</div>
+
+			<button class="button-submit" type="submit" disabled={state.submitting}>
 				{#if state.submitting}
 					<span class="loader" aria-hidden="true"></span>
 					{i18n.t('Entrando…')}
@@ -127,6 +168,7 @@
 					{i18n.t('Entrar')}
 				{/if}
 			</button>
+
 			<div class="progress" class:active={state.submitting} aria-hidden="true">
 				<span class="bar"></span>
 			</div>
@@ -164,7 +206,7 @@
 	}
 
 	.content {
-		width: min(24rem, 100%);
+		width: min(28rem, 100%);
 		margin: auto;
 		display: flex;
 		flex-direction: column;
@@ -180,7 +222,10 @@
 		animation: rise 420ms ease-out both;
 	}
 
-	.mark { display: block; }
+	.mark {
+		display: block;
+	}
+
 	.eyebrow {
 		margin: 0;
 		font: 600 var(--fs-xs, 0.72rem) var(--disp, system-ui);
@@ -188,140 +233,248 @@
 		text-transform: uppercase;
 		color: var(--navy);
 	}
+
 	h1 {
 		margin: 0;
 		font: 700 var(--fs-2xl, 1.65rem) / 1.2 var(--disp, system-ui);
 		color: var(--head-ink, var(--navy-deep));
 	}
+
 	.lead {
 		margin: 0;
 		color: var(--slate);
 		font: 500 var(--fs-md, 0.92rem) / 1.45 var(--body, system-ui);
 	}
 
-	.panel {
-		position: relative;
+	.form {
 		display: flex;
 		flex-direction: column;
-		gap: 0.85rem;
-		padding: 1.25rem;
+		gap: 0.65rem;
+		width: 100%;
+		padding: 1.65rem 1.5rem 1.35rem;
+		border-radius: 20px;
 		border: 1px solid var(--line);
-		border-radius: 16px;
-		background: color-mix(in srgb, var(--surface) 92%, transparent);
-		backdrop-filter: blur(10px);
-		box-shadow: 0 18px 40px -28px color-mix(in srgb, var(--navy) 45%, transparent);
+		background: color-mix(in srgb, var(--card) 94%, transparent);
+		backdrop-filter: blur(12px);
+		box-shadow:
+			0 20px 44px -28px color-mix(in srgb, var(--navy) 50%, transparent),
+			0 1px 0 color-mix(in srgb, #fff 6%, transparent) inset;
 		animation: rise 480ms ease-out 60ms both;
-	overflow: hidden;
+		font-family: var(--body, system-ui);
+		overflow: hidden;
+		position: relative;
 	}
 
-	label {
-		display: grid;
-		gap: 0.35rem;
-		font: 600 0.8rem var(--body);
-		color: var(--slate);
-	}
-
-	input {
-		min-height: 44px;
-		padding: 0.55rem 0.75rem;
-		border: 1px solid var(--line);
-		border-radius: 10px;
-		background: var(--card, var(--surface));
+	.flex-column > label {
+		display: block;
+		margin: 0.15rem 0 0;
 		color: var(--ink);
-		font: 500 0.95rem var(--body);
+		font: 600 0.82rem var(--body, system-ui);
+		letter-spacing: 0.01em;
 	}
 
-	input:focus-visible {
-		outline: 2px solid var(--gold);
-		outline-offset: 1px;
+	.inputForm {
+		display: flex;
+		align-items: center;
+		height: 3.1rem;
+		padding-left: 0.75rem;
+		border: 1.5px solid var(--line);
+		border-radius: 12px;
+		background: var(--surface, var(--card));
+		transition:
+			border-color 0.2s ease,
+			box-shadow 0.2s ease,
+			background-color 0.2s ease;
 	}
 
-	button.primary {
-		min-height: 46px;
+	.field-icon {
+		flex-shrink: 0;
+		color: var(--slate);
+		opacity: 0.9;
+	}
+
+	.input {
+		margin-left: 0.65rem;
+		padding-right: 0.85rem;
+		border: none;
+		border-radius: 12px;
+		width: 100%;
+		height: 100%;
+		background: transparent;
+		color: var(--ink);
+		font: 500 0.95rem / 1.3 var(--body, system-ui);
+		outline: none;
+		box-shadow: none;
+		min-height: 0;
+	}
+
+	.input::placeholder {
+		color: var(--muted, var(--slate));
+		opacity: 0.85;
+	}
+
+	.input:disabled {
+		opacity: 0.65;
+		cursor: not-allowed;
+	}
+
+	.inputForm:hover:not(:focus-within) {
+		border-color: color-mix(in srgb, var(--line) 40%, var(--slate));
+	}
+
+	.inputForm:focus-within {
+		border-color: var(--gold);
+		box-shadow: 0 0 0 1px color-mix(in srgb, var(--gold) 45%, transparent);
+		background: var(--card);
+	}
+
+	.inputForm:focus-within .field-icon {
+		color: var(--gold);
+	}
+
+	.button-submit {
+		margin: 1rem 0 0.35rem;
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
 		gap: 0.5rem;
-		border: 1px solid var(--navy);
-		border-radius: 10px;
-		background: var(--navy);
+		width: 100%;
+		height: 3.1rem;
+		border: none;
+		border-radius: 12px;
+		background: linear-gradient(
+			145deg,
+			color-mix(in srgb, var(--navy) 88%, var(--gold) 12%) 0%,
+			var(--navy) 100%
+		);
 		color: #fff;
-		font: 600 0.92rem var(--body, system-ui);
+		font: 600 0.95rem var(--body, system-ui);
+		letter-spacing: 0.01em;
 		cursor: pointer;
-		transition: transform 140ms ease, box-shadow 140ms ease;
+		box-shadow: 0 10px 22px -12px color-mix(in srgb, var(--navy) 70%, transparent);
+		transition:
+			opacity 0.2s ease,
+			transform 0.15s ease,
+			box-shadow 0.2s ease;
 	}
 
-	button.primary:hover:not(:disabled) {
-		box-shadow: 0 8px 18px -10px color-mix(in srgb, var(--navy) 70%, transparent);
+	.button-submit:hover:not(:disabled) {
+		opacity: 0.94;
+		box-shadow: 0 12px 26px -12px color-mix(in srgb, var(--navy) 80%, transparent);
 	}
 
-	button.primary:active:not(:disabled) { transform: scale(0.99); }
-	button.primary:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-	button.primary:disabled { opacity: 0.8; cursor: wait; }
+	.button-submit:active:not(:disabled) {
+		transform: translateY(1px);
+	}
 
-	.loader {
-		width: 14px; height: 14px;
-		border: 2px solid color-mix(in srgb, #fff 35%, transparent);
-		border-top-color: #fff;
-		border-radius: 50%;
-		animation: spin 700ms linear infinite;
+	.button-submit:disabled {
+		opacity: 0.65;
+		cursor: not-allowed;
+	}
+
+	.button-submit:focus-visible {
+		outline: 2px solid var(--gold);
+		outline-offset: 2px;
 	}
 
 	.progress {
-		position: absolute;
-		inset: auto 0 0 0;
 		height: 3px;
-		opacity: 0;
+		border-radius: 99px;
+		background: var(--line);
 		overflow: hidden;
-		transition: opacity 140ms ease;
+		opacity: 0;
+		transition: opacity 0.2s ease;
 	}
-	.progress.active { opacity: 1; }
+
+	.progress.active {
+		opacity: 1;
+	}
+
 	.bar {
-		display: block; width: 40%; height: 100%;
-		background: linear-gradient(90deg, transparent, var(--gold), transparent);
+		display: block;
+		height: 100%;
+		width: 42%;
+		border-radius: inherit;
+		background: linear-gradient(90deg, var(--navy), var(--gold));
 		animation: slide 1.1s ease-in-out infinite;
 	}
 
-	.footer {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.2rem;
-		padding-top: 1.5rem;
-		text-align: center;
-		font: 500 var(--fs-xs, 0.76rem) / 1.5 var(--body, system-ui);
-		color: var(--muted, var(--slate));
-		animation: fade-in 500ms ease-out 200ms both;
+	.loader {
+		width: 1rem;
+		height: 1rem;
+		border: 2px solid color-mix(in srgb, #fff 35%, transparent);
+		border-top-color: #fff;
+		border-radius: 50%;
+		animation: spin 0.7s linear infinite;
 	}
-	.footer p { margin: 0; }
-	.legal { color: var(--slate); font-weight: 600; }
-	.footer a {
-		color: inherit; text-decoration: none;
-		border-bottom: 1px solid transparent;
-	}
-	.footer a:hover, .footer a:focus-visible {
-		color: var(--navy); border-bottom-color: var(--gold); outline: none;
-	}
-	.sep { margin: 0 0.4rem; opacity: 0.6; }
 
-	@media (max-width: 420px) {
-		.sep { display: none; }
-		.contact a { display: block; }
+	.footer {
+		text-align: center;
+		padding-top: 1rem;
+		color: var(--slate);
+		font-size: 0.8rem;
+		animation: rise 500ms ease-out 100ms both;
+	}
+
+	.legal {
+		margin: 0 0 0.25rem;
+	}
+
+	.contact {
+		margin: 0;
+	}
+
+	.contact a {
+		color: var(--slate);
+		text-decoration: none;
+	}
+
+	.contact a:hover {
+		color: var(--navy);
+		text-decoration: underline;
+	}
+
+	.sep {
+		margin: 0 0.35rem;
+		opacity: 0.6;
 	}
 
 	@keyframes rise {
-		from { opacity: 0; transform: translateY(8px); }
-		to { opacity: 1; transform: none; }
+		from {
+			opacity: 0;
+			transform: translateY(10px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
-	@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-	@keyframes spin { to { transform: rotate(360deg); } }
+
 	@keyframes slide {
-		from { transform: translateX(-100%); }
-		to { transform: translateX(250%); }
+		0% {
+			transform: translateX(-120%);
+		}
+		100% {
+			transform: translateX(250%);
+		}
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.brand, .panel, .footer, .loader, .bar { animation: none; }
-		.bar { width: 100%; }
+		.brand,
+		.form,
+		.footer,
+		.loader,
+		.bar {
+			animation: none;
+		}
+		.bar {
+			width: 100%;
+		}
 	}
 </style>
