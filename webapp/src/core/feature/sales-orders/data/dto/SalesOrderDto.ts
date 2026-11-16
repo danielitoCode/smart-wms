@@ -285,3 +285,44 @@ export type UpdateSalesOrderAddressRequestDto = Partial<Record<
   | 'shipping_address_country' | 'shipping_address_phone',
   string
 >>;
+
+export interface AddSalesOrderLineRequestDto {
+  item_id: number;
+  quantity_ordered: number;
+}
+
+export interface UpdateSalesOrderLineRequestDto {
+  quantity_ordered: number;
+}
+
+export interface AdminPickRequestDto {
+  lines: Array<{ so_line_id: number; bin_id: number; quantity: number }>;
+}
+
+export interface PartialFulfillRequestDto {
+  lines: Array<{ so_line_id: number; short_qty: number }>;
+  reason_detail?: string;
+}
+
+export interface RevertSalesOrderStatusRequestDto {
+  new_status: string;
+  release_pick_task_ids: number[];
+}
+
+export interface AdminShipRequestDto {
+  acknowledge_shortfall: boolean;
+}
+
+export interface CreateRmaRequestDto {
+  lines: Array<{ item_id: number; quantity: number; original_so_line_id?: number }>;
+  memo?: string | null;
+}
+
+export interface ReceiveRmaRequestDto {
+  item_id: number;
+  quantity: number;
+  warehouse_id: number;
+  bin_id: number;
+  notes?: string;
+  idempotency_key?: string;
+}
