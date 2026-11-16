@@ -2,7 +2,8 @@ import type {
   CreateSalesOrderInput, PartialFulfillInput, ReceiveReturnInput,
   RevertSalesOrderInput, CreateRmaInput, RelatedSalesOrder,
   SalesOrder, SalesOrderPage, UpdateSalesOrder, UpdateSalesOrderAddressInput,
-  UpdateSalesOrderAllocationInput, UpdateSalesOrderAllocationResult
+  UpdateSalesOrderAllocationInput, UpdateSalesOrderAllocationResult,
+  SalesOrderSourceSystem
 } from '../entity/SalesOrder';
 
 export type ListSalesOrdersParams = {
@@ -23,6 +24,7 @@ export interface SalesOrderRepository {
   list(params?: ListSalesOrdersParams): Promise<SalesOrder[]>;
   listPage(params?: ListSalesOrdersParams): Promise<SalesOrderPage>;
   getById(id: number): Promise<SalesOrder>;
+  listSourceSystems(): Promise<SalesOrderSourceSystem[]>;
   create(input: CreateSalesOrderInput): Promise<SalesOrder>;
   update(id: number, input: UpdateSalesOrder): Promise<void>;
   updateAddress(id: number, input: UpdateSalesOrderAddressInput): Promise<void>;
