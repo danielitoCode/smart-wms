@@ -43,5 +43,4 @@ export type CancelBackorderInput = {
 
 export type BackorderDetail = {
   order: SalesOrder;
-  parentSalesOrder: SalesOrder | null;
 };
