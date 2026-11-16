@@ -44,6 +44,7 @@
 			<button type="button" class="secondary" onclick={() => void vm.load()} disabled={vm.loading}>{i18n.t('Actualizar')}</button></div>
 	</form>
 	{#if vm.loading && vm.rows.length === 0}<p class="muted" role="status">{i18n.t('Cargando actividad entrante…')}</p>
+	{:else if vm.rows.length === 0 && vm.error}<p class="empty">{i18n.t('No se pudo recuperar la actividad. Revisa el error anterior e inténtalo de nuevo.')}</p>
 	{:else if vm.rows.length === 0}<p class="empty">{vm.loading ? i18n.t('Cargando actividad entrante…') : i18n.t('No hay actividad entrante para estos filtros.')}</p>
 	{:else}
 		{#if vm.loading}<p class="muted" role="status">{i18n.t('Actualizando actividad…')}</p>{/if}
