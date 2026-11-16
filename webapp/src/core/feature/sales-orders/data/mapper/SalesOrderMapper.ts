@@ -3,7 +3,7 @@ import type {
   SalesOrderPage, SalesOrderPickTask
 } from '../../domain/entity/SalesOrder';
 import type {
-  RelatedSalesOrderDto, SalesOrderDetailResponseDto, SalesOrderDto,
+  RelatedSalesOrderDto, SalesOrderDetailResponseDto, SalesOrderProjectionDto,
   SalesOrderLineDto, SalesOrderListResponseDto, SalesOrderPickTaskDto
 } from '../dto/SalesOrderDto';
 
@@ -13,7 +13,7 @@ function numberOrNull(value: string | number | null | undefined): number | null 
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function toAddress(dto: SalesOrderDto, prefix: 'billing' | 'shipping'): SalesOrderAddress {
+function toAddress(dto: SalesOrderProjectionDto, prefix: 'billing' | 'shipping'): SalesOrderAddress {
   const fields = prefix === 'billing'
     ? {
         name: dto.billing_address_name,
@@ -79,7 +79,7 @@ function toPickTask(dto: SalesOrderPickTaskDto): SalesOrderPickTask {
   };
 }
 
-function toDomain(dto: SalesOrderDto): SalesOrder {
+function toDomain(dto: SalesOrderProjectionDto): SalesOrder {
   const id = dto.so_id;
   if (id == null || !Number.isInteger(id) || id < 1) {
     throw new Error('La respuesta del pedido no contiene un so_id válido');
@@ -89,7 +89,7 @@ function toDomain(dto: SalesOrderDto): SalesOrder {
     salesOrderId: id, salesOrderNumber: number, soNumber: number, id,
     barcode: dto.so_barcode ?? null,
     status: dto.status ?? 'OPEN', priority: dto.priority ?? 0,
-    warehouseId: dto.warehouse_id ?? null, customerId: dto.customer_id ?? null,
+    warehouseId: dto.warehouse_id ?? null, customerId: null,
     customerName: dto.customer_name ?? null, customerEmail: dto.customer_email ?? null,
     customerPhone: dto.customer_phone ?? null, customerAddress: dto.customer_address ?? null,
     shipAddress: dto.ship_address ?? null, shipMethod: dto.ship_method ?? null,
