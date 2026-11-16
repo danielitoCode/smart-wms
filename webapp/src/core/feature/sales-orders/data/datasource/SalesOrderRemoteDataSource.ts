@@ -7,8 +7,7 @@ import type {
 import type {
   UpdateSalesOrderAllocationInput,
   CreateRmaInput,
-  ReceiveReturnInput,
-  UpdateSalesOrderAddressInput
+  ReceiveReturnInput
 } from '../../domain/entity/SalesOrder';
 
 
