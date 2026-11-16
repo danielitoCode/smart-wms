@@ -27,7 +27,12 @@ export class ListSalesOrdersUseCase {
       page: input.page,
       perPage: input.perPage,
       q: input.q?.trim() || undefined,
-      excludePostFulfillment: input.excludePostFulfillment ?? false
+      excludePostFulfillment: input.excludePostFulfillment ?? false,
+      orderType: input.orderType,
+      hidePrinted: input.hidePrinted ?? false,
+      includePrimaryBin: input.includePrimaryBin ?? false,
+      includeLineCount: input.includeLineCount ?? false,
+      localPickup: input.localPickup ?? false
     });
   }
 }
