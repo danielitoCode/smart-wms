@@ -18,6 +18,7 @@
   let sortDirection = $state<'asc' | 'desc'>('asc');
   let selected = $state<number[]>([]);
   let loading = $state(false);
+  let lookupLoading = $state(false);
   let error = $state('');
   const batchLimit = 200;
   const sortedOrders = $derived.by(() => {
@@ -81,11 +82,19 @@
   }
   function printSelected() { openPrintBatch(selectedVisibleIds.slice(0, batchLimit)); }
   function printAll() { openPrintBatch(visibleOrders.slice(0, batchLimit).map((order) => order.salesOrderId)); }
-  function openByNumber() {
-    const term = search.trim().toLowerCase();
-    const match = orders.find((order) => order.salesOrderNumber.toLowerCase() === term);
-    if (match) openTicket(match.salesOrderId);
-    else error = 'No matching sales order found in the current queue.';
+  async function openByNumber() {
+    const term = search.trim();
+    if (!term) return;
+    lookupLoading = true; error = '';
+    try {
+      const page = await queue.findOrder.execute(term);
+      const exact = page.items.find((order) => order.salesOrderNumber.toLowerCase() === term.toLowerCase());
+      const match = exact ?? page.items[0];
+      if (match) openTicket(match.salesOrderId);
+      else error = `No sales order found matching "${term}".`;
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : 'Could not search sales orders.';
+    } finally { lookupLoading = false; }
   }
 </script>
 
@@ -97,7 +106,7 @@
       <label class="search">Find ticket or order
         <input bind:value={search} placeholder="Sales order number or customer" onkeydown={(event) => event.key === 'Enter' && openByNumber()} />
       </label>
-      <button class="secondary" onclick={openByNumber} disabled={!search.trim()}>Open ticket</button>
+      <button class="secondary" onclick={openByNumber} disabled={!search.trim() || lookupLoading}>{lookupLoading ? 'Searching…' : 'Open ticket'}</button>
     </div>
     <div class="toolbar filters">
       <label>Status
