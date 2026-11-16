@@ -3,6 +3,7 @@ import type {
   SalesOrderDetailResponseDto, SalesOrderListResponseDto,
   RelatedSalesOrdersResponseDto, AvailableSalesOrderBinsResponseDto,
   SalesOrderAllocationResponseDto, SalesOrderSourceSystemsResponseDto,
+  ShortPicksResponseDto,
   AdminShipResponseDto, CreateSalesOrderRequestDto, UpdateSalesOrderRequestDto,
   UpdateSalesOrderAddressRequestDto, AddSalesOrderLineRequestDto,
   UpdateSalesOrderLineRequestDto, AdminPickRequestDto, PartialFulfillRequestDto,
@@ -61,6 +62,14 @@ export class SalesOrderRemoteDataSource {
 
   async listSourceSystems(): Promise<SalesOrderSourceSystemsResponseDto> {
     return this.api.get<SalesOrderSourceSystemsResponseDto>('/api/admin/source-systems');
+  }
+
+  async listShortPicks(params?: { days?: number; warehouseId?: number }): Promise<ShortPicksResponseDto> {
+    const query = new URLSearchParams();
+    if (params?.days != null) query.set('days', String(params.days));
+    if (params?.warehouseId != null) query.set('warehouse_id', String(params.warehouseId));
+    const qs = query.toString();
+    return this.api.get<ShortPicksResponseDto>(`/api/admin/short-picks${qs ? `?${qs}` : ''}`);
   }
 
   async cancel(id: number): Promise<void> {
