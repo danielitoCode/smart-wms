@@ -57,11 +57,31 @@
   let lineQuantity = $state<Record<number, string>>({});
   let feedback = $state<string | null>(null);
   let relatedTrail = $state<number[]>([]);
+  let editMode = $state(false);
+  let editPriority = $state('0');
+  let editSourceSystem = $state('');
+  let editOrderOrigin = $state('');
+  let editCarrier = $state('');
+  let editTrackingNumber = $state('');
+  let editShippedDate = $state('');
+  let partialShorts = $state<Record<number, string>>({});
+  let partialReason = $state('');
+  let revertTargetStatus = $state('OPEN');
+  let releasePickTaskIds = $state<number[]>([]);
+  let rmaItemId = $state('');
+  let rmaQuantity = $state('1');
+  let rmaReason = $state('');
+  let showRma = $state(false);
 
   onMount(() => {
-    const initialSearch = route.url.searchParams.get('q') ?? '';
+    const initialSearch = route.url.searchParams.get('q') ?? route.url.searchParams.get('focus') ?? '';
     vm.setSearch(initialSearch);
-    void vm.load();
+    void vm.load().then(() => {
+      const focus = route.url.searchParams.get('focus');
+      if (!focus) return;
+      const match = vm.orders.find((order) => order.salesOrderNumber.toLowerCase() === focus.toLowerCase());
+      if (match) void openOrder(match.salesOrderId);
+    });
   });
 
   function openCreateForm(): void {
@@ -110,6 +130,13 @@
     editShipAddress = order.shipAddress ?? '';
     editShipByDate = order.shipByDate ?? '';
     editMemo = order.memo ?? '';
+    editPriority = String(order.priority ?? 0);
+    editSourceSystem = order.sourceSystem ?? '';
+    editOrderOrigin = order.orderOrigin ?? '';
+    editCarrier = order.carrier ?? '';
+    editTrackingNumber = order.trackingNumber ?? '';
+    editShippedDate = order.shippedDateLocal ?? '';
+    editMode = true;
     billingAddress = createAddressForm(order.billingAddress);
     shippingAddress = createAddressForm(order.shippingAddress);
     feedback = null;
@@ -118,7 +145,12 @@
   async function openOrder(orderId: number): Promise<void> {
     relatedTrail = [];
     await vm.open(orderId);
-    if (vm.selected) beginEdit(vm.selected);
+    if (vm.selected) {
+      beginEdit(vm.selected);
+      editMode = false;
+      void vm.loadRelated();
+      void vm.loadSourceSystems();
+    }
   }
 
   async function openRelatedOrder(orderId: number): Promise<void> {
@@ -128,6 +160,8 @@
     if (!opened || !vm.selected) return;
     relatedTrail = [...relatedTrail, previousId];
     beginEdit(vm.selected);
+    editMode = false;
+    void vm.loadRelated();
   }
 
   async function returnToRelatedOrder(): Promise<void> {
@@ -148,7 +182,13 @@
       shipMethod: editShipMethod || null,
       shipAddress: editShipAddress || null,
       shipByDate: editShipByDate || null,
-      memo: editMemo || null
+      memo: editMemo || null,
+      orderOrigin: editOrderOrigin || null,
+      priority: Number(editPriority),
+      sourceSystem: editSourceSystem || null,
+      carrier: editCarrier || null,
+      trackingNumber: editTrackingNumber || null,
+      shippedAt: editShippedDate || null
     });
     if (ok) {
       feedback = i18n.t('Pedido actualizado correctamente.');
@@ -163,6 +203,56 @@
     });
     if (ok) {
       feedback = i18n.t('Direcciones actualizadas correctamente.');
+      pushToast(feedback, 'success');
+    }
+  }
+
+  async function applyAllocation(lineId: number, delta: number): Promise<void> {
+    const result = await vm.updateAllocation(lineId, delta);
+    if (result) {
+      feedback = result.unchanged
+        ? i18n.t('La asignación no cambió: no había inventario disponible o se alcanzó el límite.')
+        : i18n.t('Asignación actualizada. Cantidad reservada: ') + result.quantityAllocated;
+      pushToast(feedback, result.unchanged ? 'warning' : 'success');
+    }
+  }
+
+  async function submitPartialFulfill(): Promise<void> {
+    const lines = Object.entries(partialShorts)
+      .map(([soLineId, shortQuantity]) => ({ soLineId: Number(soLineId), shortQuantity: Number(shortQuantity) }))
+      .filter((line) => Number.isInteger(line.shortQuantity) && line.shortQuantity > 0);
+    const ok = await vm.partialFulfill({ lines, reason: partialReason.trim() });
+    if (ok) {
+      partialShorts = {};
+      partialReason = '';
+      feedback = i18n.t('Fulfillment parcial registrado; se creó el pedido pendiente.');
+      pushToast(feedback, 'success');
+    } else if (vm.error) pushToast(vm.error, 'error');
+  }
+
+  async function submitRevert(): Promise<void> {
+    const ok = await vm.revertStatus({ newStatus: revertTargetStatus, releasePickTaskIds });
+    if (ok) {
+      feedback = i18n.t('Estado del pedido revertido.');
+      pushToast(feedback, 'success');
+    } else if (vm.error) pushToast(vm.error, 'error');
+  }
+
+  async function submitRma(): Promise<void> {
+    const order = vm.selected;
+    if (!order) return;
+    const line = order.lines.find((candidate) => candidate.itemId === Number(rmaItemId));
+    const ok = await vm.createRma({
+      lines: [{ itemId: Number(rmaItemId), quantity: Number(rmaQuantity), originalSoLineId: line?.soLineId ?? null }],
+      reason: rmaReason || null
+    });
+    if (ok) {
+      showRma = false;
+      rmaItemId = '';
+      rmaQuantity = '1';
+      rmaReason = '';
+      await vm.loadRelated();
+      feedback = i18n.t('RMA creado correctamente.');
       pushToast(feedback, 'success');
     }
   }
