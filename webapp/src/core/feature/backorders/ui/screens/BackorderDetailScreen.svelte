@@ -11,7 +11,6 @@
 
   const i18n = getContext<I18nState>('i18n');
   const guard = getContext<{ status: string; user: User | null }>('authGuard');
-  const selection = getContext<{ warehouseId: number | null }>('warehouseSelection');
   const vm = createBackordersState();
 
   let reason = $state<CancelBackorderReason>('other');
@@ -37,7 +36,7 @@
     }
   });
 
-  function formatTimestamp(value: string | null): string {
+  function formatTimestamp(value: string | null | undefined): string {
     if (!value) return '—';
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
@@ -46,19 +45,18 @@
   async function submitCancel(): Promise<void> {
     if (!order || !cancelable) return;
     cancelError = null;
-    let warehouseId: number | null;
     try {
-      warehouseId = resolveBackorderWarehouseScope({
+      resolveBackorderWarehouseScope({
         role: guard.user?.role ?? 'USER',
         allowedPages: guard.user?.allowedPages ?? [],
         assignedWarehouseIds: guard.user?.warehouseIds ?? [],
-        selectedWarehouseId: selection?.warehouseId ?? null
+        selectedWarehouseId: order.warehouseId
       });
     } catch (cause) {
       cancelError = cause instanceof Error ? cause.message : i18n.t('No tienes acceso al almacén seleccionado.');
       return;
     }
-    const ok = await vm.cancel(order.salesOrderId, reason, warehouseId);
+    const ok = await vm.cancel(order.salesOrderId, reason);
     if (!ok) {
       cancelError = vm.error;
       return;
@@ -119,7 +117,7 @@
           <dt>{i18n.t('Estado del pedido original')}</dt><dd>{order.parentSoId === null ? '—' : i18n.t('Abre el pedido original para consultar su estado.')}</dd>
           <dt>{i18n.t('Motivo de cancelación')}</dt><dd>{order.cancellationReason || '—'}</dd>
         </dl>
-        {#if !parentOrder && order.parentSoId === null}
+        {#if order.parentSoId === null}
           <p class="hint">{i18n.t('Este pedido no tiene una relación de pedido padre disponible. Puede ser una orden POS retenida por falta de stock y no es cancelable mediante la operación específica de backorders.')}</p>
         {/if}
       </article>
