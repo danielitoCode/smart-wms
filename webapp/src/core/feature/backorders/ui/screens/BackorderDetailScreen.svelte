@@ -49,6 +49,7 @@
     order.orderType === 'backorder' &&
     order.parentSoId !== null &&
     parentSalesOrder !== null &&
+    parentSalesOrder.status !== 'CANCELLED' &&
     ['WAITING_STOCK', 'OPEN', 'PICKED', 'PACKED'].includes(order.status)
   );
 
@@ -191,7 +192,9 @@
       <p class="message warning">{i18n.t('Este pedido aparece en la cola por falta de inventario, pero no es una orden de tipo backorder con pedido padre. El endpoint de cancelación específica no lo admite.')}</p>
     {/if}
 
-    {#if cancelable}
+    {#if parentSalesOrder?.status === 'CANCELLED'}
+      <p class="hint">{i18n.t('El pedido original está cancelado. La cancelación en cascada debe dejar este backorder en estado terminal; no se permite ejecutar otra cancelación.')}</p>
+    {:else if cancelable}
       <div class="actions">
         <button class="danger" type="button" disabled={vm.saving} onclick={() => { confirmCancel = true; cancelError = null; }}>
           {i18n.t('Cancelar backorder')}
