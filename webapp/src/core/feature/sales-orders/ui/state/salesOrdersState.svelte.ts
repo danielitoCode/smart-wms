@@ -9,6 +9,7 @@ import type {
   RevertSalesOrderInput,
   SalesOrder,
   SalesOrderPage,
+  SalesOrderSourceSystem,
   UpdateSalesOrder,
   UpdateSalesOrderAddressInput,
   UpdateSalesOrderAllocationResult
@@ -52,6 +53,8 @@ export function createSalesOrdersState() {
   let loadedOnce = $state(false);
   let selected = $state<SalesOrder | null>(null);
   let relatedOrders = $state<RelatedSalesOrder[]>([]);
+  let sourceSystems = $state<SalesOrderSourceSystem[]>([]);
+  let loadingSourceSystems = $state(false);
   let loadingRelated = $state(false);
   let cancellingId = $state<number | null>(null);
   let availableBinsByLine = $state<Record<number, AvailableSalesOrderBin[]>>({});
@@ -236,6 +239,21 @@ export function createSalesOrdersState() {
     );
   }
 
+  async function loadSourceSystems(): Promise<boolean> {
+    if (loadingSourceSystems) return false;
+    loadingSourceSystems = true;
+    try {
+      sourceSystems = await deps.listSalesOrderSourceSystems.execute();
+      return true;
+    } catch (err) {
+      error = toUserMessage(err, 'No se pudieron cargar los sistemas de origen');
+      sourceSystems = [];
+      return false;
+    } finally {
+      loadingSourceSystems = false;
+    }
+  }
+
   async function loadRelated(id = selected?.salesOrderId): Promise<boolean> {
     if (!id || loadingRelated) return false;
     loadingRelated = true;
@@ -374,6 +392,8 @@ export function createSalesOrdersState() {
     get loadedOnce() { return loadedOnce; },
     get selected() { return selected; },
     get relatedOrders() { return relatedOrders; },
+    get sourceSystems() { return sourceSystems; },
+    get loadingSourceSystems() { return loadingSourceSystems; },
     get loadingRelated() { return loadingRelated; },
     get cancellingId() { return cancellingId; },
     get availableBinsByLine() { return availableBinsByLine; },
@@ -383,6 +403,7 @@ export function createSalesOrdersState() {
     setPage,
     setWarehouseId,
     load,
+    loadSourceSystems,
     create,
     open,
     close,
