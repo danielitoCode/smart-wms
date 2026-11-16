@@ -8,7 +8,9 @@ export type BackorderScopeInput = {
  * Resolve the warehouse filter sent by the browser.
  * Only ADMIN can request an unscoped queue. A warehouses-page grant is not
  * equivalent to global backorder access; non-admin users remain constrained
- * to one of their assigned warehouses. The API is still authoritative.
+ * to one of their assigned warehouses. This is a UI guard, not a security
+ * boundary: the current API only applies the optional warehouse_id filter and
+ * does not independently enforce the caller's warehouse assignment.
  */
 export function resolveBackorderWarehouseScope(input: BackorderScopeInput): number | null {
   const selected = input.selectedWarehouseId;
