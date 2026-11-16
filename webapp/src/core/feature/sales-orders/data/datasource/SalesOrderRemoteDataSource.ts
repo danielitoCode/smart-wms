@@ -9,7 +9,6 @@ import type {
   RevertSalesOrderStatusRequestDto, AdminShipRequestDto, CreateRmaRequestDto,
   ReceiveRmaRequestDto, UpdateSalesOrderAllocationRequestDto
 } from '../dto/SalesOrderDto';
-import type { UpdateSalesOrderAllocationInput } from '../../domain/entity/SalesOrder';
 
 export class SalesOrderRemoteDataSource {
   constructor(private readonly api: ApiClient) {}
@@ -53,8 +52,7 @@ export class SalesOrderRemoteDataSource {
       body: payload
     });
   }
-  async updateAllocation(id: number, lineId: number, input: UpdateSalesOrderAllocationInput): Promise<SalesOrderAllocationResponseDto> {
-    const payload: UpdateSalesOrderAllocationRequestDto = { delta: input.delta };
+  async updateAllocation(id: number, lineId: number, payload: UpdateSalesOrderAllocationRequestDto): Promise<SalesOrderAllocationResponseDto> {
     return this.api.request<SalesOrderAllocationResponseDto>(
       `/api/admin/sales-orders/${id}/lines/${lineId}/allocation`,
       { method: 'PATCH', body: payload }
