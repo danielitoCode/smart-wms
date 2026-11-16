@@ -340,8 +340,9 @@ def test_return_receipts_endpoint_lists_rma_receipts(client, auth_headers, _db_t
     assert rows[0]["notes"] == "Caja dañada"
 
 
-def test_return_receipts_endpoint_rejects_non_return_sales_order(client, auth_headers):
+def test_return_receipts_endpoint_rejects_non_return_sales_order(client, auth_headers, _db_transaction):
+    sales_order_id = _insert_so(f"POS-{uuid.uuid4().hex[:8]}")
     response = client.get(
-        "/api/admin/sales-orders/999999999/return-receipts", headers=auth_headers
+        f"/api/admin/sales-orders/{sales_order_id}/return-receipts", headers=auth_headers
     )
     assert response.status_code == 404
