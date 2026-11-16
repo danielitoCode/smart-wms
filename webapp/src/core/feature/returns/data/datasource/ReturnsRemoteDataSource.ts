@@ -1,5 +1,5 @@
 import type { ApiClient } from '../../../../infrastructure/api/ApiClient';
-import type { ReturnHeaderDto,ReturnLineDto,ReturnListDto,ReturnDetailDto,ReturnReceiptDto,ReturnReceiptsDto,WarehouseOptionDto,BinOptionDto } from '../dto/ReturnDto';
+import type { ReturnListDto,ReturnDetailDto,ReturnReceiptsDto,WarehouseOptionDto,BinOptionDto } from '../dto/ReturnDto';
 export class ReturnsRemoteDataSource {
  constructor(private api:ApiClient){}
  async list(q:{status?:string;search?:string}={}){const p=new URLSearchParams({order_type:'return',per_page:'50'});if(q.status)p.set('status',q.status);if(q.search?.trim())p.set('q',q.search.trim());const r=await this.api.get<ReturnListDto>('/api/admin/sales-orders?'+p);return r.sales_orders??[];}
