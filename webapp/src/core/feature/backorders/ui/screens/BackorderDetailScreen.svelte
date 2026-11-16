@@ -22,6 +22,8 @@
     guard.user?.role === 'ADMIN' || guard.user?.allowedPages.includes('sales-orders') === true
   );
   const order = $derived(vm.detail?.order ?? null);
+  const parentOrder = $derived(vm.detail?.parentSalesOrder ?? null);
+  const lineProgress = $derived(vm.detail?.lines ?? []);
 
   function canAccessOrderWarehouse(warehouseId: number | null): boolean {
     try {
@@ -45,6 +47,7 @@
     hasOrderWarehouseAccess &&
     order.orderType === 'backorder' &&
     order.parentSoId !== null &&
+    parentOrder !== null &&
     ['WAITING_STOCK', 'OPEN', 'PICKED', 'PACKED'].includes(order.status)
   );
 
@@ -127,13 +130,13 @@
           <dt>{i18n.t('Tipo de pedido')}</dt><dd>{order.orderType ?? '—'}</dd>
           <dt>{i18n.t('Pedido original')}</dt>
           <dd>
-            {#if order.parentSoId !== null}
-              <a href={'/sales-orders/' + order.parentSoId}>{order.parentSoNumber || order.parentSalesOrderNumber || order.parentSoId}</a>
+            {#if parentOrder}
+              <a href={'/sales-orders/' + parentOrder.salesOrderId}>{parentOrder.salesOrderNumber}</a>
             {:else}
               {order.parentSoNumber || order.parentSalesOrderNumber || '—'}
             {/if}
           </dd>
-          <dt>{i18n.t('Estado del pedido original')}</dt><dd>{order.parentSoId === null ? '—' : i18n.t('Abre el pedido original para consultar su estado.')}</dd>
+          <dt>{i18n.t('Estado del pedido original')}</dt><dd>{parentOrder?.status ?? '—'}</dd>
           <dt>{i18n.t('Motivo de cancelación')}</dt><dd>{order.cancellationReason || '—'}</dd>
         </dl>
         {#if order.parentSoId === null}
@@ -154,7 +157,11 @@
 
     <article class="panel lines-panel">
       <h2>{i18n.t('Líneas del pedido')}</h2>
-      {#if order.lines.length === 0}
+      <div class="progress-summary">
+        <div><span>{i18n.t('Unidades pendientes')}</span><strong>{vm.detail?.totalQuantityPending ?? 0}</strong></div>
+        <div><span>{i18n.t('Unidades resueltas')}</span><strong>{vm.detail?.totalQuantityResolved ?? 0}</strong></div>
+      </div>
+      {#if lineProgress.length === 0}
         <p class="hint">{i18n.t('El detalle no contiene líneas.')}</p>
       {:else}
         <div class="table-wrap">
@@ -162,14 +169,15 @@
             <thead><tr>
               <th>{i18n.t('SKU')}</th><th>{i18n.t('Artículo')}</th>
               <th>{i18n.t('Solicitado')}</th><th>{i18n.t('Reservado')}</th>
-              <th>{i18n.t('Recogido')}</th><th>{i18n.t('Empacado')}</th><th>{i18n.t('Enviado')}</th>
+              <th>{i18n.t('Recogido')}</th><th>{i18n.t('Empacado')}</th><th>{i18n.t('Enviado')}</th><th>{i18n.t('Pendiente')}</th><th>{i18n.t('Resuelto')}</th>
             </tr></thead>
             <tbody>
-              {#each order.lines as line (line.soLineId)}
+              {#each lineProgress as progress (progress.line.soLineId)}
                 <tr>
-                  <td>{line.sku}</td><td>{line.itemName}</td>
-                  <td>{line.quantityOrdered}</td><td>{line.quantityAllocated}</td>
-                  <td>{line.quantityPicked}</td><td>{line.quantityPacked}</td><td>{line.quantityShipped}</td>
+                  <td>{progress.line.sku}</td><td>{progress.line.itemName}</td>
+                  <td>{progress.line.quantityOrdered}</td><td>{progress.line.quantityAllocated}</td>
+                  <td>{progress.line.quantityPicked}</td><td>{progress.line.quantityPacked}</td><td>{progress.line.quantityShipped}</td>
+                  <td>{progress.quantityPending}</td><td>{progress.quantityResolved}</td>
                 </tr>
               {/each}
             </tbody>
@@ -196,7 +204,7 @@
       <div class="overlay">
         <dialog open class="dialog" aria-labelledby="cancel-title">
           <h2 id="cancel-title">{i18n.t('Confirmar cancelación')}</h2>
-          <p>{i18n.t('Se cancelará únicamente el backorder')} <strong>{order.salesOrderNumber}</strong>. {i18n.t('El pedido original')} <strong>{order.parentSoNumber || order.parentSalesOrderNumber || order.parentSoId}</strong> {i18n.t('no se cancelará por esta acción.')}</p>
+          <p>{i18n.t('Se cancelará únicamente el backorder')} <strong>{order.salesOrderNumber}</strong>. {i18n.t('El pedido original')} <strong>{parentOrder?.salesOrderNumber ?? order.parentSalesOrderNumber ?? order.parentSoId}</strong> {i18n.t('no se cancelará por esta acción.')}</p>
           {#if order.status === 'WAITING_STOCK'}
             <p class="hint">{i18n.t('Este estado no mantiene reservas de inventario; la cancelación no requiere liberar cantidades recogidas.')}</p>
           {:else if order.status === 'OPEN'}
@@ -246,6 +254,10 @@
   a{color:var(--accent)}
   .hint{color:var(--slate);font-size:.78rem;line-height:1.5}
   .lines-panel{margin-top:.9rem}
+  .progress-summary{display:flex;gap:1rem;flex-wrap:wrap;margin:0 0 .8rem}
+  .progress-summary>div{display:grid;gap:.15rem;padding:.55rem .7rem;border:1px solid var(--line);border-radius:8px}
+  .progress-summary span{font-size:.72rem;color:var(--slate)}
+  .progress-summary strong{font:700 1.1rem var(--disp)}
   .table-wrap{overflow-x:auto}
   table{width:100%;border-collapse:collapse;font-size:.78rem;white-space:nowrap}
   th,td{text-align:left;padding:.65rem .55rem;border-bottom:1px solid var(--line)}
