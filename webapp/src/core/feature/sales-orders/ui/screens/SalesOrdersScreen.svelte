@@ -415,4 +415,236 @@
   {/if}
 </section>
 
-<!-- NOTE: detail/create dialogs retained from prior implementation; full dialog markup follows in repo history if truncated by push limits. -->
+{#if showCreate}
+  <div class="so-overlay">
+    <section class="so-dialog" role="dialog" aria-modal="true" aria-labelledby="so-create-title">
+      <header class="so-dialog-head"><h2 id="so-create-title">{i18n.t('Nuevo pedido')}</h2><button type="button" onclick={() => showCreate = false}>×</button></header>
+      <form onsubmit={(event) => { event.preventDefault(); void submitCreate(); }}>
+        <div class="so-form-grid">
+          <label>{i18n.t('Número de pedido')}<input required maxlength="128" bind:value={orderNumber} /></label>
+          <label>{i18n.t('Almacén ID')}<input required type="number" min="1" step="1" bind:value={warehouseId} /></label>
+          <label>{i18n.t('Cliente')}<input maxlength="256" bind:value={customerName} /></label>
+          <label>{i18n.t('Email')}<input type="email" maxlength="255" bind:value={customerEmail} /></label>
+          <label>{i18n.t('Teléfono')}<input maxlength="64" bind:value={customerPhone} /></label>
+          <label>{i18n.t('Método de envío')}<input maxlength="100" bind:value={shipMethod} /></label>
+          <label>{i18n.t('Dirección de envío')}<input maxlength="512" bind:value={shipAddress} /></label>
+          <label>{i18n.t('Enviar antes de')}<input type="date" bind:value={shipByDate} /></label>
+          <label>{i18n.t('Artículo ID')}<input required type="number" min="1" step="1" bind:value={initialItemId} /></label>
+          <label>{i18n.t('Cantidad')}<input required type="number" min="1" max="1000000" step="1" bind:value={initialQuantity} /></label>
+        </div>
+        <p class="so-hint">{i18n.t('La API exige al menos una línea. El artículo se valida en el servidor.')}</p>
+        <label>{i18n.t('Notas')}<textarea maxlength="4096" bind:value={memo}></textarea></label>
+        <footer class="so-dialog-actions"><button type="button" onclick={() => showCreate = false}>{i18n.t('Cerrar')}</button><button class="so-primary" type="submit" disabled={vm.saving}>{vm.saving ? i18n.t('Guardando…') : i18n.t('Crear pedido')}</button></footer>
+      </form>
+    </section>
+  </div>
+{/if}
+
+{#if vm.selected}
+  {@const order = vm.selected}
+  <div class="so-overlay">
+    <section class="so-dialog so-detail" role="dialog" aria-modal="true" aria-labelledby="so-detail-title">
+      <header class="so-dialog-head">
+        <div><h2 id="so-detail-title">{order.salesOrderNumber}</h2><p><span class="status">{order.status}</span> · {order.orderType ?? 'sale'} · {i18n.t('Almacén')} {order.warehouseId ?? '—'}</p></div>
+        <button type="button" aria-label={i18n.t('Cerrar')} onclick={() => { vm.close(); relatedTrail = []; editMode = false; }}>×</button>
+      </header>
+      {#if vm.error}<UiBanner tone="error" message={vm.error} />{/if}
+      <nav class="so-actions">
+        {#if relatedTrail.length > 0}<button type="button" onclick={() => void returnToRelatedOrder()}>{i18n.t('Volver')}</button>{/if}
+        {#if editMode}<button type="button" onclick={() => editMode = false}>{i18n.t('Vista')}</button>{:else}<button type="button" onclick={() => beginEdit(order)}>{i18n.t('Editar')}</button>{/if}
+        {#if order.status !== 'CANCELLED' && order.status !== 'REFUNDED' && order.status !== 'SHIPPED'}<button class="so-danger" type="button" disabled={vm.saving} onclick={() => void cancelOrder(order)}>{i18n.t('Cancelar pedido')}</button>{/if}
+        {#if order.status === 'OPEN'}<button type="button" onclick={() => void openAdminPick(order)}>{i18n.t('Picking administrativo')}</button>{/if}
+        {#if order.status === 'PICKED' || order.status === 'PACKED'}<button type="button" onclick={() => void shipOrder(order)}>{i18n.t('Registrar despacho')}</button>{/if}
+        {#if (order.status === 'OPEN' || order.status === 'PICKED') && order.orderType !== 'backorder'}<button type="button" onclick={() => partialShorts = {}}>{i18n.t('Fulfillment parcial')}</button>{/if}
+        {#if ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status)}<button type="button" onclick={() => { revertTargetStatus = order.status === 'SHIPPED' ? 'PACKED' : order.status === 'PACKED' ? 'PICKED' : 'OPEN'; releasePickTaskIds = []; }}>{i18n.t('Revertir estado')}</button>{/if}
+        {#if order.status === 'SHIPPED'}<button type="button" onclick={() => showRma = true}>{i18n.t('Crear RMA')}</button>{/if}
+      </nav>
+
+      <section class="so-section">
+        <h3>{i18n.t('Datos del pedido')}</h3>
+        {#if editMode}
+          <div class="so-form-grid">
+            <label>{i18n.t('Cliente')}<input bind:value={editCustomerName} /></label>
+            <label>{i18n.t('Email')}<input type="email" bind:value={editCustomerEmail} /></label>
+            <label>{i18n.t('Teléfono')}<input bind:value={editCustomerPhone} /></label>
+            <label>{i18n.t('Método de envío')}<input bind:value={editShipMethod} /></label>
+            <label>{i18n.t('Dirección de envío')}<input bind:value={editShipAddress} /></label>
+            <label>{i18n.t('Enviar antes de')}<input type="date" bind:value={editShipByDate} /></label>
+            <label>{i18n.t('Prioridad (0–10)')}<input type="number" min="0" max="10" step="1" bind:value={editPriority} /></label>
+            <label>{i18n.t('Sistema de origen')}<select bind:value={editSourceSystem}><option value="">{i18n.t('Sin asignar')}</option>{#each vm.sourceSystems as source}<option value={source.sourceSystem}>{source.sourceSystem} · {source.kind}</option>{/each}</select></label>
+            <label>{i18n.t('Origen externo')}<input maxlength="64" bind:value={editOrderOrigin} /></label>
+            <label>{i18n.t('Transportista')}<input maxlength="64" bind:value={editCarrier} /></label>
+            <label>{i18n.t('Tracking')}<input maxlength="128" bind:value={editTrackingNumber} /></label>
+            <label>{i18n.t('Fecha de despacho')}<input type="date" bind:value={editShippedDate} /></label>
+          </div>
+          <label>{i18n.t('Notas')}<textarea maxlength="4096" bind:value={editMemo}></textarea></label>
+          <button class="so-primary" type="button" disabled={vm.saving} onclick={() => void saveHeader(order)}>{i18n.t('Guardar cambios')}</button>
+        {:else}
+          <dl class="so-summary">
+            <div><dt>{i18n.t('Cliente')}</dt><dd>{order.customerName ?? '—'}</dd></div>
+            <div><dt>{i18n.t('Email')}</dt><dd>{order.customerEmail ?? '—'}</dd></div>
+            <div><dt>{i18n.t('Teléfono')}</dt><dd>{order.customerPhone ?? '—'}</dd></div>
+            <div><dt>{i18n.t('Método de envío')}</dt><dd>{order.shipMethod ?? '—'}</dd></div>
+            <div><dt>{i18n.t('Enviar antes de')}</dt><dd>{displayDate(order.shipByDate)}</dd></div>
+            <div><dt>{i18n.t('Origen')}</dt><dd>{order.orderOrigin ?? '—'}</dd></div>
+            <div><dt>{i18n.t('Sistema de origen')}</dt><dd>{order.sourceSystem ?? '—'}</dd></div>
+            <div><dt>{i18n.t('Tracking')}</dt><dd>{order.trackingNumber ?? '—'}</dd></div>
+            <div><dt>{i18n.t('Transportista')}</dt><dd>{order.carrier ?? '—'}</dd></div>
+            <div><dt>{i18n.t('Total')}</dt><dd>{order.orderTotal ?? '—'}</dd></div>
+            <div><dt>{i18n.t('Notas')}</dt><dd>{order.memo ?? '—'}</dd></div>
+          </dl>
+        {/if}
+      </section>
+
+      <section class="so-section">
+        <h3>{i18n.t('Direcciones')}</h3>
+        {#if editMode}
+          <div class="so-address-grid">
+            <fieldset><legend>{i18n.t('Facturación')}</legend>
+              <label>{i18n.t('Nombre')}<input bind:value={billingAddress.name} /></label>
+              <label>{i18n.t('Línea 1')}<input bind:value={billingAddress.line1} /></label>
+              <label>{i18n.t('Línea 2')}<input bind:value={billingAddress.line2} /></label>
+              <label>{i18n.t('Ciudad')}<input bind:value={billingAddress.city} /></label>
+              <label>{i18n.t('Provincia / Estado')}<input bind:value={billingAddress.state} /></label>
+              <label>{i18n.t('Código postal')}<input bind:value={billingAddress.postalCode} /></label>
+              <label>{i18n.t('País')}<input bind:value={billingAddress.country} /></label>
+              <label>{i18n.t('Teléfono')}<input bind:value={billingAddress.phone} /></label>
+            </fieldset>
+            <fieldset><legend>{i18n.t('Envío')}</legend>
+              <label>{i18n.t('Nombre')}<input bind:value={shippingAddress.name} /></label>
+              <label>{i18n.t('Línea 1')}<input bind:value={shippingAddress.line1} /></label>
+              <label>{i18n.t('Línea 2')}<input bind:value={shippingAddress.line2} /></label>
+              <label>{i18n.t('Ciudad')}<input bind:value={shippingAddress.city} /></label>
+              <label>{i18n.t('Provincia / Estado')}<input bind:value={shippingAddress.state} /></label>
+              <label>{i18n.t('Código postal')}<input bind:value={shippingAddress.postalCode} /></label>
+              <label>{i18n.t('País')}<input bind:value={shippingAddress.country} /></label>
+              <label>{i18n.t('Teléfono')}<input bind:value={shippingAddress.phone} /></label>
+            </fieldset>
+          </div>
+          <button type="button" disabled={vm.saving} onclick={() => void saveAddresses(order)}>{i18n.t('Guardar direcciones')}</button>
+        {:else}
+          <div class="so-address-grid"><article><h4>{i18n.t('Facturación')}</h4><p>{[order.billingAddress.name, order.billingAddress.line1, order.billingAddress.line2, order.billingAddress.city, order.billingAddress.state, order.billingAddress.postalCode, order.billingAddress.country, order.billingAddress.phone].filter(Boolean).join(', ') || '—'}</p></article><article><h4>{i18n.t('Envío')}</h4><p>{[order.shippingAddress.name, order.shippingAddress.line1, order.shippingAddress.line2, order.shippingAddress.city, order.shippingAddress.state, order.shippingAddress.postalCode, order.shippingAddress.country, order.shippingAddress.phone].filter(Boolean).join(', ') || order.shipAddress || '—'}</p></article></div>
+        {/if}
+      </section>
+
+      <section class="so-section">
+        <h3>{i18n.t('Líneas')}</h3>
+        <div class="so-table-wrap"><table>
+          <thead><tr><th>#</th><th>SKU</th><th>{i18n.t('Artículo')}</th><th>{i18n.t('Pedida')}</th><th>{i18n.t('Asignada')}</th><th>{i18n.t('Recogida')}</th><th>{i18n.t('Empacada')}</th><th>{i18n.t('Enviada')}</th><th>{i18n.t('Acciones')}</th></tr></thead>
+          <tbody>{#each order.lines as line (line.soLineId)}
+            <tr>
+              <td>{line.lineNumber ?? '—'}</td><td>{line.sku}</td><td>{line.itemName}</td>
+              <td>{#if editMode && !['SHIPPED', 'CANCELLED', 'REFUNDED'].includes(order.status)}<input class="so-qty" type="number" min="1" max="1000000" value={lineQuantity[line.soLineId] ?? String(line.quantityOrdered)} oninput={(event) => lineQuantity[line.soLineId] = event.currentTarget.value} /><button type="button" onclick={() => void updateLine(line.soLineId)}>✓</button>{:else}{line.quantityOrdered}{/if}</td>
+              <td>{line.quantityAllocated}</td><td>{line.quantityPicked}</td><td>{line.quantityPacked}</td><td>{line.quantityShipped}</td>
+              <td>{#if editMode && !['SHIPPED', 'CANCELLED', 'REFUNDED'].includes(order.status)}<button type="button" onclick={() => void applyAllocation(line.soLineId, 1)} title={i18n.t('Reservar una unidad')}>+A</button><button type="button" onclick={() => void applyAllocation(line.soLineId, -1)} title={i18n.t('Liberar una unidad')}>−A</button><button class="so-danger" type="button" onclick={() => void removeLine(line.soLineId)}>×</button>{/if}<button type="button" onclick={() => void vm.loadAvailableBins(line.soLineId)}>{i18n.t('Bins')}</button></td>
+            </tr>
+            {#if vm.availableBinsByLine[line.soLineId]}
+              <tr><td colspan="9"><div class="so-bin-list">{#each vm.availableBinsByLine[line.soLineId] as bin}<span>{bin.binCode} · {bin.quantityAvailable}{bin.preferredPriority !== null ? ' ★' : ''}</span>{:else}<span>{i18n.t('No hay stock disponible en ubicaciones de este almacén.')}</span>{/each}</div></td></tr>
+            {/if}
+          {/each}</tbody>
+        </table></div>
+        {#if editMode && !['SHIPPED', 'CANCELLED', 'REFUNDED'].includes(order.status)}
+          <div class="so-inline-form"><label>{i18n.t('Artículo ID')}<input type="number" min="1" bind:value={newItemId} /></label><label>{i18n.t('Cantidad')}<input type="number" min="1" max="1000000" bind:value={newItemQuantity} /></label><button type="button" disabled={vm.saving} onclick={() => void addLine()}>{i18n.t('Añadir línea')}</button></div>
+        {/if}
+      </section>
+
+      <section class="so-section">
+        <div class="so-section-head"><h3>{i18n.t('Pedidos relacionados')}</h3><button type="button" onclick={() => void vm.loadRelated()} disabled={vm.loadingRelated}>{i18n.t('Actualizar')}</button></div>
+        {#if vm.loadingRelated}<p>{i18n.t('Cargando…')}</p>{:else if vm.relatedOrders.length === 0}<p>{i18n.t('No hay pedidos relacionados.')}</p>{:else}
+          <div class="so-related">{#each vm.relatedOrders as related (related.soId)}
+            <article class:current={related.isCurrent} class:voided={related.isVoided}>
+              <button type="button" disabled={related.isCurrent} onclick={() => void openRelatedOrder(related.soId)}>{related.soNumber}</button>
+              <span>{related.orderType ?? '—'} · {related.status}</span>
+              {#if related.isVoided}<span>{i18n.t('Anulado')}</span>{/if}
+              <small>{related.lines.length} {i18n.t('líneas')}</small>
+            </article>
+          {/each}</div>
+        {/if}
+      </section>
+
+      {#if order.status === 'OPEN' || order.status === 'PICKED'}
+        <section class="so-section">
+          <h3>{i18n.t('Fulfillment parcial')}</h3>
+          <p class="so-hint">{i18n.t('Indica unidades no disponibles. El servidor reduce las líneas originales y crea un backorder; vuelve a validar los límites antes de aplicar cambios.')}</p>
+          {#each order.lines as line (line.soLineId)}
+            <label class="so-short-row"><span>{line.sku} · {line.itemName} · {i18n.t('Pendiente')}: {line.quantityOrdered - line.quantityPicked}</span><input type="number" min="0" max={Math.max(0, line.quantityOrdered - line.quantityPicked)} step="1" value={partialShorts[line.soLineId] ?? ''} oninput={(event) => partialShorts[line.soLineId] = event.currentTarget.value} /></label>
+          {/each}
+          <label>{i18n.t('Motivo')}<input maxlength="500" bind:value={partialReason} /></label>
+          <button type="button" disabled={vm.saving} onclick={() => void submitPartialFulfill()}>{i18n.t('Crear backorder')}</button>
+        </section>
+      {/if}
+
+      {#if ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status)}
+        <section class="so-section">
+          <h3>{i18n.t('Revertir estado')}</h3>
+          <label>{i18n.t('Nuevo estado')}<select bind:value={revertTargetStatus}><option value="OPEN">OPEN</option><option value="PICKED">PICKED</option><option value="PACKED">PACKED</option></select></label>
+          <p class="so-hint">{i18n.t('Las tareas seleccionadas se liberan y devuelven unidades al bin. Las no seleccionadas permanecen recogidas; el servidor impide estados incompatibles.')}</p>
+          {#each order.pickTasks as task (task.pickTaskId)}
+            <label class="so-short-row"><span>{task.sku} · {task.binCode} · {task.quantityPicked}</span><input type="checkbox" checked={releasePickTaskIds.includes(task.pickTaskId)} onchange={(event) => releasePickTaskIds = event.currentTarget.checked ? [...releasePickTaskIds, task.pickTaskId] : releasePickTaskIds.filter((id) => id !== task.pickTaskId)} /></label>
+          {/each}
+          <button type="button" disabled={vm.saving} onclick={() => void submitRevert()}>{i18n.t('Confirmar reversión')}</button>
+        </section>
+      {/if}
+    </section>
+  </div>
+{/if}
+
+{#if showAdminPick && vm.selected}
+  <div class="so-overlay so-nested"><section class="so-dialog" role="dialog" aria-modal="true"><header class="so-dialog-head"><h2>{i18n.t('Picking administrativo')}</h2><button type="button" onclick={() => showAdminPick = false}>×</button></header>
+    {#each vm.selected.lines.filter((line) => line.quantityOrdered > line.quantityPicked) as line (line.soLineId)}
+      <div class="so-pick-row"><strong>{line.sku}</strong><select value={pickBinByLine[line.soLineId] ?? ''} onchange={(event) => pickBinByLine[line.soLineId] = event.currentTarget.value}><option value="">{i18n.t('Seleccionar bin')}</option>{#each vm.availableBinsByLine[line.soLineId] ?? [] as bin}<option value={bin.binId}>{bin.binCode} · {bin.quantityAvailable}</option>{/each}</select><input type="number" min="1" max={line.quantityOrdered - line.quantityPicked} value={pickQuantityByLine[line.soLineId] ?? ''} oninput={(event) => pickQuantityByLine[line.soLineId] = event.currentTarget.value} /></div>
+    {/each}
+    <footer class="so-dialog-actions"><button type="button" onclick={() => showAdminPick = false}>{i18n.t('Cerrar')}</button><button class="so-primary" type="button" disabled={vm.saving} onclick={() => vm.selected && void submitAdminPick(vm.selected)}>{i18n.t('Registrar picking')}</button></footer>
+  </section></div>
+{/if}
+
+{#if showRma && vm.selected}
+  <div class="so-overlay so-nested"><section class="so-dialog" role="dialog" aria-modal="true"><header class="so-dialog-head"><h2>{i18n.t('Crear devolución (RMA)')}</h2><button type="button" onclick={() => showRma = false}>×</button></header>
+    <label>{i18n.t('Artículo')}<select bind:value={rmaItemId}><option value="">{i18n.t('Seleccionar artículo')}</option>{#each vm.selected.lines as line}<option value={line.itemId}>{line.sku} · {line.itemName}</option>{/each}</select></label>
+    <label>{i18n.t('Cantidad')}<input type="number" min="1" max="1000000" bind:value={rmaQuantity} /></label>
+    <label>{i18n.t('Motivo / notas')}<textarea maxlength="4000" bind:value={rmaReason}></textarea></label>
+    <footer class="so-dialog-actions"><button type="button" onclick={() => showRma = false}>{i18n.t('Cerrar')}</button><button class="so-primary" type="button" disabled={vm.saving || !rmaItemId} onclick={() => void submitRma()}>{i18n.t('Crear RMA')}</button></footer>
+  </section></div>
+{/if}
+
+<style>
+  .so-overlay { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 1rem; background: rgb(15 23 42 / 52%); }
+  .so-nested { z-index: 90; }
+  .so-dialog { width: min(760px, 100%); max-height: min(92vh, 980px); overflow: auto; padding: 1.25rem; border: 1px solid var(--line, #dce3eb); border-radius: 14px; background: var(--card, #fff); box-shadow: 0 24px 80px rgb(0 0 0 / 22%); }
+  .so-detail { width: min(1180px, 100%); }
+  .so-dialog-head, .so-section-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+  .so-dialog-head { position: sticky; top: -1.25rem; z-index: 2; margin: -1.25rem -1.25rem 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--line, #dce3eb); background: var(--card, #fff); }
+  .so-dialog-head h2 { margin: 0; }
+  .so-dialog-head p, .so-hint { color: var(--text-secondary, #64748b); font-size: .85rem; }
+  .so-actions, .so-dialog-actions, .so-inline-form { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: .75rem 0; }
+  .so-section { padding: 1rem 0; border-top: 1px solid var(--line, #e2e8f0); }
+  .so-section h3 { margin: 0 0 .75rem; font-size: 1rem; }
+  .so-form-grid, .so-summary, .so-address-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: .75rem; }
+  .so-form-grid label, .so-dialog label, .so-address-grid label, .so-inline-form label { display: grid; gap: .3rem; font-size: .85rem; }
+  .so-dialog input, .so-dialog select, .so-dialog textarea { min-width: 0; width: 100%; padding: .55rem .65rem; border: 1px solid var(--line, #cbd5e1); border-radius: 7px; font: inherit; background: var(--surface, #fff); color: var(--ink, #172033); }
+  .so-dialog textarea { min-height: 74px; resize: vertical; }
+  .so-address-grid fieldset { display: grid; gap: .55rem; min-width: 0; padding: .75rem; border: 1px solid var(--line, #dce3eb); border-radius: 9px; }
+  .so-address-grid legend { padding: 0 .3rem; font-weight: 600; }
+  .so-summary { margin: 0; }
+  .so-summary > div { padding: .5rem; border-radius: 8px; background: var(--surface, #f8fafc); }
+  .so-summary dt { color: var(--text-secondary, #64748b); font-size: .75rem; }
+  .so-summary dd { margin: .2rem 0 0; overflow-wrap: anywhere; }
+  .so-table-wrap { overflow-x: auto; }
+  .so-section table { width: 100%; border-collapse: collapse; }
+  .so-section th, .so-section td { padding: .55rem; border-bottom: 1px solid var(--line, #e2e8f0); text-align: left; white-space: nowrap; }
+  .so-qty { width: 76px; }
+  .so-bin-list { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .so-bin-list span, .so-related article { padding: .35rem .55rem; border-radius: 7px; background: var(--surface, #f1f5f9); }
+  .so-related { display: grid; gap: .5rem; }
+  .so-related article { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+  .so-related article.current { outline: 1px solid var(--accent, #64748b); }
+  .so-related article.voided { opacity: .6; }
+  .so-related small { margin-left: auto; color: var(--text-secondary, #64748b); }
+  .so-short-row, .so-pick-row { display: grid; grid-template-columns: 1fr minmax(90px, 130px); align-items: center; gap: .75rem; margin: .4rem 0; }
+  .so-pick-row { grid-template-columns: minmax(90px, 1fr) minmax(140px, 2fr) minmax(80px, 100px); }
+  .so-primary { color: white; background: var(--primary, #174ea6); border: 1px solid var(--primary, #174ea6); }
+  .so-danger { color: var(--danger, #b42318); }
+  .so-dialog button { cursor: pointer; padding: .45rem .7rem; border: 1px solid var(--line, #cbd5e1); border-radius: 7px; background: var(--card, #fff); font: inherit; }
+  .so-dialog button:disabled { opacity: .5; cursor: not-allowed; }
+  @media (max-width: 640px) { .so-dialog { padding: .85rem; } .so-dialog-head { top: -.85rem; margin: -.85rem -.85rem .75rem; padding: .8rem .85rem; } .so-pick-row { grid-template-columns: 1fr; } .so-short-row { grid-template-columns: 1fr 90px; } }
+</style>
