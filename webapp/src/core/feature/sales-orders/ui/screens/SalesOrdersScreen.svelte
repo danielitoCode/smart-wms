@@ -391,6 +391,7 @@
     const ok = await vm.addLine(Number(newItemId), Number(newItemQuantity));
     if (ok) {
       newItemId = '';
+      newItemSearch = '';
       newItemQuantity = '1';
       feedback = i18n.t('Línea añadida correctamente.');
       pushToast(feedback, 'success');
@@ -754,7 +755,7 @@
               <td>{line.lineNumber ?? '—'}</td><td>{line.sku}</td><td>{line.itemName}</td>
               <td>{#if editMode && canEditLines(order)}<input class="so-qty" type="number" min={Math.max(1, line.quantityPicked)} max="1000000" value={lineQuantity[line.soLineId] ?? String(line.quantityOrdered)} oninput={(event) => lineQuantity[line.soLineId] = event.currentTarget.value} /><button type="button" onclick={() => void updateLine(line.soLineId)}>✓</button>{:else}{line.quantityOrdered}{/if}</td>
               <td>{line.quantityAllocated}</td><td>{line.quantityPicked}</td><td>{line.quantityPacked}</td><td>{line.quantityShipped}</td>
-              <td>{#if editMode && canEditLines(order)}<button type="button" onclick={() => void applyAllocation(line.soLineId, 1)} title={i18n.t('Reservar una unidad')}>+A</button><button type="button" onclick={() => void applyAllocation(line.soLineId, -1)} title={i18n.t('Liberar una unidad')}>−A</button><button class="so-danger" type="button" disabled={!canRemoveLine(order, line)} onclick={() => void removeLine(line.soLineId)}>×</button>{/if}<button type="button" onclick={() => void vm.loadAvailableBins(line.soLineId)}>{i18n.t('Bins')}</button></td>
+              <td>{#if editMode && canEditLines(order)}<button type="button" disabled={vm.saving || line.quantityAllocated >= line.quantityOrdered} onclick={() => void applyAllocation(line.soLineId, 1)} title={i18n.t('Reservar una unidad')}>+A</button><button type="button" disabled={vm.saving || line.quantityAllocated <= line.quantityPicked} onclick={() => void applyAllocation(line.soLineId, -1)} title={i18n.t('Liberar una unidad')}>−A</button><button class="so-danger" type="button" disabled={!canRemoveLine(order, line)} onclick={() => void removeLine(line.soLineId)}>×</button>{/if}<button type="button" onclick={() => void vm.loadAvailableBins(line.soLineId)}>{i18n.t('Bins')}</button></td>
             </tr>
             {#if vm.availableBinsByLine[line.soLineId]}
               <tr><td colspan="9"><div class="so-bin-list">{#each vm.availableBinsByLine[line.soLineId] as bin}<span>{bin.binCode} · {bin.quantityAvailable}{bin.preferredPriority !== null ? ' ★' : ''}</span>{:else}<span>{i18n.t('No hay stock disponible en ubicaciones de este almacén.')}</span>{/each}</div></td></tr>
@@ -793,12 +794,12 @@
       {#if showPartialFulfill && (order.status === 'OPEN' || order.status === 'PICKED') && !['backorder', 'return', 'refund'].includes(order.orderType ?? '')}
         <section class="so-section">
           <h3>{i18n.t('Fulfillment parcial')}</h3>
-          <p class="so-hint">{i18n.t('Indica unidades no disponibles. El servidor reduce las líneas originales y crea un backorder; vuelve a validar los límites antes de aplicar cambios.')}</p>
+          <p class="so-hint">{i18n.t('Indica unidades que no se podrán despachar. La operación despacha lo ya recogido, reduce las líneas originales y crea un backorder por el resto.')}</p>
           {#each order.lines as line (line.soLineId)}
             <label class="so-short-row"><span>{line.sku} · {line.itemName} · {i18n.t('Pendiente')}: {line.quantityOrdered - line.quantityPicked}</span><input type="number" min="0" max={Math.max(0, line.quantityOrdered - line.quantityPicked)} step="1" value={partialShorts[line.soLineId] ?? ''} oninput={(event) => partialShorts[line.soLineId] = event.currentTarget.value} /></label>
           {/each}
           <label>{i18n.t('Motivo')}<input maxlength="500" bind:value={partialReason} /></label>
-          <button type="button" disabled={vm.saving} onclick={() => void submitPartialFulfill()}>{i18n.t('Crear backorder')}</button>
+          <button type="button" disabled={vm.saving} onclick={() => void submitPartialFulfill()}>{i18n.t('Despachar disponible y crear backorder')}</button>
         </section>
       {/if}
 
