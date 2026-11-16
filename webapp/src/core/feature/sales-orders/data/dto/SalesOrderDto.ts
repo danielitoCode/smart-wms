@@ -42,7 +42,7 @@ export interface SalesOrderLineDto {
   status: string | null;
 }
 
-export interface SalesOrderListItemDto extends SalesOrderAddressDto {
+export interface SalesOrderListItemDto extends SalesOrderDto {
   so_id: number;
   so_number: string;
   so_barcode: string | null;
@@ -71,7 +71,7 @@ export interface SalesOrderListItemDto extends SalesOrderAddressDto {
   line_count?: number;
 }
 
-export interface SalesOrderDetailDto extends SalesOrderAddressDto {
+export interface SalesOrderDetailDto extends SalesOrderDto {
   so_id: number;
   so_number: string;
   so_barcode: string | null;
@@ -107,8 +107,45 @@ export interface SalesOrderDetailDto extends SalesOrderAddressDto {
   cancellation_reason: string | null;
 }
 
-export interface SalesOrderDto extends SalesOrderDetailDto {
-  // Compatibility name retained for existing mapper/repository imports.
+export interface SalesOrderDto extends SalesOrderAddressDto {
+  so_id?: number | null;
+  so_number?: string | null;
+  so_barcode?: string | null;
+  customer_name?: string | null;
+  customer_phone?: string | null;
+  customer_email?: string | null;
+  customer_address?: string | null;
+  status?: string | null;
+  priority?: number | null;
+  warehouse_id?: number | null;
+  ship_method?: string | null;
+  ship_address?: string | null;
+  order_date?: string | null;
+  ship_by_date?: string | null;
+  created_at?: string | null;
+  created_by?: string | null;
+  picked_at?: string | null;
+  packed_at?: string | null;
+  shipped_at?: string | null;
+  shipped_date_local?: string | null;
+  order_total?: string | number | null;
+  customer_shipping_paid?: string | number | null;
+  memo?: string | null;
+  source_system?: string | null;
+  order_origin?: string | null;
+  carrier?: string | null;
+  tracking_number?: string | null;
+  order_type?: string | null;
+  parent_so_id?: number | null;
+  parent_so_number?: string | null;
+  backorder_opened_at?: string | null;
+  backorder_fulfillable_at?: string | null;
+  cancellation_reason?: string | null;
+  printed_at?: string | null;
+  primary_bin_code?: string | null;
+  primary_bin_pick_sequence?: number | null;
+  line_count?: number;
+  lines?: SalesOrderLineDto[];
 }
 
 export interface SalesOrderPickTaskDto {
