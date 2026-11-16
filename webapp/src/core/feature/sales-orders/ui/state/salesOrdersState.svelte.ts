@@ -12,9 +12,10 @@ import type {
   SalesOrderSourceSystem,
   UpdateSalesOrder,
   UpdateSalesOrderAddressInput,
-  UpdateSalesOrderAllocationResult
+  UpdateSalesOrderAllocationResult,
+  AdminShipShortfallLine
 } from '../../domain/entity/SalesOrder';
-import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
+import { ApiError, toUserMessage } from '../../../../infrastructure/errors/ApiError';
 
 const deps = createSalesOrdersDependencies();
 
@@ -56,6 +57,7 @@ export function createSalesOrdersState() {
   let sourceSystems = $state<SalesOrderSourceSystem[]>([]);
   let loadingSourceSystems = $state(false);
   let loadingRelated = $state(false);
+  let adminShipShortfall = $state<AdminShipShortfallLine[] | null>(null);
   let cancellingId = $state<number | null>(null);
   let availableBinsByLine = $state<Record<number, AvailableSalesOrderBin[]>>({});
   let loadingBinsByLine = $state<Record<number, boolean>>({});
@@ -231,12 +233,32 @@ export function createSalesOrdersState() {
     }
   }
 
-  async function adminShip(): Promise<boolean> {
-    if (!selected) return false;
-    return runMutation(
-      () => deps.adminShipSalesOrder.execute(selected!.salesOrderId),
-      'No se pudo registrar el despacho'
-    );
+  async function adminShip(acknowledgeShortfall = false): Promise<boolean> {
+    if (!selected || saving) return false;
+    saving = true;
+    error = null;
+    adminShipShortfall = null;
+    try {
+      await deps.adminShipSalesOrder.execute(selected.salesOrderId, acknowledgeShortfall);
+      await load();
+      await refreshSelected();
+      return true;
+    } catch (err) {
+      if (err instanceof ApiError && err.details && typeof err.details === 'object') {
+        const details = err.details as { kind?: unknown; lines?: unknown };
+        if (details.kind === 'silent_shortfall') {
+          adminShipShortfall = Array.isArray(details.lines)
+            ? details.lines as AdminShipShortfallLine[]
+            : [];
+          error = 'El pedido tiene líneas con faltantes sin registrar. Revisa los SKU y confirma si deseas despachar solo las cantidades recogidas.';
+          return false;
+        }
+      }
+      error = toUserMessage(err, 'No se pudo registrar el despacho');
+      return false;
+    } finally {
+      saving = false;
+    }
   }
 
   async function loadSourceSystems(): Promise<boolean> {
@@ -395,6 +417,7 @@ export function createSalesOrdersState() {
     get sourceSystems() { return sourceSystems; },
     get loadingSourceSystems() { return loadingSourceSystems; },
     get loadingRelated() { return loadingRelated; },
+    get adminShipShortfall() { return adminShipShortfall; },
     get cancellingId() { return cancellingId; },
     get availableBinsByLine() { return availableBinsByLine; },
     get loadingBinsByLine() { return loadingBinsByLine; },
