@@ -2,10 +2,14 @@ import type { ApiClient } from '#core/infrastructure/api/ApiClient.ts';
 import type {
   SalesOrderDetailResponseDto, SalesOrderListResponseDto,
   RelatedSalesOrdersResponseDto, AvailableSalesOrderBinsResponseDto,
-  SalesOrderAllocationResponseDto, SalesOrderSourceSystemsResponseDto
+  SalesOrderAllocationResponseDto, SalesOrderSourceSystemsResponseDto,
+  AdminShipResponseDto, CreateSalesOrderRequestDto, UpdateSalesOrderRequestDto,
+  UpdateSalesOrderAddressRequestDto, AddSalesOrderLineRequestDto,
+  UpdateSalesOrderLineRequestDto, AdminPickRequestDto, PartialFulfillRequestDto,
+  RevertSalesOrderStatusRequestDto, AdminShipRequestDto, CreateRmaRequestDto,
+  ReceiveRmaRequestDto
 } from '../dto/SalesOrderDto';
 import type { UpdateSalesOrderAllocationInput } from '../../domain/entity/SalesOrder';
-
 
 export class SalesOrderRemoteDataSource {
   constructor(private readonly api: ApiClient) {}
@@ -74,8 +78,8 @@ export class SalesOrderRemoteDataSource {
   async deleteLine(id: number, lineId: number): Promise<void> {
     await this.api.delete(`/api/admin/sales-orders/${id}/lines/${lineId}`);
   }
-  async adminShip(id: number): Promise<void> {
-    await this.api.post(`/api/admin/sales-orders/${id}/admin-ship`);
+  async adminShip(id: number, payload: AdminShipRequestDto): Promise<AdminShipResponseDto> {
+    return this.api.post<AdminShipResponseDto>(`/api/admin/sales-orders/${id}/admin-ship`, payload);
   }
   async getAvailableBins(id: number, lineId: number): Promise<AvailableSalesOrderBinsResponseDto> {
     return this.api.get<AvailableSalesOrderBinsResponseDto>(
