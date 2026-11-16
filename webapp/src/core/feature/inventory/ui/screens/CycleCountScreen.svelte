@@ -93,18 +93,17 @@
 							</tr>
 						</thead>
 						<tbody>
-							{#each state.detail.lines as line (line.countLineId)}
+							{#each state.detail.lines as line (line.lineId)}
 								<tr>
-									<td>{line.sku} · {line.itemName}</td>
-									<td>{state.detail.showExpected ? line.expectedQuantity : '—'}</td>
+									<td>{line.sku}</td>
+									<td>{line.expectedQuantity}</td>
 									<td>
 										<input
 											type="number"
 											min="0"
-											value={state.countsByLine[line.countLineId] ?? 0}
-											oninput={(e) =>
-												state.setCounted(line.countLineId, Number(e.currentTarget.value))}
-											disabled={state.busy || state.detail?.status === 'COMPLETED'}
+											value={state.countedByLine[line.lineId] ?? line.countedQuantity ?? line.expectedQuantity}
+											oninput={(e) => state.setCounted(line.lineId, Number(e.currentTarget.value))}
+											disabled={state.busy || state.detail.status === 'COMPLETED'}
 										/>
 									</td>
 								</tr>
@@ -156,7 +155,7 @@
 	.subtitle,
 	.meta {
 		margin: 0;
-		color: #64748b;
+		color: var(--slate);
 	}
 	.panel {
 		display: flex;
@@ -165,9 +164,9 @@
 		align-items: end;
 		margin-bottom: 1rem;
 		padding: 1rem;
-		border: 1px solid #e2e8f0;
+		border: 1px solid var(--line);
 		border-radius: 8px;
-		background: #fff;
+		background: var(--card);
 	}
 	.panel.detail {
 		display: block;
@@ -184,14 +183,14 @@
 	}
 	input {
 		padding: 0.45rem 0.6rem;
-		border: 1px solid #cbd5e1;
+		border: 1px solid var(--line);
 		border-radius: 6px;
 	}
 	button {
 		padding: 0.45rem 0.9rem;
 		border-radius: 6px;
-		border: 1px solid #0f172a;
-		background: #0f172a;
+		border: 1px solid var(--navy);
+		background: var(--navy);
 		color: #fff;
 		cursor: pointer;
 	}
@@ -201,7 +200,7 @@
 	}
 	button.link {
 		background: transparent;
-		color: #0f172a;
+		color: var(--ink);
 		border: none;
 		padding: 0.25rem 0;
 		text-align: left;
@@ -211,10 +210,10 @@
 		text-decoration: underline;
 	}
 	.err {
-		color: #b91c1c;
+		color: var(--danger);
 	}
 	.ok {
-		color: #166534;
+		color: var(--success, #166534);
 	}
 	.created {
 		list-style: none;
@@ -232,7 +231,7 @@
 	}
 	th,
 	td {
-		border-bottom: 1px solid #e2e8f0;
+		border-bottom: 1px solid var(--line);
 		padding: 0.4rem 0.5rem;
 		text-align: left;
 	}
