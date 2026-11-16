@@ -1,31 +1,29 @@
-/**
- * Botones Abellis — degradados suaves, borde fino, ancho contenido (no full-wide).
- * Jerarquía: primary > secondary > ghost/link.
+/* Primary action buttons — Abellis theme
+ * Compact size matching Sales Orders "Nuevo pedido".
  */
 
 :root {
-	/* Suaves: poco contraste entre stops, anclados a navy / lightblue / gold */
 	--btn-primary-fill: linear-gradient(
 		145deg,
-		color-mix(in srgb, var(--navy) 88%, white) 0%,
-		var(--navy) 48%,
-		color-mix(in srgb, var(--navy) 82%, var(--navy-deep)) 100%
+		color-mix(in srgb, var(--navy) 82%, white) 0%,
+		var(--navy) 55%,
+		var(--navy-deep, #012a50) 100%
 	);
 	--btn-primary-border: linear-gradient(
 		145deg,
-		color-mix(in srgb, var(--lightblue) 55%, var(--navy)) 0%,
-		color-mix(in srgb, var(--navy) 78%, var(--gold)) 100%
+		color-mix(in srgb, var(--navy) 55%, white) 0%,
+		color-mix(in srgb, var(--navy-deep, #012a50) 80%, #000) 100%
 	);
-	--btn-primary-shadow: 0 4px 12px color-mix(in srgb, var(--navy-deep) 18%, transparent);
+	--btn-primary-shadow: 0 4px 12px color-mix(in srgb, var(--navy-deep, #012a50) 18%, transparent);
 
 	--btn-gold-fill: linear-gradient(
 		145deg,
-		color-mix(in srgb, var(--gold) 92%, white) 0%,
+		color-mix(in srgb, var(--gold) 88%, white) 0%,
 		var(--gold) 100%
 	);
 	--btn-gold-border: linear-gradient(
 		145deg,
-		color-mix(in srgb, var(--gold) 50%, white) 0%,
+		color-mix(in srgb, var(--gold) 55%, white) 0%,
 		color-mix(in srgb, var(--gold) 70%, var(--navy)) 100%
 	);
 
@@ -59,9 +57,14 @@ body .shell .content .button,
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+	align-self: flex-start;
+	flex: 0 0 auto;
 	gap: 0.35rem;
 	width: auto;
 	max-width: max-content;
+	height: auto;
+	min-height: 2.25rem;
+	max-height: 2.5rem;
 	background:
 		var(--btn-primary-fill) padding-box,
 		var(--btn-primary-border) border-box;
@@ -73,7 +76,6 @@ body .shell .content .button,
 	font-weight: 600;
 	line-height: 1.2;
 	padding: 0.45rem 0.9rem;
-	min-height: 36px;
 	cursor: pointer;
 	text-shadow: none;
 	box-shadow: var(--btn-primary-shadow);
@@ -114,26 +116,26 @@ body .shell .content button.gold,
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+	align-self: flex-start;
+	flex: 0 0 auto;
 	width: auto;
 	max-width: max-content;
+	height: auto;
+	min-height: 2.25rem;
+	max-height: 2.5rem;
 	background:
 		var(--btn-gold-fill) padding-box,
 		var(--btn-gold-border) border-box;
 	border: var(--btn-border-width) solid transparent;
 	border-radius: var(--btn-radius);
-	color: var(--navy-deep);
+	color: #1a1200;
+	font-family: var(--body);
 	font-size: 0.8125rem;
-	font-weight: 650;
+	font-weight: 600;
+	line-height: 1.2;
 	padding: 0.45rem 0.9rem;
-	min-height: 36px;
-	text-shadow: none;
+	cursor: pointer;
 	box-shadow: 0 4px 12px color-mix(in srgb, var(--gold) 22%, transparent);
-}
-
-body .shell .content button.gold:hover,
-.page button.gold:hover {
-	box-shadow: 0 2px 6px color-mix(in srgb, var(--gold) 16%, transparent);
-	filter: brightness(1.03);
 }
 
 /* ——— Danger ——— */
@@ -142,99 +144,92 @@ body .shell .content button.danger,
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+	align-self: flex-start;
+	flex: 0 0 auto;
 	width: auto;
 	max-width: max-content;
+	height: auto;
+	min-height: 2.25rem;
+	max-height: 2.5rem;
 	background:
 		var(--btn-danger-fill) padding-box,
 		var(--btn-danger-border) border-box;
 	border: var(--btn-border-width) solid transparent;
 	border-radius: var(--btn-radius);
 	color: #fff;
+	font-family: var(--body);
 	font-size: 0.8125rem;
 	font-weight: 600;
-	padding: 0.45rem 0.85rem;
-	min-height: 36px;
-	text-shadow: none;
+	line-height: 1.2;
+	padding: 0.45rem 0.9rem;
+	cursor: pointer;
 	box-shadow: var(--btn-danger-shadow);
 }
 
-body .shell .content button.danger:hover,
-.page button.danger:hover {
-	box-shadow: 0 2px 6px color-mix(in srgb, var(--danger) 14%, transparent);
-	filter: brightness(1.03);
-}
-
-/* ——— Secondary (acciones de apoyo) ——— */
-body .shell .content button:not(.primary):not(.accent):not(.gold):not(.danger):not(.ghost):not(.link):not(.danger-ghost):not(.menu-btn):not(.account-action):not(.nav-link),
-.page button:not(.primary):not(.accent):not(.gold):not(.danger):not(.ghost):not(.link):not(.danger-ghost) {
+/* ——— Secondary / quiet ——— */
+body .shell .content button.secondary,
+body .shell .content button.quiet,
+.page button.secondary,
+.page button.quiet {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+	align-self: flex-start;
+	flex: 0 0 auto;
 	width: auto;
 	max-width: max-content;
-	background: var(--card);
+	height: auto;
+	min-height: 2.25rem;
+	max-height: 2.5rem;
+	padding: 0.45rem 0.85rem;
 	border: 1px solid var(--line);
 	border-radius: var(--btn-radius);
+	background: var(--surface, var(--card));
 	color: var(--ink);
+	font-family: var(--body);
+	font-size: 0.8125rem;
 	font-weight: 600;
-	font-size: 0.78rem;
-	padding: 0.4rem 0.75rem;
-	min-height: 34px;
-	box-shadow: none;
-	transition:
-		border-color var(--motion-fast, 140ms) ease,
-		background var(--motion-fast, 140ms) ease,
-		color var(--motion-fast, 140ms) ease;
-}
-
-body .shell .content button:not(.primary):not(.accent):not(.gold):not(.danger):not(.ghost):not(.link):not(.danger-ghost):not(.menu-btn):not(.account-action):hover,
-.page button:not(.primary):not(.accent):not(.gold):not(.danger):not(.ghost):not(.link):not(.danger-ghost):hover {
-	border-color: color-mix(in srgb, var(--navy) 28%, var(--line));
-	background: var(--surface-2);
-	color: var(--navy);
-}
-
-/* Compacto en toolbars / filas de tabla */
-body .shell .content .toolbar button,
-body .shell .content .actions button,
-body .shell .content td button,
-.page .toolbar button,
-.page .actions button {
-	min-height: 32px;
-	padding-inline: 0.7rem;
-	font-size: 0.78rem;
+	line-height: 1.2;
+	cursor: pointer;
 }
 
 body .shell .content button:disabled,
 .page button:disabled {
-	opacity: 0.5;
+	opacity: 0.55;
 	cursor: not-allowed;
-	box-shadow: none;
-	transform: none;
 	filter: none;
+	box-shadow: none;
 }
 
-:root[data-theme='dark'] {
-	--btn-primary-fill: linear-gradient(
-		145deg,
-		color-mix(in srgb, var(--navy) 70%, var(--lightblue)) 0%,
-		var(--navy) 50%,
-		color-mix(in srgb, var(--navy) 75%, black) 100%
-	);
-	--btn-primary-border: linear-gradient(
-		145deg,
-		color-mix(in srgb, var(--lightblue) 40%, var(--navy)) 0%,
-		color-mix(in srgb, var(--navy) 65%, var(--gold)) 100%
-	);
-	--btn-primary-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
-	--btn-danger-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+/* Compacto en toolbars / filas de tabla */
+body .shell .content .toolbar button,
+body .shell .content .filter-actions button,
+.page .toolbar button,
+.page .filter-actions button {
+	min-height: 2.1rem;
+	max-height: 2.35rem;
+	padding: 0.35rem 0.75rem;
+	font-size: 0.78rem;
 }
 
-@media (prefers-reduced-motion: reduce) {
-	body .shell .content button.primary,
-	body .shell .content button.accent,
-	.page button.primary,
-	.page .button {
-		transition: none;
-	}
+/* ——— Header actions: avoid flex stretch (tall title columns) ——— */
+body .shell .content > section > header,
+body .shell .content .page > header,
+.page > header {
+	align-items: flex-start;
+}
+
+body .shell .content header > button,
+body .shell .content header > .actions,
+.page > header > button,
+.page > header > .actions {
+	align-self: flex-start;
+	flex: 0 0 auto;
+}
+
+body .shell .content header > button.primary,
+body .shell .content header > button.accent,
+.page > header > button.primary,
+.page > header > button.accent {
+	white-space: nowrap;
 }

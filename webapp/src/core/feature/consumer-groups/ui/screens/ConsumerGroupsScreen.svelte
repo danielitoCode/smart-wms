@@ -66,7 +66,7 @@
 </section>
 <style>
 	.page{max-width:56rem;margin:0 auto;padding:2rem 1.25rem}
-	header{display:flex;justify-content:space-between;gap:1rem;margin-bottom:1.25rem}
+	header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1.25rem}
 	.eyebrow{margin:0;font-size:.68rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--navy)}
 	h1{margin:.2rem 0 .35rem;font-size:1.45rem}
 	header p{margin:0;color:var(--slate)}
@@ -74,8 +74,8 @@
 	label{display:flex;flex-direction:column;gap:.3rem}
 	input,select{padding:.5rem .65rem;border:1px solid var(--line);border-radius:var(--radius-field)}
 	.actions{display:flex;gap:.5rem}
-	button{padding:.45rem .75rem;border:1px solid var(--line);border-radius:8px;background:var(--surface);cursor:pointer}
-	.primary{background:var(--navy);color:#fff;border-color:var(--navy)}
+	button{padding:.45rem .9rem;min-height:2.25rem;max-height:2.5rem;border:1px solid var(--line);border-radius:8px;background:var(--surface);cursor:pointer;width:auto;align-self:flex-start}
+	.primary{background:var(--navy);color:#fff;border-color:var(--navy);white-space:nowrap}
 	.danger{color:var(--danger)}
 	.error{color:var(--danger)}
 	.empty{color:var(--slate)}
