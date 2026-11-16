@@ -17,25 +17,18 @@
   const combineBySalesOrderId = $derived.by(() => {
     const result = new Map<number, string[]>();
     if (!combine) return result;
-    const groups = groupOrdersByAddress(tickets.map((ticket) => ({
+    const candidates = tickets.map((ticket) => ({
+      salesOrderId: ticket.order.salesOrderId,
+      salesOrderNumber: ticket.order.salesOrderNumber,
       customerName: ticket.order.customerName,
       shipAddress: ticket.order.legacyShippingAddress,
       shipByDate: ticket.order.shipByDate,
       shippingAddress: ticket.order.shippingAddress
-    })));
-    for (const group of groups) {
-      const numbers = group.orders.map((order) => tickets.find((ticket) =>
-        ticket.order.salesOrderNumber === (order as typeof group.orders[number] & { salesOrderNumber?: string }).salesOrderNumber
-      )?.order.salesOrderNumber).filter((value): value is string => Boolean(value));
-      // Map by the original ticket order using the shared normalized address key.
-      for (const ticket of tickets) {
-        const key = groupOrdersByAddress([{
-          customerName: ticket.order.customerName,
-          shipAddress: ticket.order.legacyShippingAddress,
-          shipByDate: ticket.order.shipByDate,
-          shippingAddress: ticket.order.shippingAddress
-        }])[0]?.key;
-        if (key === group.key) result.set(ticket.order.salesOrderId, numbers.filter((number) => number !== ticket.order.salesOrderNumber));
+    }));
+    for (const group of groupOrdersByAddress(candidates)) {
+      const numbers = group.orders.map((order) => order.salesOrderNumber);
+      for (const order of group.orders) {
+        result.set(order.salesOrderId, numbers.filter((number) => number !== order.salesOrderNumber));
       }
     }
     return result;
