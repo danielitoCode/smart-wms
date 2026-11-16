@@ -3,7 +3,7 @@ import type {
   RevertSalesOrderInput, CreateRmaInput, RelatedSalesOrder,
   SalesOrder, SalesOrderPage, UpdateSalesOrder, UpdateSalesOrderAddressInput,
   UpdateSalesOrderAllocationInput, UpdateSalesOrderAllocationResult,
-  SalesOrderSourceSystem, AdminShipResult
+  SalesOrderSourceSystem, AdminShipResult, SalesOrderShortPick
 } from '../entity/SalesOrder';
 
 export type ListSalesOrdersParams = {
@@ -25,6 +25,7 @@ export interface SalesOrderRepository {
   listPage(params?: ListSalesOrdersParams): Promise<SalesOrderPage>;
   getById(id: number): Promise<SalesOrder>;
   listSourceSystems(): Promise<SalesOrderSourceSystem[]>;
+  listShortPicks(days?: number, warehouseId?: number): Promise<SalesOrderShortPick[]>;
   create(input: CreateSalesOrderInput): Promise<SalesOrder>;
   update(id: number, input: UpdateSalesOrder): Promise<void>;
   updateAddress(id: number, input: UpdateSalesOrderAddressInput): Promise<void>;
