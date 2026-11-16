@@ -13,8 +13,17 @@ export type InboundCanonicalLink = {
  */
 export function resolveInboundCanonicalLink(
 	resource: InboundActivityResource,
-	canonicalPayload: unknown
+	canonicalPayload: unknown,
+	canonicalId: string | null = null
 ): InboundCanonicalLink | null {
+	if (resource === 'vendors' && canonicalId?.trim()) {
+		return {
+			href: `/management/vendors?canonical_id=${encodeURIComponent(canonicalId.trim())}`,
+			searchValue: canonicalId.trim(),
+			label: canonicalId.trim()
+		};
+	}
+
 	if (!canonicalPayload || typeof canonicalPayload !== 'object' || Array.isArray(canonicalPayload)) {
 		return null;
 	}

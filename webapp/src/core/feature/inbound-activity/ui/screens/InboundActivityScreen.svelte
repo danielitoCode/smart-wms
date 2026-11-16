@@ -17,7 +17,7 @@
 		sales_orders: '/management/sales-orders', items: '/items', customers: '/management/customers',
 		vendors: '/management/vendors', purchase_orders: '/management/purchase-orders'
 	};
-	const canonicalLink = $derived(vm.detail ? resolveInboundCanonicalLink(vm.detail.row.resource, vm.detail.canonicalPayload) : null);
+	const canonicalLink = $derived(vm.detail ? resolveInboundCanonicalLink(vm.detail.row.resource, vm.detail.canonicalPayload, vm.detail.row.canonicalId) : null);
 	function formatDate(value: string | null) {
 		if (!value) return '—';
 		const date = new Date(value);
@@ -44,6 +44,7 @@
 			<button type="button" class="secondary" onclick={() => void vm.load()} disabled={vm.loading}>{i18n.t('Actualizar')}</button></div>
 	</form>
 	{#if vm.loading && vm.rows.length === 0}<p class="muted" role="status">{i18n.t('Cargando actividad entrante…')}</p>
+	{:else if vm.rows.length === 0 && vm.error}<p class="empty">{i18n.t('No se pudo recuperar la actividad. Revisa el error anterior e inténtalo de nuevo.')}</p>
 	{:else if vm.rows.length === 0}<p class="empty">{vm.loading ? i18n.t('Cargando actividad entrante…') : i18n.t('No hay actividad entrante para estos filtros.')}</p>
 	{:else}
 		{#if vm.loading}<p class="muted" role="status">{i18n.t('Actualizando actividad…')}</p>{/if}
