@@ -23,12 +23,7 @@ describe('ListSalesOrdersUseCase', () => {
       page: 1,
       perPage: 50,
       q: '  SO ',
-      excludePostFulfillment: true,
-      orderType: undefined,
-      hidePrinted: false,
-      includePrimaryBin: false,
-      includeLineCount: false,
-      localPickup: false
+      excludePostFulfillment: true
     });
 
     expect(listPage).toHaveBeenCalledWith({
