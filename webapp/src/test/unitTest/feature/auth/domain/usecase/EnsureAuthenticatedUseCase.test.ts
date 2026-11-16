@@ -73,13 +73,18 @@ describe('EnsureAuthenticatedUseCase', () => {
 		expect(authSession.getUser()).toEqual(current);
 	});
 
-	it('does not treat a 403 response as an expired login', async () => {
+	it('treats 403 as unauthorized and clears session (strict tokens)', async () => {
+		authSession.setUser({
+			userId: 1, username: 'admin', fullName: 'Admin', role: 'ADMIN',
+			warehouseIds: [1], allowedPages: [], allowedFunctions: [], allowedOverrides: [], mustChangePassword: false
+		});
 		const repo = createRepo({
 			getCurrentUser: vi.fn().mockRejectedValue(new ApiError(403, 'Forbidden'))
 		});
 		const result = await new EnsureAuthenticatedUseCase(repo).execute();
-		expect(result).toMatchObject({ ok: false, reason: 'unavailable' });
+		expect(result).toMatchObject({ ok: false, reason: 'unauthorized' });
 		expect(repo.refreshToken).not.toHaveBeenCalled();
+		expect(authSession.getUser()).toBeNull();
 	});
 
 	it('rejects inactive users even when /me succeeds', async () => {

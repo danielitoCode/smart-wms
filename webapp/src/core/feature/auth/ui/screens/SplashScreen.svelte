@@ -86,7 +86,7 @@
 	<Starfield />
 	<div class="content">
 		<div class="hero-visual">
-			<SplashLottie maxWidth="10.5rem" label="ABELLIS Smart WMS" />
+			<SplashLottie maxWidth="10.5rem" label="ABELLIS Smart WMS" loop={false} />
 		</div>
 
 		<div class="titles">
