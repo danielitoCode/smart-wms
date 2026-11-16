@@ -20,10 +20,10 @@ describe('resolveBackorderWarehouseScope', () => {
     })).toThrow(/Selecciona un almacén/);
   });
 
-  it('does not treat a warehouses-page grant as global backorder access', () => {
+  it('rejects non-positive selected warehouse identifiers', () => {
     expect(() => resolveBackorderWarehouseScope({
-      role: 'USER', assignedWarehouseIds: [], selectedWarehouseId: null
-    })).toThrow(/Selecciona un almacén/);
+      role: 'USER', assignedWarehouseIds: [2], selectedWarehouseId: 0
+    })).toThrow(/no es válido/);
   });
 
   it('allows unscoped browsing only to ADMIN', () => {
