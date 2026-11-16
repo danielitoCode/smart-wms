@@ -112,7 +112,7 @@
           <dt>{i18n.t('Pedido original')}</dt>
           <dd>
             {#if parentOrder}
-              <a href={'/sales-orders/' + parentOrder.soId}>{parentOrder.soNumber}</a>
+              <a href={'/sales-orders/' + parentOrder.salesOrderId}>{parentOrder.salesOrderNumber}</a>
             {:else}
               {order.parentSoNumber || order.parentSalesOrderNumber || '—'}
             {/if}
