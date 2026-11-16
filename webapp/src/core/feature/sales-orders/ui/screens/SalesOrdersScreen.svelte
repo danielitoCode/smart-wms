@@ -34,6 +34,43 @@
   const i18n = getContext<I18nState>('i18n');
   const vm = createSalesOrdersState();
   const warehouseSelection = getContext<{ warehouseId: number | null }>('warehouseSelection');
+  const authGuard = getContext<{
+    user: { role: string; allowedOverrides: string[] } | null;
+  }>('authGuard');
+
+  function hasFullEditPermission(): boolean {
+    const user = authGuard?.user;
+    return user?.role === 'ADMIN' || user?.allowedOverrides?.includes('so-full-edit') === true;
+  }
+
+  function canEditHeader(order: SalesOrder): boolean {
+    return hasFullEditPermission() || order.status === 'OPEN';
+  }
+
+  function canEditLines(order: SalesOrder): boolean {
+    return canEditHeader(order) && !['SHIPPED', 'CANCELLED', 'REFUNDED'].includes(order.status);
+  }
+
+  function canEditAddress(order: SalesOrder): boolean {
+    return authGuard?.user?.role === 'ADMIN' || order.status === 'OPEN';
+  }
+
+  function canPartialFulfill(order: SalesOrder): boolean {
+    return ['OPEN', 'PICKED'].includes(order.status)
+      && !['return', 'backorder', 'refund'].includes(order.orderType ?? '')
+      && (order.status === 'OPEN' || hasFullEditPermission());
+  }
+
+  function canAdminFulfillment(order: SalesOrder): boolean {
+    return hasFullEditPermission() && order.orderType !== 'return' && order.orderType !== 'refund';
+  }
+
+  function canRemoveLine(order: SalesOrder, line: SalesOrder['lines'][number]): boolean {
+    return canEditLines(order)
+      && line.quantityPicked === 0
+      && line.quantityPacked === 0
+      && line.quantityShipped === 0;
+  }
 
   let showCreate = $state(false);
   let orderNumber = $state('');
@@ -51,7 +88,7 @@
   let editCustomerPhone = $state('');
   let editCustomerEmail = $state('');
   let editShipMethod = $state('');
-  let editShipAddress = $state('');
+
   let editShipByDate = $state('');
   let editMemo = $state('');
   let billingAddress = $state<AddressForm>(createAddressForm());
@@ -63,6 +100,8 @@
   let relatedTrail = $state<number[]>([]);
   let editMode = $state(false);
   let editPriority = $state('0');
+  let editStatus = $state('OPEN');
+  let lineReleaseConfirm = $state<{ intent: 'shrink' | 'delete'; lineId: number; quantity?: number } | null>(null);
   let editSourceSystem = $state('');
   let editOrderOrigin = $state('');
   let editCarrier = $state('');
@@ -143,10 +182,11 @@
     editCustomerPhone = order.customerPhone ?? '';
     editCustomerEmail = order.customerEmail ?? '';
     editShipMethod = order.shipMethod ?? '';
-    editShipAddress = order.shipAddress ?? '';
+    editShipAddress = '';
     editShipByDate = order.shipByDate ?? '';
     editMemo = order.memo ?? '';
     editPriority = String(order.priority ?? 0);
+    editStatus = order.status;
     editSourceSystem = order.sourceSystem ?? '';
     editOrderOrigin = order.orderOrigin ?? '';
     editCarrier = order.carrier ?? '';
@@ -197,15 +237,14 @@
       customerPhone: editCustomerPhone || null,
       customerEmail: editCustomerEmail || null,
       shipMethod: editShipMethod || null,
-      shipAddress: editShipAddress || null,
+
       shipByDate: editShipByDate || null,
       memo: editMemo || null,
       orderOrigin: editOrderOrigin || null,
       priority: Number(editPriority),
       sourceSystem: editSourceSystem || null,
       carrier: editCarrier || null,
-      trackingNumber: editTrackingNumber || null,
-      shippedAt: editShippedDate || null
+      ...(editStatus ...
     });
     if (ok) {
       feedback = i18n.t('Pedido actualizado correctamente.');
@@ -249,9 +288,12 @@
   }
 
   async function submitRevert(): Promise<void> {
-    const ok = await vm.revertStatus({ newStatus: revertTargetStatus, releasePickTaskIds });
+    const targetStatus = revertTargetStatus;
+    const ok = await vm.revertStatus({ newStatus: targetStatus, releasePickTaskIds });
     if (ok) {
       showRevertForm = false;
+      editStatus = targetStatus;
+      if (vm.selected) await saveHeader(vm.selected);
       feedback = i18n.t('Estado del pedido revertido.');
       pushToast(feedback, 'success');
     } else if (vm.error) pushToast(vm.error, 'error');
@@ -302,6 +344,7 @@
   }
 
   async function voidCurrentReturn(): Promise<void> {
+    if (authGuard?.user?.role !== 'ADMIN') return;
     if (!confirm(i18n.t('¿Anular este RMA? Esta operación es exclusiva de ADMIN y deja el registro auditado.'))) return;
     const ok = await vm.voidReturn();
     if (ok) {
@@ -322,6 +365,12 @@
 
   async function updateLine(lineId: number): Promise<void> {
     const quantity = Number(lineQuantity[lineId]);
+    const line = vm.selected?.lines.find((candidate) => candidate.soLineId === lineId);
+    if (!line || !Number.isInteger(quantity) || quantity < 1) return;
+    if (quantity < line.quantityAllocated && line.quantityAllocated > 0) {
+      lineReleaseConfirm = { intent: 'shrink', lineId, quantity };
+      return;
+    }
     const ok = await vm.updateLine(lineId, quantity);
     if (ok) {
       feedback = i18n.t('Cantidad actualizada.');
@@ -330,6 +379,12 @@
   }
 
   async function removeLine(lineId: number): Promise<void> {
+    const line = vm.selected?.lines.find((candidate) => candidate.soLineId === lineId);
+    if (!line || !canRemoveLine(vm.selected!, line)) return;
+    if (line.quantityAllocated > 0) {
+      lineReleaseConfirm = { intent: 'delete', lineId };
+      return;
+    }
     if (!confirm(i18n.t('¿Eliminar esta línea del pedido?'))) return;
     const ok = await vm.deleteLine(lineId);
     if (ok) {
@@ -339,6 +394,7 @@
   }
 
   async function cancelOrder(order: SalesOrder): Promise<void> {
+    if (order.status !== 'OPEN') return;
     if (!confirm(i18n.t('¿Confirmas la cancelación del pedido?'))) return;
     const ok = await vm.cancel(order.salesOrderId);
     if (ok) {
@@ -565,11 +621,11 @@
       <nav class="so-actions">
         {#if relatedTrail.length > 0}<button type="button" onclick={() => void returnToRelatedOrder()}>{i18n.t('Volver')}</button>{/if}
         {#if editMode}<button type="button" onclick={() => editMode = false}>{i18n.t('Vista')}</button>{:else}<button type="button" onclick={() => beginEdit(order)}>{i18n.t('Editar')}</button>{/if}
-        {#if order.status !== 'CANCELLED' && order.status !== 'REFUNDED' && order.status !== 'SHIPPED'}<button class="so-danger" type="button" disabled={vm.saving} onclick={() => void cancelOrder(order)}>{i18n.t('Cancelar pedido')}</button>{/if}
-        {#if order.status === 'OPEN' && order.orderType !== 'return' && order.orderType !== 'refund'}<button type="button" onclick={() => void openAdminPick(order)}>{i18n.t('Picking administrativo')}</button>{/if}
-        {#if ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status) && order.orderType !== 'return' && order.orderType !== 'refund' && order.lines.some((line) => line.quantityPicked > line.quantityShipped)}<button type="button" onclick={() => void shipOrder(order)}>{i18n.t('Despacho administrativo')}</button>{/if}
-        {#if (order.status === 'OPEN' || order.status === 'PICKED') && !['backorder', 'return', 'refund'].includes(order.orderType ?? '')}<button type="button" aria-expanded={showPartialFulfill} onclick={() => { if (!showPartialFulfill) { partialShorts = {}; partialReason = ''; } showPartialFulfill = !showPartialFulfill; }}>{i18n.t('Fulfillment parcial')}</button>{/if}
-        {#if ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status)}<button type="button" onclick={() => { revertTargetStatus = order.status === 'SHIPPED' ? 'PACKED' : order.status === 'PACKED' ? 'PICKED' : 'OPEN'; releasePickTaskIds = order.status === 'PICKED' ? order.pickTasks.map((task) => task.pickTaskId) : []; showRevertForm = !showRevertForm; }}>{i18n.t('Revertir estado')}</button>{/if}
+        {#if order.status === 'OPEN'}<button class="so-danger" type="button" disabled={vm.saving} onclick={() => void cancelOrder(order)}>{i18n.t('Cancelar pedido')}</button>{/if}
+        {#if order.status === 'OPEN' && canAdminFulfillment(order)}<button type="button" onclick={() => void openAdminPick(order)}>{i18n.t('Picking administrativo')}</button>{/if}
+        {#if ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status) && canAdminFulfillment(order) && order.lines.some((line) => line.quantityPicked > line.quantityShipped)}<button type="button" onclick={() => void shipOrder(order)}>{i18n.t('Despacho administrativo')}</button>{/if}
+        {#if canPartialFulfill(order)}<button type="button" aria-expanded={showPartialFulfill} onclick={() => { if (!showPartialFulfill) { partialShorts = {}; partialReason = ''; } showPartialFulfill = !showPartialFulfill; }}>{i18n.t('Fulfillment parcial')}</button>{/if}
+        {#if ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status) && canAdminFulfillment(order)}<button type="button" onclick={() => { revertTargetStatus = order.status === 'SHIPPED' ? 'PACKED' : order.status === 'PACKED' ? 'PICKED' : 'OPEN'; releasePickTaskIds = []; showRevertForm = !showRevertForm; }}>{i18n.t('Revertir estado')}</button>{/if}
         {#if order.status === 'SHIPPED' && order.orderType !== 'return' && order.orderType !== 'refund' && order.lines.some((line) => line.quantityShipped > 0)}<button type="button" onclick={() => { rmaQuantities = {}; showRma = true; }}>{i18n.t('Crear RMA')}</button>{/if}
         {#if order.orderType === 'return' && order.status === 'OPEN'}<button type="button" onclick={() => { returnWarehouseId = String(order.warehouseId ?? ''); returnIdempotencyKey = crypto.randomUUID(); showReceiveReturn = true; }}>{i18n.t('Recibir devolución')}</button><button class="so-danger" type="button" onclick={() => void voidCurrentReturn()}>{i18n.t('Anular RMA')}</button>{/if}
       </nav>
@@ -582,17 +638,18 @@
             <label>{i18n.t('Email')}<input type="email" bind:value={editCustomerEmail} /></label>
             <label>{i18n.t('Teléfono')}<input bind:value={editCustomerPhone} /></label>
             <label>{i18n.t('Método de envío')}<input bind:value={editShipMethod} /></label>
-            <label>{i18n.t('Dirección de envío')}<input bind:value={editShipAddress} /></label>
+            
             <label>{i18n.t('Enviar antes de')}<input type="date" bind:value={editShipByDate} /></label>
             <label>{i18n.t('Prioridad (0–10)')}<input type="number" min="0" max="10" step="1" bind:value={editPriority} /></label>
-            <label>{i18n.t('Sistema de origen')}<select bind:value={editSourceSystem}><option value="">{i18n.t('Sin asignar')}</option>{#each vm.sourceSystems as source}<option value={source.sourceSystem}>{source.sourceSystem} · {source.kind}</option>{/each}</select></label>
+            <label>{i18n.t('Sistema de origen')}<select disabled={!hasFullEditPermission()} bind:value={editSourceSystem}><option value="">{i18n.t('Sin asignar')}</option>{#each vm.sourceSystems as source}<option value={source.sourceSystem}>{source.sourceSystem} · {source.kind}</option>{/each}</select></label>
             <label>{i18n.t('Origen externo')}<input maxlength="64" bind:value={editOrderOrigin} /></label>
             <label>{i18n.t('Transportista')}<input maxlength="64" bind:value={editCarrier} /></label>
             <label>{i18n.t('Tracking')}<input maxlength="128" bind:value={editTrackingNumber} /></label>
             <label>{i18n.t('Fecha de despacho')}<input type="date" bind:value={editShippedDate} /></label>
+            <label>{i18n.t('Estado')}<select bind:value={editStatus} disabled={!canEditHeader(order)}>{#each ['OPEN', 'PICKED', 'PACKED', 'SHIPPED', 'CANCELLED', 'REFUNDED'] as status}<option value={status}>{status}</option>{/each}</select></label>
           </div>
           <label>{i18n.t('Notas')}<textarea maxlength="4096" bind:value={editMemo}></textarea></label>
-          <button class="so-primary" type="button" disabled={vm.saving} onclick={() => void saveHeader(order)}>{i18n.t('Guardar cambios')}</button>
+          <button class="so-primary" type="button" disabled={vm.saving || !canEditHeader(order)} onclick={() => void saveHeader(order)}>{i18n.t('Guardar cambios')}</button>
         {:else}
           <dl class="so-summary">
             <div><dt>{i18n.t('Cliente')}</dt><dd>{order.customerName ?? '—'}</dd></div>
@@ -635,7 +692,7 @@
               <label>{i18n.t('Teléfono')}<input bind:value={shippingAddress.phone} /></label>
             </fieldset>
           </div>
-          <button type="button" disabled={vm.saving} onclick={() => void saveAddresses(order)}>{i18n.t('Guardar direcciones')}</button>
+          <button type="button" disabled={vm.saving || !canEditAddress(order)} onclick={() => void saveAddresses(order)}>{i18n.t('Guardar direcciones')}</button>
         {:else}
           <div class="so-address-grid"><article><h4>{i18n.t('Facturación')}</h4><p>{[order.billingAddress.name, order.billingAddress.line1, order.billingAddress.line2, order.billingAddress.city, order.billingAddress.state, order.billingAddress.postalCode, order.billingAddress.country, order.billingAddress.phone].filter(Boolean).join(', ') || '—'}</p></article><article><h4>{i18n.t('Envío')}</h4><p>{[order.shippingAddress.name, order.shippingAddress.line1, order.shippingAddress.line2, order.shippingAddress.city, order.shippingAddress.state, order.shippingAddress.postalCode, order.shippingAddress.country, order.shippingAddress.phone].filter(Boolean).join(', ') || order.shipAddress || '—'}</p></article></div>
         {/if}
@@ -648,9 +705,9 @@
           <tbody>{#each order.lines as line (line.soLineId)}
             <tr>
               <td>{line.lineNumber ?? '—'}</td><td>{line.sku}</td><td>{line.itemName}</td>
-              <td>{#if editMode && !['SHIPPED', 'CANCELLED', 'REFUNDED'].includes(order.status)}<input class="so-qty" type="number" min="1" max="1000000" value={lineQuantity[line.soLineId] ?? String(line.quantityOrdered)} oninput={(event) => lineQuantity[line.soLineId] = event.currentTarget.value} /><button type="button" onclick={() => void updateLine(line.soLineId)}>✓</button>{:else}{line.quantityOrdered}{/if}</td>
+              <td>{#if editMode && canEditLines(order)}<input class="so-qty" type="number" min="1" max="1000000" value={lineQuantity[line.soLineId] ?? String(line.quantityOrdered)} oninput={(event) => lineQuantity[line.soLineId] = event.currentTarget.value} /><button type="button" onclick={() => void updateLine(line.soLineId)}>✓</button>{:else}{line.quantityOrdered}{/if}</td>
               <td>{line.quantityAllocated}</td><td>{line.quantityPicked}</td><td>{line.quantityPacked}</td><td>{line.quantityShipped}</td>
-              <td>{#if editMode && !['SHIPPED', 'CANCELLED', 'REFUNDED'].includes(order.status)}<button type="button" onclick={() => void applyAllocation(line.soLineId, 1)} title={i18n.t('Reservar una unidad')}>+A</button><button type="button" onclick={() => void applyAllocation(line.soLineId, -1)} title={i18n.t('Liberar una unidad')}>−A</button><button class="so-danger" type="button" onclick={() => void removeLine(line.soLineId)}>×</button>{/if}<button type="button" onclick={() => void vm.loadAvailableBins(line.soLineId)}>{i18n.t('Bins')}</button></td>
+              <td>{#if editMode && canEditLines(order)}<button type="button" onclick={() => void applyAllocation(line.soLineId, 1)} title={i18n.t('Reservar una unidad')}>+A</button><button type="button" onclick={() => void applyAllocation(line.soLineId, -1)} title={i18n.t('Liberar una unidad')}>−A</button><button class="so-danger" type="button" disabled={!canRemoveLine(order, line)} onclick={() => void removeLine(line.soLineId)}>×</button>{/if}<button type="button" onclick={() => void vm.loadAvailableBins(line.soLineId)}>{i18n.t('Bins')}</button></td>
             </tr>
             {#if vm.availableBinsByLine[line.soLineId]}
               <tr><td colspan="9"><div class="so-bin-list">{#each vm.availableBinsByLine[line.soLineId] as bin}<span>{bin.binCode} · {bin.quantityAvailable}{bin.preferredPriority !== null ? ' ★' : ''}</span>{:else}<span>{i18n.t('No hay stock disponible en ubicaciones de este almacén.')}</span>{/each}</div></td></tr>
