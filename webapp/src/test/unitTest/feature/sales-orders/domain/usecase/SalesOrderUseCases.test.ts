@@ -27,7 +27,12 @@ describe('Sales order use cases', () => {
       warehouseId: undefined,
       page: undefined,
       perPage: undefined,
-      excludePostFulfillment: false
+      excludePostFulfillment: false,
+      orderType: undefined,
+      hidePrinted: false,
+      includePrimaryBin: false,
+      includeLineCount: false,
+      localPickup: false
     });
   });
 
