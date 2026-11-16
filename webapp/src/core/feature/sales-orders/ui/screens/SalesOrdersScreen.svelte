@@ -16,6 +16,11 @@
 
   type AddressForm = { [Key in keyof SalesOrderAddress]: string };
 
+  function createIdempotencyKey(): string {
+    return globalThis.crypto?.randomUUID?.()
+      ?? `rma-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+
   function createAddressForm(address?: SalesOrderAddress): AddressForm {
     return {
       name: address?.name ?? '',
@@ -673,7 +678,7 @@
         {#if ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status) && canAdminFulfillment(order)}<button type="button" onclick={() => { revertTargetStatus = order.status === 'SHIPPED' ? 'PACKED' : order.status === 'PACKED' ? 'PICKED' : 'OPEN'; releasePickTaskIds = []; releaseOnly = false; showRevertForm = !showRevertForm; }}>{i18n.t('Revertir estado')}</button>{/if}
         {#if order.pickTasks.length > 0 && order.orderType !== 'return'}<button type="button" onclick={() => { revertTargetStatus = order.status; releasePickTaskIds = []; releaseOnly = true; showRevertForm = true; }}>{i18n.t('Liberar cantidades recogidas')}</button>{/if}
         {#if order.orderType !== 'return' && order.orderType !== 'refund' && order.lines.some((line) => line.quantityShipped > 0)}<button type="button" onclick={() => { rmaQuantities = {}; showRma = true; }}>{i18n.t('Crear RMA')}</button>{/if}
-        {#if order.orderType === 'return' && order.status === 'OPEN'}<button type="button" onclick={() => { returnWarehouseId = String(order.warehouseId ?? ''); returnIdempotencyKey = crypto.randomUUID(); showReceiveReturn = true; }}>{i18n.t('Recibir devolución')}</button>{#if authGuard?.user?.role === 'ADMIN'}<button class="so-danger" type="button" onclick={() => void voidCurrentReturn()}>{i18n.t('Anular RMA')}</button>{/if}{/if}
+        {#if order.orderType === 'return' && order.status === 'OPEN'}<button type="button" onclick={() => { returnWarehouseId = String(order.warehouseId ?? ''); returnIdempotencyKey = createIdempotencyKey(); showReceiveReturn = true; }}>{i18n.t('Recibir devolución')}</button>{#if authGuard?.user?.role === 'ADMIN'}<button class="so-danger" type="button" onclick={() => void voidCurrentReturn()}>{i18n.t('Anular RMA')}</button>{/if}{/if}
       </nav>
 
       <section class="so-section">
