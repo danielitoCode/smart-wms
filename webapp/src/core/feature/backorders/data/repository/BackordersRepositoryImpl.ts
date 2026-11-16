@@ -1,6 +1,7 @@
 import type {
   Backorder, BackorderDetail, BackorderQueueTab, CancelBackorderReason
 } from '../../domain/entity/Backorder';
+import { projectBackorderLineProgress } from '../../domain/entity/Backorder';
 import type { BackordersRepository } from '../../domain/repository/BackordersRepository';
 import type { BackordersRemoteDataSource } from '../datasource/BackordersRemoteDataSource';
 import type { SalesOrderRepository } from '../../../sales-orders/domain/repository/SalesOrderRepository';
@@ -19,7 +20,17 @@ export class BackordersRepositoryImpl implements BackordersRepository {
 
   async getDetail(backorderId: number): Promise<BackorderDetail> {
     const order = await this.salesOrders.getById(backorderId);
-    return { order };
+    const parentSalesOrder = order.parentSoId === null
+      ? null
+      : await this.salesOrders.getById(order.parentSoId);
+    const lines = order.lines.map(projectBackorderLineProgress);
+    return {
+      order,
+      parentSalesOrder,
+      lines,
+      totalQuantityPending: lines.reduce((total, line) => total + line.quantityPending, 0),
+      totalQuantityResolved: lines.reduce((total, line) => total + line.quantityResolved, 0)
+    };
   }
 
   async cancel(backorderId: number, reason: CancelBackorderReason): Promise<void> {
