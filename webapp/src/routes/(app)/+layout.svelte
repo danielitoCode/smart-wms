@@ -48,6 +48,7 @@
 			{ href: '/receiving', label: i18n.t('Recepción'), icon: 'inbox', pageKey: 'receiving' },
 			{ href: '/putaway', label: i18n.t('Ubicación'), icon: 'map-pin', pageKey: 'putaway' },
 			{ href: '/picking', label: i18n.t('Preparación'), icon: 'clipboard-list' },
+			{ href: '/picking-tickets', label: i18n.t('Tickets de picking'), icon: 'clipboard-list', pageKey: 'picking-tickets' },
 			{ href: '/packing', label: i18n.t('Empaque'), icon: 'package-check' },
 			{ href: '/shipping', label: i18n.t('Despacho'), icon: 'truck' }
 		]},
