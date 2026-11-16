@@ -21,7 +21,7 @@ describe('resolveInboundCanonicalLink', () => {
 	});
 
 	it('opens vendor detail by the canonical UUID route parameter', () => {
-		expect(resolveInboundCanonicalLink('vendors', { vendor_name: '[REDACTED]' }, '5d32f7bb-a2e9-4a1b-8e6a-62d1f2c1c9d1')?.href)
+		expect(resolveInboundCanonicalLink('vendors', null, '5d32f7bb-a2e9-4a1b-8e6a-62d1f2c1c9d1')?.href)
 			.toBe('/management/vendors?canonical_id=5d32f7bb-a2e9-4a1b-8e6a-62d1f2c1c9d1');
 	});
 
