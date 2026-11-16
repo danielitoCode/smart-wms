@@ -4,7 +4,7 @@
 	import type { I18nState } from '#lib/i18n/i18n.svelte';
 	import { createSplashState } from '../state/splashState.svelte';
 	import Starfield from '../../../../../lib/components/Starfield.svelte';
-	import SessionLockIllustration from '../../../../../lib/components/SessionLockIllustration.svelte';
+	import SplashLottie from '../../../../../lib/components/SplashLottie.svelte';
 
 	const i18n = getContext<I18nState>('i18n');
 	const splash = createSplashState();
@@ -86,7 +86,7 @@
 	<Starfield />
 	<div class="content">
 		<div class="hero-visual">
-			<SessionLockIllustration height="150" />
+			<SplashLottie maxWidth="10.5rem" label="ABELLIS Smart WMS" />
 		</div>
 
 		<div class="titles">
