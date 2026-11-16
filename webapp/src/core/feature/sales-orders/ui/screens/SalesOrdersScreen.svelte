@@ -182,7 +182,6 @@
     editCustomerPhone = order.customerPhone ?? '';
     editCustomerEmail = order.customerEmail ?? '';
     editShipMethod = order.shipMethod ?? '';
-    editShipAddress = '';
     editShipByDate = order.shipByDate ?? '';
     editMemo = order.memo ?? '';
     editPriority = String(order.priority ?? 0);
@@ -232,20 +231,34 @@
   }
 
   async function saveHeader(order: SalesOrder): Promise<void> {
-    const ok = await vm.update(order.salesOrderId, {
+    const statusOrder: Record<string, number> = { OPEN: 0, PICKED: 1, PACKED: 2, SHIPPED: 3 };
+    const currentRank = statusOrder[order.status];
+    const targetRank = statusOrder[editStatus];
+    if (currentRank !== undefined && targetRank !== undefined && targetRank < currentRank) {
+      revertTargetStatus = editStatus;
+      releasePickTaskIds = [];
+      showRevertForm = true;
+      return;
+    }
+
+    const input = {
       customerName: editCustomerName || null,
       customerPhone: editCustomerPhone || null,
       customerEmail: editCustomerEmail || null,
       shipMethod: editShipMethod || null,
-
       shipByDate: editShipByDate || null,
       memo: editMemo || null,
-      orderOrigin: editOrderOrigin || null,
-      priority: Number(editPriority),
-      sourceSystem: editSourceSystem || null,
-      carrier: editCarrier || null,
-      ...(editStatus ...
-    });
+      ...(editStatus !== order.status ? { status: editStatus } : {}),
+      ...(editPriority !== String(order.priority ?? 0) ? { priority: Number(editPriority) } : {}),
+      ...(editOrderOrigin !== (order.orderOrigin ?? '') ? { orderOrigin: editOrderOrigin || null } : {}),
+      ...(editCarrier !== (order.carrier ?? '') ? { carrier: editCarrier || null } : {}),
+      ...(editTrackingNumber !== (order.trackingNumber ?? '') ? { trackingNumber: editTrackingNumber || null } : {}),
+      ...(editShippedDate !== (order.shippedDateLocal ?? '') ? { shippedAt: editShippedDate || null } : {}),
+      ...(hasFullEditPermission() && editSourceSystem !== (order.sourceSystem ?? '')
+        ? { sourceSystem: editSourceSystem || null }
+        : {})
+    };
+    const ok = await vm.update(order.salesOrderId, input);
     if (ok) {
       feedback = i18n.t('Pedido actualizado correctamente.');
       pushToast(feedback, 'success');
@@ -389,6 +402,21 @@
     const ok = await vm.deleteLine(lineId);
     if (ok) {
       feedback = i18n.t('Línea eliminada.');
+      pushToast(feedback, 'success');
+    }
+  }
+
+  async function confirmLineRelease(): Promise<void> {
+    const pending = lineReleaseConfirm;
+    if (!pending) return;
+    lineReleaseConfirm = null;
+    const ok = pending.intent === 'delete'
+      ? await vm.deleteLine(pending.lineId)
+      : await vm.updateLine(pending.lineId, pending.quantity ?? 0);
+    if (ok) {
+      feedback = pending.intent === 'delete'
+        ? i18n.t('Línea eliminada y asignación liberada.')
+        : i18n.t('Cantidad actualizada y asignación liberada.');
       pushToast(feedback, 'success');
     }
   }
