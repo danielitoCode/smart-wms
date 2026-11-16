@@ -1,7 +1,8 @@
 import type {
   CreateSalesOrderInput, PartialFulfillInput, ReceiveReturnInput,
   RevertSalesOrderInput, CreateRmaInput, RelatedSalesOrder,
-  SalesOrder, SalesOrderPage, UpdateSalesOrder, UpdateSalesOrderAddressInput
+  SalesOrder, SalesOrderPage, UpdateSalesOrder, UpdateSalesOrderAddressInput,
+  UpdateSalesOrderAllocationInput, UpdateSalesOrderAllocationResult
 } from '../entity/SalesOrder';
 
 export type ListSalesOrdersParams = {
@@ -11,6 +12,11 @@ export type ListSalesOrdersParams = {
   perPage?: number;
   q?: string;
   excludePostFulfillment?: boolean;
+  orderType?: string;
+  hidePrinted?: boolean;
+  includePrimaryBin?: boolean;
+  includeLineCount?: boolean;
+  localPickup?: boolean;
 };
 
 export interface SalesOrderRepository {
@@ -20,6 +26,7 @@ export interface SalesOrderRepository {
   create(input: CreateSalesOrderInput): Promise<SalesOrder>;
   update(id: number, input: UpdateSalesOrder): Promise<void>;
   updateAddress(id: number, input: UpdateSalesOrderAddressInput): Promise<void>;
+  updateAllocation(id: number, lineId: number, input: UpdateSalesOrderAllocationInput): Promise<UpdateSalesOrderAllocationResult>;
   cancel(id: number): Promise<SalesOrder>;
   addLine(id: number, input: { itemId: number; quantityOrdered: number }): Promise<void>;
   updateLine(id: number, lineId: number, quantity: number): Promise<void>;
