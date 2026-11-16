@@ -542,7 +542,7 @@
         {#if order.status !== 'CANCELLED' && order.status !== 'REFUNDED' && order.status !== 'SHIPPED'}<button class="so-danger" type="button" disabled={vm.saving} onclick={() => void cancelOrder(order)}>{i18n.t('Cancelar pedido')}</button>{/if}
         {#if order.status === 'OPEN' && order.orderType !== 'return' && order.orderType !== 'refund'}<button type="button" onclick={() => void openAdminPick(order)}>{i18n.t('Picking administrativo')}</button>{/if}
         {#if ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status) && order.orderType !== 'return' && order.orderType !== 'refund' && order.lines.some((line) => line.quantityPicked > line.quantityShipped)}<button type="button" onclick={() => void shipOrder(order)}>{i18n.t('Despacho administrativo')}</button>{/if}
-        {#if showPartialFulfill && (order.status === 'OPEN' || order.status === 'PICKED') && !['backorder', 'return', 'refund'].includes(order.orderType ?? '')}<button type="button" onclick={() => { partialShorts = {}; showPartialFulfill = !showPartialFulfill; }}>{i18n.t('Fulfillment parcial')}</button>{/if}
+        {#if (order.status === 'OPEN' || order.status === 'PICKED') && !['backorder', 'return', 'refund'].includes(order.orderType ?? '')}<button type="button" aria-expanded={showPartialFulfill} onclick={() => { if (!showPartialFulfill) { partialShorts = {}; partialReason = ''; } showPartialFulfill = !showPartialFulfill; }}>{i18n.t('Fulfillment parcial')}</button>{/if}
         {#if ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status)}<button type="button" onclick={() => { revertTargetStatus = order.status === 'SHIPPED' ? 'PACKED' : order.status === 'PACKED' ? 'PICKED' : 'OPEN'; releasePickTaskIds = order.status === 'PICKED' ? order.pickTasks.map((task) => task.pickTaskId) : []; showRevertForm = !showRevertForm; }}>{i18n.t('Revertir estado')}</button>{/if}
         {#if order.status === 'SHIPPED' && order.orderType !== 'return' && order.orderType !== 'refund' && order.lines.some((line) => line.quantityShipped > 0)}<button type="button" onclick={() => { rmaQuantities = {}; showRma = true; }}>{i18n.t('Crear RMA')}</button>{/if}
         {#if order.orderType === 'return' && order.status === 'OPEN'}<button type="button" onclick={() => { returnWarehouseId = String(order.warehouseId ?? ''); returnIdempotencyKey = crypto.randomUUID(); showReceiveReturn = true; }}>{i18n.t('Recibir devolución')}</button><button class="so-danger" type="button" onclick={() => void voidCurrentReturn()}>{i18n.t('Anular RMA')}</button>{/if}
@@ -659,7 +659,7 @@
         {/if}
       </section>
 
-      {#if (order.status === 'OPEN' || order.status === 'PICKED') && order.orderType !== 'backorder'}
+      {#if showPartialFulfill && (order.status === 'OPEN' || order.status === 'PICKED') && !['backorder', 'return', 'refund'].includes(order.orderType ?? '')}
         <section class="so-section">
           <h3>{i18n.t('Fulfillment parcial')}</h3>
           <p class="so-hint">{i18n.t('Indica unidades no disponibles. El servidor reduce las líneas originales y crea un backorder; vuelve a validar los límites antes de aplicar cambios.')}</p>
