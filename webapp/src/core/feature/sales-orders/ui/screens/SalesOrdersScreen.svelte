@@ -451,12 +451,7 @@
     await Promise.all(eligibleLines.map((line) => vm.loadAvailableBins(line.soLineId)));
     for (const line of eligibleLines) {
       const firstBin = vm.availableBinsByLine[line.soLineId]?.[0];
-      pickEntriesByLine[line.soLineId] = [{
-        binId: firstBin ? String(firstBin.binId) : '',
-        quantity: firstBin
-          ? String(Math.min(line.quantityOrdered - line.quantityPicked, firstBin.quantityAvailable))
-          : ''
-      }];
+      pickEntriesByLine[line.soLineId] = [{ binId: '', quantity: '' }];
     }
   }
 
@@ -654,13 +649,15 @@
         {#if ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status) && canAdminFulfillment(order) && order.lines.some((line) => line.quantityPicked > line.quantityShipped)}<button type="button" onclick={() => void shipOrder(order)}>{i18n.t('Despacho administrativo')}</button>{/if}
         {#if canPartialFulfill(order)}<button type="button" aria-expanded={showPartialFulfill} onclick={() => { if (!showPartialFulfill) { partialShorts = {}; partialReason = ''; } showPartialFulfill = !showPartialFulfill; }}>{i18n.t('Fulfillment parcial')}</button>{/if}
         {#if ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status) && canAdminFulfillment(order)}<button type="button" onclick={() => { revertTargetStatus = order.status === 'SHIPPED' ? 'PACKED' : order.status === 'PACKED' ? 'PICKED' : 'OPEN'; releasePickTaskIds = []; showRevertForm = !showRevertForm; }}>{i18n.t('Revertir estado')}</button>{/if}
+        {#if order.pickTasks.length > 0 && order.orderType !== 'return'}<button type="button" onclick={() => { revertTargetStatus = order.status; releasePickTaskIds = []; showRevertForm = true; }}>{i18n.t('Liberar cantidades recogidas')}</button>{/if}
         {#if order.status === 'SHIPPED' && order.orderType !== 'return' && order.orderType !== 'refund' && order.lines.some((line) => line.quantityShipped > 0)}<button type="button" onclick={() => { rmaQuantities = {}; showRma = true; }}>{i18n.t('Crear RMA')}</button>{/if}
-        {#if order.orderType === 'return' && order.status === 'OPEN'}<button type="button" onclick={() => { returnWarehouseId = String(order.warehouseId ?? ''); returnIdempotencyKey = crypto.randomUUID(); showReceiveReturn = true; }}>{i18n.t('Recibir devolución')}</button><button class="so-danger" type="button" onclick={() => void voidCurrentReturn()}>{i18n.t('Anular RMA')}</button>{/if}
+        {#if order.orderType === 'return' && order.status === 'OPEN'}<button type="button" onclick={() => { returnWarehouseId = String(order.warehouseId ?? ''); returnIdempotencyKey = crypto.randomUUID(); showReceiveReturn = true; }}>{i18n.t('Recibir devolución')}</button>{#if authGuard?.user?.role === 'ADMIN'}<button class="so-danger" type="button" onclick={() => void voidCurrentReturn()}>{i18n.t('Anular RMA')}</button>{/if}{/if}
       </nav>
 
       <section class="so-section">
         <h3>{i18n.t('Datos del pedido')}</h3>
         {#if editMode}
+          <fieldset class="so-edit-fields" disabled={!canEditHeader(order)}>
           <div class="so-form-grid">
             <label>{i18n.t('Cliente')}<input bind:value={editCustomerName} /></label>
             <label>{i18n.t('Email')}<input type="email" bind:value={editCustomerEmail} /></label>
@@ -678,6 +675,7 @@
           </div>
           <label>{i18n.t('Notas')}<textarea maxlength="4096" bind:value={editMemo}></textarea></label>
           <button class="so-primary" type="button" disabled={vm.saving || !canEditHeader(order)} onclick={() => void saveHeader(order)}>{i18n.t('Guardar cambios')}</button>
+          </fieldset>
         {:else}
           <dl class="so-summary">
             <div><dt>{i18n.t('Cliente')}</dt><dd>{order.customerName ?? '—'}</dd></div>
@@ -698,7 +696,7 @@
       <section class="so-section">
         <h3>{i18n.t('Direcciones')}</h3>
         {#if editMode}
-          <div class="so-address-grid">
+          <fieldset class="so-edit-fields" disabled={!canEditAddress(order)}><div class="so-address-grid">
             <fieldset><legend>{i18n.t('Facturación')}</legend>
               <label>{i18n.t('Nombre')}<input bind:value={billingAddress.name} /></label>
               <label>{i18n.t('Línea 1')}<input bind:value={billingAddress.line1} /></label>
@@ -720,7 +718,7 @@
               <label>{i18n.t('Teléfono')}<input bind:value={shippingAddress.phone} /></label>
             </fieldset>
           </div>
-          <button type="button" disabled={vm.saving || !canEditAddress(order)} onclick={() => void saveAddresses(order)}>{i18n.t('Guardar direcciones')}</button>
+          <button type="button" disabled={vm.saving || !canEditAddress(order)} onclick={() => void saveAddresses(order)}>{i18n.t('Guardar direcciones')}</button></fieldset>
         {:else}
           <div class="so-address-grid"><article><h4>{i18n.t('Facturación')}</h4><p>{[order.billingAddress.name, order.billingAddress.line1, order.billingAddress.line2, order.billingAddress.city, order.billingAddress.state, order.billingAddress.postalCode, order.billingAddress.country, order.billingAddress.phone].filter(Boolean).join(', ') || '—'}</p></article><article><h4>{i18n.t('Envío')}</h4><p>{[order.shippingAddress.name, order.shippingAddress.line1, order.shippingAddress.line2, order.shippingAddress.city, order.shippingAddress.state, order.shippingAddress.postalCode, order.shippingAddress.country, order.shippingAddress.phone].filter(Boolean).join(', ') || order.shipAddress || '—'}</p></article></div>
         {/if}
@@ -742,7 +740,7 @@
             {/if}
           {/each}</tbody>
         </table></div>
-        {#if editMode && !['SHIPPED', 'CANCELLED', 'REFUNDED'].includes(order.status)}
+        {#if editMode && canEditLines(order)}
           <div class="so-inline-form"><label>{i18n.t('Artículo ID')}<input type="number" min="1" bind:value={newItemId} /></label><label>{i18n.t('Cantidad')}<input type="number" min="1" max="1000000" bind:value={newItemQuantity} /></label><button type="button" disabled={vm.saving} onclick={() => void addLine()}>{i18n.t('Añadir línea')}</button></div>
         {/if}
       </section>
@@ -785,7 +783,7 @@
       {#if showRevertForm && ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status)}
         <section class="so-section">
           <h3>{i18n.t('Revertir estado')}</h3>
-          <label>{i18n.t('Nuevo estado')}<select bind:value={revertTargetStatus}><option value="OPEN">OPEN</option><option value="PICKED">PICKED</option><option value="PACKED">PACKED</option></select></label>
+          <label>{i18n.t('Nuevo estado')}<select bind:value={revertTargetStatus}>{#if order.status !== 'OPEN'}<option value="OPEN">OPEN</option>{/if}{#if ['PACKED', 'SHIPPED'].includes(order.status)}<option value="PICKED">PICKED</option>{/if}{#if order.status === 'SHIPPED'}<option value="PACKED">PACKED</option>{/if}{#if order.status === 'PICKED' || order.status === 'PACKED' || order.status === 'SHIPPED'}<option value={order.status}>{order.status} · {i18n.t('Solo liberar picking')}</option>{/if}</select></label>
           <p class="so-hint">{i18n.t('Las tareas seleccionadas se liberan y devuelven unidades al bin. Las no seleccionadas permanecen recogidas; el servidor impide estados incompatibles.')}</p>
           {#each order.pickTasks as task (task.pickTaskId)}
             <label class="so-short-row"><span>{task.sku} · {task.binCode} · {task.quantityPicked}</span><input type="checkbox" checked={releasePickTaskIds.includes(task.pickTaskId)} onchange={(event) => releasePickTaskIds = event.currentTarget.checked ? [...releasePickTaskIds, task.pickTaskId] : releasePickTaskIds.filter((id) => id !== task.pickTaskId)} /></label>
@@ -827,6 +825,13 @@
     </tbody></table></div>
     <label>{i18n.t('Motivo / notas')}<textarea maxlength="4000" bind:value={rmaReason}></textarea></label>
     <footer class="so-dialog-actions"><button type="button" onclick={() => showRma = false}>{i18n.t('Cerrar')}</button><button class="so-primary" type="button" disabled={vm.saving || !Object.values(rmaQuantities).some((value) => Number(value) > 0)} onclick={() => void submitRma()}>{i18n.t('Crear RMA')}</button></footer>
+  </section></div>
+{/if}
+
+{#if lineReleaseConfirm}
+  <div class="so-overlay so-nested"><section class="so-dialog" role="dialog" aria-modal="true"><header class="so-dialog-head"><h2>{i18n.t('Confirmar liberación de inventario')}</h2></header>
+    <p class="so-hint">{lineReleaseConfirm.intent === 'delete' ? i18n.t('Eliminar esta línea liberará las unidades reservadas de inventario.') : i18n.t('Reducir la cantidad por debajo de lo reservado liberará la diferencia y requerirá volver a recogerla.')}</p>
+    <footer class="so-dialog-actions"><button type="button" onclick={() => lineReleaseConfirm = null}>{i18n.t('Cancelar')}</button><button class="so-danger" type="button" disabled={vm.saving} onclick={() => void confirmLineRelease()}>{i18n.t('Confirmar')}</button></footer>
   </section></div>
 {/if}
 
