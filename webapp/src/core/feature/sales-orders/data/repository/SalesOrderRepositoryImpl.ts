@@ -1,20 +1,14 @@
 import type {
   CreateSalesOrderInput, SalesOrder, SalesOrderPage, UpdateSalesOrder,
   PartialFulfillInput, RevertSalesOrderInput, CreateRmaInput, ReceiveReturnInput,
-  RelatedSalesOrder, UpdateSalesOrderAddressInput, AvailableSalesOrderBin
+  RelatedSalesOrder, UpdateSalesOrderAddressInput, AvailableSalesOrderBin,
+  UpdateSalesOrderAllocationInput, UpdateSalesOrderAllocationResult
 } from '../../domain/entity/SalesOrder';
 import type { ListSalesOrdersParams, SalesOrderRepository } from '../../domain/repository/SalesOrderRepository';
 import type { SalesOrderRemoteDataSource } from '../datasource/SalesOrderRemoteDataSource';
-import type { SalesOrderDetailResponseDto, SalesOrderDto } from '../dto/SalesOrderDto';
+import type { SalesOrderDetailResponseDto } from '../dto/SalesOrderDto';
 import { SalesOrderMapper } from '../mapper/SalesOrderMapper';
 
-function toDetail(row: SalesOrderDetailResponseDto | SalesOrderDto): SalesOrder {
-  const detail = row as Partial<SalesOrderDetailResponseDto>;
-  if (detail.sales_order && Array.isArray(detail.lines) && Array.isArray(detail.pick_tasks)) {
-    return SalesOrderMapper.toDetail(detail as SalesOrderDetailResponseDto);
-  }
-  return SalesOrderMapper.toDomain(row as SalesOrderDto);
-}
 
 export class SalesOrderRepositoryImpl implements SalesOrderRepository {
   constructor(private readonly datasource: SalesOrderRemoteDataSource) {}
@@ -25,7 +19,7 @@ export class SalesOrderRepositoryImpl implements SalesOrderRepository {
     return SalesOrderMapper.toPage(await this.datasource.list(params));
   }
   async getById(id: number): Promise<SalesOrder> {
-    return toDetail(await this.datasource.getById(id));
+    return SalesOrderMapper.toDetail(await this.datasource.getById(id));
   }
   async create(input: CreateSalesOrderInput): Promise<SalesOrder> {
     const payload: Record<string, unknown> = {
@@ -41,7 +35,7 @@ export class SalesOrderRepositoryImpl implements SalesOrderRepository {
       ['ship_by_date', input.shipByDate], ['memo', input.memo], ['order_origin', input.orderOrigin]
     ];
     for (const [key, value] of optionalFields) if (value != null && value !== '') payload[key] = value;
-    return toDetail(await this.datasource.create(payload));
+    return SalesOrderMapper.toDetail(await this.datasource.create(payload));
   }
   async update(id: number, input: UpdateSalesOrder): Promise<void> {
     const fields: Record<string, string> = {
@@ -94,6 +88,14 @@ export class SalesOrderRepositoryImpl implements SalesOrderRepository {
     }
 
     await this.datasource.updateAddress(id, payload);
+  }
+  async updateAllocation(id: number, lineId: number, input: UpdateSalesOrderAllocationInput): Promise<UpdateSalesOrderAllocationResult> {
+    const response = await this.datasource.updateAllocation(id, lineId, input);
+    return {
+      soLineId: response.so_line_id,
+      quantityAllocated: response.quantity_allocated,
+      unchanged: response.unchanged ?? false
+    };
   }
   async cancel(id: number): Promise<SalesOrder> {
     await this.datasource.cancel(id);
