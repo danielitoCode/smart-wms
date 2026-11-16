@@ -56,7 +56,7 @@ describe('Inbound activity UI state + application + repository integration', () 
 	});
 
 	it('applies UI filters and resets pagination before requesting the repository', async () => {
-		const { api, state } = setup();
+		const { get, state } = setup();
 		state.setPage(4);
 		state.setResource('purchase_orders');
 		state.setSourceSystem(' erp ');
@@ -74,7 +74,7 @@ describe('Inbound activity UI state + application + repository integration', () 
 	});
 
 	it('loads canonical detail through the real repository and mapper', async () => {
-		const { api, state } = setup();
+		const { get, state } = setup();
 		await state.openDetail({
 			inboundId: 17, resource: 'purchase_orders', sourceSystem: 'erp', externalId: 'EXT-PO-17',
 			externalVersion: 'v3', canonicalId: dto.canonical_id, receivedAt: dto.received_at,
@@ -89,7 +89,7 @@ describe('Inbound activity UI state + application + repository integration', () 
 	});
 
 	it('preserves the previous list and exposes a retryable error after a failed refresh', async () => {
-		const { api, state } = setup();
+		const { get, state } = setup();
 		await state.load();
 		get.mockRejectedValueOnce(new Error('offline'));
 		await state.load();
@@ -100,7 +100,7 @@ describe('Inbound activity UI state + application + repository integration', () 
 	});
 
 	it('ignores an older list response when a newer filter request finishes first', async () => {
-		const { api, state } = setup();
+		const { get, state } = setup();
 		let resolveOld!: (value: InboundActivityListResponseDto) => void;
 		const pending = new Promise<InboundActivityListResponseDto>(resolve => { resolveOld = resolve; });
 		get.mockReturnValueOnce(pending as Promise<InboundActivityDto | InboundActivityListResponseDto>)
