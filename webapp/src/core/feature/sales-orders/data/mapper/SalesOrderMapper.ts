@@ -102,7 +102,11 @@ function toDomain(dto: SalesOrderProjectionDto): SalesOrder {
     sourceSystem: dto.source_system ?? null, cancellationReason: dto.cancellation_reason ?? null,
     backorderOpenedAt: dto.backorder_opened_at ?? null,
     backorderFulfillableAt: dto.backorder_fulfillable_at ?? null,
-    createdAt: dto.created_at ?? null, pickedAt: dto.picked_at ?? null,
+    createdAt: dto.created_at ?? null, printedAt: dto.printed_at ?? null,
+    primaryBinCode: dto.primary_bin_code ?? null,
+    primaryBinPickSequence: dto.primary_bin_pick_sequence ?? null,
+    lineCount: dto.line_count,
+    pickedAt: dto.picked_at ?? null,
     shippedAt: dto.shipped_at ?? null, shippedDateLocal: dto.shipped_date_local ?? null,
     billingAddress: toAddress(dto, 'billing'), shippingAddress: toAddress(dto, 'shipping'),
     lines: Array.isArray(dto.lines) ? dto.lines.map(toLine) : [], pickTasks: []
