@@ -1,5 +1,5 @@
 """Read-only admin observability for accepted inbound records."""
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 
 from flask import jsonify, request, g
@@ -52,7 +52,8 @@ def _parse_timestamp(value, name):
     if not value:
         return None
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
     except (TypeError, ValueError):
         raise ValueError(f"invalid_{name}")
 

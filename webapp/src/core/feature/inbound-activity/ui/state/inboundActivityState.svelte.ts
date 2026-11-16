@@ -10,14 +10,14 @@ export function createInboundActivityState() {
 	let page = $state(1), perPage = $state(50), total = $state(0), hasNext = $state(false);
 	function query(): InboundActivityQuery { return { resource: resource || undefined, sourceSystem: sourceSystem.trim() || undefined,
 		status: status || undefined, since: since ? new Date(since).toISOString() : undefined, until: until ? new Date(until).toISOString() : undefined, page, perPage }; }
-	async function load() {
+	async function load(filtered = false) {
 		loading = true; error = null;
-		try { const result = await deps.list.execute(query()); rows = result.rows; page = result.page;
+		try { const result = filtered ? await deps.filter.execute(query()) : await deps.list.execute(query()); rows = result.rows; page = result.page;
 			perPage = result.perPage; total = result.total; hasNext = result.hasNext; }
 		catch (cause) { error = toUserMessage(cause, 'No se pudo cargar la actividad inbound'); rows = []; }
 		finally { loading = false; }
 	}
-	async function applyFilters() { page = 1; await load(); }
+	async function applyFilters() { page = 1; await load(true); }
 	async function openDetail(row: InboundActivityRow) {
 		detail = null; detailError = null; detailLoading = true;
 		try { detail = await deps.getDetail.execute(row.resource, row.inboundId); }

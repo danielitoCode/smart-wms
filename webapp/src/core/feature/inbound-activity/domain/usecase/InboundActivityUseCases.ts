@@ -19,3 +19,10 @@ export class GetInboundActivityDetailUseCase {
 		return this.repository.getDetail(resource, inboundId);
 	}
 }
+
+export class FilterInboundActivityUseCase {
+	constructor(private readonly repository: InboundActivityRepository) {}
+	execute(query: InboundActivityQuery = {}) {
+		return new ListInboundActivityUseCase(this.repository).execute({ ...query, page: 1 });
+	}
+}
