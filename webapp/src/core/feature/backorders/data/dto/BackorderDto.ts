@@ -1,3 +1,7 @@
+export type BackorderStatusDto =
+  | 'WAITING_STOCK' | 'OPEN' | 'PICKED' | 'PACKED' | 'SHIPPED'
+  | 'CANCELLED' | 'REFUNDED';
+
 export interface BackorderOpenPurchaseOrderDto {
   po_number: string;
   expected_date: string | null;
@@ -16,7 +20,7 @@ export interface BackorderDto {
   so_number: string;
   parent_so_number: string | null;
   warehouse_id: number;
-  status: string;
+  status: BackorderStatusDto;
   customer_name: string | null;
   items: BackorderItemDto[];
   days_waiting: number;
