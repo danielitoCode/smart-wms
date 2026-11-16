@@ -464,6 +464,32 @@
     <button type="submit" disabled={vm.loading}>{i18n.t('Filtrar')}</button>
   </form>
 
+  <section class="so-section so-short-picks">
+    <div class="so-section-head">
+      <div>
+        <h3>{i18n.t('Faltantes recientes')}</h3>
+        <p class="so-hint">{i18n.t('Eventos SHORT_PICK de los últimos 30 días.')}</p>
+      </div>
+      <button type="button" onclick={() => void vm.loadShortPicks(30, warehouseSelection?.warehouseId ?? undefined)} disabled={vm.loadingShortPicks}>
+        {vm.loadingShortPicks ? i18n.t('Cargando…') : i18n.t('Consultar faltantes')}
+      </button>
+    </div>
+    {#if vm.shortPicks.length > 0}
+      <div class="table-wrap"><table>
+        <thead><tr><th>{i18n.t('Fecha')}</th><th>SKU</th><th>{i18n.t('Usuario')}</th><th>{i18n.t('Bin')}</th><th>{i18n.t('Esperado')}</th><th>{i18n.t('Recogido')}</th><th>{i18n.t('Faltante')}</th><th>{i18n.t('Lote')}</th></tr></thead>
+        <tbody>{#each vm.shortPicks as shortPick (shortPick.logId)}
+          <tr>
+            <td>{shortPick.timestamp ? new Date(shortPick.timestamp).toLocaleString() : '—'}</td>
+            <td>{shortPick.sku}</td><td>{shortPick.user}</td><td>{shortPick.binCode ?? '—'}</td>
+            <td>{shortPick.quantityExpected}</td><td>{shortPick.quantityPicked}</td><td>{shortPick.shortage}</td><td>{shortPick.batchId ?? '—'}</td>
+          </tr>
+        {/each}</tbody>
+      </table></div>
+    {:else if vm.loadedShortPicks}
+      <p class="empty">{i18n.t('No hay faltantes registrados en el período.')}</p>
+    {/if}
+  </section>
+
   {#if vm.loading && vm.orders.length === 0}
     <div class="skeleton" aria-label={i18n.t('Cargando')}><span></span><span></span><span></span></div>
   {:else if vm.orders.length === 0}
