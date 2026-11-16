@@ -5,6 +5,7 @@ export type InboundActivityPage = {
 	page: number;
 	perPage: number;
 	total: number;
+	hasNext: boolean;
 };
 
 export interface InboundActivityRepository {
