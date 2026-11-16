@@ -12,6 +12,7 @@
   import PageHeader from '../../../../../lib/components/PageHeader.svelte';
   import UiBanner from '../../../../../lib/components/UiBanner.svelte';
   import { pushToast } from '../../../../../lib/ui/toast.svelte';
+  import { createItemsState } from '../../../items/ui/state/itemsState.svelte';
 
   type AddressForm = { [Key in keyof SalesOrderAddress]: string };
 
@@ -33,6 +34,7 @@
 
   const i18n = getContext<I18nState>('i18n');
   const vm = createSalesOrdersState();
+  const itemsVm = createItemsState();
   const warehouseSelection = getContext<{ warehouseId: number | null }>('warehouseSelection');
   const authGuard = getContext<{
     user: { role: string; allowedOverrides: string[] } | null;
@@ -94,6 +96,7 @@
   let billingAddress = $state<AddressForm>(createAddressForm());
   let shippingAddress = $state<AddressForm>(createAddressForm());
   let newItemId = $state('');
+  let newItemSearch = $state('');
   let newItemQuantity = $state('1');
   let lineQuantity = $state<Record<number, string>>({});
   let feedback = $state<string | null>(null);
@@ -364,6 +367,14 @@
       feedback = i18n.t('RMA anulado.');
       pushToast(feedback, 'success');
     } else if (vm.error) pushToast(vm.error, 'error');
+  }
+
+  async function searchItemsForLine(): Promise<void> {
+    const query = newItemSearch.trim();
+    if (query.length < 2) return;
+    itemsVm.setFilter('active');
+    itemsVm.setQuery(query);
+    await itemsVm.load(1);
   }
 
   async function addLine(): Promise<void> {
@@ -731,7 +742,7 @@
           <tbody>{#each order.lines as line (line.soLineId)}
             <tr>
               <td>{line.lineNumber ?? '—'}</td><td>{line.sku}</td><td>{line.itemName}</td>
-              <td>{#if editMode && canEditLines(order)}<input class="so-qty" type="number" min="1" max="1000000" value={lineQuantity[line.soLineId] ?? String(line.quantityOrdered)} oninput={(event) => lineQuantity[line.soLineId] = event.currentTarget.value} /><button type="button" onclick={() => void updateLine(line.soLineId)}>✓</button>{:else}{line.quantityOrdered}{/if}</td>
+              <td>{#if editMode && canEditLines(order)}<input class="so-qty" type="number" min={Math.max(1, line.quantityPicked)} max="1000000" value={lineQuantity[line.soLineId] ?? String(line.quantityOrdered)} oninput={(event) => lineQuantity[line.soLineId] = event.currentTarget.value} /><button type="button" onclick={() => void updateLine(line.soLineId)}>✓</button>{:else}{line.quantityOrdered}{/if}</td>
               <td>{line.quantityAllocated}</td><td>{line.quantityPicked}</td><td>{line.quantityPacked}</td><td>{line.quantityShipped}</td>
               <td>{#if editMode && canEditLines(order)}<button type="button" onclick={() => void applyAllocation(line.soLineId, 1)} title={i18n.t('Reservar una unidad')}>+A</button><button type="button" onclick={() => void applyAllocation(line.soLineId, -1)} title={i18n.t('Liberar una unidad')}>−A</button><button class="so-danger" type="button" disabled={!canRemoveLine(order, line)} onclick={() => void removeLine(line.soLineId)}>×</button>{/if}<button type="button" onclick={() => void vm.loadAvailableBins(line.soLineId)}>{i18n.t('Bins')}</button></td>
             </tr>
@@ -741,7 +752,8 @@
           {/each}</tbody>
         </table></div>
         {#if editMode && canEditLines(order)}
-          <div class="so-inline-form"><label>{i18n.t('Artículo ID')}<input type="number" min="1" bind:value={newItemId} /></label><label>{i18n.t('Cantidad')}<input type="number" min="1" max="1000000" bind:value={newItemQuantity} /></label><button type="button" disabled={vm.saving} onclick={() => void addLine()}>{i18n.t('Añadir línea')}</button></div>
+          <div class="so-inline-form"><label>{i18n.t('Buscar SKU')}<input bind:value={newItemSearch} placeholder={i18n.t('Código o nombre del artículo')} /></label><button type="button" disabled={itemsVm.loading || newItemSearch.trim().length < 2} onclick={() => void searchItemsForLine()}>{itemsVm.loading ? i18n.t('Buscando…') : i18n.t('Buscar')}</button><label>{i18n.t('Artículo')}<select bind:value={newItemId}><option value="">{i18n.t('Seleccionar artículo')}</option>{#each itemsVm.items as item (item.id)}<option value={item.id}>{item.sku} · {item.name}</option>{/each}</select></label><label>{i18n.t('Cantidad')}<input type="number" min="1" max="1000000" bind:value={newItemQuantity} /></label><button type="button" disabled={vm.saving || !newItemId} onclick={() => void addLine()}>{i18n.t('Añadir línea')}</button></div>
+          {#if itemsVm.error}<p class="so-hint" role="alert">{itemsVm.error}</p>{/if}
         {/if}
       </section>
 
