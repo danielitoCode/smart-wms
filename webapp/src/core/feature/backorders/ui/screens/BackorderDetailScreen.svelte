@@ -4,6 +4,7 @@
   import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
   import type { User } from '../../../auth/domain/entity/User';
   import type { CancelBackorderReason } from '../../domain/entity/Backorder';
+  import { resolveBackorderWarehouseScope } from '../../domain/policy/BackorderScopePolicy';
   import { createBackordersState } from '../state/backordersState.svelte';
 
   interface Props { backorderId: number; }
@@ -46,7 +47,19 @@
   async function submitCancel(): Promise<void> {
     if (!order || !cancelable) return;
     cancelError = null;
-    const ok = await vm.cancel(order.salesOrderId, reason, selection?.warehouseId ?? null);
+    let warehouseId: number | null;
+    try {
+      warehouseId = resolveBackorderWarehouseScope({
+        role: guard.user?.role ?? 'USER',
+        allowedPages: guard.user?.allowedPages ?? [],
+        assignedWarehouseIds: guard.user?.warehouseIds ?? [],
+        selectedWarehouseId: selection?.warehouseId ?? null
+      });
+    } catch (cause) {
+      cancelError = cause instanceof Error ? cause.message : i18n.t('No tienes acceso al almacén seleccionado.');
+      return;
+    }
+    const ok = await vm.cancel(order.salesOrderId, reason, warehouseId);
     if (!ok) {
       cancelError = vm.error;
       return;
