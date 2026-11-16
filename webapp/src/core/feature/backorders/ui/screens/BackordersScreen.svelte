@@ -6,6 +6,7 @@
   import type { User } from '../../../auth/domain/entity/User';
   import { createBackordersState } from '../state/backordersState.svelte';
   import type { BackorderQueueTab } from '../../domain/entity/Backorder';
+  import { resolveBackorderWarehouseScope } from '../../domain/policy/BackorderScopePolicy';
 
   const i18n = getContext<I18nState>('i18n');
   const selection = getContext<{ warehouseId: number | null }>('warehouseSelection');
@@ -14,11 +15,9 @@
 
   let search = $state('');
   let scopeError = $state(false);
+  let scopeErrorMessage = $state('');
   let successMessage = $state('');
 
-  const canBrowseAllWarehouses = $derived(
-    guard.user?.role === 'ADMIN' || guard.user?.allowedPages.includes('warehouses') === true
-  );
   const canOpenSalesOrderDetail = $derived(
     guard.user?.role === 'ADMIN' || guard.user?.allowedPages.includes('sales-orders') === true
   );
@@ -40,13 +39,20 @@
 
   $effect(() => {
     if (guard.status !== 'authenticated') return;
-    const warehouseId = selection?.warehouseId ?? null;
-    if (warehouseId === null && !canBrowseAllWarehouses) {
+    try {
+      const warehouseId = resolveBackorderWarehouseScope({
+        role: guard.user?.role ?? 'USER',
+        allowedPages: guard.user?.allowedPages ?? [],
+        assignedWarehouseIds: guard.user?.warehouseIds ?? [],
+        selectedWarehouseId: selection?.warehouseId ?? null
+      });
+      scopeError = false;
+      scopeErrorMessage = '';
+      void vm.load(warehouseId, activeTab);
+    } catch (cause) {
       scopeError = true;
-      return;
+      scopeErrorMessage = cause instanceof Error ? cause.message : i18n.t('No tienes acceso al almacén seleccionado.');
     }
-    scopeError = false;
-    void vm.load(warehouseId, activeTab);
   });
 
   async function changeTab(tab: BackorderQueueTab): Promise<void> {
@@ -94,7 +100,7 @@
   </div>
 
   {#if scopeError}
-    <p class="message error" role="alert">{i18n.t('No tienes un almacén asignado. Selecciona un almacén autorizado o solicita acceso a Almacenes.')}</p>
+    <p class="message error" role="alert">{scopeErrorMessage}</p>
   {:else if vm.error}
     <p class="message error" role="alert">{vm.error}</p>
   {/if}
