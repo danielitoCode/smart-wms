@@ -22,10 +22,20 @@ function makeOrder(overrides: Partial<SalesOrder> = {}): SalesOrder {
   } as SalesOrder;
 }
 
-function repository(order = makeOrder()) {
+function makeParent(id = 10): SalesOrder {
+  return makeOrder({
+    salesOrderId: id, salesOrderNumber: 'SO-10', soNumber: 'SO-10', id,
+    parentSoId: null, parentSoNumber: null, parentSalesOrderNumber: null,
+    orderType: 'sale'
+  });
+}
+
+function repository(order = makeOrder(), parentSalesOrder: SalesOrder | null = order.parentSoId === null ? null : makeParent(order.parentSoId)) {
   return {
     list: vi.fn().mockResolvedValue([]),
-    getDetail: vi.fn().mockResolvedValue({ order, parentSalesOrder: null }),
+    getDetail: vi.fn().mockResolvedValue({
+      order, parentSalesOrder, lines: [], totalQuantityPending: 0, totalQuantityResolved: 0
+    }),
     cancel: vi.fn().mockResolvedValue(undefined)
   } as unknown as BackordersRepository & {
     list: ReturnType<typeof vi.fn>;
@@ -49,7 +59,7 @@ describe('ListBackordersUseCase', () => {
     expect(repo.list).not.toHaveBeenCalled();
   });
 
-  it('allows null warehouse only for an explicitly unscoped caller', async () => {
+  it('allows null warehouse only when the caller has already resolved an admin-wide scope', async () => {
     const repo = repository();
     await new ListBackordersUseCase(repo).execute(null, 'waiting');
     expect(repo.list).toHaveBeenCalledWith(null, 'waiting');
@@ -57,21 +67,27 @@ describe('ListBackordersUseCase', () => {
 });
 
 describe('GetBackorderDetailUseCase', () => {
-  it('loads detail by the child sales-order id', async () => {
+  it('loads the backorder and validates the parent relationship resolved from detail', async () => {
     const repo = repository();
     const result = await new GetBackorderDetailUseCase(repo).execute(41);
     expect(repo.getDetail).toHaveBeenCalledWith(41);
     expect(result.order.salesOrderId).toBe(41);
+    expect(result.parentSalesOrder?.salesOrderId).toBe(10);
   });
 
-  it('accepts a POS order included by the backorder lifecycle timestamp', async () => {
+  it('accepts a POS order included by the backorder lifecycle timestamp without a parent', async () => {
     const posBackorder = makeOrder({
       orderType: 'sale', parentSoId: null, backorderOpenedAt: '2026-11-02T00:00:00Z'
     });
     const repo = repository(posBackorder);
     const detail = await new GetBackorderDetailUseCase(repo).execute(41);
     expect(detail.order.orderType).toBe('sale');
-    expect(detail.order.backorderOpenedAt).toBe('2026-11-02T00:00:00Z');
+    expect(detail.parentSalesOrder).toBeNull();
+  });
+
+  it('rejects a mismatched parent detail', async () => {
+    const repo = repository(makeOrder(), makeParent(99));
+    await expect(new GetBackorderDetailUseCase(repo).execute(41)).rejects.toThrow(/pedido original/);
   });
 
   it('rejects invalid identifiers and unrelated sales orders', async () => {
@@ -83,7 +99,7 @@ describe('GetBackorderDetailUseCase', () => {
 });
 
 describe('CancelBackorderUseCase', () => {
-  it('cancels only a child backorder with a valid reason', async () => {
+  it('cancels only a child backorder with a resolved parent and valid reason', async () => {
     const repo = repository();
     await new CancelBackorderUseCase(repo).execute(41, 'found');
     expect(repo.getDetail).toHaveBeenCalledWith(41);
@@ -102,8 +118,14 @@ describe('CancelBackorderUseCase', () => {
     expect(repo.cancel).not.toHaveBeenCalled();
   });
 
-  it('rejects already-cancelled, refunded and shipped orders before posting', async () => {
-    for (const status of ['CANCELLED', 'REFUNDED', 'SHIPPED'] as const) {
+  it('rejects a missing or mismatched parent before posting cancellation', async () => {
+    const repo = repository(makeOrder(), null);
+    await expect(new CancelBackorderUseCase(repo).execute(41, 'other')).rejects.toThrow(/pedido original/);
+    expect(repo.cancel).not.toHaveBeenCalled();
+  });
+
+  it('rejects every state outside the backend cancellation lifecycle', async () => {
+    for (const status of ['CANCELLED', 'REFUNDED', 'SHIPPED', 'FRAUD_REVIEW'] as const) {
       const repo = repository(makeOrder({ status }));
       await expect(new CancelBackorderUseCase(repo).execute(41, 'other')).rejects.toThrow(status);
       expect(repo.cancel).not.toHaveBeenCalled();
