@@ -6,6 +6,12 @@ import type {
 } from '../../domain/entity/SalesOrder';
 import type { ListSalesOrdersParams, SalesOrderRepository } from '../../domain/repository/SalesOrderRepository';
 import type { SalesOrderRemoteDataSource } from '../datasource/SalesOrderRemoteDataSource';
+import type {
+  CreateSalesOrderRequestDto, UpdateSalesOrderRequestDto,
+  UpdateSalesOrderAddressRequestDto, AdminPickRequestDto,
+  PartialFulfillRequestDto, RevertSalesOrderStatusRequestDto,
+  CreateRmaRequestDto, ReceiveRmaRequestDto
+} from '../dto/SalesOrderDto';
 import { SalesOrderMapper } from '../mapper/SalesOrderMapper';
 
 
@@ -28,71 +34,68 @@ export class SalesOrderRepositoryImpl implements SalesOrderRepository {
     return SalesOrderMapper.toDetail(await this.datasource.getById(id));
   }
   async create(input: CreateSalesOrderInput): Promise<SalesOrder> {
-    const payload: Record<string, unknown> = {
-      so_number: input.soNumber, warehouse_id: input.warehouseId,
+    const payload: CreateSalesOrderRequestDto = {
+      so_number: input.soNumber,
+      warehouse_id: input.warehouseId,
       lines: input.lines.map(({ itemId, quantityOrdered }) => ({
-        item_id: itemId, quantity_ordered: quantityOrdered
+        item_id: itemId,
+        quantity_ordered: quantityOrdered
       }))
     };
-    const optionalFields: Array<[string, string | null | undefined]> = [
-      ['customer_name', input.customerName], ['customer_email', input.customerEmail],
-      ['customer_phone', input.customerPhone], ['customer_address', input.customerAddress],
-      ['ship_address', input.shipAddress], ['ship_method', input.shipMethod],
-      ['ship_by_date', input.shipByDate], ['memo', input.memo], ['order_origin', input.orderOrigin]
-    ];
-    for (const [key, value] of optionalFields) if (value != null && value !== '') payload[key] = value;
+    if (input.customerName != null && input.customerName !== '') payload.customer_name = input.customerName;
+    if (input.customerEmail != null && input.customerEmail !== '') payload.customer_email = input.customerEmail;
+    if (input.customerPhone != null && input.customerPhone !== '') payload.customer_phone = input.customerPhone;
+    if (input.customerAddress != null && input.customerAddress !== '') payload.customer_address = input.customerAddress;
+    if (input.shipAddress != null && input.shipAddress !== '') payload.ship_address = input.shipAddress;
+    if (input.shipMethod != null && input.shipMethod !== '') payload.ship_method = input.shipMethod;
+    if (input.shipByDate != null && input.shipByDate !== '') payload.ship_by_date = input.shipByDate;
+    if (input.memo != null && input.memo !== '') payload.memo = input.memo;
+    if (input.orderOrigin != null && input.orderOrigin !== '') payload.order_origin = input.orderOrigin;
     return SalesOrderMapper.toDetail(await this.datasource.create(payload));
   }
   async update(id: number, input: UpdateSalesOrder): Promise<void> {
-    const fields: Record<string, string> = {
-      salesOrderNumber: 'so_number', soNumber: 'so_number',
-      customerName: 'customer_name', customerPhone: 'customer_phone',
-      customerEmail: 'customer_email', customerAddress: 'customer_address',
-      shipAddress: 'ship_address', shipMethod: 'ship_method',
-      shipByDate: 'ship_by_date', shippedAt: 'shipped_at',
-      trackingNumber: 'tracking_number', carrier: 'carrier', memo: 'memo',
-      orderOrigin: 'order_origin', sourceSystem: 'source_system',
-      priority: 'priority', status: 'status'
-    };
-    const payload: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(input)) {
-      const apiKey = fields[key];
-      if (apiKey) payload[apiKey] = value;
-    }
+    const payload: UpdateSalesOrderRequestDto = {};
+    if (input.salesOrderNumber !== undefined) payload.so_number = input.salesOrderNumber;
+    else if (input.soNumber !== undefined) payload.so_number = input.soNumber;
+    if (input.customerName !== undefined) payload.customer_name = input.customerName;
+    if (input.customerPhone !== undefined) payload.customer_phone = input.customerPhone;
+    if (input.customerEmail !== undefined) payload.customer_email = input.customerEmail;
+    if (input.customerAddress !== undefined) payload.customer_address = input.customerAddress;
+    if (input.shipAddress !== undefined) payload.ship_address = input.shipAddress;
+    if (input.shipMethod !== undefined) payload.ship_method = input.shipMethod;
+    if (input.shipByDate !== undefined) payload.ship_by_date = input.shipByDate;
+    if (input.shippedAt !== undefined) payload.shipped_at = input.shippedAt;
+    if (input.trackingNumber !== undefined) payload.tracking_number = input.trackingNumber;
+    if (input.carrier !== undefined) payload.carrier = input.carrier;
+    if (input.memo !== undefined) payload.memo = input.memo;
+    if (input.orderOrigin !== undefined) payload.order_origin = input.orderOrigin;
+    if (input.sourceSystem !== undefined) payload.source_system = input.sourceSystem;
+    if (input.priority !== undefined) payload.priority = input.priority;
+    if (input.status !== undefined) payload.status = input.status;
     if (!Object.keys(payload).length) throw new Error('No hay campos compatibles para actualizar');
     await this.datasource.update(id, payload);
   }
   async updateAddress(id: number, input: UpdateSalesOrderAddressInput): Promise<void> {
-    const addressFields: Record<string, string> = {
-      name: 'name',
-      line1: 'line1',
-      line2: 'line2',
-      city: 'city',
-      state: 'state',
-      postalCode: 'postal_code',
-      country: 'country',
-      phone: 'phone'
-    };
-    const payload: Record<string, string> = {};
-
+    const addressFields = {
+      name: 'name', line1: 'line1', line2: 'line2', city: 'city',
+      state: 'state', postalCode: 'postal_code', country: 'country', phone: 'phone'
+    } as const;
+    const payload: UpdateSalesOrderAddressRequestDto = {};
     for (const [group, address] of Object.entries({
       billing: input.billingAddress,
       shipping: input.shippingAddress
     })) {
       if (!address) continue;
-
       for (const [field, value] of Object.entries(address)) {
-        const apiField = addressFields[field];
-        if (apiField && value !== null && value !== undefined) {
-          payload[`${group}_address_${apiField}`] = value;
-        }
+        const apiField = addressFields[field as keyof typeof addressFields];
+        if (!apiField || value === null || value === undefined) continue;
+        const key = (group + '_address_' + apiField) as keyof UpdateSalesOrderAddressRequestDto;
+        payload[key] = value;
       }
     }
-
     if (!Object.keys(payload).length) {
       throw new Error('No hay campos de dirección compatibles para actualizar');
     }
-
     await this.datasource.updateAddress(id, payload);
   }
   async updateAllocation(id: number, lineId: number, input: UpdateSalesOrderAllocationInput): Promise<UpdateSalesOrderAllocationResult> {
@@ -111,11 +114,11 @@ export class SalesOrderRepositoryImpl implements SalesOrderRepository {
     return this.datasource.addLine(id, { item_id: input.itemId, quantity_ordered: input.quantityOrdered });
   }
   updateLine(id: number, lineId: number, quantity: number): Promise<void> {
-    return this.datasource.updateLine(id, lineId, quantity);
+    return this.datasource.updateLine(id, lineId, { quantity_ordered: quantity });
   }
   deleteLine(id: number, lineId: number): Promise<void> { return this.datasource.deleteLine(id, lineId); }
   async adminShip(id: number, acknowledgeShortfall = false): Promise<AdminShipResult> {
-    const response = await this.datasource.adminShip(id, acknowledgeShortfall);
+    const response = await this.datasource.adminShip(id, { acknowledge_shortfall: acknowledgeShortfall });
     return {
       fulfillmentId: response.fulfillment_id,
       linesShipped: response.lines_shipped,
@@ -135,23 +138,49 @@ export class SalesOrderRepositoryImpl implements SalesOrderRepository {
     }));
   }
   adminPick(id: number, lines: Array<{ soLineId: number; binId: number; quantity: number }>): Promise<void> {
-    return this.datasource.adminPick(id, lines);
+    const payload: AdminPickRequestDto = {
+      lines: lines.map(({ soLineId, binId, quantity }) => ({
+        so_line_id: soLineId, bin_id: binId, quantity
+      }))
+    };
+    return this.datasource.adminPick(id, payload);
   }
   partialFulfill(id: number, input: PartialFulfillInput): Promise<void> {
-    return this.datasource.partialFulfill(id, input);
+    const payload: PartialFulfillRequestDto = {
+      lines: input.lines.map(({ soLineId, shortQuantity }) => ({ so_line_id: soLineId, short_qty: shortQuantity })),
+      reason_detail: input.reason
+    };
+    return this.datasource.partialFulfill(id, payload);
   }
   revertStatus(id: number, input: RevertSalesOrderInput): Promise<void> {
-    return this.datasource.revertStatus(id, input);
+    const payload: RevertSalesOrderStatusRequestDto = {
+      new_status: input.newStatus,
+      release_pick_task_ids: input.releasePickTaskIds
+    };
+    return this.datasource.revertStatus(id, payload);
   }
   async related(id: number): Promise<RelatedSalesOrder[]> {
     const response = await this.datasource.related(id);
     return SalesOrderMapper.toRelated(response.records);
   }
   createRma(id: number, input: CreateRmaInput): Promise<void> {
-    return this.datasource.createRma(id, input);
+    const payload: CreateRmaRequestDto = {
+      lines: input.lines.map((line) => ({
+        item_id: line.itemId, quantity: line.quantity,
+        ...(line.originalSoLineId == null ? {} : { original_so_line_id: line.originalSoLineId })
+      })),
+      memo: input.reason ?? null
+    };
+    return this.datasource.createRma(id, payload);
   }
   receiveReturn(id: number, input: ReceiveReturnInput): Promise<void> {
-    return this.datasource.receiveReturn(id, input);
+    const payload: ReceiveRmaRequestDto = {
+      item_id: input.itemId, quantity: input.quantity,
+      warehouse_id: input.warehouseId, bin_id: input.binId,
+      ...(input.notes == null ? {} : { notes: input.notes }),
+      ...(input.idempotencyKey == null ? {} : { idempotency_key: input.idempotencyKey })
+    };
+    return this.datasource.receiveReturn(id, payload);
   }
   voidReturn(id: number): Promise<void> { return this.datasource.voidReturn(id); }
 }
