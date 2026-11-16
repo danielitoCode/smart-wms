@@ -35,6 +35,11 @@ describe('PickingTicketMapper', () => {
     expect(() => PickingTicketMapper.toTicket({ ...dto, sales_order: null })).toThrow(/pedido válido/);
     expect(() => PickingTicketMapper.toTicket({ ...dto, lines: null as never })).toThrow(/líneas/);
   });
+  it('accepts a valid ticket with no lines so the UI can render the empty-preparation state', () => {
+    const ticket = PickingTicketMapper.toTicket({ ...dto, lines: [] });
+    expect(ticket.order.salesOrderId).toBe(7);
+    expect(ticket.lines).toEqual([]);
+  });
   it('maps a repeated mark-printed response to a successful empty result', () => {
     expect(PickingTicketMapper.toMarked({ marked: [] })).toEqual({ marked: [] });
   });
