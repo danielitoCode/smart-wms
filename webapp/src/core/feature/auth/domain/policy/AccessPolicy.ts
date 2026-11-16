@@ -81,6 +81,7 @@ export function requiredPageKeysForPath(pathname: string): string[] {
 	if (pathname === '/putaway' || pathname.startsWith('/putaway/')) return ['putaway'];
 	if (pathname === '/items' || pathname.startsWith('/items/')) return ['items'];
 	if (pathname === '/picking-tickets' || pathname.startsWith('/picking-tickets/')) return ['picking-tickets'];
+	if (pathname === '/picking-batches' || pathname.startsWith('/picking-batches/')) return ['picking-batches'];
 	if (pathname === '/picking' || pathname.startsWith('/picking/')) return []; // mobile flow; not in ALL_PAGE_KEYS
 	if (pathname === '/packing' || pathname.startsWith('/packing/')) return [];
 	if (pathname === '/shipping' || pathname.startsWith('/shipping/')) return [];
