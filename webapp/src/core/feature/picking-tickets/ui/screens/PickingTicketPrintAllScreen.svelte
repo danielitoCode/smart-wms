@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { getContext, onMount } from 'svelte';
   import { createPickingTicketsDependencies } from '../../di/pickingTickets.dependencies';
   import { createPickingQueueDependencies } from '../../di/pickingQueue.dependencies';
   import type { PickingTicket } from '../../domain/entity/PickingTicket';
   import { groupOrdersByAddress } from '../../domain/policy/pickingGroups';
   const deps = createPickingTicketsDependencies();
   const queue = createPickingQueueDependencies();
+  const warehouse = getContext<{ warehouseId: number | null }>('warehouseSelection');
   let { salesOrderIds, status, warehouseId, combine = false }: { salesOrderIds: number[]; status: string; warehouseId?: number; combine?: boolean } = $props();
   let tickets = $state<PickingTicket[]>([]);
   let loading = $state(true);
@@ -39,7 +40,9 @@
     try {
       let ids = [...new Set(salesOrderIds)].slice(0, limit);
       if (!ids.length) {
-        const page = await queue.getAllPrintableTickets.execute({ status: status === 'ALL' ? 'ALL' : status === 'PICKED' ? 'PICKED' : 'OPEN', hidePrinted: false, warehouseId });
+        const selectedWarehouseId = warehouseId ?? warehouse?.warehouseId ?? undefined;
+        if (selectedWarehouseId == null) throw new Error('Select a warehouse before loading the print queue.');
+        const page = await queue.getAllPrintableTickets.execute({ status: status === 'ALL' ? 'ALL' : status === 'PICKED' ? 'PICKED' : 'OPEN', hidePrinted: false, warehouseId: selectedWarehouseId });
         ids = page.items.slice(0, limit).map((order) => order.salesOrderId);
       }
       const results = await Promise.allSettled(ids.map((id) => deps.getTicket.execute(id)));
