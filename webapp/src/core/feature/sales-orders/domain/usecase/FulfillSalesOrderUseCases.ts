@@ -1,4 +1,4 @@
-import type { AvailableSalesOrderBin, PartialFulfillInput, RevertSalesOrderInput } from '../entity/SalesOrder';
+import type { AdminShipResult, AvailableSalesOrderBin, PartialFulfillInput, RevertSalesOrderInput } from '../entity/SalesOrder';
 import type { SalesOrderRepository } from '../repository/SalesOrderRepository';
 
 export class GetAvailableSalesOrderBinsUseCase {
@@ -15,9 +15,9 @@ export class GetAvailableSalesOrderBinsUseCase {
 
 export class AdminShipSalesOrderUseCase {
   constructor(private readonly repository: SalesOrderRepository) {}
-  execute(id: number): Promise<void> {
+  execute(id: number, acknowledgeShortfall = false): Promise<AdminShipResult> {
     validateOrderId(id);
-    return this.repository.adminShip(id);
+    return this.repository.adminShip(id, acknowledgeShortfall);
   }
 }
 
