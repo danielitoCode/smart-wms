@@ -196,6 +196,11 @@
     editTrackingNumber = order.trackingNumber ?? '';
     editShippedDate = order.shippedDateLocal ?? '';
     lineQuantity = Object.fromEntries(order.lines.map((line) => [line.soLineId, String(line.quantityOrdered)]));
+    showPartialFulfill = false;
+    showRevertForm = false;
+    releaseOnly = false;
+    releasePickTaskIds = [];
+    lineReleaseConfirm = null;
     editMode = true;
     billingAddress = createAddressForm(order.billingAddress);
     shippingAddress = createAddressForm(order.shippingAddress);
