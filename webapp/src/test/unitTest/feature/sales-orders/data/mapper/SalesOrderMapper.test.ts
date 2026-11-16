@@ -7,7 +7,8 @@ const summary = {
   customer_phone: null, customer_address: null, status: 'OPEN', priority: 0,
   warehouse_id: 2, order_type: 'sale', parent_so_id: null, ship_method: null,
   ship_address: null, order_date: null, ship_by_date: null, created_at: null,
-  created_by: 'admin', carrier: null, tracking_number: null, memo: null
+  created_by: 'admin', carrier: null, tracking_number: null, shipped_at: null,
+  shipped_date_local: null, printed_at: null, memo: null
 };
 
 describe('SalesOrderMapper', () => {
@@ -27,7 +28,8 @@ describe('SalesOrderMapper', () => {
         ...summary, customer_email: null, order_total: '0.00',
         customer_shipping_paid: null, shipped_date_local: null, shipped_at: null,
         source_system: null, order_origin: null, parent_so_number: null,
-        cancellation_reason: null,
+        cancellation_reason: null, created_by: 'admin', picked_at: null, packed_at: null,
+        backorder_opened_at: null, backorder_fulfillable_at: null,
         billing_address_name: 'Acme', billing_address_line1: '1 Main',
         billing_address_line2: null, billing_address_city: 'Havana',
         billing_address_state: null, billing_address_postal_code: null,
