@@ -2,7 +2,7 @@ import type {PickingBatch} from '../entity/PickingBatch';
 import type {PickingBatchRepository} from '../repository/PickingBatchRepository';
 export class ListPickingBatchesUseCase{
  constructor(private readonly repo:PickingBatchRepository){}
- execute(warehouseId:number){if(!Number.isInteger(warehouseId)||warehouseId<=0)throw new Error('warehouseId must be a positive integer');return this.repo.list(warehouseId);}
+ async execute(warehouseId:number){if(!Number.isInteger(warehouseId)||warehouseId<=0)throw new Error('warehouseId must be a positive integer');const rows=await this.repo.list(warehouseId);return rows.filter(row=>row.status==='OPEN'||row.status==='IN_PROGRESS');}
 }
 /** No admin detail endpoint exists: resolve detail from the warehouse-scoped list. */
 export class GetPickingBatchDetailUseCase{
