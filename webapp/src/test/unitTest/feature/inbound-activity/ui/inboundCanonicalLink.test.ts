@@ -20,9 +20,13 @@ describe('resolveInboundCanonicalLink', () => {
 			.toBe('/management/sales-orders?q=SO-17');
 	});
 
-	it('does not mistake canonical UUIDs or redacted customer/vendor names for route IDs', () => {
+	it('opens vendor detail by the canonical UUID route parameter', () => {
+		expect(resolveInboundCanonicalLink('vendors', { vendor_name: '[REDACTED]' }, '5d32f7bb-a2e9-4a1b-8e6a-62d1f2c1c9d1')?.href)
+			.toBe('/management/vendors?canonical_id=5d32f7bb-a2e9-4a1b-8e6a-62d1f2c1c9d1');
+	});
+
+	it('does not mistake a canonical UUID for a numeric item detail route or expose redacted customer names', () => {
 		expect(resolveInboundCanonicalLink('customers', { customer_name: '[REDACTED]' })).toBeNull();
-		expect(resolveInboundCanonicalLink('vendors', { vendor_name: '[REDACTED]' })).toBeNull();
 		expect(resolveInboundCanonicalLink('items', { id: '5d32f7bb-a2e9-4a1b-8e6a-62d1f2c1c9d1' })).toBeNull();
 		expect(resolveInboundCanonicalLink('purchase_orders', null)).toBeNull();
 	});
