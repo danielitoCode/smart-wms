@@ -5,6 +5,7 @@
 
 	const i18n = getContext<I18nState>('i18n');
 	const vm = createWebhooksState();
+	let name = $state('');
 	let targetUrl = $state('');
 	let eventTypes = $state('');
 	let showForm = $state(false);
@@ -13,8 +14,9 @@
 
 	async function onCreate() {
 		const types = eventTypes.split(',').map((s) => s.trim()).filter(Boolean);
-		const ok = await vm.create({ name: targetUrl.trim(), url: targetUrl.trim(), eventTypes: types });
+		const ok = await vm.create({ name: name.trim(), url: targetUrl.trim(), eventTypes: types });
 		if (ok) {
+			name = '';
 			targetUrl = '';
 			eventTypes = '';
 			showForm = false;
@@ -35,6 +37,7 @@
 	{#if vm.secret}<p class="warn" role="status">{i18n.t('Nuevo secreto:')} <code>{vm.secret}</code></p>{/if}
 	{#if showForm}
 		<form class="form" onsubmit={(e) => { e.preventDefault(); void onCreate(); }}>
+			<label>{i18n.t('Nombre')}<input required bind:value={name} maxlength="120" /></label>
 			<label>{i18n.t('URL destino')}<input type="url" required bind:value={targetUrl} placeholder="https://…" /></label>
 			<label>{i18n.t('Tipos de evento')}<input bind:value={eventTypes} placeholder="order.created, inventory.updated" /></label>
 			<div class="actions">
