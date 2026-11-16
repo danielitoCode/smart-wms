@@ -116,6 +116,7 @@
   let partialReason = $state('');
   let revertTargetStatus = $state('OPEN');
   let releasePickTaskIds = $state<number[]>([]);
+  let releaseOnly = $state(false);
   let rmaQuantities = $state<Record<number, string>>({});
   let rmaReason = $state('');
   let showRma = $state(false);
@@ -194,6 +195,7 @@
     editCarrier = order.carrier ?? '';
     editTrackingNumber = order.trackingNumber ?? '';
     editShippedDate = order.shippedDateLocal ?? '';
+    lineQuantity = Object.fromEntries(order.lines.map((line) => [line.soLineId, String(line.quantityOrdered)]));
     editMode = true;
     billingAddress = createAddressForm(order.billingAddress);
     shippingAddress = createAddressForm(order.shippingAddress);
@@ -393,13 +395,14 @@
   async function updateLine(lineId: number): Promise<void> {
     const quantity = Number(lineQuantity[lineId]);
     const line = vm.selected?.lines.find((candidate) => candidate.soLineId === lineId);
-    if (!line || !Number.isInteger(quantity) || quantity < 1) return;
+    if (!line || !Number.isInteger(quantity) || quantity < Math.max(1, line.quantityPicked)) return;
     if (quantity < line.quantityAllocated && line.quantityAllocated > 0) {
       lineReleaseConfirm = { intent: 'shrink', lineId, quantity };
       return;
     }
     const ok = await vm.updateLine(lineId, quantity);
     if (ok) {
+      lineQuantity = { ...lineQuantity, [lineId]: String(quantity) };
       feedback = i18n.t('Cantidad actualizada.');
       pushToast(feedback, 'success');
     }
@@ -464,7 +467,6 @@
     const eligibleLines = order.lines.filter((line) => line.quantityOrdered > line.quantityPicked);
     await Promise.all(eligibleLines.map((line) => vm.loadAvailableBins(line.soLineId)));
     for (const line of eligibleLines) {
-      const firstBin = vm.availableBinsByLine[line.soLineId]?.[0];
       pickEntriesByLine[line.soLineId] = [{ binId: '', quantity: '' }];
     }
   }
