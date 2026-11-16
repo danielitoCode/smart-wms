@@ -33,7 +33,7 @@ export type Backorder = {
   salesOrderId: number;
   salesOrderNumber: string;
   /** Not supplied by GET /admin/backorders; resolved from sales-order detail only. */
-  parentSalesOrderId: number | null;
+  parentSalesOrderId?: number | null;
   parentSalesOrderNumber: string;
   warehouseId: number;
   customerName: string | null;
