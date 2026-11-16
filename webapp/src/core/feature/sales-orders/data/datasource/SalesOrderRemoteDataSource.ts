@@ -1,28 +1,25 @@
 import type { ApiClient } from '#core/infrastructure/api/ApiClient.ts';
 import type {
-  SalesOrderDetailResponseDto, SalesOrderDto, SalesOrderListResponseDto,
-  RelatedSalesOrdersResponseDto, AvailableSalesOrderBinsResponseDto
+  SalesOrderDetailResponseDto, SalesOrderListResponseDto,
+  RelatedSalesOrdersResponseDto, AvailableSalesOrderBinsResponseDto,
+  SalesOrderAllocationResponseDto, SalesOrderSourceSystemsResponseDto
 } from '../dto/SalesOrderDto';
 import type {
+  UpdateSalesOrderAllocationInput,
   CreateRmaInput,
   ReceiveReturnInput,
   UpdateSalesOrderAddressInput
 } from '../../domain/entity/SalesOrder';
 
-function normalizePage(body: SalesOrderDto[] | SalesOrderListResponseDto | null | undefined): SalesOrderListResponseDto {
-  if (Array.isArray(body)) {
-    return { sales_orders: body, total: body.length, page: 1, per_page: body.length || 1, pages: 1 };
-  }
-  if (body && Array.isArray(body.sales_orders)) return body;
-  return { sales_orders: [], total: 0, page: 1, per_page: 50, pages: 1 };
-}
 
 export class SalesOrderRemoteDataSource {
   constructor(private readonly api: ApiClient) {}
 
   async list(params?: {
     status?: string; warehouseId?: number; page?: number; perPage?: number;
-    q?: string; excludePostFulfillment?: boolean;
+    q?: string; excludePostFulfillment?: boolean; orderType?: string;
+    hidePrinted?: boolean; includePrimaryBin?: boolean; includeLineCount?: boolean;
+    localPickup?: boolean;
   }): Promise<SalesOrderListResponseDto> {
     const query = new URLSearchParams();
     if (params?.status) query.set('status', params.status);
@@ -31,18 +28,22 @@ export class SalesOrderRemoteDataSource {
     if (params?.perPage != null) query.set('per_page', String(params.perPage));
     if (params?.q?.trim()) query.set('q', params.q.trim());
     if (params?.excludePostFulfillment) query.set('exclude_post_fulfillment', 'true');
+    if (params?.orderType) query.set('order_type', params.orderType);
+    if (params?.hidePrinted) query.set('hide_printed', 'true');
+    if (params?.includePrimaryBin) query.set('include_primary_bin', 'true');
+    if (params?.includeLineCount) query.set('include_line_count', 'true');
+    if (params?.localPickup) query.set('local_pickup', 'true');
     const qs = query.toString();
-    const body = await this.api.get<SalesOrderDto[] | SalesOrderListResponseDto>(
+    return this.api.get<SalesOrderListResponseDto>(
       `/api/admin/sales-orders${qs ? `?${qs}` : ''}`
     );
-    return normalizePage(body);
   }
 
-  async getById(id: number): Promise<SalesOrderDetailResponseDto | SalesOrderDto> {
-    return this.api.get<SalesOrderDetailResponseDto | SalesOrderDto>(`/api/admin/sales-orders/${id}`);
+  async getById(id: number): Promise<SalesOrderDetailResponseDto> {
+    return this.api.get<SalesOrderDetailResponseDto>(`/api/admin/sales-orders/${id}`);
   }
-  async create(payload: Record<string, unknown>): Promise<SalesOrderDetailResponseDto | SalesOrderDto> {
-    return this.api.post<SalesOrderDetailResponseDto | SalesOrderDto>('/api/admin/sales-orders', payload);
+  async create(payload: Record<string, unknown>): Promise<SalesOrderDetailResponseDto> {
+    return this.api.post<SalesOrderDetailResponseDto>('/api/admin/sales-orders', payload);
   }
   async update(id: number, payload: Record<string, unknown>): Promise<void> {
     await this.api.put(`/api/admin/sales-orders/${id}`, payload);
@@ -53,6 +54,17 @@ export class SalesOrderRemoteDataSource {
       body: payload
     });
   }
+  async updateAllocation(id: number, lineId: number, input: UpdateSalesOrderAllocationInput): Promise<SalesOrderAllocationResponseDto> {
+    return this.api.request<SalesOrderAllocationResponseDto>(
+      `/api/admin/sales-orders/${id}/lines/${lineId}/allocation`,
+      { method: 'PATCH', body: { delta: input.delta } }
+    );
+  }
+
+  async listSourceSystems(): Promise<SalesOrderSourceSystemsResponseDto> {
+    return this.api.get<SalesOrderSourceSystemsResponseDto>('/api/admin/source-systems');
+  }
+
   async cancel(id: number): Promise<void> {
     await this.api.post(`/api/admin/sales-orders/${id}/cancel`);
   }
