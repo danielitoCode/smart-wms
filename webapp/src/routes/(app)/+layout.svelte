@@ -15,6 +15,17 @@
 	const i18n = getContext<I18nState>('i18n');
 	let { children } = $props();
 	let sidebarOpen = $state(false);
+	/** Desktop: rail de iconos vs sidebar completa (efecto collapse del demo). */
+	let navCollapsed = $state(false);
+
+	function toggleNavCollapsed() {
+		navCollapsed = !navCollapsed;
+		try {
+			localStorage.setItem('smartwms-nav-collapsed', navCollapsed ? '1' : '0');
+		} catch {
+			/* ignore */
+		}
+	}
 	const guard = createAuthGuardState();
 	setContext('authGuard', guard);
 	const warehouseSelection = createWarehouseSelectionState();
@@ -137,7 +148,14 @@
 
 	async function retry() { await bootstrap(); }
 
-	onMount(() => { void bootstrap(); });
+	onMount(() => {
+		try {
+			navCollapsed = localStorage.getItem('smartwms-nav-collapsed') === '1';
+		} catch {
+			/* ignore */
+		}
+		void bootstrap();
+	});
 </script>
 
 {#if guard.status === 'checking'}
@@ -145,25 +163,45 @@
 {:else if guard.status === 'error'}
 	<SessionBootView status="error" message={guard.message} onRetry={retry} />
 {:else if guard.status === 'authenticated'}
-	<div class="shell" class:sidebar-open={sidebarOpen}>
+	<div class="shell" class:sidebar-open={sidebarOpen} class:nav-collapsed={navCollapsed}>
 		<aside class="sidebar" aria-label={i18n.t('Navegación principal')}>
-			<div class="brand">
-				<span class="mark">A</span>
-				<div>
-					<strong>ABELLIS</strong>
-					<small>Smart WMS</small>
+			<div class="brand-row">
+				<div class="brand">
+					<span class="mark">A</span>
+					<div class="brand-text">
+						<strong>ABELLIS</strong>
+						<small>Smart WMS</small>
+					</div>
 				</div>
+				<button
+					type="button"
+					class="nav-collapse-btn"
+					onclick={toggleNavCollapsed}
+					aria-expanded={!navCollapsed}
+					aria-label={navCollapsed ? i18n.t('Expandir menú') : i18n.t('Contraer menú')}
+					title={navCollapsed ? i18n.t('Expandir menú') : i18n.t('Contraer menú')}
+				>
+					<svg class="chev" viewBox="0 0 24 24" aria-hidden="true">
+						<path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+					</svg>
+				</button>
 			</div>
 			<nav class="main-nav">
-				{#each navGroups as group}
+				{#each navGroups as group, gi}
 					{#if group.items.some(canSeeNavItem)}
-						<p class="group-label">{group.label}</p>
+						<p class="group-label" style="--stagger: {gi}">{group.label}</p>
 						<ul>
-							{#each group.items.filter(canSeeNavItem) as item}
-								<li>
-									<a class="nav-link" class:active={isActive(item.href)} href={item.href} onclick={() => (sidebarOpen = false)}>
-										<AppIcon name={item.icon} size={18} />
-										<span>{item.label}</span>
+							{#each group.items.filter(canSeeNavItem) as item, ii}
+								<li style="--stagger: {gi * 3 + ii}">
+									<a
+										class="nav-link"
+										class:active={isActive(item.href)}
+										href={item.href}
+										title={item.label}
+										onclick={() => (sidebarOpen = false)}
+									>
+										<span class="nav-ico"><AppIcon name={item.icon} size={18} /></span>
+										<span class="nav-label">{item.label}</span>
 									</a>
 								</li>
 							{/each}
@@ -206,62 +244,376 @@
 {/if}
 
 <style>
-	.shell { display: grid; grid-template-columns: 16.5rem 1fr; min-height: 100dvh; background: var(--bg); color: var(--ink); }
-	.sidebar { position: sticky; top: 0; height: 100dvh; overflow-x: visible; overflow-y: auto; border-right: 1px solid var(--line); background: var(--surface); padding: 1rem 0.75rem; z-index: 100; }
-	.brand { display: flex; gap: 0.65rem; align-items: center; padding: 0.35rem 0.5rem 1rem; }
-	.mark { width: 2rem; height: 2rem; border-radius: 0.55rem; display: grid; place-items: center; background: var(--navy); color: white; font-weight: 700; }
-	.brand strong { display: block; font-size: 0.95rem; }
-	.brand small { color: var(--slate); }
-	.group-label { margin: 0.85rem 0.5rem 0.35rem; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--slate); }
-	.main-nav { overflow: visible; }
-	.main-nav ul { list-style: none; margin: 0; padding: 0; overflow: visible; }
-	.main-nav li { position: relative; }
+	.shell {
+		display: grid;
+		grid-template-columns: var(--nav-w, 16.5rem) 1fr;
+		min-height: 100dvh;
+		background: var(--bg);
+		color: var(--ink);
+		--nav-w: 16.5rem;
+		--nav-w-collapsed: 4.35rem;
+		transition: grid-template-columns 0.42s cubic-bezier(0.32, 1.15, 0.55, 1);
+	}
+	.shell.nav-collapsed {
+		--nav-w: var(--nav-w-collapsed);
+	}
+
+	.sidebar {
+		position: sticky;
+		top: 0;
+		height: 100dvh;
+		overflow-x: hidden;
+		overflow-y: auto;
+		border-right: 1px solid var(--line);
+		background: var(--surface);
+		padding: 0.85rem 0.55rem;
+		z-index: 100;
+		width: 100%;
+		min-width: 0;
+	}
+
+	.brand-row {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		padding: 0.25rem 0.25rem 0.85rem;
+		min-height: 2.75rem;
+	}
+
+	.brand {
+		display: flex;
+		gap: 0.55rem;
+		align-items: center;
+		min-width: 0;
+		flex: 1;
+	}
+
+	.mark {
+		width: 2rem;
+		height: 2rem;
+		border-radius: 0.55rem;
+		display: grid;
+		place-items: center;
+		background: var(--navy);
+		color: white;
+		font-weight: 700;
+		flex: none;
+	}
+
+	.brand-text {
+		min-width: 0;
+		overflow: hidden;
+		transition:
+			opacity 0.28s cubic-bezier(0.32, 1.1, 0.55, 1),
+			transform 0.28s cubic-bezier(0.32, 1.1, 0.55, 1),
+			max-width 0.36s cubic-bezier(0.32, 1.1, 0.55, 1);
+		max-width: 9rem;
+		opacity: 1;
+		transform: translateX(0);
+	}
+
+	.brand-text strong {
+		display: block;
+		font-size: 0.95rem;
+		white-space: nowrap;
+	}
+
+	.brand-text small {
+		color: var(--slate);
+		white-space: nowrap;
+	}
+
+	.nav-collapse-btn {
+		flex: none;
+		width: 2rem;
+		height: 2rem;
+		border: 0;
+		border-radius: 0.65rem;
+		background: color-mix(in srgb, var(--navy) 10%, transparent);
+		color: var(--ink);
+		display: grid;
+		place-items: center;
+		cursor: pointer;
+		transition:
+			background 0.2s ease,
+			transform 0.35s cubic-bezier(0.32, 1.15, 0.55, 1);
+	}
+
+	.nav-collapse-btn:hover {
+		background: color-mix(in srgb, var(--navy) 16%, transparent);
+	}
+
+	.nav-collapse-btn .chev {
+		width: 1.1rem;
+		height: 1.1rem;
+		transition: transform 0.4s cubic-bezier(0.32, 1.2, 0.55, 1);
+	}
+
+	.shell.nav-collapsed .nav-collapse-btn .chev {
+		transform: rotate(180deg);
+	}
+
+	.shell.nav-collapsed .brand-text {
+		opacity: 0;
+		transform: translateX(-8px);
+		max-width: 0;
+		pointer-events: none;
+	}
+
+	.group-label {
+		margin: 0.85rem 0.45rem 0.35rem;
+		font-size: 0.68rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--slate);
+		white-space: nowrap;
+		overflow: hidden;
+		max-height: 1.5rem;
+		opacity: 1;
+		transform: translateX(0);
+		transition:
+			opacity 0.26s ease,
+			transform 0.28s cubic-bezier(0.32, 1.1, 0.55, 1),
+			max-height 0.3s ease,
+			margin 0.3s ease;
+		transition-delay: calc(var(--stagger, 0) * 28ms);
+	}
+
+	.shell.nav-collapsed .group-label {
+		opacity: 0;
+		transform: translateX(-8px);
+		max-height: 0;
+		margin-top: 0.25rem;
+		margin-bottom: 0;
+		pointer-events: none;
+		transition-delay: 0ms;
+	}
+
+	.main-nav {
+		overflow: visible;
+	}
+
+	.main-nav ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		overflow: visible;
+	}
+
+	.main-nav li {
+		position: relative;
+	}
+
 	.nav-link {
 		display: flex;
 		align-items: center;
 		gap: 0.55rem;
-		padding: 0.45rem 0.55rem;
-		border-radius: 0.55rem;
+		padding: 0.5rem 0.55rem;
+		border-radius: 0.65rem;
 		color: var(--ink);
 		text-decoration: none;
 		font-size: 0.9rem;
-		transition: filter 0.3s ease, transform 0.3s ease, background 0.2s ease, opacity 0.3s ease;
+		transition:
+			filter 0.3s ease,
+			transform 0.3s ease,
+			background 0.2s ease,
+			opacity 0.3s ease,
+			justify-content 0.3s ease;
 		will-change: filter, transform;
+		min-height: 2.45rem;
 	}
-	.nav-link:hover { background: color-mix(in oklab, var(--navy) 8%, transparent); }
-	.nav-link.active { background: color-mix(in oklab, var(--navy) 14%, transparent); font-weight: 600; }
-	/* Efecto: al hover en un ítem, el resto se difumina y reduce (estilo barra demo) */
-	.main-nav:hover .nav-link:not(:hover) {
+
+	.nav-ico {
+		display: grid;
+		place-items: center;
+		flex: none;
+		width: 1.25rem;
+	}
+
+	.nav-label {
+		display: inline-block;
+		white-space: nowrap;
+		overflow: hidden;
+		max-width: 12rem;
+		opacity: 1;
+		transform: translateX(0);
+		transition:
+			opacity 0.28s cubic-bezier(0.32, 1.1, 0.55, 1),
+			transform 0.28s cubic-bezier(0.32, 1.1, 0.55, 1),
+			max-width 0.36s cubic-bezier(0.32, 1.1, 0.55, 1);
+		transition-delay: calc(var(--stagger, 0) * 22ms);
+	}
+
+	.shell.nav-collapsed .nav-label {
+		opacity: 0;
+		transform: translateX(-10px);
+		max-width: 0;
+		pointer-events: none;
+		transition-delay: 0ms;
+	}
+
+	.shell.nav-collapsed .nav-link {
+		justify-content: center;
+		padding-inline: 0.45rem;
+	}
+
+	.nav-link:hover {
+		background: color-mix(in oklab, var(--navy) 8%, transparent);
+	}
+
+	.nav-link.active {
+		background: color-mix(in oklab, var(--navy) 14%, transparent);
+		font-weight: 600;
+	}
+
+	.shell:not(.nav-collapsed) .main-nav:hover .nav-link:not(:hover) {
 		filter: blur(1px);
 		transform: scale(0.95);
 		opacity: 0.72;
 	}
-	.main-nav:hover .nav-link:hover {
+
+	.shell:not(.nav-collapsed) .main-nav:hover .nav-link:hover {
 		filter: none;
 		transform: scale(1);
 		opacity: 1;
 	}
+
 	@media (prefers-reduced-motion: reduce) {
-		.nav-link { transition: background 0.2s ease; }
-		.main-nav:hover .nav-link:not(:hover) {
+		.shell {
+			transition: none;
+		}
+		.brand-text,
+		.group-label,
+		.nav-label,
+		.nav-collapse-btn,
+		.nav-collapse-btn .chev {
+			transition: none !important;
+		}
+		.nav-link {
+			transition: background 0.2s ease;
+		}
+		.shell:not(.nav-collapsed) .main-nav:hover .nav-link:not(:hover) {
 			filter: none;
 			transform: none;
 			opacity: 0.85;
 		}
 	}
-	.main { min-width: 0; display: flex; flex-direction: column; position: relative; z-index: 1; }
-	.topbar { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; min-height: 3.25rem; padding: 0.55rem 1rem; border-bottom: 1px solid var(--line); background: var(--surface); position: relative; z-index: 30; }
-	.topbar-actions { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
-	.menu-btn { display: none; border: 1px solid var(--line); background: var(--surface); border-radius: 0.5rem; padding: 0.35rem; }
-	.account-action { display: inline-flex; align-items: center; gap: 0.35rem; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 0.5rem; padding: 0.35rem 0.55rem; text-decoration: none; font-size: 0.82rem; cursor: pointer; }
-	.content { flex: 1; min-width: 0; padding: 0 0 0.5rem; }
-	.denied { max-width: 32rem; margin: 2rem auto; padding: 1.25rem; border: 1px solid var(--line); border-radius: 0.75rem; background: var(--surface); }
-	.scrim { display: none; }
+
+	.main {
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		position: relative;
+		z-index: 1;
+	}
+
+	.topbar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		min-height: 3.25rem;
+		padding: 0.55rem 1rem;
+		border-bottom: 1px solid var(--line);
+		background: var(--surface);
+		position: relative;
+		z-index: 30;
+	}
+
+	.topbar-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-left: auto;
+	}
+
+	.menu-btn {
+		display: none;
+		border: 1px solid var(--line);
+		background: var(--surface);
+		border-radius: 0.5rem;
+		padding: 0.35rem;
+	}
+
+	.account-action {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		border: 1px solid var(--line);
+		background: var(--surface);
+		color: var(--ink);
+		border-radius: 0.5rem;
+		padding: 0.35rem 0.55rem;
+		text-decoration: none;
+		font-size: 0.82rem;
+		cursor: pointer;
+	}
+
+	.content {
+		flex: 1;
+		min-width: 0;
+		padding: 0 0 0.5rem;
+	}
+
+	.denied {
+		max-width: 32rem;
+		margin: 2rem auto;
+		padding: 1.25rem;
+		border: 1px solid var(--line);
+		border-radius: 0.75rem;
+		background: var(--surface);
+	}
+
+	.scrim {
+		display: none;
+	}
+
 	@media (max-width: 900px) {
-		.shell { grid-template-columns: 1fr; }
-		.sidebar { position: fixed; inset: 0 auto 0 0; width: min(18rem, 88vw); z-index: 110; transform: translateX(-105%); transition: transform 0.2s ease; }
-		.shell.sidebar-open .sidebar { transform: translateX(0); }
-		.menu-btn { display: inline-grid; place-items: center; }
-		.scrim { display: block; position: fixed; inset: 0; border: 0; background: rgb(0 0 0 / 0.35); z-index: 100; }
+		.shell {
+			grid-template-columns: 1fr;
+			transition: none;
+		}
+		.shell.nav-collapsed {
+			--nav-w: 16.5rem;
+		}
+		.sidebar {
+			position: fixed;
+			inset: 0 auto 0 0;
+			width: min(18rem, 88vw);
+			z-index: 110;
+			transform: translateX(-105%);
+			transition: transform 0.2s ease;
+		}
+		.shell.sidebar-open .sidebar {
+			transform: translateX(0);
+		}
+		.shell.nav-collapsed .brand-text,
+		.shell.nav-collapsed .group-label,
+		.shell.nav-collapsed .nav-label {
+			opacity: 1;
+			transform: none;
+			max-width: 12rem;
+			max-height: none;
+			pointer-events: auto;
+		}
+		.shell.nav-collapsed .nav-link {
+			justify-content: flex-start;
+			padding-inline: 0.55rem;
+		}
+		.nav-collapse-btn {
+			display: none;
+		}
+		.menu-btn {
+			display: inline-grid;
+			place-items: center;
+		}
+		.scrim {
+			display: block;
+			position: fixed;
+			inset: 0;
+			border: 0;
+			background: rgb(0 0 0 / 0.35);
+			z-index: 100;
+		}
 	}
 </style>
