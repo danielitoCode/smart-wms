@@ -1,25 +1,20 @@
 <script lang="ts">
 	/**
-	 * Logo animado DotLottie para splash.
-	 * Archivos esperados en static/lottie/:
-	 *   - abellis-splash.lottie
-	 *   - abellis-splash-still.png  (opcional; si no existe usa /brand/abellis_mark_principal.svg)
+	 * Logo DotLottie del splash (una reproducción, sin bucle).
+	 * Archivos: static/lottie/abellis-splash.lottie
+	 * Still opcional: static/lottie/abellis-splash-still.png
+	 * Fallback: /brand/abellis_mark_principal.svg
 	 */
 	import { onMount } from 'svelte';
 	import { DotLottieSvelte } from '@lottiefiles/dotlottie-svelte';
 
 	interface Props {
-		/** Ancho máximo del logo (CSS). */
 		maxWidth?: string;
-		/** Aspect ratio del contenedor (ancho / alto). */
 		aspectRatio?: string;
-		/** Ruta pública del .lottie (bajo static/). */
 		src?: string;
-		/** Ruta pública del frame estático. */
 		stillSrc?: string;
-		/** Texto accesible. */
 		label?: string;
-		/** Reproducir en bucle. */
+		/** Por defecto una sola vez (no loop). */
 		loop?: boolean;
 	}
 
@@ -29,63 +24,86 @@
 		src = '/lottie/abellis-splash.lottie',
 		stillSrc = '/brand/abellis_mark_principal.svg',
 		label = 'ABELLIS Smart WMS',
-		loop = true
+		loop = false
 	}: Props = $props();
 
-	/** true = frame estático (reduced-motion o antes de montar en cliente). */
-	let still = $state(true);
-	let mounted = $state(false);
+	let reduceMotion = $state(true);
+	let ready = $state(false);
 
 	onMount(() => {
-		mounted = true;
 		const query = window.matchMedia('(prefers-reduced-motion: reduce)');
 		const update = () => {
-			still = query.matches;
+			reduceMotion = query.matches;
 		};
 		update();
 		query.addEventListener('change', update);
-		return () => query.removeEventListener('change', update);
+		const t = window.setTimeout(() => {
+			ready = true;
+		}, 40);
+		return () => {
+			query.removeEventListener('change', update);
+			window.clearTimeout(t);
+		};
 	});
 </script>
 
-{#if still || !mounted}
-	<img
-		class="splash-lottie-still"
-		src={stillSrc}
-		alt={label}
-		width="320"
-		height="320"
-		style:max-width={maxWidth}
-		style:width="100%"
-		style:height="auto"
-	/>
-{:else}
-	<div
-		class="splash-lottie"
-		role="img"
-		aria-label={label}
-		style:max-width={maxWidth}
-		style:width="100%"
-		style:aspect-ratio={aspectRatio}
-	>
-		<DotLottieSvelte {src} {loop} autoplay />
-	</div>
-{/if}
+<div
+	class="splash-lottie-wrap"
+	style:max-width={maxWidth}
+	style:width="100%"
+	style:aspect-ratio={aspectRatio}
+>
+	{#if reduceMotion || !ready}
+		<img class="still" src={stillSrc} alt={label} width="320" height="320" />
+	{:else}
+		<div class="anim" role="img" aria-label={label}>
+			<DotLottieSvelte {src} {loop} autoplay />
+		</div>
+	{/if}
+</div>
 
 <style>
-	.splash-lottie,
-	.splash-lottie-still {
-		display: block;
+	.splash-lottie-wrap {
+		position: relative;
+		display: grid;
+		place-items: center;
 		margin-inline: auto;
 	}
 
-	.splash-lottie {
-		overflow: hidden;
+	.still,
+	.anim {
+		width: 100%;
+		height: 100%;
+		display: grid;
+		place-items: center;
+		animation: logo-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
 	}
 
-	.splash-lottie :global(canvas),
-	.splash-lottie :global(svg) {
+	.still {
+		object-fit: contain;
+	}
+
+	.anim :global(canvas),
+	.anim :global(svg) {
 		width: 100% !important;
 		height: 100% !important;
+	}
+
+	@keyframes logo-in {
+		from {
+			opacity: 0;
+			transform: scale(0.94);
+		}
+		to {
+			opacity: 1;
+			transform: scale(1);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.still,
+		.anim {
+			animation: none;
+		}
 	}
 </style>

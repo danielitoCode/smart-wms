@@ -1,6 +1,7 @@
 import { createAuthDependencies } from '../../di/auth.dependencies';
 import { resolveHomePath } from '../../domain/policy/AccessPolicy';
 import type { User } from '../../domain/entity/User';
+import { authSession } from '#core/infrastructure/auth/AuthSession.ts';
 
 const deps = createAuthDependencies();
 
@@ -12,8 +13,9 @@ export type SplashOutcome =
 export type SplashStatus = 'idle' | 'checking' | 'done' | 'error';
 
 /**
- * Estado del arranque visual: valida sesión y decide destino.
- * No navega; la pantalla consume el outcome y ejecuta goto.
+ * Arranque visual: valida sesión y decide destino.
+ * Sin sesión / token inválido / backend inalcanzable en frío → login (limpio).
+ * No navega; SplashScreen consume outcome y hace goto.
  */
 export function createSplashState() {
 	let status = $state<SplashStatus>('idle');
@@ -40,27 +42,23 @@ export function createSplashState() {
 					return;
 				}
 
-				if (result.reason === 'unavailable') {
-					outcome = {
-						kind: 'error',
-						message: result.message || 'No se pudo conectar con el servidor'
-					};
-					message = outcome.message;
-					status = 'error';
-					return;
-				}
-
-				// Sin sesión o token expirado → login
+				// Estricto: sin sesión válida → limpiar y mandar a login.
+				// Incluye unauthorized, inactive y unavailable (arranque en frío sin cookie / sin API).
+				authSession.clear();
 				outcome = {
 					kind: 'login',
 					message: result.message || undefined
 				};
 				status = 'done';
 			} catch (err) {
-				const text = err instanceof Error ? err.message : 'Error inesperado al validar sesión';
-				outcome = { kind: 'error', message: text };
-				message = text;
-				status = 'error';
+				authSession.clear();
+				// Errores inesperados: aún así preferimos login en arranque en frío
+				// para no dejar al usuario atrapado en el splash.
+				outcome = {
+					kind: 'login',
+					message: err instanceof Error ? err.message : undefined
+				};
+				status = 'done';
 			}
 		})();
 

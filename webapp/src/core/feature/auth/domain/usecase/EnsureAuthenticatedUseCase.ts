@@ -19,10 +19,19 @@ export class EnsureAuthenticatedUseCase {
 			}
 			return { ok: true, user };
 		} catch (err) {
-			if (err instanceof ApiError && err.status === 401) {
+			// Tokens / cookie inválidos: limpia siempre y trata como no autenticado
+			if (err instanceof ApiError && (err.status === 401 || err.status === 403 || err.isUnauthorized)) {
 				authSession.clear();
-				return { ok: false, reason: 'unauthorized', message: 'Sesión expirada o no válida' };
+				return {
+					ok: false,
+					reason: 'unauthorized',
+					message: err.status === 403
+						? 'No autorizado. Inicia sesión de nuevo.'
+						: 'Sesión expirada o no válida'
+				};
 			}
+			// Red / timeout: no borra sesión en memoria (revalidate soft en app),
+			// el splash decidirá redirigir a login si no hay usuario en memoria.
 			return {
 				ok: false,
 				reason: 'unavailable',
