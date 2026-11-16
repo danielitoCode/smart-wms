@@ -1,4 +1,4 @@
-import type { SalesOrder, RelatedSalesOrder } from '../../../sales-orders/domain/entity/SalesOrder';
+import type { SalesOrder } from '../../../sales-orders/domain/entity/SalesOrder';
 
 export type BackorderStatus =
   | 'WAITING_STOCK' | 'OPEN' | 'PICKED' | 'PACKED' | 'SHIPPED'
@@ -43,5 +43,5 @@ export type CancelBackorderInput = {
 
 export type BackorderDetail = {
   order: SalesOrder;
-  parentSalesOrder: RelatedSalesOrder | null;
+  parentSalesOrder: SalesOrder | null;
 };
