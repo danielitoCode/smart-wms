@@ -56,9 +56,19 @@
   async function markPrinted() {
     if (!tickets.length) return;
     marking = true;
-    try { await deps.markPrinted.execute(tickets.map((ticket) => ticket.order.salesOrderId)); markFailed = false; }
-    catch { markFailed = true; }
-    finally { marking = false; }
+    try {
+      let marked = false;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          await deps.markPrinted.execute(tickets.map((ticket) => ticket.order.salesOrderId));
+          marked = true;
+          break;
+        } catch {
+          if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+      }
+      markFailed = !marked;
+    } finally { marking = false; }
   }
   function print() { if (tickets.length && typeof window !== 'undefined') window.print(); }
   function addressLines(ticket: PickingTicket): string[] {
