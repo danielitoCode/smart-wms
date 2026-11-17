@@ -151,6 +151,7 @@ class TestInterWarehouseTransferRetainsZeroRow:
                 "to_warehouse_id": 2,
                 "quantity": 20,
                 "reason": "Zero-retention regression",
+                "idempotency_key": str(uuid.uuid4()),
             },
             headers=auth_headers,
         )
