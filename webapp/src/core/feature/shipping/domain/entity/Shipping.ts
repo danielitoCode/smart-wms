@@ -36,6 +36,7 @@ export type ShippingOrderDetail = {
 
 export type FulfillShipmentInput = {
 	soId: number;
+	warehouseId: number;
 	trackingNumber: string;
 	carrier: string;
 	shipMethod?: string | null;
