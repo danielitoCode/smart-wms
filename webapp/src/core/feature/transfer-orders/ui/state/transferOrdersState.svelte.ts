@@ -165,7 +165,24 @@ export function createTransferOrdersState() {
     approve: (id: number, approvalId: number) => act(() => dependencies.approve.execute(id, approvalId), () => 'Aprobación completada; inventario movido al almacén destino'),
     reject: (id: number, approvalId: number, reason: string) => act(() => dependencies.reject.execute(id, approvalId, reason), () => 'Envío rechazado; el inventario permanece en origen'),
     cancel: (id: number) => act(() => dependencies.cancel.execute(id), () => 'Transferencia cancelada'),
-    remove(id: number) { selected = null; pickerSnapshot = null; return act(() => dependencies.remove.execute(id), () => 'Transferencia eliminada'); },
+    async remove(id: number) {
+      saving = true;
+      error = null;
+      notice = null;
+      try {
+        await dependencies.remove.execute(id);
+        if (selected?.transferOrderId === id) selected = null;
+        pickerSnapshot = null;
+        notice = 'Transferencia eliminada';
+        await load();
+        return true;
+      } catch (cause) {
+        error = toUserMessage(cause, 'No se pudo eliminar la transferencia');
+        return false;
+      } finally {
+        saving = false;
+      }
+    },
     shortClose: (id: number, lineId: number) => act(() => dependencies.shortClose.execute(id, lineId), () => 'Línea cerrada por faltante'),
     clearSelected() { selected = null; pickerSnapshot = null; },
     clearCreated() { created = null; }
