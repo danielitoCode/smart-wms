@@ -200,3 +200,138 @@ class TestReceiveRma:
                 received_by_external_id=str(uuid.uuid4()),
                 source_txn_id=str(uuid.uuid4()),
             )
+
+    def test_idempotency_replay_does_not_duplicate_receipt_or_inventory(self, _db_transaction):
+        from services.sales_order_service import receive_rma
+        db = _db_transaction
+        rma, item = _make_rma(db, qty_ordered=3, qty_to_return=2)
+        bin_id = _a_bin(db)
+        key = str(uuid.uuid4())
+        before = db.execute(
+            sa_text("SELECT COALESCE(SUM(quantity_on_hand), 0) FROM inventory "
+                    "WHERE item_id = :i AND bin_id = :b"),
+            {"i": item, "b": bin_id},
+        ).scalar()
+        kwargs = dict(
+            rma_so_id=rma["so_id"], item_id=item, quantity=1,
+            warehouse_id=1, bin_id=bin_id, received_by="admin",
+            received_by_external_id=str(uuid.uuid4()),
+            source_txn_id=str(uuid.uuid4()), idempotency_key=key,
+        )
+
+        first = receive_rma(db, **kwargs)
+        replay = receive_rma(db, **kwargs)
+
+        assert replay["replayed"] is True
+        assert replay["receipt_id"] == first["receipt_id"]
+        assert db.execute(
+            sa_text("SELECT COUNT(*) FROM item_receipts WHERE external_id = :key"),
+            {"key": key},
+        ).scalar() == 1
+        assert db.execute(
+            sa_text("SELECT quantity_received FROM sales_order_lines WHERE so_id = :s"),
+            {"s": rma["so_id"]},
+        ).scalar() == 1
+        after = db.execute(
+            sa_text("SELECT COALESCE(SUM(quantity_on_hand), 0) FROM inventory "
+                    "WHERE item_id = :i AND bin_id = :b"),
+            {"i": item, "b": bin_id},
+        ).scalar()
+        assert after == before + 1
+
+    def test_idempotency_key_cannot_be_reused_for_another_operation(self, _db_transaction):
+        from services.sales_order_service import receive_rma
+        db = _db_transaction
+        rma, item = _make_rma(db, qty_ordered=3, qty_to_return=2)
+        bin_id = _a_bin(db)
+        key = str(uuid.uuid4())
+        common = dict(
+            rma_so_id=rma["so_id"], item_id=item, warehouse_id=1,
+            bin_id=bin_id, received_by="admin",
+            received_by_external_id=str(uuid.uuid4()),
+            source_txn_id=str(uuid.uuid4()), idempotency_key=key,
+        )
+        receive_rma(db, quantity=1, **common)
+        with pytest.raises(ValueError, match="different return receipt"):
+            receive_rma(db, quantity=2, **common)
+
+    def test_nonexistent_rma_does_not_change_inventory_or_receipts(self, _db_transaction):
+        from services.sales_order_service import receive_rma
+        db = _db_transaction
+        item = _insert_item()
+        bin_id = _a_bin(db)
+        missing_rma_id = 999999999
+        before_inventory = db.execute(
+            sa_text("SELECT COALESCE(SUM(quantity_on_hand), 0) FROM inventory "
+                    "WHERE item_id = :i"),
+            {"i": item},
+        ).scalar()
+        before_receipts = db.execute(
+            sa_text("SELECT COUNT(*) FROM item_receipts")
+        ).scalar()
+
+        with pytest.raises(ValueError, match="not found or not a return SO"):
+            receive_rma(
+                db, rma_so_id=missing_rma_id, item_id=item, quantity=1,
+                warehouse_id=1, bin_id=bin_id, received_by="admin",
+                received_by_external_id=str(uuid.uuid4()),
+                source_txn_id=str(uuid.uuid4()),
+                idempotency_key=str(uuid.uuid4()),
+            )
+
+        after_inventory = db.execute(
+            sa_text("SELECT COALESCE(SUM(quantity_on_hand), 0) FROM inventory "
+                    "WHERE item_id = :i"),
+            {"i": item},
+        ).scalar()
+        after_receipts = db.execute(
+            sa_text("SELECT COUNT(*) FROM item_receipts")
+        ).scalar()
+        assert after_inventory == before_inventory
+        assert after_receipts == before_receipts
+
+    def test_multiple_partial_receipts_keep_receipts_line_and_inventory_consistent(self, _db_transaction):
+        from services.sales_order_service import receive_rma
+        db = _db_transaction
+        rma, item = _make_rma(db, qty_ordered=4, qty_to_return=3)
+        bin_id = _a_bin(db)
+        before = db.execute(
+            sa_text("SELECT COALESCE(SUM(quantity_on_hand), 0) FROM inventory "
+                    "WHERE item_id = :i AND bin_id = :b"),
+            {"i": item, "b": bin_id},
+        ).scalar()
+
+        first = receive_rma(
+            db, rma_so_id=rma["so_id"], item_id=item, quantity=1,
+            warehouse_id=1, bin_id=bin_id, received_by="admin",
+            received_by_external_id=str(uuid.uuid4()),
+            source_txn_id=str(uuid.uuid4()), idempotency_key=str(uuid.uuid4()),
+        )
+        second = receive_rma(
+            db, rma_so_id=rma["so_id"], item_id=item, quantity=2,
+            warehouse_id=1, bin_id=bin_id, received_by="admin",
+            received_by_external_id=str(uuid.uuid4()),
+            source_txn_id=str(uuid.uuid4()), idempotency_key=str(uuid.uuid4()),
+        )
+
+        receipt_total = db.execute(
+            sa_text("SELECT COALESCE(SUM(quantity_received), 0) FROM item_receipts "
+                    "WHERE so_id = :s AND item_id = :i"),
+            {"s": rma["so_id"], "i": item},
+        ).scalar()
+        line_total = db.execute(
+            sa_text("SELECT quantity_received FROM sales_order_lines "
+                    "WHERE so_id = :s AND item_id = :i"),
+            {"s": rma["so_id"], "i": item},
+        ).scalar()
+        after = db.execute(
+            sa_text("SELECT COALESCE(SUM(quantity_on_hand), 0) FROM inventory "
+                    "WHERE item_id = :i AND bin_id = :b"),
+            {"i": item, "b": bin_id},
+        ).scalar()
+
+        assert first["status"] == "PARTIALLY_RECEIVED"
+        assert second["status"] == "RECEIVED"
+        assert receipt_total == line_total == 3
+        assert after == before + receipt_total
+
