@@ -302,10 +302,11 @@ class TestInterWarehouseTransferCreatePayload:
             json={
                 "from_warehouse_id": 1,
                 "from_bin_id": 2,
-                "to_warehouse_id": 1,
+                "to_warehouse_id": 2,
                 "to_bin_id": 3,
                 "item_id": 5,
                 "quantity": 1,
+                "idempotency_key": "550e8400-e29b-41d4-a716-446655440000",
             },
             headers=auth_headers,
         )
