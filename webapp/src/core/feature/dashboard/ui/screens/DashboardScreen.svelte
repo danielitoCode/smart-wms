@@ -46,7 +46,6 @@
  {#if vm.activeTab==='productivity'}
   {#if !isAdmin}<p class="notice">Productivity is available to administrators only.</p>
   {:else if vm.productivity}
-   {#if vm.productivity.warnings.length}<div class="notice">{#each vm.productivity.warnings as warning}<p>{warning}</p>{/each}</div>{/if}
    {#if vm.view==='table'}
     <div class="table-wrap"><table><thead><tr><th>User</th>{#each vm.productivity.eventsVisible as e}<th>{labels[e]?.title??e}</th>{/each}<th>Total</th></tr></thead><tbody>{#each vm.productivity.users as u (u.userId)}<tr><td>{u.displayName||u.username}</td>{#each vm.productivity.eventsVisible as e}<td class="num">{u.metrics[e]??0}</td>{/each}<td class="num strong">{u.total}</td></tr>{/each}{#if !vm.productivity.users.length}<tr><td colspan={vm.productivity.eventsVisible.length+2} class="empty">No data for this range.</td></tr>{/if}</tbody></table></div>
    {:else}
