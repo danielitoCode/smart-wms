@@ -169,7 +169,7 @@ Para cada feature, completar con tests: campos obligatorios/opcionales, nulabili
 
 | Method | Endpoint | Query / body | Response contract and authorization |
 |---|---|---|---|
-| GET | `/api/v1/dashboard/productivity` | `start`, `end` (inclusive ISO dates), `warehouse_id` | ADMIN only; `range`, `events_visible`, `users[]` with `user_id, username, display_name, metrics, total`, `totals_per_event`, `total_orders`, `total_picks`, `total_units`, `warnings`. Maximum 90 days. |
+| GET | `/api/v1/dashboard/productivity` | `start`, `end` (inclusive ISO dates), `warehouse_id` | ADMIN only; `range`, `events_visible`, `users[]` with `user_id, username, display_name, metrics, total`, `totals_per_event`. Each productivity user includes `user_id, username, display_name, metrics, total`; an empty period returns empty `users` and zero event totals. Maximum 90 days. |
 | GET | `/api/v1/dashboard/preferences` | — | Authenticated; current user only. Returns `chart_order`, `default_range`, `default_view`, `updated_at`; defaults when no row exists. |
 | PUT | `/api/v1/dashboard/preferences` | Partial `chart_order`, `default_range`, `default_view` | Authenticated; user ID comes from session, not body. Unknown/duplicate chart keys, invalid ranges/views and empty patches return 422. |
 | GET | `/api/v1/dashboard/received` | `warehouse_id` required; optional inclusive `start/end` | Authenticated; returns `{warehouse_id, range, pos[]}`; each PO includes `po_id, po_number, vendor_name, status, units_received, lines_received, receive_events, receivers, last_received_at`. |
