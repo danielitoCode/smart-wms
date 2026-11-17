@@ -7,7 +7,14 @@ describe('BinLookupRemoteDataSource operational Flask contract', () => {
 		const api = { get: vi.fn().mockResolvedValue([]) } as unknown as ApiClient;
 		const source = new BinLookupRemoteDataSource(api);
 		await expect(source.search('A 01')).resolves.toEqual([]);
-		expect(api.get).toHaveBeenCalledWith('/api/lookup/bin/search?q=A%2001');
+		expect(api.get).toHaveBeenCalledWith('/api/lookup/bin/search', { query: { q: 'A 01', warehouse_id: undefined } });
+	});
+
+	it('constrains typeahead results to the selected warehouse', async () => {
+		const api = { get: vi.fn().mockResolvedValue([]) } as unknown as ApiClient;
+		const source = new BinLookupRemoteDataSource(api);
+		await source.search('A-01', 7);
+		expect(api.get).toHaveBeenCalledWith('/api/lookup/bin/search', { query: { q: 'A-01', warehouse_id: 7 } });
 	});
 
 	it('uses the barcode lookup endpoint and encodes the scanned value', async () => {
