@@ -647,7 +647,8 @@ def get_next_task(db, batch_id):
     row = db.execute(
         text(
             """
-            SELECT pt.pick_task_id, pt.pick_sequence, pt.quantity_to_pick, pt.quantity_picked,
+            SELECT pt.pick_task_id, pt.batch_id, pt.item_id, pt.bin_id,
+                   pt.pick_sequence, pt.quantity_to_pick, pt.quantity_picked,
                    pt.tote_number, pt.status,
                    b.bin_code, b.bin_barcode, b.aisle, b.row_num, b.level_num,
                    i.sku, i.item_name, i.upc,
@@ -2021,6 +2022,9 @@ def _get_tasks_for_batch(db, batch_id):
 def _task_row_to_dict(row):
     return {
         "pick_task_id": row.pick_task_id,
+        "batch_id": row.batch_id,
+        "item_id": row.item_id,
+        "bin_id": row.bin_id,
         "pick_sequence": row.pick_sequence,
         "bin_code": row.bin_code,
         "bin_barcode": row.bin_barcode,
