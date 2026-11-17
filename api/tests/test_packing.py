@@ -261,3 +261,23 @@ def test_packing_order_lookup_is_scoped_to_selected_warehouse(client, auth_heade
         headers=auth_headers,
     )
     assert response.status_code == 404
+
+
+def test_packing_verify_rejects_order_outside_selected_warehouse(client, auth_headers):
+    _advance_so_to_picked(client, auth_headers, ["SO-2026-001"])
+    response = client.post(
+        "/api/packing/verify",
+        json={"so_id": 1, "warehouse_id": 2, "scanned_barcode": "100000000001", "quantity": 1},
+        headers=auth_headers,
+    )
+    assert response.status_code == 404
+
+
+def test_packing_complete_rejects_order_outside_selected_warehouse(client, auth_headers):
+    _advance_so_to_picked(client, auth_headers, ["SO-2026-001"])
+    response = client.post(
+        "/api/packing/complete",
+        json={"so_id": 1, "warehouse_id": 2},
+        headers=auth_headers,
+    )
+    assert response.status_code == 404
