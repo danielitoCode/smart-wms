@@ -74,6 +74,12 @@ export type SimpleMessageResult = {
 
 export type WaveValidateResult = {
 	valid: boolean;
+	kind?: 'SO' | 'TO';
+	toId?: number;
+	toNumber?: string;
+	batchNumber?: string;
+	assignedTo?: string;
+	toStatus?: string;
 	soNumber?: string;
 	soId?: number;
 	lineCount?: number;
