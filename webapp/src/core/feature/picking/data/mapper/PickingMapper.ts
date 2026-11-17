@@ -47,6 +47,16 @@ export const PickingMapper = {
 			quantityToPick: dto.quantity_to_pick ?? dto.qty_to_pick ?? 0,
 			binId: dto.bin_id ?? null,
 			binCode: dto.bin_code ?? null,
+			binBarcode: dto.bin_barcode ?? null,
+			zone: dto.zone ?? null,
+			aisle: dto.aisle ?? null,
+			rowNum: dto.row_num ?? null,
+			levelNum: dto.level_num ?? null,
+			toteNumber: dto.tote_number ?? null,
+			salesOrderNumber: dto.so_number ?? null,
+			transferOrderNumber: dto.to_number ?? null,
+			pickNumber: dto.pick_number,
+			totalPicks: dto.total_picks,
 			status: dto.status ?? 'PENDING'
 		};
 	},
