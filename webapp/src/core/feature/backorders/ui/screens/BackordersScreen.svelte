@@ -71,7 +71,12 @@
   }
 
   function openCancel(row: Backorder): void {
-    if (!canOpenSalesOrderDetail || !canAccessWarehouse(row.warehouseId)) return;
+    if (
+      !canOpenSalesOrderDetail ||
+      row.orderType !== 'backorder' ||
+      !row.parentSalesOrderNumber ||
+      !canAccessWarehouse(row.warehouseId)
+    ) return;
     cancelTarget = row;
     cancelReason = 'other';
     cancelError = '';
@@ -212,7 +217,7 @@
           <div class="card-actions">
             {#if canOpenSalesOrderDetail}
               <a class="detail-link" href={'/management/backorders/' + row.salesOrderId + '?tab=' + activeTab}>{i18n.t('Ver detalle')}</a>
-              {#if row.parentSalesOrderNumber && canAccessWarehouse(row.warehouseId)}
+              {#if row.orderType === 'backorder' && row.parentSalesOrderNumber && canAccessWarehouse(row.warehouseId)}
                 <button class="cancel-link" type="button" onclick={() => openCancel(row)}>
                   {i18n.t('Cancelar backorder')}
                 </button>
