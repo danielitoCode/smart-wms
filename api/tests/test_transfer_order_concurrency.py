@@ -3,6 +3,7 @@ import os
 import threading
 import uuid
 
+os.environ.setdefault("DATABASE_URL", "postgresql://sentry:sentry@localhost:5432/sentry")
 import psycopg2
 
 
