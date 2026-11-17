@@ -68,6 +68,12 @@ export const PickingMapper = {
 	toWaveValidate(dto: WaveValidateDto): WaveValidateResult {
 		return {
 			valid: dto.valid === true,
+			kind: dto.kind,
+			toId: dto.to_id,
+			toNumber: dto.to_number,
+			batchNumber: dto.batch_number,
+			assignedTo: dto.assigned_to,
+			toStatus: dto.to_status,
 			soId: dto.so_id,
 			soNumber: dto.so_number,
 			lineCount: dto.line_count,
