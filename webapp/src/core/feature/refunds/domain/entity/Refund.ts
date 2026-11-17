@@ -15,6 +15,7 @@ export type RefundRelatedRecord = {
   parentSalesOrderId: number | null;
   isVoided: boolean;
   createdAt: string | null;
+  signedAmount: number | null;
 };
 
 export type Refund = Omit<SalesOrder, 'orderType' | 'lines' | 'externalId' | 'orderTotal'> & {
