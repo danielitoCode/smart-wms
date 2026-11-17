@@ -25,11 +25,13 @@ describe('ConfirmPickUseCase', () => {
 		const useCase = new ConfirmPickUseCase(repo);
 		const result = await useCase.execute({
 			pickTaskId: 1,
+			warehouseId: 12,
 			scannedBarcode: ' 100000000001 ',
 			quantityPicked: 2
 		});
 		expect(repo.confirm).toHaveBeenCalledWith({
 			pickTaskId: 1,
+			warehouseId: 12,
 			scannedBarcode: '100000000001',
 			quantityPicked: 2
 		});
@@ -39,7 +41,7 @@ describe('ConfirmPickUseCase', () => {
 	it('rejects empty barcode', async () => {
 		const useCase = new ConfirmPickUseCase(createRepo());
 		expect(() => 
-			useCase.execute({ pickTaskId: 1, scannedBarcode: '  ', quantityPicked: 1 })
+			useCase.execute({ pickTaskId: 1, warehouseId: 12, scannedBarcode: '  ', quantityPicked: 1 })
 		).toThrow(/scannedBarcode/);
 	});
 });
