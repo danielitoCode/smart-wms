@@ -5,21 +5,21 @@
  import {createAuthGuardState} from '../../../auth/ui/state/authGuardState.svelte';
  import {createDashboardState} from '../state/dashboardState.svelte';
  import type {DashboardEvent,DashboardRangeKey} from '../../domain/entity/Dashboard';
+ import {dashboardRangeForPreset} from '../../domain/entity/DashboardDateRange';
  const i18n=getContext<I18nState>('i18n'),warehouse=getContext<WarehouseSelectionState>('warehouseSelection'),auth=getContext<ReturnType<typeof createAuthGuardState>>('authGuard'),vm=createDashboardState();
  let showSettings=$state(false);
  const labels:Record<DashboardEvent,{title:string;unit:string}>={picking:{title:'Picking',unit:'orders'},packing:{title:'Packing',unit:'units'},shipped:{title:'Shipped',unit:'orders'},received_skus:{title:'Received',unit:'unique SKUs'},putaway_skus:{title:'Put Away',unit:'unique SKUs'}};
  const isAdmin=$derived(auth.user?.role==='ADMIN'),canSalesOrders=$derived(isAdmin||(auth.user?.allowedPages??[]).includes('sales-orders')),canMarkPickup=$derived(isAdmin||(auth.user?.allowedOverrides??[]).includes('so-full-edit'));
  const presets:{key:DashboardRangeKey;label:string}[]=[{key:'today',label:'Today'},{key:'yesterday',label:'Yesterday'},{key:'last_7d',label:'Last 7d'},{key:'last_30d',label:'Last 30d'},{key:'custom',label:'Custom'}];
- function iso(d:Date){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');}
- function range(){const now=new Date(),today=new Date(now.getFullYear(),now.getMonth(),now.getDate());if(vm.rangeKey==='today')return {start:iso(today),end:iso(today)};if(vm.rangeKey==='yesterday'){const d=new Date(today);d.setDate(d.getDate()-1);return {start:iso(d),end:iso(d)};}if(vm.rangeKey==='last_7d'||vm.rangeKey==='last_30d'){const d=new Date(today);d.setDate(d.getDate()-(vm.rangeKey==='last_7d'?6:29));return {start:iso(d),end:iso(today)};}return {start:vm.customStart,end:vm.customEnd};}
- function refresh(){const w=warehouse.warehouseId,r=range();if(!w||!r.start||!r.end||r.end<r.start)return;void vm.loadTab(w,r);}
+ function range(){return dashboardRangeForPreset(vm.rangeKey,vm.customStart,vm.customEnd);}
+ function refresh(){const w=warehouse.warehouseId,r=range();if(!w||!r)return;void vm.loadTab(w,r);}
  function setRange(v:DashboardRangeKey){vm.rangeKey=v;refresh();}
  function reorder(slug:DashboardEvent,dir:number){const a=[...vm.preferences.chartOrder],i=a.indexOf(slug),j=i+dir;if(i<0||j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];void vm.updatePreferences({chartOrder:a});}
  function csv(){const p=vm.productivity;if(!p)return;const events=p.eventsVisible,rows=[['User',...events.map(s=>labels[s]?.title??s),'Total']];for(const u of p.users)rows.push([u.displayName||u.username,...events.map(s=>String(u.metrics[s]??0)),String(u.total??0)]);const quote=(v:string)=>'"'+v.replace(/"/g,'""')+'"';const blob=new Blob([rows.map(row=>row.map(quote).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='productivity-'+p.range.start+'_'+p.range.end+'.csv';a.click();URL.revokeObjectURL(url);}
  function moveTo(slug:DashboardEvent){vm.focusedSource=slug;}
  async function doPickup(){if(vm.confirmPickup==null)return;const id=vm.confirmPickup;if(await vm.markPickup(id))refresh();}
  onMount(()=>{void vm.loadPreferences();});
- $effect(()=>{const id=warehouse.warehouseId,tab=vm.activeTab,key=vm.rangeKey,start=vm.customStart,end=vm.customEnd,q=vm.search,status=vm.status;if(id&&!(key==='custom'&&(!start||!end||end<start))){const r=range();void vm.loadTab(id,r);}});
+ $effect(()=>{const id=warehouse.warehouseId,tab=vm.activeTab,key=vm.rangeKey,start=vm.customStart,end=vm.customEnd,q=vm.search,status=vm.status;if(id){const r=dashboardRangeForPreset(key,start,end);if(r)void vm.loadTab(id,r);}});
 </script>
 <svelte:head><title>Dashboard · Smart WMS</title></svelte:head>
 <section class="page">
