@@ -8,12 +8,13 @@ export class AuditLogRepositoryImpl implements AuditLogRepository {
 
 	async list(query: AuditLogQuery = {}): Promise<AuditLogPage> {
 		const response = await this.remote.list(query);
-		const raw = response.entries ?? response.logs ?? [];
+		const rows = (response.entries ?? []).map(AuditLogMapper.toDomain);
 		return {
-			rows: raw.map(AuditLogMapper.toDomain),
+			rows,
 			page: response.page ?? query.page ?? 1,
 			perPage: response.per_page ?? query.perPage ?? 50,
-			total: response.total ?? raw.length
+			total: response.total ?? rows.length,
+			pages: response.pages ?? Math.max(1, Math.ceil((response.total ?? rows.length) / (response.per_page ?? query.perPage ?? 50)))
 		};
 	}
 }
