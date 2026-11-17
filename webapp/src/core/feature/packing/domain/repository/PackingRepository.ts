@@ -10,5 +10,5 @@ export interface PackingRepository {
 	/** POST /api/packing/verify */
 	verify(input: VerifyPackInput): Promise<SimpleMessageResult>;
 	/** POST /api/packing/complete */
-	complete(soId: number): Promise<SimpleMessageResult>;
+	complete(soId: number, warehouseId: number): Promise<SimpleMessageResult>;
 }
