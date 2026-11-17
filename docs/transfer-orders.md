@@ -30,7 +30,7 @@ Operator playbook for warehouse-to-warehouse transfers (v1.8.0). A transfer orde
                      CLOSED
 ```
 
-Inventory moves only at admin **approve**. A **reject** leaves source stock at the source warehouse so the picker can re-pick or the operator can short-close the line.
+Inventory moves only at admin **approve**. A **reject** leaves source stock and its reservation untouched, restores the affected line's picked quantity to its last approved quantity, and returns the header to PARTIALLY_PICKED so the picker can receive a fresh batch or the operator can short-close the line.
 
 ## Roles
 
@@ -90,7 +90,7 @@ Picker opens the TO and clicks **Submit** (mobile or admin UI). The handler:
 - Snapshots `(to_line_id, item_id, picked_in_snapshot)` into a fresh `transfer_order_approvals` row with status `PENDING`.
 - Returns 422 `nothing_picked` when no lines qualify.
 
-A TO can have multiple approval rows when picking spans several batches; each batch is approved or rejected independently.
+A TO can have multiple approval rows when picking spans several batches, but they are processed **sequentially**. While one approval is PENDING, the server blocks another submit, a new pick batch, further confirmations for that TO, cancellation, and short-close. This prevents overlapping snapshots and double-counting unapproved quantities.
 
 ## Admin approval
 
@@ -109,16 +109,16 @@ Admin opens the TO detail and clicks **Approve** on a pending submission row.
 
 ## Admin rejection
 
-Admin clicks **Reject** with an optional reason (max 1000 chars). The approval row flips to REJECTED with `rejected_at` + `rejection_reason`. **No inventory movement**, **no event emission**. The picker can re-pick the affected lines (the source stock is still there) or the operator can short-close the line if the picks should not return.
+Admin clicks **Reject** with an optional reason (max 1000 chars). The approval row flips to REJECTED with `rejected_at` + `rejection_reason`. The server subtracts the rejected snapshot from each affected line's `picked_qty`, never below `approved_qty`, and restores its state to PENDING or PARTIALLY_PICKED. The TO header returns to PARTIALLY_PICKED. **No inventory movement**, **no event emission**. A new pick batch can then be created for the unapproved commitment, or the operator can short-close the line.
 
 ## Cancel + delete
 
-- **Cancel** -- valid pre-approval (statuses OPEN, PARTIALLY_PICKED). Releases the remaining `committed - approved` reservation on each line. Returns 409 `to_already_partially_approved` when a non-PENDING approval row exists (the multi-batch audit trail must not be nuked).
+- **Cancel** -- valid pre-approval (statuses OPEN, PARTIALLY_PICKED). Releases the remaining `committed - approved` reservation on each line. Returns 409 `to_already_partially_approved` when any approval row exists, including PENDING submissions; an in-flight or completed approval trail must not be invalidated.
 - **Delete** -- only valid for OPEN TOs with no picks and no approvals. Use Cancel for everything else.
 
 ## Short-close a line
 
-`Admin Panel -> TO detail -> Short-Close` on the line row. Transitions the line to SHORT_CLOSED and releases `committed_qty - approved_qty` back to source `inventory.quantity_allocated`. Used when the picker can't fulfil the remaining commitment and the operator wants to lock the line out without cancelling the whole TO.
+`Admin Panel -> TO detail -> Short-Close` on the line row. Transitions the line to SHORT_CLOSED and releases `committed_qty - approved_qty` back to source `inventory.quantity_allocated`. Used when the picker can't fulfil the remaining commitment and the operator wants to lock the line out without cancelling the whole TO. Short-pick through the standard SO endpoint is rejected for TO tasks (409); the TO reservation is released only through this admin action.
 
 ## Failure modes -- operator action
 
@@ -132,7 +132,9 @@ Admin clicks **Reject** with an optional reason (max 1000 chars). The approval r
 | Admin tries to approve own submission with gate ON | 403 `self_approval_blocked` | Different admin approves, or operator flips `app_settings.transfer_order_block_self_approval=false` |
 | Destination warehouse has no Staging bin | Approve 409 `no_destination_staging_bin` | Add a Staging bin at the destination, retry |
 | Admin tries to delete a TO with picks or approvals | 409 `to_not_deletable` | Use Cancel instead |
-| Admin tries to cancel a TO with non-pending approvals | 409 `to_already_partially_approved` | Process the remaining approvals or short-close the lines |
+| Admin tries to cancel a TO with any approval submission | 409 `to_already_partially_approved` | Resolve the pending submission or finish the approval history first |
+| Picker submits while another approval is pending | 409 `pending_approval_exists` | Wait for the current approval to be approved or rejected |
+| Picker attempts standard short-pick on a TO task | 409 `transfer_order_short_pick_not_supported` | Ask the admin to short-close the transfer line |
 | Picker submits with no new picks | 422 `nothing_picked` | Pick more lines before submitting |
 
 ## Audit trail
