@@ -31,6 +31,16 @@ function line(dto: RefundLineDto): SalesOrderLine {
 export const RefundMapper = {
   line,
   header(dto: RefundHeaderDto, lines: RefundLineDto[] = [], related: RefundRelatedRecord[] = []): Refund {
+    const mappedLines = lines.map(line);
+    const signedAmount = dto.order_total == null || !Number.isFinite(Number(dto.order_total))
+      ? null : Number(dto.order_total);
+    const amountIntegrity = signedAmount === null
+      ? 'MISSING'
+      : signedAmount >= 0
+        ? 'NON_NEGATIVE'
+        : mappedLines.some(item => item.quantityOrdered >= 0)
+          ? 'LINE_SIGN_MISMATCH'
+          : 'VALID';
     return {
       salesOrderId: dto.so_id,
       salesOrderNumber: dto.so_number,
@@ -57,13 +67,9 @@ export const RefundMapper = {
       carrier: dto.carrier ?? null,
       trackingNumber: dto.tracking_number ?? null,
       memo: dto.memo ?? null,
-      orderTotal: dto.order_total == null || !Number.isFinite(Number(dto.order_total))
-        ? 0 : Math.abs(Number(dto.order_total)),
-      signedAmount: dto.order_total == null || !Number.isFinite(Number(dto.order_total))
-        ? null : Number(dto.order_total),
-      amountIntegrity: dto.order_total == null || !Number.isFinite(Number(dto.order_total))
-        ? 'MISSING'
-        : Number(dto.order_total) < 0 ? 'VALID' : 'NON_NEGATIVE',
+      orderTotal: signedAmount === null ? 0 : Math.abs(signedAmount),
+      signedAmount,
+      amountIntegrity,
       relatedRecords: related,
       customerShippingPaid: null,
       sourceSystem: dto.source_system ?? null,
@@ -74,7 +80,7 @@ export const RefundMapper = {
       shippedDateLocal: null,
       billingAddress: address(dto.customer_address),
       shippingAddress: address(dto.ship_address),
-      lines: lines.map(line),
+      lines: mappedLines,
       pickTasks: []
     };
   }
