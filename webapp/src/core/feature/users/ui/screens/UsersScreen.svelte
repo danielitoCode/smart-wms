@@ -33,7 +33,7 @@
   if(editing){ok=await vm.update({userId:editing.userId,fullName:fullName.trim(),role,warehouseIds:[...warehouseIds],allowedFunctions:[...functions],isActive:active,password:password||undefined});}
   else {ok=await vm.create({username:username.trim(),password,fullName:fullName.trim(),role,warehouseIds:[...warehouseIds],allowedFunctions:[...functions]});if(ok)savedUserId=vm.users.find(u=>u.username===username.trim())?.userId;}
   if(ok&&savedUserId&&role==='USER'){const savedPermissions=await vm.savePermissions(savedUserId,pageKeys);if(!savedPermissions)return;}
-  if(ok)reset();}
+  if(ok)reset();
  }
  function toggleGroup(g:PermissionGroup,on:boolean){const keys=g.pages.map(p=>p[0]);pageKeys=on?[...new Set([...pageKeys,...keys])]:pageKeys.filter(k=>!keys.includes(k));}
  async function editPermissions(u:ManagedUser){permissionsUser=u;permissionLoading=true;const p=await vm.loadPermissions(u.userId);pageKeys=p?[...p.pageKeys]:[];permissionLoading=false;}
@@ -43,11 +43,11 @@
 </script>
 <section class="page">
  <header><div><p class="eyebrow">ABELLIS · SMART WMS</p><h1>{i18n.t('Usuarios y permisos')}</h1><p>{i18n.t('Administra cuentas, almacenes asignados y permisos de acceso.')}</p></div><button class="primary" onclick={openCreate}>{i18n.t('Nuevo usuario')}</button></header>
- <div class="toolbar"><label class="search"><icon name="search" size="sm"/><input aria-label="Buscar usuarios" placeholder={i18n.t('Buscar por usuario, nombre o rol…')} bind:value={search}/></label><span>{filtered.length} / {vm.users.length} {i18n.t('usuarios')}</span></div>
+ <div class="toolbar"><label class="search"><span aria-hidden="true">⌕</span><input aria-label="Buscar usuarios" placeholder={i18n.t('Buscar por usuario, nombre o rol…')} bind:value={search}/></label><span>{filtered.length} / {vm.users.length} {i18n.t('usuarios')}</span></div>
  {#if vm.error||localError}<p class="error" role="alert">{localError??vm.error}</p>{/if}
  {#if formOpen}
  <form class="editor" onsubmit={e=>{e.preventDefault();void save();}}>
-  <div class="editor-head"><div><p class="eyebrow">{editing?i18n.t('CUENTA EXISTENTE'):i18n.t('NUEVA CUENTA')}</p><h2>{editing?i18n.t('Editar usuario'):i18n.t('Nuevo usuario')}</h2></div><button type="button" onclick={reset}><icon name="x"/></button></div>
+  <div class="editor-head"><div><p class="eyebrow">{editing?i18n.t('CUENTA EXISTENTE'):i18n.t('NUEVA CUENTA')}</p><h2>{editing?i18n.t('Editar usuario'):i18n.t('Nuevo usuario')}</h2></div><button type="button" onclick={reset}><span aria-hidden="true">×</span></button></div>
   <div class="form-grid">{#if !editing}<label>{i18n.t('Usuario')} *<input required maxlength="150" bind:value={username}/></label>{:else}<label>{i18n.t('Usuario')}<input value={editing.username} disabled/></label>{/if}
    <label>{i18n.t('Nombre completo')} *<input required maxlength="256" bind:value={fullName}/></label>
    <label>{editing?i18n.t('Nueva contraseña (opcional)'):i18n.t('Contraseña')}<input type="password" autocomplete="new-password" bind:value={password} required={!editing}/></label>
@@ -58,7 +58,7 @@
   </section>
   <section class="section"><div class="section-head"><div><h3>{i18n.t('Acceso a módulos móviles')}</h3><p>{i18n.t('Funciones disponibles en las aplicaciones operativas.')}</p></div><div class="quick"><button type="button" onclick={()=>functions=FUNCTIONS.map(f=>f[0])}>{i18n.t('Todos')}</button><button type="button" onclick={()=>functions=[]}>{i18n.t('Ninguno')}</button></div></div><div class="checks functions">{#each FUNCTIONS as f}<label class="check"><input type="checkbox" checked={functions.includes(f[0])} onchange={()=>functions=toggle(functions,f[0])}/>{f[1]}</label>{/each}</div></section>
   <section class="section"><div class="section-head"><div><h3>{i18n.t('Permisos del administrador web')}</h3><p>{i18n.t('Acceso a páginas y capacidades especiales.')}</p></div><div class="quick"><button type="button" onclick={()=>pageKeys=[...ALL_KEYS]}>{i18n.t('Todos')}</button><button type="button" onclick={()=>pageKeys=[]}>{i18n.t('Ninguno')}</button></div></div>
-   {#if role==='ADMIN'}<p class="admin-note"><icon name="shield-check"/>{i18n.t('ADMIN tiene acceso completo; los permisos individuales no se aplican.')}</p>{:else if permissionLoading}<p>{i18n.t('Cargando permisos…')}</p>{:else}<div class="groups">{#each GROUPS as g}<section class:override={g.isOverride} class="group"><div class="group-head"><b>{g.label}</b><span><button type="button" onclick={()=>toggleGroup(g,true)}>{i18n.t('Todos')}</button><button type="button" onclick={()=>toggleGroup(g,false)}>{i18n.t('Ninguno')}</button></span></div>{#each g.pages as p}<label class="check"><input type="checkbox" checked={pageKeys.includes(p[0])} onchange={()=>pageKeys=toggle(pageKeys,p[0])}/>{p[1]}</label>{/each}<small class="muted">{g.pages.filter(p=>pageKeys.includes(p[0])).length}/{g.pages.length}</small></section>{/each}</div>{/if}
+   {#if role==='ADMIN'}<p class="admin-note"><span aria-hidden="true">✓</span>{i18n.t('ADMIN tiene acceso completo; los permisos individuales no se aplican.')}</p>{:else if permissionLoading}<p>{i18n.t('Cargando permisos…')}</p>{:else}<div class="groups">{#each GROUPS as g}<section class:override={g.isOverride} class="group"><div class="group-head"><b>{g.label}</b><span><button type="button" onclick={()=>toggleGroup(g,true)}>{i18n.t('Todos')}</button><button type="button" onclick={()=>toggleGroup(g,false)}>{i18n.t('Ninguno')}</button></span></div>{#each g.pages as p}<label class="check"><input type="checkbox" checked={pageKeys.includes(p[0])} onchange={()=>pageKeys=toggle(pageKeys,p[0])}/>{p[1]}</label>{/each}<small class="muted">{g.pages.filter(p=>pageKeys.includes(p[0])).length}/{g.pages.length}</small></section>{/each}</div>{/if}
   </section>
   {#if editing}<label class="active"><input type="checkbox" bind:checked={active}/><span><b>{i18n.t('Cuenta activa')}</b><small>{i18n.t('Las cuentas inactivas no pueden iniciar sesión.')}</small></span></label>{/if}
   <div class="actions"><button type="button" onclick={reset}>{i18n.t('Cancelar')}</button><button class="primary" type="submit" disabled={vm.saving||vm.warehouseLoading}>{vm.saving?i18n.t('Guardando…'):i18n.t('Guardar usuario')}</button></div>
