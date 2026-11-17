@@ -22,7 +22,7 @@ describe('TransferOrdersRemoteDataSource', () => {
     const remote = new TransferOrdersRemoteDataSource(api);
     await remote.warehouses();
     await remote.pickerDetail(12);
-    expect(api.get).toHaveBeenNthCalledWith(1, '/api/admin/warehouses?page=1&per_page=1000');
+    expect(api.get).toHaveBeenNthCalledWith(1, '/api/warehouses/list');
     expect(api.get).toHaveBeenNthCalledWith(2, '/api/admin/picker/transfer-orders/12');
   });
 
