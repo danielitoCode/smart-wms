@@ -6,6 +6,7 @@
  import {createDashboardState} from '../state/dashboardState.svelte';
  import type {DashboardEvent,DashboardRangeKey} from '../../domain/entity/Dashboard';
  const i18n=getContext<I18nState>('i18n'),warehouse=getContext<WarehouseSelectionState>('warehouseSelection'),auth=getContext<ReturnType<typeof createAuthGuardState>>('authGuard'),vm=createDashboardState();
+ let showSettings=$state(false);
  const labels:Record<DashboardEvent,{title:string;unit:string}>={picking:{title:'Picking',unit:'orders'},packing:{title:'Packing',unit:'units'},shipped:{title:'Shipped',unit:'orders'},received_skus:{title:'Received',unit:'unique SKUs'},putaway_skus:{title:'Put Away',unit:'unique SKUs'}};
  const isAdmin=$derived(auth.user?.role==='ADMIN'),canSalesOrders=$derived(isAdmin||(auth.user?.allowedPages??[]).includes('sales-orders')),canMarkPickup=$derived(isAdmin||(auth.user?.allowedOverrides??[]).includes('so-full-edit'));
  const presets:{key:DashboardRangeKey;label:string}[]=[{key:'today',label:'Today'},{key:'yesterday',label:'Yesterday'},{key:'last_7d',label:'Last 7d'},{key:'last_30d',label:'Last 30d'},{key:'custom',label:'Custom'}];
