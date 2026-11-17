@@ -135,22 +135,26 @@ def _ensure_destination_staging_bin():
         return existing[0]
     cur = _cursor()
     try:
+        suffix = uuid.uuid4().hex[:8]
+        zone_code = f"TO-RES-{suffix}"
+        bin_code = f"TO-RES-STAGE-{suffix}"
         cur.execute(
             """
             INSERT INTO zones (warehouse_id, zone_code, zone_name, zone_type)
-            VALUES (2, 'TO-RES-STAGE', 'Transfer Reservation Staging', 'STAGING')
+            VALUES (2, %s, 'Transfer Reservation Staging', 'STAGING')
             RETURNING zone_id
-            """
+            """,
+            (zone_code,),
         )
         zone_id = cur.fetchone()[0]
         cur.execute(
             """
             INSERT INTO bins
                 (zone_id, warehouse_id, bin_code, bin_barcode, bin_type, external_id)
-            VALUES (2, 2, 'TO-RES-STAGE', 'TO-RES-STAGE', 'Staging', %s)
+            VALUES (%s, 2, %s, %s, 'Staging', %s)
             RETURNING bin_id
             """,
-            (str(uuid.uuid4()),),
+            (zone_id, bin_code, bin_code, str(uuid.uuid4())),
         )
         return cur.fetchone()[0]
     finally:
