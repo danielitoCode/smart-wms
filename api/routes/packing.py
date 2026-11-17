@@ -122,6 +122,7 @@ def verify_item(validated):
             f"""
             SELECT so_id, status, warehouse_id FROM sales_orders
             WHERE so_id = :so_id {scope_clause}
+            FOR UPDATE
             """
         ),
         {"so_id": so_id, **scope_params},
