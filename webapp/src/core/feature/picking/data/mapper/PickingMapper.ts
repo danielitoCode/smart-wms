@@ -95,7 +95,8 @@ export const PickingMapper = {
 				soId: order.so_id,
 				soNumber: order.so_number,
 				lineCount: order.line_count
-			}))
+			})),
+			warnings: dto.warnings
 		};
 	},
 
