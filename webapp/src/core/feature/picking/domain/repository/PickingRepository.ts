@@ -14,7 +14,7 @@ export interface PickingRepository {
 	getNextTask(batchId: number): Promise<PickTask | null>;
 	confirm(input: ConfirmPickInput): Promise<SimpleMessageResult>;
 	short(input: ShortPickInput): Promise<SimpleMessageResult>;
-	completeBatch(batchId: number): Promise<SimpleMessageResult>;
+	completeBatch(batchId: number, warehouseId: number): Promise<SimpleMessageResult>;
 	cancelBatch(batchId: number): Promise<SimpleMessageResult>;
 	/** POST /api/picking/wave-validate */
 	waveValidate(soBarcode: string, warehouseId: number): Promise<WaveValidateResult>;
