@@ -179,6 +179,43 @@ def update_transfer_order_line_picked(db, to_line_id: int, delta: int) -> dict:
         raise ValueError(f"delta must be > 0, got {delta!r}")
     from sqlalchemy import text  # local import to keep top of file lib-free
 
+    tracking = db.execute(
+        text(
+            """
+            SELECT o.reservations_tracked, tol.committed_qty, tol.approved_qty,
+                   COALESCE(SUM(r.reserved_qty), 0) AS reserved_qty,
+                   COALESCE(SUM(r.consumed_qty), 0) AS consumed_qty,
+                   COALESCE(SUM(r.released_qty), 0) AS released_qty
+              FROM transfer_order_lines tol
+              JOIN transfer_orders o ON o.to_id = tol.to_id
+              LEFT JOIN transfer_order_reservations r ON r.to_line_id = tol.to_line_id
+             WHERE tol.to_line_id = :lid
+             GROUP BY tol.to_line_id, o.reservations_tracked,
+                      tol.committed_qty, tol.approved_qty
+            """
+        ),
+        {"lid": to_line_id},
+    ).fetchone()
+    if not tracking or not tracking.reservations_tracked:
+        raise OverPickAttempt(
+            f"transfer_order_lines.to_line_id={to_line_id}: exact inventory reservations are unavailable"
+        )
+    expected_remaining = (
+        tracking.committed_qty - tracking.approved_qty - tracking.released_qty
+    )
+    actual_remaining = (
+        tracking.reserved_qty - tracking.consumed_qty - tracking.released_qty
+    )
+    if (
+        tracking.reserved_qty != tracking.committed_qty
+        or tracking.consumed_qty != tracking.approved_qty
+        or expected_remaining < 0
+        or actual_remaining != expected_remaining
+    ):
+        raise OverPickAttempt(
+            f"transfer_order_lines.to_line_id={to_line_id}: reservation ledger does not match committed/approved quantities"
+        )
+
     pending_approval = db.execute(
         text(
             """
@@ -336,13 +373,15 @@ def submit_picks(db, to_id: int, username: str) -> dict:
 
     header = db.execute(
         text(
-            "SELECT to_id, to_number, status, source_warehouse_id "
+            "SELECT to_id, to_number, status, source_warehouse_id, reservations_tracked "
             "  FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
         ),
         {"tid": to_id},
     ).fetchone()
     if not header:
         return {"ok": False, "reason": "not_found"}
+    if not header.reservations_tracked:
+        return {"ok": False, "reason": "reservation_tracking_unavailable"}
     if header.status not in (
         TO_STATUS_PARTIALLY_PICKED, TO_STATUS_AWAITING_APPROVAL,
     ):

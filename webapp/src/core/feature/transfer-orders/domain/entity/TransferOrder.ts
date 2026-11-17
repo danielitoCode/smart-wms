@@ -7,7 +7,12 @@ export type TransferOrderLine = {
   toLineId: number; transferOrderId: number; itemId: number; lineNumber: number;
   requestedQuantity: number; committedQuantity: number; pickedQuantity: number;
   approvedQuantity: number; status: TransferOrderLineStatus; sku?: string | null;
-  itemName?: string | null;
+  itemName?: string | null; reservations: TransferOrderReservation[];
+};
+export type TransferOrderReservation = {
+  reservationId: number; inventoryId: number; binId: number; binCode: string;
+  lotNumber: string | null; reservedQuantity: number; consumedQuantity: number;
+  releasedQuantity: number; remainingQuantity: number;
 };
 export type TransferOrderApprovalSnapshotLine = { toLineId: number; itemId: number; pickedQuantity: number };
 export type TransferOrderApproval = {
@@ -20,7 +25,7 @@ export type TransferOrder = {
   transferOrderId: number; transferOrderNumber: string; sourceWarehouseId: number;
   destinationWarehouseId: number; status: TransferOrderStatus; createdBy: string;
   externalId: string; createdAt: string | null; updatedAt: string | null;
-  notes: string | null; lines: TransferOrderLine[]; approvals: TransferOrderApproval[];
+  notes: string | null; reservationsTracked: boolean; lines: TransferOrderLine[]; approvals: TransferOrderApproval[];
 };
 export type TransferOrderWarehouse = { warehouseId: number; warehouseCode: string; warehouseName: string; active: boolean };
 export type TransferOrderQuery = { status?: TransferOrderStatus; sourceWarehouseId?: number; destinationWarehouseId?: number; page?: number; perPage?: number };

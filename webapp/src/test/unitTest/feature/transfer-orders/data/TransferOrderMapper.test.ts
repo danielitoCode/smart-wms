@@ -28,6 +28,25 @@ describe('TransferOrderMapper', () => {
   });
 
 
+  it('maps exact per-bin reservation ownership and consumption balances', () => {
+    const trackedHeader = { ...header, reservations_tracked: true };
+    const reservedLine = {
+      ...line,
+      reservations: [{
+        reservation_id: 101, inventory_id: 501, bin_id: 31, bin_code: 'A-01-02',
+        lot_number: 'LOT-7', reserved_qty: 8, consumed_qty: 2,
+        released_qty: 1, remaining_qty: 5
+      }]
+    };
+    const order = mapper.header(trackedHeader, [reservedLine]);
+    expect(order.reservationsTracked).toBe(true);
+    expect(order.lines[0].reservations[0]).toEqual({
+      reservationId: 101, inventoryId: 501, binId: 31, binCode: 'A-01-02',
+      lotNumber: 'LOT-7', reservedQuantity: 8, consumedQuantity: 2,
+      releasedQuantity: 1, remainingQuantity: 5
+    });
+  });
+
   it('preserves rejection timestamps and distinguishes unavailable snapshots from empty snapshots', () => {
     const rejected = mapper.header(header, [line], [{
       to_approval_id: 10, to_id: 12, submitted_by: 'picker', submitted_at: '2026-11-17T10:00:00Z',

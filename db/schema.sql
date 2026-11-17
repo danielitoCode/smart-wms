@@ -1987,6 +1987,7 @@ CREATE TABLE transfer_orders (
     created_by                VARCHAR(100) NOT NULL,
     notes                     TEXT,
     external_id               UUID NOT NULL UNIQUE,
+    reservations_tracked       BOOLEAN NOT NULL DEFAULT TRUE,
     created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT transfer_orders_warehouses_distinct
@@ -2016,6 +2017,63 @@ CREATE TABLE transfer_order_lines (
 
 CREATE INDEX ix_transfer_order_lines_to   ON transfer_order_lines(to_id);
 CREATE INDEX ix_transfer_order_lines_item ON transfer_order_lines(item_id);
+
+-- Exact per-line/per-inventory ownership for Transfer Order reservations.
+-- The corresponding forward migration is 085_transfer_order_exact_reservations.sql.
+CREATE TABLE transfer_order_reservations (
+    reservation_id BIGSERIAL PRIMARY KEY,
+    to_line_id INT NOT NULL
+        REFERENCES transfer_order_lines(to_line_id) ON DELETE CASCADE,
+    inventory_id INT NOT NULL
+        REFERENCES inventory(inventory_id),
+    reserved_qty INT NOT NULL CHECK (reserved_qty > 0),
+    consumed_qty INT NOT NULL DEFAULT 0 CHECK (consumed_qty >= 0),
+    released_qty INT NOT NULL DEFAULT 0 CHECK (released_qty >= 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT transfer_order_reservations_consumed_released
+        CHECK (consumed_qty + released_qty <= reserved_qty),
+    CONSTRAINT transfer_order_reservations_line_inventory_unique
+        UNIQUE (to_line_id, inventory_id)
+);
+
+CREATE INDEX ix_to_reservations_line
+    ON transfer_order_reservations(to_line_id, inventory_id);
+CREATE INDEX ix_to_reservations_inventory
+    ON transfer_order_reservations(inventory_id);
+
+
+-- Protect TO-owned reservations from unrelated allocation releases (e.g.
+-- SO cancellation or picking). The aggregate inventory counter is shared,
+-- so every decrement must leave at least the sum of still-open TO
+-- reservations on that exact inventory row.
+CREATE OR REPLACE FUNCTION prevent_to_reservation_underallocation()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $
+DECLARE
+    reserved_total BIGINT;
+BEGIN
+    SELECT COALESCE(SUM(reserved_qty - consumed_qty - released_qty), 0)
+      INTO reserved_total
+      FROM transfer_order_reservations
+     WHERE inventory_id = NEW.inventory_id;
+
+    IF NEW.quantity_allocated < reserved_total THEN
+        RAISE EXCEPTION
+            'inventory_id=% allocation % would undercut open Transfer Order reservations %',
+            NEW.inventory_id, NEW.quantity_allocated, reserved_total
+            USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END;
+$;
+
+DROP TRIGGER IF EXISTS trg_inventory_to_reservation_floor ON inventory;
+CREATE TRIGGER trg_inventory_to_reservation_floor
+BEFORE UPDATE OF quantity_allocated ON inventory
+FOR EACH ROW
+EXECUTE FUNCTION prevent_to_reservation_underallocation();
 
 CREATE TABLE transfer_order_approvals (
     to_approval_id    SERIAL PRIMARY KEY,

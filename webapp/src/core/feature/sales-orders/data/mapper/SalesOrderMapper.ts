@@ -107,6 +107,7 @@ function toDomain(dto: SalesOrderProjectionDto): SalesOrder {
     primaryBinPickSequence: dto.primary_bin_pick_sequence ?? null,
     lineCount: dto.line_count,
     pickedAt: dto.picked_at ?? null,
+    packedAt: dto.packed_at ?? null,
     shippedAt: dto.shipped_at ?? null, shippedDateLocal: dto.shipped_date_local ?? null,
     billingAddress: toAddress(dto, 'billing'), shippingAddress: toAddress(dto, 'shipping'),
     lines: Array.isArray(dto.lines) ? dto.lines.map(toLine) : [], pickTasks: []

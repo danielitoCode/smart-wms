@@ -98,6 +98,7 @@ def _serialise_to_header(row) -> dict:
         "external_id": str(row.external_id),
         "created_at": row.created_at.isoformat() if row.created_at else None,
         "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+        "reservations_tracked": getattr(row, "reservations_tracked", False),
     }
 
 
@@ -114,6 +115,7 @@ def _serialise_to_line(row) -> dict:
         "picked_qty": row.picked_qty,
         "approved_qty": row.approved_qty,
         "status": row.status,
+        "reservations": getattr(row, "reservations", []) or [],
     }
 
 
@@ -128,6 +130,7 @@ def _serialise_to_approval(row) -> dict:
         "rejected_at": row.rejected_at.isoformat() if row.rejected_at else None,
         "rejection_reason": row.rejection_reason,
         "status": row.status,
+        "lines_snapshot": row.lines_snapshot,
         "external_id": str(row.external_id),
     }
 
@@ -227,7 +230,8 @@ def get_transfer_order(to_id):
         text(
             f"""
             SELECT to_id, to_number, source_warehouse_id, destination_warehouse_id,
-                   status, created_by, notes, external_id, created_at, updated_at
+                   status, created_by, notes, external_id, created_at, updated_at,
+                   reservations_tracked
               FROM transfer_orders WHERE to_id = :tid {scope_sql}
             """
         ),
@@ -242,7 +246,24 @@ def get_transfer_order(to_id):
             SELECT tol.to_line_id, tol.to_id, tol.item_id,
                    i.sku, i.item_name,
                    tol.line_number, tol.requested_qty, tol.committed_qty,
-                   tol.picked_qty, tol.approved_qty, tol.status
+                   tol.picked_qty, tol.approved_qty, tol.status,
+                   COALESCE((
+                       SELECT jsonb_agg(jsonb_build_object(
+                           'reservation_id', tor.reservation_id,
+                           'inventory_id', inv.inventory_id,
+                           'bin_id', inv.bin_id,
+                           'bin_code', b.bin_code,
+                           'lot_number', inv.lot_number,
+                           'reserved_qty', tor.reserved_qty,
+                           'consumed_qty', tor.consumed_qty,
+                           'released_qty', tor.released_qty,
+                           'remaining_qty', tor.reserved_qty - tor.consumed_qty - tor.released_qty
+                       ) ORDER BY inv.inventory_id)
+                         FROM transfer_order_reservations tor
+                         JOIN inventory inv ON inv.inventory_id = tor.inventory_id
+                         JOIN bins b ON b.bin_id = inv.bin_id
+                        WHERE tor.to_line_id = tol.to_line_id
+                   ), '[]'::jsonb) AS reservations
               FROM transfer_order_lines tol
               JOIN items i ON i.item_id = tol.item_id
              WHERE tol.to_id = :tid
@@ -257,7 +278,7 @@ def get_transfer_order(to_id):
             """
             SELECT to_approval_id, to_id, submitted_by, submitted_at,
                    approved_by, approved_at, rejected_at, rejection_reason,
-                   status, external_id
+                   status, lines_snapshot, external_id
               FROM transfer_order_approvals
              WHERE to_id = :tid
              ORDER BY submitted_at DESC
@@ -278,71 +299,222 @@ def get_transfer_order(to_id):
 # ----------------------------------------------------------------------
 
 
-def _release_reservations(db, to_id: int, source_warehouse_id: int) -> None:
-    """For every line on the TO with committed_qty > approved_qty,
-    decrement inventory.quantity_allocated at the source warehouse so
-    the reservation does not survive the cancellation. Inventory is
-    per-bin so the release walks rows in the same order the import +
-    picker use (inventory_id ASC) and decrements each row up to its
-    own current allocated value."""
+def _assert_line_reservation_ledger(db, to_line_id: int):
+    row = db.execute(
+        text(
+            """
+            SELECT tol.committed_qty, tol.approved_qty,
+                   COALESCE(SUM(r.reserved_qty), 0) AS reserved_qty,
+                   COALESCE(SUM(r.consumed_qty), 0) AS consumed_qty,
+                   COALESCE(SUM(r.released_qty), 0) AS released_qty
+              FROM transfer_order_lines tol
+              LEFT JOIN transfer_order_reservations r ON r.to_line_id = tol.to_line_id
+             WHERE tol.to_line_id = :lid
+             GROUP BY tol.to_line_id, tol.committed_qty, tol.approved_qty
+            """
+        ),
+        {"lid": to_line_id},
+    ).fetchone()
+    if not row:
+        raise ValueError(f"transfer order line not found: {to_line_id}")
+    outstanding = row.reserved_qty - row.consumed_qty - row.released_qty
+    expected = row.committed_qty - row.approved_qty - row.released_qty
+    if (
+        row.reserved_qty != row.committed_qty
+        or row.consumed_qty != row.approved_qty
+        or row.released_qty > row.committed_qty - row.approved_qty
+        or outstanding != expected
+    ):
+        raise ValueError(
+            f"reservation ledger mismatch for transfer_order_line={to_line_id}: "
+            f"committed={row.committed_qty}, approved={row.approved_qty}, "
+            f"reserved={row.reserved_qty}, consumed={row.consumed_qty}, "
+            f"released={row.released_qty}"
+        )
+    return row
+
+
+def _release_line_reservations(db, to_line_id: int, quantity: Optional[int] = None) -> int:
+    """Release only the unconsumed reservation owned by one TO line."""
+    ledger = _assert_line_reservation_ledger(db, to_line_id)
+    rows = db.execute(
+        text(
+            """
+            SELECT r.reservation_id, r.reserved_qty, r.consumed_qty,
+                   r.released_qty, inv.inventory_id, inv.quantity_allocated
+              FROM transfer_order_reservations r
+              JOIN inventory inv ON inv.inventory_id = r.inventory_id
+             WHERE r.to_line_id = :lid
+               AND r.reserved_qty > r.consumed_qty + r.released_qty
+             ORDER BY inv.inventory_id ASC
+             FOR UPDATE OF r, inv
+            """
+        ),
+        {"lid": to_line_id},
+    ).fetchall()
+    outstanding = sum(row.reserved_qty - row.consumed_qty - row.released_qty for row in rows)
+    target = outstanding if quantity is None else quantity
+    if target < 0 or target > outstanding:
+        raise ValueError(
+            f"reservation mismatch for transfer_order_line={to_line_id}: "
+            f"requested release={target}, outstanding={outstanding}"
+        )
+    remaining = target
+    for row in rows:
+        if remaining <= 0:
+            break
+        available = row.reserved_qty - row.consumed_qty - row.released_qty
+        release_qty = min(remaining, available)
+        if row.quantity_allocated < release_qty:
+            raise ValueError(
+                f"inventory allocation mismatch for inventory_id={row.inventory_id}: "
+                f"allocated={row.quantity_allocated}, release={release_qty}"
+            )
+        reservation_changed = db.execute(
+            text(
+                """
+                UPDATE transfer_order_reservations
+                   SET released_qty = released_qty + :qty, updated_at = NOW()
+                 WHERE reservation_id = :reservation_id
+                   AND reserved_qty - consumed_qty - released_qty >= :qty
+                RETURNING reservation_id
+                """
+            ),
+            {"qty": release_qty, "reservation_id": row.reservation_id},
+        ).fetchone()
+        if not reservation_changed:
+            raise ValueError(f"reservation changed for reservation_id={row.reservation_id}")
+        changed = db.execute(
+            text(
+                """
+                UPDATE inventory
+                   SET quantity_allocated = quantity_allocated - :qty,
+                       updated_at = NOW()
+                 WHERE inventory_id = :inventory_id
+                   AND quantity_allocated >= :qty
+                RETURNING inventory_id
+                """
+            ),
+            {"qty": release_qty, "inventory_id": row.inventory_id},
+        ).fetchone()
+        if not changed:
+            raise ValueError(f"inventory allocation changed for inventory_id={row.inventory_id}")
+        remaining -= release_qty
+    if remaining:
+        raise ValueError(f"reservation release incomplete for transfer_order_line={to_line_id}")
+    return target
+
+
+def _consume_line_reservations(db, to_line_id: int, quantity: int) -> None:
+    """Consume the exact source inventory rows reserved by this TO line."""
+    ledger = _assert_line_reservation_ledger(db, to_line_id)
+    if quantity <= 0:
+        raise ValueError(f"reservation consumption must be positive, got {quantity}")
+    rows = db.execute(
+        text(
+            """
+            SELECT r.reservation_id, r.reserved_qty, r.consumed_qty,
+                   r.released_qty, inv.inventory_id,
+                   inv.quantity_allocated, inv.quantity_on_hand
+              FROM transfer_order_reservations r
+              JOIN inventory inv ON inv.inventory_id = r.inventory_id
+             WHERE r.to_line_id = :lid
+               AND r.reserved_qty > r.consumed_qty + r.released_qty
+             ORDER BY inv.inventory_id ASC
+             FOR UPDATE OF r, inv
+            """
+        ),
+        {"lid": to_line_id},
+    ).fetchall()
+    outstanding = sum(row.reserved_qty - row.consumed_qty - row.released_qty for row in rows)
+    if outstanding != ledger.committed_qty - ledger.approved_qty - ledger.released_qty:
+        raise ValueError(f"reservation balance changed for transfer_order_line={to_line_id}")
+    if quantity > outstanding:
+        raise ValueError(
+            f"reservation mismatch for transfer_order_line={to_line_id}: "
+            f"approval={quantity}, outstanding={outstanding}"
+        )
+    remaining = quantity
+    for row in rows:
+        if remaining <= 0:
+            break
+        available = row.reserved_qty - row.consumed_qty - row.released_qty
+        consume_qty = min(remaining, available)
+        if row.quantity_allocated < consume_qty or row.quantity_on_hand < consume_qty:
+            raise ValueError(
+                f"reserved inventory unavailable for inventory_id={row.inventory_id}: "
+                f"allocated={row.quantity_allocated}, on_hand={row.quantity_on_hand}"
+            )
+        reservation_changed = db.execute(
+            text(
+                """
+                UPDATE transfer_order_reservations
+                   SET consumed_qty = consumed_qty + :qty, updated_at = NOW()
+                 WHERE reservation_id = :reservation_id
+                   AND reserved_qty - consumed_qty - released_qty >= :qty
+                RETURNING reservation_id
+                """
+            ),
+            {"qty": consume_qty, "reservation_id": row.reservation_id},
+        ).fetchone()
+        if not reservation_changed:
+            raise ValueError(f"reservation changed for reservation_id={row.reservation_id}")
+        changed = db.execute(
+            text(
+                """
+                UPDATE inventory
+                   SET quantity_allocated = quantity_allocated - :qty,
+                       quantity_on_hand = quantity_on_hand - :qty,
+                       updated_at = NOW()
+                 WHERE inventory_id = :inventory_id
+                   AND quantity_allocated >= :qty
+                   AND quantity_on_hand >= :qty
+                RETURNING inventory_id
+                """
+            ),
+            {"qty": consume_qty, "inventory_id": row.inventory_id},
+        ).fetchone()
+        if not changed:
+            raise ValueError(f"reserved inventory changed for inventory_id={row.inventory_id}")
+        remaining -= consume_qty
+    if remaining:
+        raise ValueError(
+            f"reservation consumption incomplete for transfer_order_line={to_line_id}: {remaining}"
+        )
+
+
+def _release_reservations(db, to_id: int) -> None:
     lines = db.execute(
         text(
             """
-            SELECT to_line_id, item_id, committed_qty - approved_qty AS to_release
-              FROM transfer_order_lines
-             WHERE to_id = :tid AND committed_qty > approved_qty
-             ORDER BY item_id ASC
+            SELECT tol.to_line_id, tol.committed_qty, tol.approved_qty,
+                   COALESCE(SUM(r.reserved_qty), 0) AS reserved_qty,
+                   COALESCE(SUM(r.consumed_qty), 0) AS consumed_qty,
+                   COALESCE(SUM(r.released_qty), 0) AS released_qty
+              FROM transfer_order_lines tol
+              LEFT JOIN transfer_order_reservations r ON r.to_line_id = tol.to_line_id
+             WHERE tol.to_id = :tid
+             GROUP BY tol.to_line_id, tol.item_id, tol.committed_qty, tol.approved_qty
+             ORDER BY tol.item_id ASC, tol.to_line_id ASC
             """
         ),
         {"tid": to_id},
     ).fetchall()
-    for row in lines:
-        if row.to_release <= 0:
-            continue
-        _release_inventory_allocation(
-            db, row.item_id, source_warehouse_id, row.to_release,
-        )
-
-
-def _release_inventory_allocation(
-    db, item_id: int, warehouse_id: int, delta: int,
-) -> None:
-    """Decrement quantity_allocated across (item, warehouse) inventory
-    rows until ``delta`` units are released. Walks inventory_id ASC
-    under FOR UPDATE so concurrent operations see deterministic lock
-    ordering. Each row gives up at most its own quantity_allocated to
-    avoid driving the column negative."""
-    if delta <= 0:
-        return
-    inv_rows = db.execute(
-        text(
-            """
-            SELECT inv.inventory_id, inv.quantity_allocated
-              FROM inventory inv
-             WHERE inv.item_id = :iid AND inv.warehouse_id = :wid
-               AND inv.quantity_allocated > 0
-             ORDER BY inv.inventory_id ASC
-             FOR UPDATE OF inv
-            """
-        ),
-        {"iid": item_id, "wid": warehouse_id},
-    ).fetchall()
-    remaining = delta
-    for ir in inv_rows:
-        if remaining <= 0:
-            break
-        give = min(remaining, ir.quantity_allocated)
-        if give == 0:
-            continue
-        db.execute(
-            text(
-                "UPDATE inventory "
-                "   SET quantity_allocated = quantity_allocated - :delta "
-                " WHERE inventory_id = :inv_id"
-            ),
-            {"delta": give, "inv_id": ir.inventory_id},
-        )
-        remaining -= give
+    for line in lines:
+        expected_outstanding = line.committed_qty - line.approved_qty - line.released_qty
+        actual_outstanding = line.reserved_qty - line.consumed_qty - line.released_qty
+        if (
+            line.reserved_qty != line.committed_qty
+            or line.consumed_qty != line.approved_qty
+            or actual_outstanding != expected_outstanding
+        ):
+            raise ValueError(
+                f"reservation ledger mismatch for transfer_order_line={line.to_line_id}: "
+                f"committed={line.committed_qty}, approved={line.approved_qty}, "
+                f"reserved={line.reserved_qty}, consumed={line.consumed_qty}, "
+                f"released={line.released_qty}"
+            )
+        _release_line_reservations(db, line.to_line_id, expected_outstanding)
 
 
 @admin_bp.route("/transfer-orders/<int:to_id>/cancel", methods=["POST"])
@@ -352,8 +524,8 @@ def _release_inventory_allocation(
 def cancel_transfer_order(to_id):
     header = g.db.execute(
         text(
-            "SELECT to_id, to_number, status, source_warehouse_id, destination_warehouse_id "
-            "  FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
+            "SELECT to_id, to_number, status, source_warehouse_id, destination_warehouse_id, "
+            "       reservations_tracked FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
         ),
         {"tid": to_id},
     ).fetchone()
@@ -362,6 +534,11 @@ def cancel_transfer_order(to_id):
     denied = _check_transfer_order_warehouses(header.source_warehouse_id, header.destination_warehouse_id)
     if denied:
         return denied
+    if not header.reservations_tracked:
+        return jsonify({
+            "error": "reservation_tracking_unavailable",
+            "detail": "Legacy transfer order has no attributable per-line reservation records. Reconcile inventory before cancelling.",
+        }), 409
 
     try:
         validate_header_transition(header.status, TO_STATUS_CANCELLED)
@@ -387,7 +564,11 @@ def cancel_transfer_order(to_id):
             "approval_count": approval_count,
         }), 409
 
-    _release_reservations(g.db, to_id, header.source_warehouse_id)
+    try:
+        _release_reservations(g.db, to_id)
+    except ValueError as exc:
+        g.db.rollback()
+        return jsonify({"error": "reservation_integrity_error", "detail": str(exc)}), 409
 
     g.db.execute(
         text(
@@ -420,8 +601,8 @@ def cancel_transfer_order(to_id):
 def delete_transfer_order(to_id):
     header = g.db.execute(
         text(
-            "SELECT to_id, to_number, status, source_warehouse_id, destination_warehouse_id "
-            "  FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
+            "SELECT to_id, to_number, status, source_warehouse_id, destination_warehouse_id, "
+            "       reservations_tracked FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
         ),
         {"tid": to_id},
     ).fetchone()
@@ -430,6 +611,11 @@ def delete_transfer_order(to_id):
     denied = _check_transfer_order_warehouses(header.source_warehouse_id, header.destination_warehouse_id)
     if denied:
         return denied
+    if not header.reservations_tracked:
+        return jsonify({
+            "error": "reservation_tracking_unavailable",
+            "detail": "Legacy transfer order has no attributable per-line reservation records. Reconcile inventory before deleting.",
+        }), 409
 
     # Hard delete only allowed pre-approval and pre-pick. Once any line
     # has picked_qty > 0 OR any approval row exists, the audit trail
@@ -459,7 +645,11 @@ def delete_transfer_order(to_id):
             ),
         }), 409
 
-    _release_reservations(g.db, to_id, header.source_warehouse_id)
+    try:
+        _release_reservations(g.db, to_id)
+    except ValueError as exc:
+        g.db.rollback()
+        return jsonify({"error": "reservation_integrity_error", "detail": str(exc)}), 409
 
     write_audit_log(
         g.db,
@@ -494,6 +684,18 @@ def delete_transfer_order(to_id):
 @require_admin_or_page_permission("transfer-orders")
 @with_db
 def short_close_to_line(to_id, line_id):
+    header = g.db.execute(
+        text("SELECT reservations_tracked FROM transfer_orders WHERE to_id = :tid FOR UPDATE"),
+        {"tid": to_id},
+    ).fetchone()
+    if not header:
+        return jsonify({"error": "Transfer order not found"}), 404
+    if not header.reservations_tracked:
+        return jsonify({
+            "error": "reservation_tracking_unavailable",
+            "detail": "Legacy transfer order has no attributable per-line reservation records. Reconcile inventory before short-closing.",
+        }), 409
+
     line = g.db.execute(
         text(
             """
@@ -538,15 +740,13 @@ def short_close_to_line(to_id, line_id):
             "detail": str(exc),
         }), 409
 
-    # Short-close only applies to the remaining (committed - approved)
-    # quantity. The release re-credits inventory.quantity_allocated for
-    # the still-reserved committed_qty - approved_qty, and the line
-    # transitions to SHORT_CLOSED to lock the remaining out.
+    # Short-close releases only this line's exact unconsumed reservation.
     remaining = line.committed_qty - line.approved_qty
-    if remaining > 0:
-        _release_inventory_allocation(
-            g.db, line.item_id, line.source_warehouse_id, remaining,
-        )
+    try:
+        released = _release_line_reservations(g.db, line_id, remaining)
+    except ValueError as exc:
+        g.db.rollback()
+        return jsonify({"error": "reservation_integrity_error", "detail": str(exc)}), 409
 
     g.db.execute(
         text(
@@ -569,14 +769,14 @@ def short_close_to_line(to_id, line_id):
             "to_number": line.to_number,
             "line_number": line.line_number,
             "previous_status": line.status,
-            "released_qty": remaining,
+            "released_qty": released,
         },
     )
     g.db.commit()
     return jsonify({
         "to_line_id": line_id,
         "status": TO_LINE_SHORT_CLOSED,
-        "released_qty": remaining,
+        "released_qty": released,
     })
 
 
@@ -696,7 +896,7 @@ def import_transfer_order():
     # decrement quantity_on_hand-quantity_allocated availability per
     # row until requested_qty is satisfied or rows exhausted.
     shortages = []
-    line_inserts = []  # (item_id, line_number, requested, committed)
+    line_inserts = []  # (item_id, line_number, requested, committed, allocations)
     for line_number, row in enumerate(rows, start=1):
         inv_rows = g.db.execute(
             text(
@@ -717,6 +917,7 @@ def import_transfer_order():
         )
         committed = max(0, min(row["requested_qty"], total_available))
         remaining = committed
+        allocations = []
         for ir in inv_rows:
             if remaining <= 0:
                 break
@@ -732,6 +933,7 @@ def import_transfer_order():
                 ),
                 {"delta": take, "inv_id": ir.inventory_id},
             )
+            allocations.append((ir.inventory_id, take))
             remaining -= take
         if committed < row["requested_qty"]:
             shortages.append({
@@ -743,47 +945,45 @@ def import_transfer_order():
                 "shortfall": row["requested_qty"] - committed,
             })
         line_inserts.append((
-            row["item_id"], line_number, row["requested_qty"], committed,
+            row["item_id"], line_number, row["requested_qty"], committed, allocations,
         ))
 
-    # Insert TO header. Same-millisecond collision retried once before
-    # surfacing 500.
+    # Insert the header with ON CONFLICT DO NOTHING. Do not rollback the
+    # whole transaction for a generated to_number collision: inventory
+    # allocations were already locked and updated above and must remain
+    # paired with the reservation rows inserted below.
     to_id = None
     for attempt in range(2):
         to_number = generate_to_number()
-        try:
-            result = g.db.execute(
-                text(
-                    """
-                    INSERT INTO transfer_orders
-                        (to_number, source_warehouse_id, destination_warehouse_id,
-                         created_by, notes, external_id)
-                    VALUES (:tn, :src, :dst, :cby, :notes, :ext)
-                    RETURNING to_id, to_number
-                    """
-                ),
-                {
-                    "tn": to_number,
-                    "src": src_id,
-                    "dst": dst_id,
-                    "cby": g.current_user["username"],
-                    "notes": body.notes,
-                    "ext": str(uuid.uuid4()),
-                },
-            )
-            row = result.fetchone()
+        result = g.db.execute(
+            text(
+                """
+                INSERT INTO transfer_orders
+                    (to_number, source_warehouse_id, destination_warehouse_id,
+                     created_by, notes, external_id, reservations_tracked)
+                VALUES (:tn, :src, :dst, :cby, :notes, :ext, TRUE)
+                ON CONFLICT (to_number) DO NOTHING
+                RETURNING to_id, to_number
+                """
+            ),
+            {
+                "tn": to_number,
+                "src": src_id,
+                "dst": dst_id,
+                "cby": g.current_user["username"],
+                "notes": body.notes,
+                "ext": str(uuid.uuid4()),
+            },
+        )
+        row = result.fetchone()
+        if row:
             to_id = row.to_id
             to_number = row.to_number
             break
-        except IntegrityError as exc:
-            g.db.rollback()
-            if isinstance(exc.orig, UniqueViolation) and attempt == 0:
-                continue
-            raise
     if to_id is None:
         return jsonify({"error": "to_number_collision"}), 500
 
-    for item_id, line_number, requested, committed in line_inserts:
+    for item_id, line_number, requested, committed, allocations in line_inserts:
         # Pick the line state at insert time: PENDING when fully
         # committed, SHORT_CLOSED when committed=0 (no available
         # inventory to commit so the line cannot be picked). Plan
@@ -791,20 +991,32 @@ def import_transfer_order():
         # the line lands SHORT_CLOSED so it does not block closure
         # and the operator surfaces it in the shortage modal.
         line_status = TO_LINE_PENDING if committed > 0 else TO_LINE_SHORT_CLOSED
-        g.db.execute(
+        line_row = g.db.execute(
             text(
                 """
                 INSERT INTO transfer_order_lines
                     (to_id, item_id, line_number, requested_qty,
                      committed_qty, status)
                 VALUES (:tid, :iid, :ln, :req, :com, :st)
+                RETURNING to_line_id
                 """
             ),
             {
                 "tid": to_id, "iid": item_id, "ln": line_number,
                 "req": requested, "com": committed, "st": line_status,
             },
-        )
+        ).fetchone()
+        for inventory_id, reserved_qty in allocations:
+            g.db.execute(
+                text(
+                    """
+                    INSERT INTO transfer_order_reservations
+                        (to_line_id, inventory_id, reserved_qty)
+                    VALUES (:lid, :iid, :qty)
+                    """
+                ),
+                {"lid": line_row.to_line_id, "iid": inventory_id, "qty": reserved_qty},
+            )
 
     write_audit_log(
         g.db,
@@ -857,8 +1069,8 @@ def start_to_picking(to_id):
     """
     header = g.db.execute(
         text(
-            "SELECT to_id, to_number, status, source_warehouse_id, destination_warehouse_id "
-            "  FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
+            "SELECT to_id, to_number, status, source_warehouse_id, destination_warehouse_id, "
+            "       reservations_tracked FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
         ),
         {"tid": to_id},
     ).fetchone()
@@ -867,6 +1079,11 @@ def start_to_picking(to_id):
     denied = _check_transfer_order_warehouses(header.source_warehouse_id, header.destination_warehouse_id)
     if denied:
         return denied
+    if not header.reservations_tracked:
+        return jsonify({
+            "error": "reservation_tracking_unavailable",
+            "detail": "Legacy transfer order has no attributable per-line reservations and cannot enter picking.",
+        }), 409
     if header.status not in (TO_STATUS_OPEN, TO_STATUS_PARTIALLY_PICKED):
         return jsonify({
             "error": "invalid_status_for_start_picking",
@@ -1014,7 +1231,8 @@ def picker_get_transfer_order(to_id):
             """
             SELECT to_id, to_number, source_warehouse_id,
                    destination_warehouse_id, status,
-                   created_by, notes, external_id, created_at, updated_at
+                   created_by, notes, external_id, created_at, updated_at,
+                   reservations_tracked
               FROM transfer_orders WHERE to_id = :tid
             """
         ),
@@ -1086,6 +1304,11 @@ def submit_transfer_order_picks(to_id):
                 "error": "pending_approval_exists",
                 "to_approval_id": result["to_approval_id"],
             }), 409
+        if reason == "reservation_tracking_unavailable":
+            return jsonify({
+                "error": "reservation_tracking_unavailable",
+                "detail": "Legacy transfer order has no attributable per-line reservations and cannot submit picks.",
+            }), 409
         # nothing_picked
         return jsonify({
             "error": "nothing_picked",
@@ -1116,57 +1339,6 @@ def _self_approval_blocked(db) -> bool:
         ),
     ).fetchone()
     return bool(row and str(row.value).lower() == "true")
-
-
-def _decrement_source_inventory(
-    db, item_id: int, warehouse_id: int, qty: int,
-) -> None:
-    """Decrement quantity_allocated AND quantity_on_hand at source by
-    qty, distributing across bins in inventory_id ASC up to each row's
-    own quantity_allocated. Mirrors the import + cancel lock ordering
-    so concurrent operations stay deadlock-free."""
-    inv_rows = db.execute(
-        text(
-            """
-            SELECT inv.inventory_id, inv.quantity_on_hand,
-                   inv.quantity_allocated
-              FROM inventory inv
-             WHERE inv.item_id = :iid AND inv.warehouse_id = :wid
-               AND inv.quantity_allocated > 0
-             ORDER BY inv.inventory_id ASC
-             FOR UPDATE OF inv
-            """
-        ),
-        {"iid": item_id, "wid": warehouse_id},
-    ).fetchall()
-    remaining = qty
-    for ir in inv_rows:
-        if remaining <= 0:
-            break
-        give = min(remaining, ir.quantity_allocated, ir.quantity_on_hand)
-        if give == 0:
-            continue
-        db.execute(
-            text(
-                """
-                UPDATE inventory
-                   SET quantity_allocated = quantity_allocated - :delta,
-                       quantity_on_hand   = quantity_on_hand   - :delta,
-                       updated_at = NOW()
-                 WHERE inventory_id = :inv_id
-                """
-            ),
-            {"delta": give, "inv_id": ir.inventory_id},
-        )
-        remaining -= give
-    if remaining > 0:
-        # Source under-funded: import-time reservation must have been
-        # released by a concurrent cancel. Surface as 409 so the
-        # admin investigates rather than silently absorbing.
-        raise ValueError(
-            f"source inventory under-funded: still {remaining} units to "
-            f"deduct for item_id={item_id} at warehouse_id={warehouse_id}"
-        )
 
 
 def _credit_destination_inventory(
@@ -1236,6 +1408,32 @@ def _credit_destination_inventory(
 @require_admin_or_page_permission("transfer-orders")
 @with_db
 def approve_transfer_order_approval(to_id, approval_id):
+    # Lock the parent first in every lifecycle operation. This serializes
+    # approve/reject/cancel/short-close and avoids opposite lock ordering.
+    header = g.db.execute(
+        text(
+            "SELECT to_id, to_number, status, source_warehouse_id, "
+            "       destination_warehouse_id, external_id, reservations_tracked "
+            "  FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
+        ),
+        {"tid": to_id},
+    ).fetchone()
+    if not header:
+        return jsonify({"error": "Transfer order not found"}), 404
+    denied = _check_transfer_order_warehouses(header.source_warehouse_id, header.destination_warehouse_id)
+    if denied:
+        return denied
+    if not header.reservations_tracked:
+        return jsonify({
+            "error": "reservation_tracking_unavailable",
+            "detail": "Legacy transfer order has no attributable per-line reservation records. Reconcile inventory before approval.",
+        }), 409
+    if header.status in (TO_STATUS_CANCELLED, TO_STATUS_CLOSED):
+        return jsonify({
+            "error": "transfer_order_not_approvable",
+            "current_status": header.status,
+        }), 409
+
     approval = g.db.execute(
         text(
             """
@@ -1268,25 +1466,6 @@ def approve_transfer_order_approval(to_id, approval_id):
             ),
         }), 403
 
-    header = g.db.execute(
-        text(
-            "SELECT to_id, to_number, status, source_warehouse_id, "
-            "       destination_warehouse_id, external_id "
-            "  FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
-        ),
-        {"tid": to_id},
-    ).fetchone()
-    if not header:
-        return jsonify({"error": "Transfer order not found"}), 404
-    denied = _check_transfer_order_warehouses(header.source_warehouse_id, header.destination_warehouse_id)
-    if denied:
-        return denied
-    if header.status in (TO_STATUS_CANCELLED, TO_STATUS_CLOSED):
-        return jsonify({
-            "error": "transfer_order_not_approvable",
-            "current_status": header.status,
-        }), 409
-
     snapshot_lines = (approval.lines_snapshot or {}).get("lines", []) or []
     if not snapshot_lines:
         return jsonify({
@@ -1305,7 +1484,8 @@ def approve_transfer_order_approval(to_id, approval_id):
             qty = int(snap["picked_in_snapshot"])
             if qty <= 0:
                 continue
-            g.db.execute(
+            _consume_line_reservations(g.db, line_id, qty)
+            changed_line = g.db.execute(
                 text(
                     """
                     UPDATE transfer_order_lines
@@ -1316,14 +1496,18 @@ def approve_transfer_order_approval(to_id, approval_id):
                                     THEN 'APPROVED'
                                ELSE status
                            END
-                     WHERE to_line_id = :lid
+                     WHERE to_line_id = :lid AND to_id = :tid
+                       AND approved_qty + :qty <= picked_qty
+                       AND approved_qty + :qty <= committed_qty
+                    RETURNING to_line_id
                     """
                 ),
-                {"qty": qty, "lid": line_id},
-            )
-            _decrement_source_inventory(
-                g.db, item_id, header.source_warehouse_id, qty,
-            )
+                {"qty": qty, "lid": line_id, "tid": to_id},
+            ).fetchone()
+            if not changed_line:
+                raise ValueError(
+                    f"approval snapshot exceeds current picked quantity for line={line_id}"
+                )
             _credit_destination_inventory(
                 g.db, item_id, header.destination_warehouse_id, qty,
             )
@@ -1442,6 +1626,25 @@ def approve_transfer_order_approval(to_id, approval_id):
 def reject_transfer_order_approval(to_id, approval_id):
     body = request.get_json() or {}
     rejection_reason = (body.get("rejection_reason") or "").strip()[:1000]
+    header = g.db.execute(
+        text(
+            "SELECT to_id, to_number, source_warehouse_id, destination_warehouse_id, "
+            "       reservations_tracked "
+            "  FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
+        ),
+        {"tid": to_id},
+    ).fetchone()
+    if not header:
+        return jsonify({"error": "Transfer order not found"}), 404
+    denied = _check_transfer_order_warehouses(header.source_warehouse_id, header.destination_warehouse_id)
+    if denied:
+        return denied
+    if not header.reservations_tracked:
+        return jsonify({
+            "error": "reservation_tracking_unavailable",
+            "detail": "Legacy transfer order has no attributable per-line reservation records. Reconcile inventory before rejection.",
+        }), 409
+
     approval = g.db.execute(
         text(
             """
@@ -1461,19 +1664,6 @@ def reject_transfer_order_approval(to_id, approval_id):
             "error": "approval_not_pending",
             "current_status": approval.status,
         }), 409
-
-    header = g.db.execute(
-        text(
-            "SELECT to_number, source_warehouse_id, destination_warehouse_id "
-            "  FROM transfer_orders WHERE to_id = :tid"
-        ),
-        {"tid": to_id},
-    ).fetchone()
-    if not header:
-        return jsonify({"error": "Transfer order not found"}), 404
-    denied = _check_transfer_order_warehouses(header.source_warehouse_id, header.destination_warehouse_id)
-    if denied:
-        return denied
 
     snapshot_lines = (approval.lines_snapshot or {}).get("lines", []) or []
     if not snapshot_lines:
@@ -1504,7 +1694,7 @@ def reject_transfer_order_approval(to_id, approval_id):
             }), 409
         restored_picked = line.picked_qty - rejected_qty
         restored_status = (
-            TO_LINE_APPROVED if restored_picked == line.committed_qty
+            TO_LINE_PICKED if restored_picked == line.committed_qty
             else TO_LINE_PARTIALLY_PICKED if restored_picked > 0
             else TO_LINE_PENDING
         )

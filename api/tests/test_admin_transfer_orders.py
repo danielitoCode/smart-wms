@@ -82,36 +82,60 @@ def _seed_to_line(to_id, item_id=1, line_number=1, requested=10,
         cur.close()
 
 
-def _seed_to_approval(to_id, status="PENDING", submitted_by="picker"):
+def _seed_to_approval(
+    to_id, status="PENDING", submitted_by="picker", lines_snapshot=None,
+):
     conn = db_test_context.get_raw_connection()
     cur = conn.cursor()
     try:
-        cur.execute(
+        sql = (
             "INSERT INTO transfer_order_approvals "
             "(to_id, submitted_by, lines_snapshot, status, external_id"
             + (", approved_by, approved_at" if status == "APPROVED" else "")
-            + ") VALUES (%s, %s, '{}'::jsonb, %s, %s"
+            + ") VALUES (%s, %s, %s::jsonb, %s, %s"
             + (", 'admin1', NOW()" if status == "APPROVED" else "")
-            + ") RETURNING to_approval_id",
-            (to_id, submitted_by, status, str(uuid.uuid4())),
+            + ") RETURNING to_approval_id"
+        )
+        cur.execute(
+            sql,
+            (
+                to_id, submitted_by, json.dumps(lines_snapshot or {}),
+                status, str(uuid.uuid4()),
+            ),
         )
         return cur.fetchone()[0]
     finally:
         cur.close()
 
 
-def _bump_inventory_allocated(item_id, warehouse_id, delta):
-    """Adjust inventory.quantity_allocated to simulate a TO reservation
-    so the cancel/delete release-reservation logic has something to
-    decrement."""
+def _bump_inventory_allocated(
+    item_id, warehouse_id, delta, to_line_id, reserved_qty=None, consumed_qty=0,
+):
+    """Seed the exact reservation ledger and its current inventory balance."""
     conn = db_test_context.get_raw_connection()
     cur = conn.cursor()
     try:
         cur.execute(
-            "UPDATE inventory SET quantity_allocated = quantity_allocated + %s "
-            " WHERE item_id = %s AND warehouse_id = %s",
-            (delta, item_id, warehouse_id),
+            "SELECT inventory_id FROM inventory "
+            " WHERE item_id = %s AND warehouse_id = %s "
+            " ORDER BY inventory_id LIMIT 1 FOR UPDATE",
+            (item_id, warehouse_id),
         )
+        inventory_id = cur.fetchone()[0]
+        cur.execute(
+            "UPDATE inventory "
+            "   SET quantity_allocated = quantity_allocated + %s, "
+            "       quantity_on_hand = quantity_on_hand - %s "
+            " WHERE inventory_id = %s",
+            (delta, consumed_qty, inventory_id),
+        )
+        cur.execute(
+            "INSERT INTO transfer_order_reservations "
+            "(to_line_id, inventory_id, reserved_qty, consumed_qty) "
+            "VALUES (%s, %s, %s, %s)",
+            (to_line_id, inventory_id, reserved_qty or delta + consumed_qty, consumed_qty),
+        )
+        return inventory_id
     finally:
         cur.close()
 
@@ -188,6 +212,187 @@ class TestListAndDetail:
 
 
 # ----------------------------------------------------------------------
+# Exact reservation approval/rejection
+# ----------------------------------------------------------------------
+
+
+class TestExactReservationApproval:
+    def test_approval_consumes_only_the_line_owned_bin_allocations(
+        self, client, auth_headers,
+    ):
+        to_id = _seed_to(source_wh=1, dest_wh=2, status="AWAITING_APPROVAL")
+        line_id = _seed_to_line(
+            to_id, item_id=1, committed=5, picked=5, status="PICKED",
+        )
+        _bump_inventory_allocated(1, 1, 5, line_id)
+        approval_id = _seed_to_approval(
+            to_id,
+            lines_snapshot={
+                "lines": [{
+                    "to_line_id": line_id,
+                    "item_id": 1,
+                    "picked_in_snapshot": 5,
+                }],
+            },
+        )
+        source_before = _query(
+            "SELECT quantity_on_hand, quantity_allocated FROM inventory "
+            " WHERE item_id = 1 AND warehouse_id = 1 ORDER BY inventory_id LIMIT 1",
+        )[0]
+        dest_before = _query(
+            "SELECT COALESCE(SUM(quantity_on_hand), 0) FROM inventory "
+            " WHERE item_id = 1 AND warehouse_id = 2",
+        )[0][0]
+
+        response = client.post(
+            f"/api/admin/transfer-orders/{to_id}/approvals/{approval_id}/approve",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200, response.get_json()
+        source_after = _query(
+            "SELECT quantity_on_hand, quantity_allocated FROM inventory "
+            " WHERE item_id = 1 AND warehouse_id = 1 ORDER BY inventory_id LIMIT 1",
+        )[0]
+        dest_after = _query(
+            "SELECT COALESCE(SUM(quantity_on_hand), 0) FROM inventory "
+            " WHERE item_id = 1 AND warehouse_id = 2",
+        )[0][0]
+        assert source_after == (source_before[0] - 5, source_before[1] - 5)
+        assert dest_after == dest_before + 5
+        reservation = _query(
+            "SELECT reserved_qty, consumed_qty, released_qty "
+            "  FROM transfer_order_reservations WHERE to_line_id = %s",
+            (line_id,),
+        )[0]
+        assert reservation == (5, 5, 0)
+        line = _query(
+            "SELECT picked_qty, approved_qty, status "
+            "  FROM transfer_order_lines WHERE to_line_id = %s",
+            (line_id,),
+        )[0]
+        assert line == (5, 5, "APPROVED")
+        duplicate = client.post(
+            f"/api/admin/transfer-orders/{to_id}/approvals/{approval_id}/approve",
+            headers=auth_headers,
+        )
+        assert duplicate.status_code == 409
+        assert _query(
+            "SELECT COUNT(*) FROM transfer_order_reservations "
+            " WHERE to_line_id = %s AND consumed_qty = 5",
+            (line_id,),
+        )[0][0] == 1
+
+    def test_rejection_restores_picked_quantity_without_releasing_stock(
+        self, client, auth_headers,
+    ):
+        to_id = _seed_to(source_wh=1, dest_wh=2, status="AWAITING_APPROVAL")
+        line_id = _seed_to_line(
+            to_id, item_id=1, committed=10, picked=8, approved=2,
+            status="PARTIALLY_PICKED",
+        )
+        _bump_inventory_allocated(
+            1, 1, 8, line_id, reserved_qty=10, consumed_qty=2,
+        )
+        approval_id = _seed_to_approval(
+            to_id,
+            lines_snapshot={
+                "lines": [{
+                    "to_line_id": line_id,
+                    "item_id": 1,
+                    "picked_in_snapshot": 3,
+                }],
+            },
+        )
+        before = _query(
+            "SELECT quantity_on_hand, quantity_allocated FROM inventory "
+            " WHERE item_id = 1 AND warehouse_id = 1 ORDER BY inventory_id LIMIT 1",
+        )[0]
+        response = client.post(
+            f"/api/admin/transfer-orders/{to_id}/approvals/{approval_id}/reject",
+            json={"rejection_reason": "Count mismatch"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200, response.get_json()
+        after = _query(
+            "SELECT quantity_on_hand, quantity_allocated FROM inventory "
+            " WHERE item_id = 1 AND warehouse_id = 1 ORDER BY inventory_id LIMIT 1",
+        )[0]
+        assert after == before
+        line = _query(
+            "SELECT picked_qty, approved_qty, status "
+            "  FROM transfer_order_lines WHERE to_line_id = %s",
+            (line_id,),
+        )[0]
+        assert line == (5, 2, "PARTIALLY_PICKED")
+        reservation = _query(
+            "SELECT reserved_qty, consumed_qty, released_qty "
+            "  FROM transfer_order_reservations WHERE to_line_id = %s",
+            (line_id,),
+        )[0]
+        assert reservation == (10, 2, 0)
+
+
+# ----------------------------------------------------------------------
+# Legacy and inconsistent reservation ledgers
+# ----------------------------------------------------------------------
+
+
+class TestReservationIntegrityGuards:
+    def test_legacy_untracked_order_cannot_start_cancel_or_short_close(
+        self, client, auth_headers,
+    ):
+        to_id = _seed_to(source_wh=1, dest_wh=2, status="OPEN")
+        line_id = _seed_to_line(to_id, item_id=1, committed=5)
+        conn = db_test_context.get_raw_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE transfer_orders SET reservations_tracked = FALSE WHERE to_id = %s",
+            (to_id,),
+        )
+        cur.close()
+
+        start = client.post(
+            f"/api/admin/transfer-orders/{to_id}/start-picking",
+            headers=auth_headers,
+        )
+        cancel = client.post(
+            f"/api/admin/transfer-orders/{to_id}/cancel",
+            headers=auth_headers,
+        )
+        short_close = client.post(
+            f"/api/admin/transfer-orders/{to_id}/lines/{line_id}/short-close",
+            headers=auth_headers,
+        )
+        assert start.status_code == 409
+        assert cancel.status_code == 409
+        assert short_close.status_code == 409
+        assert all(
+            response.get_json()["error"] == "reservation_tracking_unavailable"
+            for response in (start, cancel, short_close)
+        )
+        assert _query(
+            "SELECT status FROM transfer_orders WHERE to_id = %s", (to_id,),
+        )[0][0] == "OPEN"
+
+    def test_tracked_order_with_missing_reservation_fails_cancel_atomically(
+        self, client, auth_headers,
+    ):
+        to_id = _seed_to(source_wh=1, dest_wh=2, status="OPEN")
+        _seed_to_line(to_id, item_id=1, committed=5)
+        before = _allocated(1, 1)
+        response = client.post(
+            f"/api/admin/transfer-orders/{to_id}/cancel",
+            headers=auth_headers,
+        )
+        assert response.status_code == 409
+        assert response.get_json()["error"] == "reservation_integrity_error"
+        assert _allocated(1, 1) == before
+        assert _query(
+            "SELECT status FROM transfer_orders WHERE to_id = %s", (to_id,),
+        )[0][0] == "OPEN"
+
+
+# ----------------------------------------------------------------------
 # Cancel
 # ----------------------------------------------------------------------
 
@@ -197,8 +402,8 @@ class TestCancel:
         self, client, auth_headers,
     ):
         to_id = _seed_to(source_wh=1, dest_wh=2)
-        _seed_to_line(to_id, item_id=1, committed=10)
-        _bump_inventory_allocated(1, 1, 10)
+        line_id = _seed_to_line(to_id, item_id=1, committed=10)
+        _bump_inventory_allocated(1, 1, 10, line_id)
         before_alloc = _allocated(1, 1)
 
         resp = client.post(
@@ -236,11 +441,11 @@ class TestCancel:
         to_id = _seed_to(
             source_wh=1, dest_wh=2, status="PARTIALLY_PICKED",
         )
-        _seed_to_line(
+        line_id = _seed_to_line(
             to_id, item_id=1, committed=10, picked=4,
             status="PARTIALLY_PICKED",
         )
-        _bump_inventory_allocated(1, 1, 10)
+        _bump_inventory_allocated(1, 1, 10, line_id)
         before = _query(
             "SELECT COALESCE(SUM(quantity_on_hand), 0), "
             "       COALESCE(SUM(quantity_allocated), 0) "
@@ -313,8 +518,8 @@ class TestDelete:
         self, client, auth_headers,
     ):
         to_id = _seed_to()
-        _seed_to_line(to_id, item_id=1, committed=5)
-        _bump_inventory_allocated(1, 1, 5)
+        line_id = _seed_to_line(to_id, item_id=1, committed=5)
+        _bump_inventory_allocated(1, 1, 5, line_id)
         before = _allocated(1, 1)
 
         resp = client.delete(
@@ -372,7 +577,9 @@ class TestShortClose:
             to_id, item_id=1, committed=10, picked=4, approved=4,
             status="PARTIALLY_PICKED",
         )
-        _bump_inventory_allocated(1, 1, 6)  # remaining = committed - approved
+        _bump_inventory_allocated(
+            1, 1, 6, line_id, reserved_qty=10, consumed_qty=4,
+        )  # outstanding = committed - approved
         before = _allocated(1, 1)
 
         resp = client.post(
