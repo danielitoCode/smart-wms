@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'svelte/server';
 const vm = vi.hoisted(() => ({
- barcode: '', detail: null, trackingNumber: '', carrier: '', shipMethod: '', loading: false, busy: false, error: null, lastResult: null, warehouseId: 6,
+ barcode: '', detail: { salesOrder: { soId: 2, soNumber: 'SO-2', status: 'PACKED', warehouseId: 6 }, lines: [], totalItems: 0, totalLines: 0 }, trackingNumber: '', carrier: '', shipMethod: '', loading: false, busy: false, error: null, lastResult: null, warehouseId: 6,
  setBarcode: vi.fn(), setTrackingNumber: vi.fn(), setCarrier: vi.fn(), setShipMethod: vi.fn(), load: vi.fn(), fulfill: vi.fn(), onWarehouseChanged: vi.fn()
 }));
 const warehouse = { generation: 1, warehouseId: 6, warehouses: [] };
