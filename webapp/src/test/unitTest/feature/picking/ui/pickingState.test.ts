@@ -42,4 +42,12 @@ describe('Picking scanner state warehouse context', () => {
   expect(await state.refresh()).toBe(false);
   expect(deps.getActiveBatch.execute).not.toHaveBeenCalled();
  });
+ it('creates waves using the selected warehouse and real response fields', async () => {
+  const state = createPickingState(warehouse as never);
+  state.setSoIdsInput('5');
+  expect(await state.createWave()).toBe(true);
+  expect(deps.waveCreate.execute).toHaveBeenCalledWith([5], 12);
+  expect(state.info).toContain('WAVE-4');
+ });
+
 });
