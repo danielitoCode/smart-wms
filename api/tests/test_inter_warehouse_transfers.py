@@ -94,7 +94,7 @@ def _quantity(item_id, bin_id):
 def test_create_requires_access_to_both_warehouses(client):
     item_id, from_bin, from_wh, to_bin, to_wh = _source_destination()
     payload = _body(item_id, from_bin, from_wh, to_bin, to_wh)
-    for allowed_ids in ([from_wh], [2], []):
+    for allowed_ids in ([from_wh], [to_wh], []):
         response = client.post(
             "/api/admin/inter-warehouse-transfer",
             json={**payload, "idempotency_key": str(uuid.uuid4())},
@@ -112,10 +112,10 @@ def test_create_requires_access_to_both_warehouses(client):
 
 
 def test_list_history_requires_access_to_both_warehouses(client, auth_headers):
-    item_id, from_bin, from_wh, to_bin = _source_destination()
+    item_id, from_bin, from_wh, to_bin, to_wh = _source_destination()
     created = client.post(
         "/api/admin/inter-warehouse-transfer",
-        json=_body(item_id, from_bin, from_wh, to_bin),
+        json=_body(item_id, from_bin, from_wh, to_bin, to_wh),
         headers=auth_headers,
     )
     assert created.status_code == 201, created.get_json()
@@ -127,7 +127,7 @@ def test_list_history_requires_access_to_both_warehouses(client, auth_headers):
         assert response.status_code == 200
         assert transfer_id not in {row["transfer_id"] for row in response.get_json()["transfers"]}
 
-    both = _headers(client, [from_wh, 2])
+    both = _headers(client, [from_wh, to_wh])
     response = client.get("/api/admin/inter-warehouse-transfers", headers=both)
     assert response.status_code == 200
     assert transfer_id in {row["transfer_id"] for row in response.get_json()["transfers"]}
@@ -165,7 +165,7 @@ def test_allocated_source_inventory_cannot_be_transferred(client, auth_headers):
 def test_idempotent_retry_moves_stock_once_and_rejects_key_reuse(client, auth_headers):
     item_id, from_bin, from_wh, to_bin = _source_destination()
     key = str(uuid.uuid4())
-    payload = _body(item_id, from_bin, from_wh, to_bin, 2, key=key, quantity=1)
+    payload = _body(item_id, from_bin, from_wh, to_bin, to_wh, key=key, quantity=1)
     before_source, before_destination = _quantity(item_id, from_bin), _quantity(item_id, to_bin)
 
     first = client.post("/api/admin/inter-warehouse-transfer", json=payload, headers=auth_headers)
@@ -197,7 +197,7 @@ def test_failure_before_commit_rolls_back_stock_transfer_and_receipt(
 
     item_id, from_bin, from_wh, to_bin = _source_destination()
     key = str(uuid.uuid4())
-    payload = _body(item_id, from_bin, from_wh, to_bin, 2, key=key)
+    payload = _body(item_id, from_bin, from_wh, to_bin, to_wh, key=key)
     before_source, before_destination = _quantity(item_id, from_bin), _quantity(item_id, to_bin)
     before_transfers = _query(
         "SELECT COUNT(*) FROM bin_transfers WHERE transfer_type = 'INTER_WAREHOUSE'"
