@@ -74,6 +74,23 @@ Salvo excepción anotada, cada grupo usa `require_auth` + `require_admin_or_page
 - `/api/v1/pos/*`: scope aislado `pos.dispatch`.
 - `/api/inbound/mapping-schema`: endpoint de descubrimiento sin decorador de sesión en el archivo inspeccionado.
 
+### 3.1 Contrato detallado de Users (F4.1)
+
+| Método | Endpoint | Request | Response / semántica |
+|---|---|---|---|
+| GET | `/api/admin/users?page=1&per_page=50` | Query: `page >= 1`, `1 <= per_page <= 1000` | `{ users: ManagedUser[], total, page, per_page, pages }`; cada usuario contiene `user_id, username, full_name, role, warehouse_id, warehouse_ids, allowed_functions, is_active, created_at, last_login`. |
+| POST | `/api/admin/users` | `CreateUserRequest`: username, password, full_name, role, warehouse_ids, warehouse_id legado opcional, allowed_functions | Un usuario; HTTP 201. Contraseña validada por política y almacenada como hash. |
+| PUT | `/api/admin/users/{user_id}` | `UpdateUserRequest` parcial: full_name, role, warehouse_id, warehouse_ids, allowed_functions, is_active, password | Usuario actualizado. Protege auto-desactivación/auto-degradación y último ADMIN activo. |
+| DELETE | `/api/admin/users/{user_id}` | — | `{ message: "User deleted" }`; no permite autoeliminación ni borrar el último ADMIN activo. |
+| GET | `/api/admin/users/{user_id}/permissions` | — | `{ user_id, role, page_keys, is_full_access }`; ADMIN recibe el catálogo completo y `is_full_access=true`. |
+| PUT | `/api/admin/users/{user_id}/permissions` | `{ page_keys: string[] }` | Reemplaza el conjunto completo de grants de páginas + overrides; valida contra `ALL_PAGE_KEYS ∪ ALL_OVERRIDE_KEYS`. Para ADMIN es no-op y devuelve acceso completo. |
+
+**Semántica de almacenes:** `warehouse_ids` es la asignación autoritativa. En PUT, enviar `warehouse_ids: []` elimina todas las asignaciones y limpia también el campo legado `warehouse_id`; si hay almacenes, `warehouse_id` refleja el primero. El DTO frontend debe preservar la diferencia entre omitir `warehouse_ids` (no cambiar asignación) y enviar una lista vacía (revocarla).
+
+**Límite del contrato:** Flask no declara `GET /api/admin/users/{user_id}`; la edición trabaja con el registro devuelto por el listado y la lectura de permisos usa el endpoint dedicado. No se añade una ruta de detalle ficticia en Svelte.
+
+**Casos de uso Domain/Application:** `ListManagedUsersUseCase`, `CreateManagedUserUseCase`, `UpdateManagedUserUseCase`, `DeleteManagedUserUseCase`, `GetUserPagePermissionsUseCase` y `UpdateUserPagePermissionsUseCase`. Los dos últimos operan sobre grants completos; no modelan un CRUD genérico de roles.
+
 ## 4. DTO backend → frontend
 
 Los request DTO Pydantic y los response DTO JSON son contratos diferentes. La forma de respuesta se define en cada `jsonify`; no asumir que coincide con el esquema de entrada.
