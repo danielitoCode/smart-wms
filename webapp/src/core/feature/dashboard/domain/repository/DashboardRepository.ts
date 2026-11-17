@@ -7,4 +7,5 @@ export interface DashboardRepository {
  updatePreferences(patch:Partial<DashboardPreferences>):Promise<DashboardPreferences>;
  localPickup(warehouseId:number,search:string,status:string):Promise<LocalPickupPage>;
  markPickedUp(orderId:number):Promise<void>;
+ updateLocalPickup(orderId:number,patch:{customer_name:string|null;customer_phone:string|null;ship_method:string|null;ship_address:string|null;priority:number;memo:string|null}):Promise<void>;
 }
