@@ -50,6 +50,14 @@ describe('AccessPolicy F0.2', () => {
 		expect(canAccessPages('USER', afterRevoke, ['fraud'])).toBe(false);
 	});
 
+	it('Dashboard route requires the dashboard grant and ADMIN bypasses it', () => {
+		const required = requiredPageKeysForPath('/dashboard');
+		expect(required).toEqual(['dashboard']);
+		expect(canAccessPages('USER', [], required)).toBe(false);
+		expect(canAccessPages('USER', ['dashboard'], required)).toBe(true);
+		expect(canAccessPages('ADMIN', [], required)).toBe(true);
+	});
+
 	it('direct URL fraud requires fraud key not sales-orders', () => {
 		expect(requiredPageKeysForPath('/management/fraud')).toEqual(['fraud']);
 		expect(canAccessPages('USER', ['sales-orders'], requiredPageKeysForPath('/management/fraud'))).toBe(
