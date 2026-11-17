@@ -1,4 +1,6 @@
 from db_test_context import get_raw_connection
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 
 def _query_one(sql, params=None):
@@ -1046,3 +1048,62 @@ def test_next_task_includes_identity_fields_required_by_scanner_dto(client, auth
     assert data["item_id"] > 0
     assert data["bin_id"] > 0
     assert data["sku"]
+
+def test_concurrent_duplicate_pick_confirmations_apply_inventory_once(client, auth_headers):
+    """Two scanners confirming the same pending task must produce one pick."""
+    create_resp = _create_batch(client, auth_headers)
+    assert create_resp.status_code == 200
+    batch_id = create_resp.get_json()["batch_id"]
+    task = client.get(
+        f"/api/picking/batch/{batch_id}/next", headers=auth_headers
+    ).get_json()
+    pick_task_id = task["pick_task_id"]
+    quantity = task["quantity_to_pick"]
+    so_line_id = _query_val(
+        "SELECT so_line_id FROM pick_tasks WHERE pick_task_id = %s",
+        (pick_task_id,),
+    )
+    before_picked = _query_val(
+        "SELECT quantity_picked FROM sales_order_lines WHERE so_line_id = %s",
+        (so_line_id,),
+    )
+    before_on_hand = _query_val(
+        "SELECT quantity_on_hand FROM inventory WHERE item_id = %s AND bin_id = %s",
+        (task["item_id"], task["bin_id"]),
+    )
+
+    barrier = threading.Barrier(2)
+
+    def confirm_once():
+        with client.application.test_client() as worker:
+            barrier.wait(timeout=5)
+            return worker.post(
+                "/api/picking/confirm",
+                json={
+                    "pick_task_id": pick_task_id,
+                    "scanned_barcode": task["upc"],
+                    "quantity_picked": quantity,
+                },
+                headers=auth_headers,
+            )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(lambda _: confirm_once(), range(2)))
+
+    assert sorted(response.status_code for response in responses) == [200, 400]
+    assert _query_val(
+        "SELECT status FROM pick_tasks WHERE pick_task_id = %s", (pick_task_id,)
+    ) == "PICKED"
+    assert _query_val(
+        "SELECT quantity_picked FROM sales_order_lines WHERE so_line_id = %s",
+        (so_line_id,),
+    ) == before_picked + quantity
+    assert _query_val(
+        "SELECT quantity_on_hand FROM inventory WHERE item_id = %s AND bin_id = %s",
+        (task["item_id"], task["bin_id"]),
+    ) == before_on_hand - quantity
+    assert _query_val(
+        "SELECT COUNT(*) FROM audit_log WHERE action_type = 'PICK' "
+        "AND (details->>'pick_task_id')::int = %s",
+        (pick_task_id,),
+    ) == 1
