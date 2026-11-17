@@ -2036,6 +2036,7 @@ def _task_row_to_dict(row):
         "item_name": row.item_name,
         "upc": row.upc,
         "quantity_to_pick": row.quantity_to_pick,
+        "quantity_picked": row.quantity_picked,
         "tote_number": row.tote_number,
         "so_number": row.so_number,
         # v1.8.0 (#295): TO discriminator. NULL when this row is a
