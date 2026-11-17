@@ -1060,11 +1060,11 @@ def start_to_picking(to_id):
     """Create a pick_batch + pick_tasks for the TO so the picker can
     scan via the existing mobile picking flow.
 
-    One pick_task per (TO line, inventory bin) at the source warehouse,
-    consuming committed_qty across bins in inventory_id ASC. Bin-level
-    distribution mirrors picking_service.create_pick_batch_for_orders
-    so concurrent SO + TO batch creation acquires inventory locks in
-    the same order. The XOR CHECK from mig 049 enforces so_id NULL +
+    One pick_task per (TO line, reserved inventory bin) at the source
+    warehouse. Tasks are generated from transfer_order_reservations,
+    never from the shared quantity_allocated pool. Inventory rows are
+    locked in item_id/inventory_id order, matching import and release.
+    The XOR CHECK from mig 049 enforces so_id NULL +
     to_id NOT NULL on every inserted row.
     """
     header = g.db.execute(
@@ -1194,10 +1194,22 @@ def start_to_picking(to_id):
 
         planned_for_line = 0
         for allocation in allocations:
-            # Picked includes both approved and not-yet-approved scans. Since
-            # the reservation row's consumed_qty tracks the approved portion,
-            # subtract all picks from its original bin to avoid recreating
-            # tasks for already picked stock.
+            # Picked includes both approved and not-yet-approved scans. The
+            # consumed part must be represented in this same bin's pick-task
+            # history; otherwise the ledger/task history has drifted.
+            if (
+                allocation.picked_in_bin < allocation.consumed_qty
+                or allocation.picked_in_bin > allocation.reserved_qty - allocation.released_qty
+            ):
+                g.db.rollback()
+                return jsonify({
+                    "error": "reservation_integrity_error",
+                    "to_line_id": line.to_line_id,
+                    "inventory_id": allocation.inventory_id,
+                    "detail": "Approved or picked quantity does not match this bin's reservation history.",
+                }), 409
+            # Subtract all picks from the original bin to avoid recreating
+            # tasks for units already picked in a previous batch.
             remaining_in_bin = (
                 allocation.reserved_qty
                 - allocation.released_qty
