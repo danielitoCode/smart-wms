@@ -22,6 +22,28 @@ ALTER TABLE transfer_orders
 ALTER TABLE transfer_orders
     ALTER COLUMN reservations_tracked SET DEFAULT TRUE;
 
+ALTER TABLE pick_tasks
+    ADD COLUMN IF NOT EXISTS inventory_id INT
+        REFERENCES inventory(inventory_id) ON DELETE SET NULL;
+
+ALTER TABLE pick_tasks
+    ADD COLUMN IF NOT EXISTS quantity_approved INT NOT NULL DEFAULT 0;
+
+DO $
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+         WHERE conname = 'pick_tasks_quantity_approved_check'
+    ) THEN
+        ALTER TABLE pick_tasks
+            ADD CONSTRAINT pick_tasks_quantity_approved_check
+            CHECK (quantity_approved >= 0 AND quantity_approved <= quantity_picked);
+    END IF;
+END $;
+
+CREATE INDEX IF NOT EXISTS ix_pick_tasks_inventory
+    ON pick_tasks(inventory_id);
+
 CREATE TABLE IF NOT EXISTS transfer_order_reservations (
     reservation_id BIGSERIAL PRIMARY KEY,
     to_line_id INT NOT NULL
