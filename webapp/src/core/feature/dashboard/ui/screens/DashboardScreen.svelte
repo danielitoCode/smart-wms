@@ -6,6 +6,7 @@
  import {createDashboardState} from '../state/dashboardState.svelte';
  import type {DashboardEvent,DashboardRangeKey,LocalPickupOrder} from '../../domain/entity/Dashboard';
  import {dashboardRangeForPreset} from '../../domain/entity/DashboardDateRange';
+ import {buildProductivityCsv} from '../../domain/entity/dashboardCsv';
  const i18n=getContext<I18nState>('i18n'),warehouse=getContext<WarehouseSelectionState>('warehouseSelection'),auth=getContext<ReturnType<typeof createAuthGuardState>>('authGuard'),vm=createDashboardState();
  let showSettings=$state(false),editingPickup=$state<LocalPickupOrder|null>(null);
  let pickupForm=$state({customerName:'',customerPhone:'',shipMethod:'',shipAddress:'',priority:'0',memo:''});
