@@ -1,3 +1,5 @@
+import type { Backorder } from '../entity/Backorder';
+
 export type BackorderScopeInput = {
   role: string;
   assignedWarehouseIds: readonly number[];
@@ -33,4 +35,12 @@ export function resolveBackorderWarehouseScope(input: BackorderScopeInput): numb
     throw new Error('No tienes acceso al almacén seleccionado');
   }
   return selected;
+}
+
+
+/** The cancel-backorder endpoint accepts only a child order_type=backorder. */
+export function canCancelBackorder(
+  row: Pick<Backorder, 'orderType' | 'parentSalesOrderNumber'>
+): boolean {
+  return row.orderType === 'backorder' && Boolean(row.parentSalesOrderNumber);
 }
