@@ -14,7 +14,7 @@ describe('Shipping scanner state warehouse context', () => {
   expect(deps.loadOrder.execute).toHaveBeenCalledWith('SO-2', 6);
   state.setTrackingNumber('TRACK'); state.setCarrier('Carrier');
   expect(await state.fulfill()).toBe(true);
-  expect(deps.fulfill.execute).toHaveBeenCalledWith({ soId: 2, trackingNumber: 'TRACK', carrier: 'Carrier', shipMethod: null });
+  expect(deps.fulfill.execute).toHaveBeenCalledWith({ soId: 2, warehouseId: 6, trackingNumber: 'TRACK', carrier: 'Carrier', shipMethod: null });
  });
  it('blocks fulfillment when the selected warehouse no longer matches the loaded order', async () => {
   const state = createShippingState(context as never);
