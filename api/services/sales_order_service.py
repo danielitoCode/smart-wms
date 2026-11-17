@@ -273,7 +273,7 @@ def receive_rma(
             # must not silently acknowledge a different receipt.
             same_operation = (
                 int(prior.so_id) == int(rma_so_id)
-                and int(prior.so_line_id) == int(line.so_line_id)
+                and prior.so_line_id == line.so_line_id
                 and int(prior.item_id) == int(item_id)
                 and int(prior.quantity_received) == int(quantity)
                 and int(prior.bin_id) == int(bin_id)
