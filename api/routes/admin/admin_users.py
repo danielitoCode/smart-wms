@@ -80,6 +80,21 @@ def _apply_adjustment_delta(db, item_id, bin_id, warehouse_id, delta):
 
 # ── Users ─────────────────────────────────────────────────────────────────────
 
+
+
+def _unknown_warehouse_ids(db, warehouse_ids):
+    """Return assigned warehouse IDs that do not exist in the warehouse catalogue."""
+    ids = list(dict.fromkeys(warehouse_ids or []))
+    if not ids:
+        return []
+    rows = db.execute(
+        text("SELECT warehouse_id FROM warehouses WHERE warehouse_id = ANY(:ids)"),
+        {"ids": ids},
+    ).fetchall()
+    existing = {row.warehouse_id for row in rows}
+    return [warehouse_id for warehouse_id in ids if warehouse_id not in existing]
+
+
 @admin_bp.route("/users", methods=["GET"])
 @require_auth
 @require_admin_or_page_permission("users")
@@ -128,8 +143,15 @@ def create_user(validated):
     if dup:
         return jsonify({"error": f"Duplicate username: {data['username']}"}), 400
 
-    warehouse_ids = data.get("warehouse_ids", [])
-    warehouse_id = warehouse_ids[0] if warehouse_ids else data.get("warehouse_id")
+    warehouse_ids = list(data.get("warehouse_ids") or [])
+    # Backward compatibility for clients that still submit only warehouse_id.
+    # Keep the multi-warehouse authorization column authoritative and in sync.
+    if not warehouse_ids and data.get("warehouse_id") is not None:
+        warehouse_ids = [data["warehouse_id"]]
+    unknown_warehouses = _unknown_warehouse_ids(g.db, warehouse_ids)
+    if unknown_warehouses:
+        return jsonify({"error": "Unknown warehouse_id(s)", "unknown": unknown_warehouses}), 400
+    warehouse_id = warehouse_ids[0] if warehouse_ids else None
     allowed_functions = data.get("allowed_functions", [])
 
     pw_hash = bcrypt.hashpw(data["password"].encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -205,13 +227,26 @@ def update_user(user_id, validated):
     if "warehouse_ids" in data:
         # warehouse_ids is authoritative. Clearing the final assignment must
         # also clear the legacy warehouse_id mirror (not leave a stale scope).
+        warehouse_ids = list(data.get("warehouse_ids") or [])
+        unknown_warehouses = _unknown_warehouse_ids(g.db, warehouse_ids)
+        if unknown_warehouses:
+            return jsonify({"error": "Unknown warehouse_id(s)", "unknown": unknown_warehouses}), 400
         fields.append("warehouse_ids = :warehouse_ids")
-        params["warehouse_ids"] = data["warehouse_ids"]
+        params["warehouse_ids"] = warehouse_ids
         fields.append("warehouse_id = :wid_sync")
-        params["wid_sync"] = data["warehouse_ids"][0] if data["warehouse_ids"] else None
+        params["wid_sync"] = warehouse_ids[0] if warehouse_ids else None
     elif "warehouse_id" in data:
+        # Legacy single-warehouse updates must also refresh the authoritative
+        # array consumed by require_auth and warehouse_scope_clause.
+        legacy_id = data["warehouse_id"]
+        warehouse_ids = [legacy_id] if legacy_id is not None else []
+        unknown_warehouses = _unknown_warehouse_ids(g.db, warehouse_ids)
+        if unknown_warehouses:
+            return jsonify({"error": "Unknown warehouse_id(s)", "unknown": unknown_warehouses}), 400
         fields.append("warehouse_id = :warehouse_id")
-        params["warehouse_id"] = data["warehouse_id"]
+        params["warehouse_id"] = legacy_id
+        fields.append("warehouse_ids = :warehouse_ids")
+        params["warehouse_ids"] = warehouse_ids
 
     if "allowed_functions" in data:
         fields.append("allowed_functions = :allowed_functions")
