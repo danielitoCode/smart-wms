@@ -182,8 +182,9 @@ export class SalesOrderRepositoryImpl implements SalesOrderRepository {
   createRma(id: number, input: CreateRmaInput): Promise<void> {
     const payload: CreateRmaRequestDto = {
       lines: input.lines.map((line) => ({
-        item_id: line.itemId, quantity: line.quantity,
-        ...(line.originalSoLineId == null ? {} : { original_so_line_id: line.originalSoLineId })
+        item_id: line.itemId,
+        quantity: line.quantity,
+        original_so_line_id: line.originalSoLineId
       })),
       memo: input.reason ?? null
     };
