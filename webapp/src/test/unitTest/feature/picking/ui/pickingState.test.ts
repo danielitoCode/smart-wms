@@ -47,7 +47,7 @@ describe('Picking scanner state warehouse context', () => {
   state.setSoIdsInput('5');
   expect(await state.createWave()).toBe(true);
   expect(deps.waveCreate.execute).toHaveBeenCalledWith([5], 12);
-  expect(state.info).toContain('WAVE-4');
+  expect(state.waveResult?.batchNumber).toBe('WAVE-4');
  });
 
 });
