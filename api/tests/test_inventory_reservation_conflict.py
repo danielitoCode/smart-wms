@@ -35,13 +35,13 @@ def test_inventory_reservation_floor_violation_is_a_conflict_and_rolls_back(app)
         )
         line_id = cur.fetchone()[0]
         cur.execute(
-            "SELECT inventory_id, quantity_allocated FROM inventory "
+            "SELECT inventory_id FROM inventory "
             " WHERE item_id = 1 AND warehouse_id = 1 "
             " ORDER BY inventory_id LIMIT 1 FOR UPDATE"
         )
-        inventory_id, allocated_before = cur.fetchone()
+        inventory_id = cur.fetchone()[0]
         cur.execute(
-            "UPDATE inventory SET quantity_allocated = quantity_allocated + 5 "
+            "UPDATE inventory SET quantity_allocated = 5 "
             " WHERE inventory_id = %s",
             (inventory_id,),
         )
@@ -72,6 +72,6 @@ def test_inventory_reservation_floor_violation_is_a_conflict_and_rolls_back(app)
             "SELECT quantity_allocated FROM inventory WHERE inventory_id = %s",
             (inventory_id,),
         )
-        assert cur.fetchone()[0] == allocated_before + 5
+        assert cur.fetchone()[0] == 5
     finally:
         cur.close()
