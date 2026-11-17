@@ -29,11 +29,11 @@ export class TransferOrdersRemoteDataSource {
   }
 
   startPicking(id: number): Promise<{ batch_id: number; batch_number: string; tasks_created: number }> {
-    return this.api.post('/api/admin/transfer-orders/' + id + '/start-picking');
+    return this.api.post<{ batch_id: number; batch_number: string; tasks_created: number }>('/api/admin/transfer-orders/' + id + '/start-picking');
   }
 
   submitPickerResult(id: number): Promise<{ to_approval_id: number; status: string; to_status: string; line_count: number }> {
-    return this.api.post('/api/admin/picker/transfer-orders/' + id + '/submit');
+    return this.api.post<{ to_approval_id: number; status: string; to_status: string; line_count: number }>('/api/admin/picker/transfer-orders/' + id + '/submit');
   }
 
   approve(id: number, approvalId: number): Promise<unknown> {
