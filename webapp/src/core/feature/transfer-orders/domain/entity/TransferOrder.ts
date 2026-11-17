@@ -9,8 +9,10 @@ export type TransferOrderLine = {
   approvedQuantity: number; status: TransferOrderLineStatus; sku?: string | null;
   itemName?: string | null;
 };
+export type TransferOrderApprovalSnapshotLine = { toLineId: number; itemId: number; pickedQuantity: number };
 export type TransferOrderApproval = {
   approvalId: number; transferOrderId: number; submittedBy: string; submittedAt: string | null;
+  linesSnapshot: TransferOrderApprovalSnapshotLine[] | null;
   approvedBy: string | null; approvedAt: string | null; rejectedAt: string | null;
   rejectionReason: string | null; status: TransferOrderApprovalStatus; externalId: string;
 };
