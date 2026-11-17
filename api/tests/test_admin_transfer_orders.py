@@ -284,6 +284,17 @@ class TestCancel:
         assert resp.status_code == 409
         assert resp.get_json()["error"] == "to_already_partially_approved"
 
+    def test_cancel_blocked_while_approval_is_pending(self, client, auth_headers):
+        to_id = _seed_to(status="PARTIALLY_PICKED")
+        _seed_to_line(to_id, item_id=1, committed=5, picked=5, status="PICKED")
+        _seed_to_approval(to_id, status="PENDING")
+        response = client.post(
+            f"/api/admin/transfer-orders/{to_id}/cancel",
+            headers=auth_headers,
+        )
+        assert response.status_code == 409
+        assert response.get_json()["error"] == "to_already_partially_approved"
+
     def test_cancel_404_on_unknown_id(self, client, auth_headers):
         resp = client.post(
             "/api/admin/transfer-orders/999999/cancel",
@@ -388,6 +399,21 @@ class TestShortClose:
         )
         assert audit
         assert audit[0][0]["released_qty"] == 6
+
+    def test_short_close_blocked_while_approval_is_pending(
+        self, client, auth_headers,
+    ):
+        to_id = _seed_to(status="AWAITING_APPROVAL")
+        line_id = _seed_to_line(
+            to_id, item_id=1, committed=5, picked=5, status="PICKED",
+        )
+        _seed_to_approval(to_id, status="PENDING")
+        response = client.post(
+            f"/api/admin/transfer-orders/{to_id}/lines/{line_id}/short-close",
+            headers=auth_headers,
+        )
+        assert response.status_code == 409
+        assert response.get_json()["error"] == "line_has_pending_approval"
 
     def test_short_close_blocked_on_already_approved_line(
         self, client, auth_headers,
