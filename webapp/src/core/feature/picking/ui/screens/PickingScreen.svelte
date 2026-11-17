@@ -45,18 +45,18 @@
 	<p class="meta">Almacén activo: #{warehouseSelection.warehouseId ?? '—'}</p>
 
 	<section class="panel">
-		<h2>{i18n.t('Validar pedido de venta')}</h2>
-		<p class="meta">{i18n.t('Comprueba que el pedido esté listo para incluirlo en una preparación.')}</p>
+		<h2>{i18n.t('Validar pedido para picking')}</h2>
+		<p class="meta">{i18n.t('Comprueba que el pedido de venta u orden de traslado esté lista para picking.')}</p>
 		<form class="row" onsubmit={onValidate}>
 			<input
 				type="text"
-				placeholder={i18n.t('Código del pedido (ej. SO-2026-001)')}
+				placeholder={i18n.t('Código de pedido o TO (ej. SO-2026-001)')}
 				value={state.validateBarcode}
 				oninput={(e) => state.setValidateBarcode(e.currentTarget.value)}
 				disabled={state.busy}
 				required
 			/>
-			<button type="submit" disabled={state.busy || !state.validateBarcode.trim()}>
+			<button type="submit" disabled={state.busy || warehouseSelection.warehouseId == null || !state.validateBarcode.trim()}>
 				{i18n.t("Validar")}
 			</button>
 			<button type="button" class="secondary" onclick={() => state.clearValidated()} disabled={state.busy}>
@@ -91,7 +91,7 @@
 				disabled={state.busy}
 				required
 			/>
-			<button type="submit" disabled={state.busy || !state.soIdsInput.trim()}>
+			<button type="submit" disabled={state.busy || warehouseSelection.warehouseId == null || !state.soIdsInput.trim()}>
 				{i18n.t("Crear ola")}
 			</button>
 		</form>
@@ -115,7 +115,7 @@
 				disabled={state.busy}
 				required
 			/>
-			<button type="submit" disabled={state.busy || !state.batchIdentifiersInput.trim()}>
+			<button type="submit" disabled={state.busy || warehouseSelection.warehouseId == null || !state.batchIdentifiersInput.trim()}>
 				{i18n.t("Crear lote")}
 			</button>
 		</form>
@@ -139,11 +139,11 @@
 	</section>
 
 	<div class="toolbar">
-		<button type="button" onclick={() => state.refresh()} disabled={state.loading || state.busy}>
+		<button type="button" onclick={() => state.refresh()} disabled={state.loading || state.busy || warehouseSelection.warehouseId == null}>
 			{state.loading ? i18n.t('Cargando…') : i18n.t('Actualizar lote')}
 		</button>
 		{#if state.batch?.active && state.batch.batchId}
-			<button type="button" class="secondary" onclick={() => state.completeBatch()} disabled={state.busy}>
+			<button type="button" class="secondary" onclick={() => state.completeBatch()} disabled={state.busy || warehouseSelection.warehouseId == null}>
 				{i18n.t("Completar lote")}
 			</button>
 		{/if}
@@ -199,9 +199,9 @@
 					/>
 				</label>
 				<div class="actions">
-					<button type="submit" class="accent" disabled={state.busy}>{i18n.t('Confirmar recogida')}</button>
+					<button type="submit" class="accent" disabled={state.busy || warehouseSelection.warehouseId == null}>{i18n.t('Confirmar recogida')}</button>
 					{#if state.batch?.kind !== 'TO'}
-						<button type="button" class="secondary" onclick={() => state.shortPick()} disabled={state.busy}>
+						<button type="button" class="secondary" onclick={() => state.shortPick()} disabled={state.busy || warehouseSelection.warehouseId == null}>
 							{i18n.t("Indicar faltante (0)")}
 						</button>
 					{/if}
