@@ -70,6 +70,9 @@ class TestTransferOrderWarehouseScope:
     def test_admin_list_and_detail_require_access_to_both_warehouses(self, client):
         to_id = _seed_to()
         source_only = _create_transfer_user(client, f"to-src-{uuid.uuid4().hex[:6]}", [1])
+        warehouse_response = client.get("/api/warehouses/list", headers=source_only)
+        assert warehouse_response.status_code == 200
+        assert {row["id"] for row in warehouse_response.get_json()["warehouses"]} == {1}
         response = client.get("/api/admin/transfer-orders", headers=source_only)
         assert response.status_code == 200
         assert to_id not in {row["to_id"] for row in response.get_json()["transfer_orders"]}
@@ -77,6 +80,8 @@ class TestTransferOrderWarehouseScope:
         assert detail.status_code == 404
 
         both = _create_transfer_user(client, f"to-both-{uuid.uuid4().hex[:6]}", [1, 2])
+        warehouse_response = client.get("/api/warehouses/list", headers=both)
+        assert {row["id"] for row in warehouse_response.get_json()["warehouses"]} >= {1, 2}
         response = client.get("/api/admin/transfer-orders", headers=both)
         assert response.status_code == 200
         assert to_id in {row["to_id"] for row in response.get_json()["transfer_orders"]}
