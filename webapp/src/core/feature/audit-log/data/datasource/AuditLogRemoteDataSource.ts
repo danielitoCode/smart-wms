@@ -15,7 +15,7 @@ export class AuditLogRemoteDataSource {
 		if (query.actionType?.trim()) params.set('action_type', query.actionType.trim());
 		if (query.actor?.trim()) params.set('user_id', query.actor.trim());
 		if (query.startDate) params.set('start_date', query.startDate);
-		if (query.endDate) params.set('end_date', query.endDate);
+		if (query.endDate) params.set('end_date', /^\\d{4}-\\d{2}-\\d{2}$/.test(query.endDate) ? `${query.endDate}T23:59:59.999999` : query.endDate);
 		if (query.itemId !== undefined) params.set('item_id', String(query.itemId));
 		return this.api.get<AuditLogListResponseDto>(`/api/admin/audit-log?${params.toString()}`);
 	}
