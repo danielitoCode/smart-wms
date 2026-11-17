@@ -29,10 +29,12 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 	async function refresh() {
 		if (loading || busy) return false;
 		loading = true;
+		let requestedWarehouseId: number | null = null;
 		error = null;
 		info = null;
 		try {
 			const warehouseId = activeWarehouseId();
+			requestedWarehouseId = warehouseId;
 			batch = await deps.getActiveBatch.execute(warehouseId);
 			if (batch.active && batch.batchId) {
 				if (batch.warehouseId !== warehouseId) {
@@ -58,6 +60,7 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 			return false;
 		} finally {
 			loading = false;
+			if (requestedWarehouseId != null && warehouseSelection.warehouseId !== requestedWarehouseId) void refresh();
 		}
 	}
 
