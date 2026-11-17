@@ -108,11 +108,11 @@
   function canStartPicking(): boolean {
     return !!vm.selected && !hasPendingApproval()
       && ['OPEN', 'PARTIALLY_PICKED'].includes(vm.selected.status)
-      && vm.selected.lines.some(line => line.committedQuantity > line.pickedQuantity && line.status !== 'SHORT_CLOSED');
+      && vm.selected.lines.some(line => line.committedQuantity > line.pickedQuantity && ['PENDING', 'PARTIALLY_PICKED'].includes(line.status));
   }
   function hasUnsubmittedPicks(): boolean {
     return !!vm.selected && !hasPendingApproval()
-      && vm.selected.lines.some(line => line.pickedQuantity > line.approvedQuantity);
+      && vm.selected.lines.some(line => line.pickedQuantity > line.approvedQuantity && ['PARTIALLY_PICKED', 'PICKED'].includes(line.status));
   }
   function lineQuantities(line: TransferOrderLine) {
     return {
@@ -141,7 +141,7 @@
     return vm.warehouses.find(warehouse => warehouse.warehouseId === id)?.warehouseCode ?? String(id);
   }
   function canShortClose(line: TransferOrderLine): boolean {
-    return !hasPendingApproval() && line.status !== 'APPROVED' && line.status !== 'SHORT_CLOSED'
+    return !hasPendingApproval() && ['PENDING', 'PARTIALLY_PICKED', 'PICKED'].includes(line.status)
       && line.committedQuantity > line.approvedQuantity;
   }
   function exportShortages() {
