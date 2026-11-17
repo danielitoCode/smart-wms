@@ -282,19 +282,18 @@ def test_duplicate_shipping_fulfillments_serialize_on_independent_connections(
     finally:
         db.SessionLocal = original_factory
         with db.engine.begin() as conn:
-            fulfillment_ids = conn.execute(
-                text("SELECT fulfillment_id FROM item_fulfillments WHERE so_id = :sid"),
+            conn.execute(
+                text(
+                    "DELETE FROM item_fulfillment_lines "
+                    "WHERE fulfillment_id IN "
+                    "(SELECT fulfillment_id FROM item_fulfillments WHERE so_id = :sid)"
+                ),
                 {"sid": so_id},
-            ).scalars().all()
-            if fulfillment_ids:
-                conn.execute(
-                    text("DELETE FROM item_fulfillment_lines WHERE fulfillment_id = ANY(:ids)"),
-                    {"ids": fulfillment_ids},
-                )
-                conn.execute(
-                    text("DELETE FROM item_fulfillments WHERE fulfillment_id = ANY(:ids)"),
-                    {"ids": fulfillment_ids},
-                )
+            )
+            conn.execute(
+                text("DELETE FROM item_fulfillments WHERE so_id = :sid"),
+                {"sid": so_id},
+            )
             conn.execute(
                 text(
                     "DELETE FROM integration_events "
