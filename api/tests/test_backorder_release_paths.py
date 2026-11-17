@@ -274,6 +274,7 @@ class TestInterWarehouseTransfer:
                 "from_bin_id": src_bin, "from_warehouse_id": 2,
                 "to_bin_id": PICKABLE_BIN, "to_warehouse_id": 1,
                 "quantity": 5, "reason": "sourcing a backorder",
+                "idempotency_key": str(uuid.uuid4()),
             },
             headers=auth_headers,
         )
