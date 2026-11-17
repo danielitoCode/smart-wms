@@ -230,6 +230,14 @@ def update_user(user_id, validated):
         return jsonify({"error": "No fields to update"}), 400
 
     g.db.execute(text(f"UPDATE users SET {', '.join(fields)} WHERE user_id = :uid"), params)
+    # ADMIN bypasses page/override grants. Remove stale USER grants on promotion
+    # so a later demotion cannot silently reactivate permissions that were
+    # assigned before the account became an administrator.
+    if data.get("role") == "ADMIN":
+        g.db.execute(
+            text("DELETE FROM user_page_permissions WHERE user_id = :uid"),
+            {"uid": user_id},
+        )
     g.db.commit()
 
     row = g.db.execute(
