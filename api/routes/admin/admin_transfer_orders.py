@@ -454,6 +454,159 @@ def _consume_line_reservations(
         )
 
 
+@admin_bp.route("/transfer-orders/<int:to_id>/cancel", methods=["POST"])
+@require_auth
+@require_admin_or_page_permission("transfer-orders")
+@with_db
+def cancel_transfer_order(to_id):
+    header = g.db.execute(
+        text(
+            "SELECT to_id, to_number, status, source_warehouse_id, destination_warehouse_id "
+            "  FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
+        ),
+        {"tid": to_id},
+    ).fetchone()
+    if not header:
+        return jsonify({"error": "Transfer order not found"}), 404
+    denied = _check_transfer_order_warehouses(header.source_warehouse_id, header.destination_warehouse_id)
+    if denied:
+        return denied
+
+    try:
+        validate_header_transition(header.status, TO_STATUS_CANCELLED)
+    except ValueError as exc:
+        return jsonify({
+            "error": "invalid_status_for_cancel",
+            "current_status": header.status,
+            "detail": str(exc),
+        }), 409
+
+    # A submitted snapshot is an in-flight transfer decision. Do not
+    # release its reservation while an approval could still move it.
+    approval_count = g.db.execute(
+        text(
+            "SELECT COUNT(*) FROM transfer_order_approvals "
+            " WHERE to_id = :tid"
+        ),
+        {"tid": to_id},
+    ).scalar()
+    if approval_count > 0:
+        return jsonify({
+            "error": "to_already_partially_approved",
+            "approval_count": approval_count,
+        }), 409
+
+    try:
+        _release_reservations(g.db, to_id, header.source_warehouse_id)
+    except ValueError as exc:
+        g.db.rollback()
+        return jsonify({"error": "reservation_integrity_error", "detail": str(exc)}), 409
+
+    g.db.execute(
+        text("DELETE FROM pick_tasks WHERE to_id = :tid AND status = 'PENDING'"),
+        {"tid": to_id},
+    )
+    g.db.execute(
+        text(
+            "UPDATE transfer_orders SET status = :st, updated_at = NOW() "
+            " WHERE to_id = :tid"
+        ),
+        {"st": TO_STATUS_CANCELLED, "tid": to_id},
+    )
+
+    write_audit_log(
+        g.db,
+        action_type=ACTION_TO_CANCELLED,
+        entity_type="TO",
+        entity_id=to_id,
+        user_id=g.current_user["username"],
+        warehouse_id=header.source_warehouse_id,
+        details={
+            "to_number": header.to_number,
+            "previous_status": header.status,
+        },
+    )
+    g.db.commit()
+    return jsonify({"to_id": to_id, "status": TO_STATUS_CANCELLED})
+
+
+@admin_bp.route("/transfer-orders/<int:to_id>", methods=["DELETE"])
+@require_auth
+@require_admin_or_page_permission("transfer-orders")
+@with_db
+def delete_transfer_order(to_id):
+    header = g.db.execute(
+        text(
+            "SELECT to_id, to_number, status, source_warehouse_id, destination_warehouse_id "
+            "  FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
+        ),
+        {"tid": to_id},
+    ).fetchone()
+    if not header:
+        return jsonify({"error": "Transfer order not found"}), 404
+    denied = _check_transfer_order_warehouses(header.source_warehouse_id, header.destination_warehouse_id)
+    if denied:
+        return denied
+
+    # Hard delete only allowed pre-approval and pre-pick. Once any line
+    # has picked_qty > 0 OR any approval row exists, the audit trail
+    # would lose state; require cancel instead.
+    any_picks = g.db.execute(
+        text(
+            "SELECT COUNT(*) FROM transfer_order_lines "
+            " WHERE to_id = :tid AND picked_qty > 0"
+        ),
+        {"tid": to_id},
+    ).scalar()
+    any_approvals = g.db.execute(
+        text(
+            "SELECT COUNT(*) FROM transfer_order_approvals "
+            " WHERE to_id = :tid"
+        ),
+        {"tid": to_id},
+    ).scalar()
+    if any_picks > 0 or any_approvals > 0:
+        return jsonify({
+            "error": "to_not_deletable",
+            "any_picks": any_picks,
+            "any_approvals": any_approvals,
+            "detail": (
+                "Use cancel for TOs with picks or approvals; delete "
+                "only applies to OPEN TOs with no downstream activity."
+            ),
+        }), 409
+
+    try:
+        _release_reservations(g.db, to_id, header.source_warehouse_id)
+    except ValueError as exc:
+        g.db.rollback()
+        return jsonify({"error": "reservation_integrity_error", "detail": str(exc)}), 409
+
+    g.db.execute(
+        text("DELETE FROM pick_tasks WHERE to_id = :tid AND status = 'PENDING'"),
+        {"tid": to_id},
+    )
+
+    write_audit_log(
+        g.db,
+        action_type=ACTION_TO_DELETED,
+        entity_type="TO",
+        entity_id=to_id,
+        user_id=g.current_user["username"],
+        warehouse_id=header.source_warehouse_id,
+        details={
+            "to_number": header.to_number,
+            "previous_status": header.status,
+        },
+    )
+    g.db.execute(
+        text("DELETE FROM transfer_orders WHERE to_id = :tid"),
+        {"tid": to_id},
+    )
+    g.db.commit()
+    return ("", 204)
+
+
 # ----------------------------------------------------------------------
 # Line short-close
 # ----------------------------------------------------------------------
