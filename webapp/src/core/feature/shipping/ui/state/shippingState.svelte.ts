@@ -52,6 +52,7 @@ export function createShippingState(warehouseSelection: WarehouseSelectionState)
 				carrier: carrier.trim(),
 				shipMethod: shipMethod.trim() || null
 			});
+			detail = null;
 			return true;
 		} catch (err) { error = toUserMessage(err, 'No se pudo registrar el envío'); return false; }
 		finally { busy = false; }
