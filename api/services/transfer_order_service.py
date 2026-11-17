@@ -424,14 +424,55 @@ def submit_picks(db, to_id: int, username: str) -> dict:
     if not lines:
         return {"ok": False, "reason": "nothing_picked"}
 
-    snapshot_lines = [
-        {
+    snapshot_lines = []
+    for line in lines:
+        tasks = db.execute(
+            text(
+                """
+                SELECT pick_task_id, inventory_id, bin_id,
+                       quantity_picked, quantity_approved
+                  FROM pick_tasks
+                 WHERE to_id = :tid AND to_line_id = :lid
+                   AND status = 'PICKED'
+                   AND quantity_picked > quantity_approved
+                 ORDER BY inventory_id, pick_task_id
+                 FOR UPDATE
+                """
+            ),
+            {"tid": to_id, "lid": line.to_line_id},
+        ).fetchall()
+        task_snapshot = []
+        allocation_totals = {}
+        task_total = 0
+        for task in tasks:
+            delta = task.quantity_picked - task.quantity_approved
+            if task.inventory_id is None or delta <= 0:
+                return {"ok": False, "reason": "reservation_task_mismatch"}
+            task_total += delta
+            task_snapshot.append({
+                "pick_task_id": task.pick_task_id,
+                "inventory_id": task.inventory_id,
+                "bin_id": task.bin_id,
+                "picked_in_snapshot": delta,
+            })
+            current = allocation_totals.setdefault(
+                task.inventory_id,
+                {"inventory_id": task.inventory_id, "bin_id": task.bin_id, "quantity": 0},
+            )
+            if current["bin_id"] != task.bin_id:
+                return {"ok": False, "reason": "reservation_task_mismatch"}
+            current["quantity"] += delta
+
+        expected_delta = line.picked_qty - line.approved_qty
+        if task_total != expected_delta or not task_snapshot:
+            return {"ok": False, "reason": "reservation_task_mismatch"}
+        snapshot_lines.append({
             "to_line_id": line.to_line_id,
             "item_id": line.item_id,
-            "picked_in_snapshot": line.picked_qty - line.approved_qty,
-        }
-        for line in lines
-    ]
+            "picked_in_snapshot": expected_delta,
+            "tasks": task_snapshot,
+            "inventory_allocations": list(allocation_totals.values()),
+        })
     approval_row = db.execute(
         text(
             """
