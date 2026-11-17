@@ -4,7 +4,7 @@ import type { AuditLogQuery } from '../entity/AuditLogEntry';
 export class ListAuditLogUseCase {
 	constructor(private readonly repository: AuditLogRepository) {}
 
-	execute(query: AuditLogQuery = {}) {
+	async execute(query: AuditLogQuery = {}) {
 		const page = query.page ?? 1;
 		const perPage = query.perPage ?? 50;
 		if (!Number.isInteger(page) || page < 1) throw new Error('La página debe ser un entero >= 1');
@@ -23,5 +23,5 @@ export class ListAuditLogUseCase {
 
 export class FilterAuditLogUseCase {
 	constructor(private readonly listAuditLog: ListAuditLogUseCase) {}
-	execute(query: AuditLogQuery) { return this.listAuditLog.execute({ ...query, page: 1 }); }
+	async execute(query: AuditLogQuery) { return this.listAuditLog.execute({ ...query, page: 1 }); }
 }
