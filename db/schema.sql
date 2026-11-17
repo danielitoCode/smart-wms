@@ -451,6 +451,18 @@ CREATE TABLE bin_transfers (
     external_id UUID UNIQUE NOT NULL
 );
 
+-- Durable idempotency receipts for inter-warehouse transfer POSTs.
+CREATE TABLE inter_warehouse_transfer_requests (
+    username          VARCHAR(100) NOT NULL,
+    idempotency_key   UUID NOT NULL,
+    request_payload   JSONB NOT NULL,
+    response_payload  JSONB NOT NULL,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (username, idempotency_key)
+);
+CREATE INDEX ix_inter_warehouse_transfer_requests_created
+    ON inter_warehouse_transfer_requests(created_at);
+
 -- ============================================================
 -- CYCLE COUNTS
 -- ============================================================
