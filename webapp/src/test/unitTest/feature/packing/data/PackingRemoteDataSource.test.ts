@@ -1,9 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiClient } from '../../../../../core/infrastructure/api/ApiClient';
 import { PackingRemoteDataSource } from '../../../../../core/feature/packing/data/datasource/PackingRemoteDataSource';
 
 describe('PackingRemoteDataSource', () => {
  const api = { get: vi.fn(), post: vi.fn() } as unknown as ApiClient;
+ beforeEach(() => vi.clearAllMocks());
  it('scopes barcode lookup to the active warehouse and encodes the barcode', async () => {
   await new PackingRemoteDataSource(api).loadOrder('SO / 7', 7);
   expect(api.get).toHaveBeenCalledWith('/api/packing/order/SO%20%2F%207?warehouse_id=7');
