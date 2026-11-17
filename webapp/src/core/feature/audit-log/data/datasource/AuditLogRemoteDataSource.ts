@@ -5,17 +5,18 @@ import type { AuditLogListResponseDto } from '../dto/AuditLogDto';
 export class AuditLogRemoteDataSource {
 	constructor(private readonly api: ApiClient) {}
 
-	async list(query: AuditLogQuery = {}): Promise<AuditLogListResponseDto> {
+	list(query: AuditLogQuery = {}): Promise<AuditLogListResponseDto> {
 		const params = new URLSearchParams({
 			page: String(query.page ?? 1),
-			per_page: String(query.perPage ?? 50)
+			per_page: String(query.perPage ?? 50),
+			sort_by: query.sortBy ?? 'created_at',
+			sort_direction: query.sortDirection ?? 'desc'
 		});
-		if (query.actionType) params.set('action_type', query.actionType);
-		if (query.entityType) params.set('entity_type', query.entityType);
-		if (query.userId != null) params.set('user_id', String(query.userId));
-		if (query.warehouseId != null) params.set('warehouse_id', String(query.warehouseId));
-		if (query.from) params.set('from', query.from);
-		if (query.to) params.set('to', query.to);
-		return this.api.get<AuditLogListResponseDto>(`/api/admin/audit-log?${params}`);
+		if (query.actionType?.trim()) params.set('action_type', query.actionType.trim());
+		if (query.actor?.trim()) params.set('user_id', query.actor.trim());
+		if (query.startDate) params.set('start_date', query.startDate);
+		if (query.endDate) params.set('end_date', query.endDate);
+		if (query.itemId !== undefined) params.set('item_id', String(query.itemId));
+		return this.api.get<AuditLogListResponseDto>(`/api/admin/audit-log?${params.toString()}`);
 	}
 }
