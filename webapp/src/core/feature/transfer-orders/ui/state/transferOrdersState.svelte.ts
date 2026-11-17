@@ -88,6 +88,7 @@ export function createTransferOrdersState(dependencies = createTransferOrdersDep
   }
 
   async function act<T>(action: () => Promise<T>, successMessage: (result: T) => string = () => 'Operación completada') {
+    if (saving) return false;
     saving = true;
     error = null;
     notice = null;
@@ -105,6 +106,7 @@ export function createTransferOrdersState(dependencies = createTransferOrdersDep
   }
 
   async function create(input: CreateTransferOrder) {
+    if (saving) return false;
     saving = true;
     error = null;
     notice = null;
@@ -164,6 +166,7 @@ export function createTransferOrdersState(dependencies = createTransferOrdersDep
     reject: (id: number, approvalId: number, reason: string) => act(() => dependencies.reject.execute(id, approvalId, reason), () => 'Envío rechazado; el inventario permanece en origen'),
     cancel: (id: number) => act(() => dependencies.cancel.execute(id), () => 'Transferencia cancelada'),
     async remove(id: number) {
+      if (saving) return false;
       saving = true;
       error = null;
       notice = null;
