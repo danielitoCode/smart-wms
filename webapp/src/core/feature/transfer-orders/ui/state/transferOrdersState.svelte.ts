@@ -2,9 +2,7 @@ import { createTransferOrdersDependencies } from '../../di/transferOrders.depend
 import type { CreateTransferOrder, TransferOrder, TransferOrderImportResult, TransferOrderQuery, TransferOrderWarehouse } from '../../domain/entity/TransferOrder';
 import { ApiError, toUserMessage } from '../../../../infrastructure/errors/ApiError';
 
-const dependencies = createTransferOrdersDependencies();
-
-export function createTransferOrdersState() {
+export function createTransferOrdersState(dependencies = createTransferOrdersDependencies()) {
   let rows = $state<TransferOrder[]>([]);
   let selected = $state<TransferOrder | null>(null);
   let pickerSnapshot = $state<TransferOrder | null>(null);
