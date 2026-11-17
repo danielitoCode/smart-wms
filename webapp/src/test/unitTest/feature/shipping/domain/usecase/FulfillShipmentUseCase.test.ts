@@ -19,12 +19,14 @@ describe('FulfillShipmentUseCase', () => {
 		const useCase = new FulfillShipmentUseCase(repo);
 		await useCase.execute({
 			soId: 1,
+			warehouseId: 6,
 			trackingNumber: ' 1Z ',
 			carrier: ' UPS ',
 			shipMethod: 'GROUND'
 		});
 		expect(repo.fulfill).toHaveBeenCalledWith({
 			soId: 1,
+			warehouseId: 6,
 			trackingNumber: '1Z',
 			carrier: 'UPS',
 			shipMethod: 'GROUND'
@@ -36,6 +38,7 @@ describe('FulfillShipmentUseCase', () => {
 		expect(() => 
 			new FulfillShipmentUseCase(repo).execute({
 				soId: 1,
+				warehouseId: 6,
 				trackingNumber: ' ',
 				carrier: 'UPS'
 			})
