@@ -291,7 +291,7 @@ def _release_line_reservations(db, to_line_id: int, quantity: int) -> int:
         text(
             """
             SELECT reservation_id, inventory_id, item_id, warehouse_id,
-                   quantity_reserved, quantity_consumed, quantity_released
+                   quantity_reserved, quantity_picked, quantity_consumed, quantity_released
               FROM transfer_order_reservations
              WHERE to_line_id = :lid
                AND quantity_consumed + quantity_released < quantity_reserved
@@ -335,6 +335,7 @@ def _release_line_reservations(db, to_line_id: int, quantity: int) -> int:
                 """
                 UPDATE transfer_order_reservations
                    SET quantity_released = quantity_released + :qty,
+                       quantity_picked = quantity_consumed,
                        updated_at = NOW()
                  WHERE reservation_id = :rid
                 """
@@ -371,32 +372,48 @@ def _release_reservations(db, to_id: int, source_warehouse_id: int) -> None:
 
 
 def _consume_line_reservations(
-    db, to_line_id: int, item_id: int, warehouse_id: int, quantity: int,
+    db, to_line_id: int, item_id: int, warehouse_id: int,
+    quantity: int, inventory_slices: list[dict],
 ) -> None:
-    """Consume the exact bin/lot reservations belonging to an approved line."""
-    if quantity <= 0:
-        raise ValueError("reservation consumption quantity must be positive")
-    rows = db.execute(
-        text(
-            """
-            SELECT r.reservation_id, r.inventory_id, r.quantity_reserved,
-                   r.quantity_consumed, r.quantity_released
-              FROM transfer_order_reservations r
-             WHERE r.to_line_id = :lid
-               AND r.item_id = :iid
-               AND r.warehouse_id = :wid
-               AND r.quantity_consumed + r.quantity_released < r.quantity_reserved
-             ORDER BY r.inventory_id ASC, r.reservation_id ASC
-             FOR UPDATE
-            """
-        ),
-        {"lid": to_line_id, "iid": item_id, "wid": warehouse_id},
-    ).fetchall()
-    remaining = quantity
-    for row in rows:
-        if remaining <= 0:
-            break
-        take = min(remaining, _reservation_remaining(row))
+    """Consume only the exact bin/lot slices recorded by the picker."""
+    if quantity <= 0 or not inventory_slices:
+        raise ValueError("approval is missing its reserved inventory slices")
+    if sum(int(part["picked_in_snapshot"]) for part in inventory_slices) != quantity:
+        raise ValueError("approval inventory slices do not match the picked quantity")
+
+    for part in inventory_slices:
+        inventory_id = int(part["inventory_id"])
+        take = int(part["picked_in_snapshot"])
+        reservation = db.execute(
+            text(
+                """
+                SELECT reservation_id, quantity_picked, quantity_consumed,
+                       quantity_released
+                  FROM transfer_order_reservations
+                 WHERE to_line_id = :lid
+                   AND item_id = :iid
+                   AND warehouse_id = :wid
+                   AND inventory_id = :inventory_id
+                 FOR UPDATE
+                """
+            ),
+            {
+                "lid": to_line_id,
+                "iid": item_id,
+                "wid": warehouse_id,
+                "inventory_id": inventory_id,
+            },
+        ).fetchone()
+        if (
+            not reservation
+            or take <= 0
+            or reservation.quantity_picked - reservation.quantity_consumed
+                - reservation.quantity_released < take
+        ):
+            raise ValueError(
+                f"approval slice is not currently picked/reserved for "
+                f"to_line_id={to_line_id}, inventory_id={inventory_id}"
+            )
         updated = db.execute(
             text(
                 """
@@ -405,17 +422,24 @@ def _consume_line_reservations(
                        quantity_on_hand = quantity_on_hand - :qty,
                        updated_at = NOW()
                  WHERE inventory_id = :inv_id
+                   AND item_id = :iid
+                   AND warehouse_id = :wid
                    AND quantity_allocated >= :qty
                    AND quantity_on_hand >= :qty
                 RETURNING inventory_id
                 """
             ),
-            {"qty": take, "inv_id": row.inventory_id},
+            {
+                "qty": take,
+                "inv_id": inventory_id,
+                "iid": item_id,
+                "wid": warehouse_id,
+            },
         ).fetchone()
         if not updated:
             raise ValueError(
-                f"reserved inventory is no longer available for to_line_id={to_line_id}, "
-                f"inventory_id={row.inventory_id}"
+                f"reserved inventory is no longer available for "
+                f"to_line_id={to_line_id}, inventory_id={inventory_id}"
             )
         db.execute(
             text(
@@ -426,167 +450,8 @@ def _consume_line_reservations(
                  WHERE reservation_id = :rid
                 """
             ),
-            {"qty": take, "rid": row.reservation_id},
+            {"qty": take, "rid": reservation.reservation_id},
         )
-        remaining -= take
-    if remaining:
-        raise ValueError(
-            f"reservation ledger is short by {remaining} units for to_line_id={to_line_id}"
-        )
-
-
-
-@admin_bp.route("/transfer-orders/<int:to_id>/cancel", methods=["POST"])
-@require_auth
-@require_admin_or_page_permission("transfer-orders")
-@with_db
-def cancel_transfer_order(to_id):
-    header = g.db.execute(
-        text(
-            "SELECT to_id, to_number, status, source_warehouse_id, destination_warehouse_id "
-            "  FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
-        ),
-        {"tid": to_id},
-    ).fetchone()
-    if not header:
-        return jsonify({"error": "Transfer order not found"}), 404
-    denied = _check_transfer_order_warehouses(header.source_warehouse_id, header.destination_warehouse_id)
-    if denied:
-        return denied
-
-    try:
-        validate_header_transition(header.status, TO_STATUS_CANCELLED)
-    except ValueError as exc:
-        return jsonify({
-            "error": "invalid_status_for_cancel",
-            "current_status": header.status,
-            "detail": str(exc),
-        }), 409
-
-    # A submitted snapshot is an in-flight transfer decision. Do not
-    # release its reservation while an approval could still move it.
-    approval_count = g.db.execute(
-        text(
-            "SELECT COUNT(*) FROM transfer_order_approvals "
-            " WHERE to_id = :tid"
-        ),
-        {"tid": to_id},
-    ).scalar()
-    if approval_count > 0:
-        return jsonify({
-            "error": "to_already_partially_approved",
-            "approval_count": approval_count,
-        }), 409
-
-    try:
-        _release_reservations(g.db, to_id, header.source_warehouse_id)
-    except ValueError as exc:
-        g.db.rollback()
-        return jsonify({"error": "reservation_integrity_error", "detail": str(exc)}), 409
-
-    g.db.execute(
-        text("DELETE FROM pick_tasks WHERE to_id = :tid AND status = 'PENDING'"),
-        {"tid": to_id},
-    )
-    g.db.execute(
-        text(
-            "UPDATE transfer_orders SET status = :st, updated_at = NOW() "
-            " WHERE to_id = :tid"
-        ),
-        {"st": TO_STATUS_CANCELLED, "tid": to_id},
-    )
-
-    write_audit_log(
-        g.db,
-        action_type=ACTION_TO_CANCELLED,
-        entity_type="TO",
-        entity_id=to_id,
-        user_id=g.current_user["username"],
-        warehouse_id=header.source_warehouse_id,
-        details={
-            "to_number": header.to_number,
-            "previous_status": header.status,
-        },
-    )
-    g.db.commit()
-    return jsonify({"to_id": to_id, "status": TO_STATUS_CANCELLED})
-
-
-@admin_bp.route("/transfer-orders/<int:to_id>", methods=["DELETE"])
-@require_auth
-@require_admin_or_page_permission("transfer-orders")
-@with_db
-def delete_transfer_order(to_id):
-    header = g.db.execute(
-        text(
-            "SELECT to_id, to_number, status, source_warehouse_id, destination_warehouse_id "
-            "  FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
-        ),
-        {"tid": to_id},
-    ).fetchone()
-    if not header:
-        return jsonify({"error": "Transfer order not found"}), 404
-    denied = _check_transfer_order_warehouses(header.source_warehouse_id, header.destination_warehouse_id)
-    if denied:
-        return denied
-
-    # Hard delete only allowed pre-approval and pre-pick. Once any line
-    # has picked_qty > 0 OR any approval row exists, the audit trail
-    # would lose state; require cancel instead.
-    any_picks = g.db.execute(
-        text(
-            "SELECT COUNT(*) FROM transfer_order_lines "
-            " WHERE to_id = :tid AND picked_qty > 0"
-        ),
-        {"tid": to_id},
-    ).scalar()
-    any_approvals = g.db.execute(
-        text(
-            "SELECT COUNT(*) FROM transfer_order_approvals "
-            " WHERE to_id = :tid"
-        ),
-        {"tid": to_id},
-    ).scalar()
-    if any_picks > 0 or any_approvals > 0:
-        return jsonify({
-            "error": "to_not_deletable",
-            "any_picks": any_picks,
-            "any_approvals": any_approvals,
-            "detail": (
-                "Use cancel for TOs with picks or approvals; delete "
-                "only applies to OPEN TOs with no downstream activity."
-            ),
-        }), 409
-
-    try:
-        _release_reservations(g.db, to_id, header.source_warehouse_id)
-    except ValueError as exc:
-        g.db.rollback()
-        return jsonify({"error": "reservation_integrity_error", "detail": str(exc)}), 409
-
-    g.db.execute(
-        text("DELETE FROM pick_tasks WHERE to_id = :tid AND status = 'PENDING'"),
-        {"tid": to_id},
-    )
-
-    write_audit_log(
-        g.db,
-        action_type=ACTION_TO_DELETED,
-        entity_type="TO",
-        entity_id=to_id,
-        user_id=g.current_user["username"],
-        warehouse_id=header.source_warehouse_id,
-        details={
-            "to_number": header.to_number,
-            "previous_status": header.status,
-        },
-    )
-    g.db.execute(
-        text("DELETE FROM transfer_orders WHERE to_id = :tid"),
-        {"tid": to_id},
-    )
-    g.db.commit()
-    return ("", 204)
 
 
 # ----------------------------------------------------------------------
@@ -1445,8 +1310,10 @@ def approve_transfer_order_approval(to_id, approval_id):
                 raise ValueError(
                     f"approval snapshot exceeds current picked quantity for line {line_id}"
                 )
+            inventory_slices = snap.get("inventory_slices") or []
             _consume_line_reservations(
-                g.db, line_id, item_id, header.source_warehouse_id, qty,
+                g.db, line_id, item_id, header.source_warehouse_id,
+                qty, inventory_slices,
             )
             _credit_destination_inventory(
                 g.db, item_id, header.destination_warehouse_id, qty,
@@ -1627,6 +1494,42 @@ def reject_transfer_order_approval(to_id, approval_id):
                 "error": "approval_snapshot_mismatch",
                 "to_line_id": line_id,
             }), 409
+        inventory_slices = snapshot.get("inventory_slices") or []
+        if sum(int(part.get("picked_in_snapshot", 0)) for part in inventory_slices) != rejected_qty:
+            g.db.rollback()
+            return jsonify({
+                "error": "approval_snapshot_mismatch",
+                "to_line_id": line_id,
+            }), 409
+        for part in inventory_slices:
+            inventory_id = int(part["inventory_id"])
+            slice_qty = int(part["picked_in_snapshot"])
+            restored_slice = g.db.execute(
+                text(
+                    """
+                    UPDATE transfer_order_reservations
+                       SET quantity_picked = quantity_picked - :qty,
+                           updated_at = NOW()
+                     WHERE to_line_id = :lid
+                       AND inventory_id = :inventory_id
+                       AND quantity_picked - :qty >= quantity_consumed
+                    RETURNING reservation_id
+                    """
+                ),
+                {
+                    "lid": line_id,
+                    "inventory_id": inventory_id,
+                    "qty": slice_qty,
+                },
+            ).fetchone()
+            if not restored_slice:
+                g.db.rollback()
+                return jsonify({
+                    "error": "approval_snapshot_mismatch",
+                    "to_line_id": line_id,
+                    "inventory_id": inventory_id,
+                }), 409
+
         restored_picked = line.picked_qty - rejected_qty
         restored_status = (
             TO_LINE_APPROVED if line.approved_qty == line.committed_qty
