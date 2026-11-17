@@ -45,8 +45,8 @@
  {#if formOpen}
  <form class="editor" onsubmit={e=>{e.preventDefault();void save();}}>
   <div class="editor-head"><div><p class="eyebrow">{editing?i18n.t('CUENTA EXISTENTE'):i18n.t('NUEVA CUENTA')}</p><h2>{editing?i18n.t('Editar usuario'):i18n.t('Nuevo usuario')}</h2></div><button type="button" onclick={reset}><span aria-hidden="true">×</span></button></div>
-  <div class="form-grid">{#if !editing}<label>{i18n.t('Usuario')} *<input required maxlength="150" bind:value={username}/></label>{:else}<label>{i18n.t('Usuario')}<input value={editing.username} disabled/></label>{/if}
-   <label>{i18n.t('Nombre completo')} *<input required maxlength="256" bind:value={fullName}/></label>
+  <div class="form-grid">{#if !editing}<label>{i18n.t('Usuario')} *<input required maxlength="50" bind:value={username}/></label>{:else}<label>{i18n.t('Usuario')}<input value={editing.username} disabled/></label>{/if}
+   <label>{i18n.t('Nombre completo')} *<input required maxlength="100" bind:value={fullName}/></label>
    <label>{editing?i18n.t('Nueva contraseña (opcional)'):i18n.t('Contraseña')}<input type="password" autocomplete="new-password" bind:value={password} required={!editing}/></label>
    <label>{i18n.t('Rol')}<select bind:value={role}><option value="USER">USER</option><option value="ADMIN">ADMIN</option></select></label></div>
   <section class="section"><div class="section-head"><div><h3>{i18n.t('Almacenes asignados')}</h3><p>{i18n.t('Sin almacenes, el usuario no tendrá acceso a operaciones de almacén.')}</p></div><div class="quick"><button type="button" onclick={()=>warehouseIds=vm.warehouses.map(w=>w.warehouse_id)}>{i18n.t('Todos')}</button><button type="button" onclick={()=>warehouseIds=[]}>{i18n.t('Limpiar')}</button></div></div>
