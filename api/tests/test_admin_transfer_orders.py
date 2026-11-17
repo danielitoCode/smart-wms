@@ -224,7 +224,7 @@ class TestExactBinPickingPlan:
         line_id = _seed_to_line(to_id, item_id=1, committed=5)
         inventory_rows = _query(
             """
-            SELECT inventory_id, bin_id, quantity_on_hand
+            SELECT inventory_id, bin_id, quantity_on_hand, quantity_allocated
               FROM inventory
              WHERE item_id = 1 AND warehouse_id = 1
              ORDER BY inventory_id
@@ -234,7 +234,9 @@ class TestExactBinPickingPlan:
         if len(inventory_rows) < 3:
             pytest.skip("seed warehouse needs three inventory rows for reservation-isolation coverage")
         first, unreserved, second = inventory_rows
-        assert first[2] >= 3 and unreserved[2] >= 2 and second[2] >= 2
+        assert first[2] - first[3] >= 3
+        assert unreserved[2] - unreserved[3] >= 2
+        assert second[2] - second[3] >= 2
 
         conn = db_test_context.get_raw_connection()
         cur = conn.cursor()
