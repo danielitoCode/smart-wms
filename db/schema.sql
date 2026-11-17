@@ -390,8 +390,11 @@ CREATE TABLE pick_tasks (
     so_line_id INT REFERENCES sales_order_lines(so_line_id) ON DELETE SET NULL,
     item_id INT NOT NULL REFERENCES items(item_id),
     bin_id INT NOT NULL REFERENCES bins(bin_id),
+    inventory_id INT REFERENCES inventory(inventory_id) ON DELETE SET NULL,
     quantity_to_pick INT NOT NULL,
     quantity_picked INT NOT NULL DEFAULT 0,
+    quantity_approved INT NOT NULL DEFAULT 0
+        CHECK (quantity_approved >= 0 AND quantity_approved <= quantity_picked),
     pick_sequence INT NOT NULL,            -- ORDER BY this for optimized walk path
     tote_number VARCHAR(50),
     status VARCHAR(20) DEFAULT 'PENDING',  -- 'PENDING', 'PICKED', 'SHORT', 'SKIPPED', 'RELEASED' (RELEASED set by the SO revert / batch full-revert flow).
@@ -401,6 +404,7 @@ CREATE TABLE pick_tasks (
 );
 
 CREATE INDEX ix_pick_tasks_batch_sequence ON pick_tasks(batch_id, pick_sequence);
+CREATE INDEX ix_pick_tasks_inventory ON pick_tasks(inventory_id);
 
 -- Wave picking: links SOs to wave batches
 CREATE TABLE wave_pick_orders (
