@@ -1,7 +1,6 @@
 import type {ManagedWarehouse,ManagedUser,CreateManagedUser,UpdateManagedUser,UserPagePermissions,UpdateUserPagePermissions} from '../../domain/entity/UserManagement';
 import type {ManagedUsersRepository} from '../../domain/repository/ManagedUsersRepository';
 import type {ManagedUsersRemoteDataSource} from '../datasource/ManagedUsersRemoteDataSource';
-import type {ManagedWarehouseDto} from '../dto/ManagedUserDto';
 import {ManagedUserMapper as M} from '../mapper/ManagedUserMapper';
 export class ManagedUsersRepositoryImpl implements ManagedUsersRepository{
  constructor(private readonly remote:ManagedUsersRemoteDataSource){}
