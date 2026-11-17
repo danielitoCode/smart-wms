@@ -266,6 +266,7 @@
   </section>
 
   {#if vm.selected}
+    {@const totals = orderQuantities()}
     <section class="detail-panel">
       <div class="section-heading"><div><p class="eyebrow">{i18n.t('DETALLE DE TRANSFERENCIA')}</p><h2>{vm.selected.transferOrderNumber}</h2><p>{warehouseCode(vm.selected.sourceWarehouseId)} → {warehouseCode(vm.selected.destinationWarehouseId)} · <span class="status">{vm.selected.status}</span></p></div><button onclick={() => vm.clearSelected()}>{i18n.t('Cerrar detalle')}</button></div>
       {#if vm.selected.notes}<p class="muted">{vm.selected.notes}</p>{/if}
@@ -281,7 +282,6 @@
       </div>
 
       <section class="quantity-summary" aria-label={i18n.t('Resumen de cantidades')}>
-        {@const totals = orderQuantities()}
         <div><span>{i18n.t('Solicitado')}</span><strong>{totals.requested}</strong></div>
         <div><span>{i18n.t('Comprometido')}</span><strong>{totals.committed}</strong></div>
         <div><span>{i18n.t('Recogido')}</span><strong>{totals.picked}</strong></div>
