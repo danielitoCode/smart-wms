@@ -879,7 +879,7 @@ def start_to_picking(to_id):
         text(
             """
             SELECT to_line_id, item_id, line_number,
-                   committed_qty, picked_qty
+                   committed_qty, picked_qty, approved_qty
               FROM transfer_order_lines
              WHERE to_id = :tid
                AND status IN ('PENDING', 'PARTIALLY_PICKED')
@@ -932,12 +932,18 @@ def start_to_picking(to_id):
                   FROM transfer_order_reservations r
                   JOIN inventory inv ON inv.inventory_id = r.inventory_id
                  WHERE r.to_line_id = :lid
+                   AND r.item_id = :iid
+                   AND r.warehouse_id = :wid
                    AND r.quantity_consumed + r.quantity_released < r.quantity_reserved
                  ORDER BY r.inventory_id ASC, r.reservation_id ASC
                  FOR UPDATE OF r, inv
                 """
             ),
-            {"lid": line.to_line_id},
+            {
+                "lid": line.to_line_id,
+                "iid": line.item_id,
+                "wid": header.source_warehouse_id,
+            },
         ).fetchall()
         for ir in inv_rows:
             if remaining <= 0:
