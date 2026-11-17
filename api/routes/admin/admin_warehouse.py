@@ -695,7 +695,7 @@ def create_inter_warehouse_transfer(validated):
     warehouse_rows = g.db.execute(
         text(
             "SELECT warehouse_id FROM warehouses "
-            "WHERE warehouse_id = ANY(:warehouse_ids) AND is_active = TRUE " + scope_sql
+            "WHERE warehouse_id = ANY(:warehouse_ids) AND is_active = TRUE " + scope_sql + " FOR SHARE"
         ),
         {"warehouse_ids": [from_warehouse_id, to_warehouse_id], **scope_params},
     ).fetchall()
@@ -729,7 +729,7 @@ def create_inter_warehouse_transfer(validated):
         return jsonify(prior.response_payload), 201
 
     item = g.db.execute(
-        text("SELECT item_id, sku FROM items WHERE item_id = :iid AND is_active = TRUE"),
+        text("SELECT item_id, sku FROM items WHERE item_id = :iid AND is_active = TRUE FOR SHARE"),
         {"iid": item_id},
     ).fetchone()
     if not item:
@@ -740,7 +740,7 @@ def create_inter_warehouse_transfer(validated):
         text(
             "SELECT b.bin_id, b.bin_code, b.warehouse_id FROM bins b "
             "WHERE b.bin_id = :bid AND b.warehouse_id = :wid AND b.is_active = TRUE "
-            + source_scope
+            + source_scope + " FOR SHARE OF b"
         ),
         {"bid": from_bin_id, "wid": from_warehouse_id, **source_params},
     ).fetchone()
@@ -752,7 +752,7 @@ def create_inter_warehouse_transfer(validated):
         text(
             "SELECT b.bin_id, b.bin_code, b.warehouse_id FROM bins b "
             "WHERE b.bin_id = :bid AND b.warehouse_id = :wid AND b.is_active = TRUE "
-            + destination_scope
+            + destination_scope + " FOR SHARE OF b"
         ),
         {"bid": to_bin_id, "wid": to_warehouse_id, **destination_params},
     ).fetchone()
