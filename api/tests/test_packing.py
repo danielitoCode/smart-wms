@@ -252,3 +252,12 @@ def test_concurrent_duplicate_pack_scans_cannot_overpack(client, auth_headers):
         "WHERE so_id = 1 AND item_id = 1"
     )
     assert packed == picked
+
+
+def test_packing_order_lookup_is_scoped_to_selected_warehouse(client, auth_headers):
+    _advance_so_to_picked(client, auth_headers, ["SO-2026-001"])
+    response = client.get(
+        "/api/packing/order/SO-2026-001?warehouse_id=2",
+        headers=auth_headers,
+    )
+    assert response.status_code == 404
