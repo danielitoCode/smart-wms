@@ -56,7 +56,9 @@ export const ManagedUserMapper = {
 		if (input.warehouseIds !== undefined) {
 			// The multi-warehouse list is authoritative; [] explicitly clears it.
 			dto.warehouse_ids = input.warehouseIds;
-			dto.warehouse_id = input.warehouseIds[0] ?? null;
+			// When empty, omit the legacy mirror. Flask clears it from the
+			// authoritative empty array; sending null is not needed.
+			if (input.warehouseIds.length > 0) dto.warehouse_id = input.warehouseIds[0];
 		} else if (input.warehouseId !== undefined) {
 			dto.warehouse_id = input.warehouseId;
 		}
