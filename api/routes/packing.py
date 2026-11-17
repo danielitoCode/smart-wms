@@ -22,6 +22,16 @@ packing_bp = Blueprint("packing", __name__)
 @require_auth
 @with_db
 def get_order(barcode):
+    raw_warehouse_id = request.args.get("warehouse_id")
+    if raw_warehouse_id is not None:
+        try:
+            context_warehouse_id = int(raw_warehouse_id)
+            if context_warehouse_id <= 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            return jsonify({"error": "warehouse_id must be a positive integer"}), 400
+    else:
+        context_warehouse_id = None
     # V-026: filter warehouse in SELECT so an SO in another warehouse
     # returns the same 404 as a missing barcode, not 403.
     scope_clause, scope_params = warehouse_scope_clause("warehouse_id")
@@ -33,10 +43,11 @@ def get_order(barcode):
             FROM sales_orders
             WHERE (so_barcode = :barcode OR so_number = :barcode)
               {scope_clause}
+              AND (:context_warehouse_id IS NULL OR warehouse_id = :context_warehouse_id)
             LIMIT 1
             """
         ),
-        {"barcode": barcode, **scope_params},
+        {"barcode": barcode, "context_warehouse_id": context_warehouse_id, **scope_params},
     ).fetchone()
 
     if not so:
