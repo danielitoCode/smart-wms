@@ -1,12 +1,17 @@
 import type { ApiClient } from '../../../../infrastructure/api/ApiClient';
 import type {
-	ManagedUserDto, ManagedUsersListDto, UserPermissionsDto,
+	ManagedUserDto, ManagedUsersListDto, UserPermissionsDto, ManagedWarehouseDto,
 	CreateManagedUserRequestDto, UpdateManagedUserRequestDto,
 	UpdateUserPermissionsRequestDto,
 } from '../dto/ManagedUserDto';
 
 export class ManagedUsersRemoteDataSource {
 	constructor(private readonly api: ApiClient) {}
+
+	async listWarehouses(): Promise<ManagedWarehouseDto[]> {
+		const response = await this.api.get<{warehouses:ManagedWarehouseDto[]}>('/api/admin/warehouses');
+		return response.warehouses ?? [];
+	}
 
 	async list(): Promise<ManagedUserDto[]> {
 		const pageSize = 1000;
