@@ -698,17 +698,36 @@ def get_next_task(db, batch_id):
 
 
 def confirm_pick(db, pick_task_id, scanned_barcode, quantity_picked, username):
-    # 1. Load pick task
+    # 1. Discover the aggregate without locking, then use parent-first
+    # locking for TO tasks to match submit/approve/reject lifecycle paths.
+    task_ref = db.execute(
+        text("SELECT to_id FROM pick_tasks WHERE pick_task_id = :tid"),
+        {"tid": pick_task_id},
+    ).fetchone()
+    if not task_ref:
+        raise ValueError("Pick task not found")
+    if task_ref.to_id is not None:
+        to_header = db.execute(
+            text(
+                "SELECT reservations_tracked, status FROM transfer_orders "
+                " WHERE to_id = :tid FOR UPDATE"
+            ),
+            {"tid": task_ref.to_id},
+        ).fetchone()
+        if not to_header or not to_header.reservations_tracked:
+            raise ValueError("Transfer Order has no attributable inventory reservations")
+        if to_header.status in ("CANCELLED", "CLOSED"):
+            raise ValueError(f"Transfer Order is not pickable in status {to_header.status}")
+
     task = db.execute(
         text(
             """
             SELECT pt.pick_task_id, pt.batch_id, pt.so_id, pt.so_line_id,
-                   pt.to_id, pt.to_line_id,
-                   pt.item_id, pt.bin_id, pt.quantity_to_pick, pt.status,
-                   pt.tote_number
-            FROM pick_tasks pt
-            WHERE pt.pick_task_id = :tid
-            FOR UPDATE OF pt
+                   pt.to_id, pt.to_line_id, pt.item_id, pt.bin_id,
+                   pt.inventory_id, pt.quantity_to_pick, pt.status, pt.tote_number
+              FROM pick_tasks pt
+             WHERE pt.pick_task_id = :tid
+             FOR UPDATE OF pt
             """
         ),
         {"tid": pick_task_id},
@@ -759,19 +778,24 @@ def confirm_pick(db, pick_task_id, scanned_barcode, quantity_picked, username):
     # XOR CHECK on pick_tasks guarantees exactly one of so_id / to_id
     # is non-NULL so the branches are mutually exclusive.
     if task.to_id is not None:
-        # Lock the aggregate before its line. Admin approval, rejection,
-        # cancellation and short-close use the same parent-first order.
-        to_header = db.execute(
+        if task.inventory_id is None:
+            raise ValueError("Transfer Order pick task is missing its exact inventory row")
+        reservation = db.execute(
             text(
-                "SELECT reservations_tracked, status FROM transfer_orders "
-                " WHERE to_id = :tid FOR UPDATE"
+                """
+                SELECT 1
+                  FROM transfer_order_reservations r
+                  JOIN inventory inv ON inv.inventory_id = r.inventory_id
+                 WHERE r.to_line_id = :lid
+                   AND inv.inventory_id = :iid
+                   AND inv.bin_id = :bid
+                   AND r.reserved_qty > r.consumed_qty + r.released_qty
+                """
             ),
-            {"tid": task.to_id},
+            {"lid": task.to_line_id, "iid": task.inventory_id, "bid": task.bin_id},
         ).fetchone()
-        if not to_header or not to_header.reservations_tracked:
-            raise ValueError("Transfer Order has no attributable inventory reservations")
-        if to_header.status in ("CANCELLED", "CLOSED"):
-            raise ValueError(f"Transfer Order is not pickable in status {to_header.status}")
+        if not reservation:
+            raise ValueError("Transfer Order pick task does not match an open bin reservation")
 
         # v1.8.0 (#292): TO line picked-qty + status update via the
         # WHERE-clause guard helper. Raises OverPickAttempt when a
