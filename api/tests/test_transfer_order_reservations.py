@@ -67,7 +67,7 @@ def _inventory_rows(minimum=1):
         cur.close()
 
 
-def _reserve(to_id, line_id, inventory_id, quantity, consumed=0, released=0):
+def _reserve(to_id, line_id, inventory_id, quantity, consumed=0, released=0, picked=0):
     cur = _cursor()
     try:
         cur.execute(
@@ -82,16 +82,26 @@ def _reserve(to_id, line_id, inventory_id, quantity, consumed=0, released=0):
             """
             INSERT INTO transfer_order_reservations
                 (to_id, to_line_id, inventory_id, item_id, warehouse_id,
-                 quantity_reserved, quantity_consumed, quantity_released)
-            VALUES (%s, %s, %s, 1, 1, %s, %s, %s)
+                 quantity_reserved, quantity_picked, quantity_consumed, quantity_released)
+            VALUES (%s, %s, %s, 1, 1, %s, %s, %s, %s)
             """,
-            (to_id, line_id, inventory_id, quantity, consumed, released),
+            (to_id, line_id, inventory_id, quantity, picked, consumed, released),
         )
     finally:
         cur.close()
 
 
 def _seed_approval(to_id, line_id, quantity, status="PENDING"):
+    slices = _all(
+        """
+        SELECT inventory_id, quantity_picked - quantity_consumed
+          FROM transfer_order_reservations
+         WHERE to_line_id = %s AND quantity_picked > quantity_consumed
+         ORDER BY inventory_id
+        """,
+        (line_id,),
+    )
+    assert sum(row[1] for row in slices) == quantity
     cur = _cursor()
     try:
         cur.execute(
@@ -107,6 +117,10 @@ def _seed_approval(to_id, line_id, quantity, status="PENDING"):
                     "to_line_id": line_id,
                     "item_id": 1,
                     "picked_in_snapshot": quantity,
+                    "inventory_slices": [
+                        {"inventory_id": row[0], "picked_in_snapshot": row[1]}
+                        for row in slices
+                    ],
                 }]}),
                 status,
                 str(uuid.uuid4()),
@@ -178,7 +192,7 @@ def test_reservation_table_tracks_line_inventory_and_balances():
     }
     assert {
         "to_id", "to_line_id", "inventory_id", "item_id", "warehouse_id",
-        "quantity_reserved", "quantity_consumed", "quantity_released",
+        "quantity_reserved", "quantity_picked", "quantity_consumed", "quantity_released",
     }.issubset(columns)
 
 
@@ -216,7 +230,7 @@ def test_start_picking_uses_only_line_owned_bin_slices_and_blocks_duplicate_batc
         """,
         (to_id,),
     )
-    assert tasks == [(first[1], 2), (second[1], 3)]
+    assert tasks == [(first[0], first[1], 2), (second[0], second[1], 3)]
 
     duplicate = client.post(
         f"/api/admin/transfer-orders/{to_id}/start-picking",
@@ -301,7 +315,7 @@ def test_reject_restores_line_to_partially_picked_after_prior_approval(client, a
     line_id = _seed_line(
         to_id, committed=10, picked=10, approved=3, status="PICKED"
     )
-    _reserve(to_id, line_id, inventory[0], 10, consumed=3)
+    _reserve(to_id, line_id, inventory[0], 10, consumed=3, picked=10)
     approval_id = _seed_approval(to_id, line_id, 7)
 
     response = client.post(
@@ -322,4 +336,4 @@ def test_reject_restores_line_to_partially_picked_after_prior_approval(client, a
         """,
         (line_id,),
     )
-    assert reservation == (10, 3, 0)
+    assert reservation == (10, 3, 3, 0)
