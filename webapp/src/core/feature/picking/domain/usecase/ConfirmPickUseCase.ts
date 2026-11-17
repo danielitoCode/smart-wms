@@ -5,6 +5,7 @@ export class ConfirmPickUseCase {
 	constructor(private readonly repository: PickingRepository) {}
 
 	execute(input: ConfirmPickInput): Promise<SimpleMessageResult> {
+		if (!Number.isInteger(input.warehouseId) || input.warehouseId <= 0) throw new Error('warehouseId is required');
 		if (!Number.isInteger(input.pickTaskId) || input.pickTaskId <= 0) {
 			throw new Error('pickTaskId must be a positive integer');
 		}
