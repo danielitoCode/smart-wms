@@ -82,6 +82,7 @@ export default function InterWarehouseTransfers() {
   const sourceBinRef = useRef(null);
   const destBinRef = useRef(null);
   const itemRef = useRef(null);
+  const pendingTransferKeys = useRef(new Map());
 
   const sourceBinQuery = useDebouncedBinSearch(
     form.source_warehouse_id, sourceBinSearch, form.source_bin_id,
@@ -203,8 +204,16 @@ export default function InterWarehouseTransfers() {
         item_id: Number(form.item_id),
         quantity: Number(form.quantity),
       };
+      const fingerprint = JSON.stringify(body);
+      let idempotencyKey = pendingTransferKeys.current.get(fingerprint);
+      if (!idempotencyKey) {
+        idempotencyKey = crypto.randomUUID();
+        pendingTransferKeys.current.set(fingerprint, idempotencyKey);
+      }
+      body.idempotency_key = idempotencyKey;
       const res = await api.post('/admin/inter-warehouse-transfer', body);
       if (res?.ok) {
+        pendingTransferKeys.current.delete(fingerprint);
         const data = await res.json();
         setSuccess(data.message || 'Transfer created successfully.');
         setForm({ source_warehouse_id: '', source_bin_id: '', destination_warehouse_id: '', destination_bin_id: '', item_id: '', quantity: '' });
