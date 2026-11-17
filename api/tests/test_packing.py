@@ -1,4 +1,6 @@
 from db_test_context import get_raw_connection
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 
 def _query_val(sql, params=None):
@@ -216,3 +218,37 @@ class TestCompletePacking:
         assert resp.status_code == 400
         err = resp.get_json()["error"].lower()
         assert "under-picked" in err or "short-close marker" in err
+
+
+
+def test_concurrent_duplicate_pack_scans_cannot_overpack(client, auth_headers):
+    """Two simultaneous scans for the same remaining units must serialize
+    on the sales-order row: exactly one scan may consume the quantity."""
+    _advance_so_to_picked(client, auth_headers, ["SO-2026-001"])
+    upc = _query_val("SELECT upc FROM items WHERE item_id = 1")
+    picked = _query_val(
+        "SELECT quantity_picked FROM sales_order_lines "
+        "WHERE so_id = 1 AND item_id = 1"
+    )
+    assert picked and picked > 0
+
+    barrier = threading.Barrier(2)
+
+    def scan_once():
+        with client.application.test_client() as worker:
+            barrier.wait(timeout=5)
+            return worker.post(
+                "/api/packing/verify",
+                json={"so_id": 1, "scanned_barcode": upc, "quantity": picked},
+                headers=auth_headers,
+            )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(lambda _: scan_once(), range(2)))
+
+    assert sorted(response.status_code for response in responses) == [200, 400]
+    packed = _query_val(
+        "SELECT quantity_packed FROM sales_order_lines "
+        "WHERE so_id = 1 AND item_id = 1"
+    )
+    assert packed == picked
