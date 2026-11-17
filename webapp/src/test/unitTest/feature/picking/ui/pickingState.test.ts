@@ -18,7 +18,7 @@ describe('Picking scanner state warehouse context', () => {
   deps.getActiveBatch.execute.mockResolvedValue(batch);
   deps.getNextTask.execute.mockResolvedValue({ pickTaskId: 9, batchId: 4, itemId: 3, sku: 'SKU-3', itemName: 'Item', upc: 'UPC-3', quantityToPick: 2, binId: 2, binCode: 'A-01', status: 'PENDING' });
   deps.waveValidate.execute.mockResolvedValue({ valid: true, soId: 5, soNumber: 'SO-5' });
-  deps.waveCreate.execute.mockResolvedValue({ batchId: 4, batchStatus: 'OPEN', totalOrders: 1, totalPicks: 2 });
+  deps.waveCreate.execute.mockResolvedValue({ batchId: 4, batchNumber: 'WAVE-4', totalOrders: 1, totalPicks: 2, totalUnits: 5, orders: [{ soId: 5, soNumber: 'SO-5', lineCount: 1 }] });
   deps.createBatch.execute.mockResolvedValue({ batchId: 4, batchNumber: 'BATCH-4', totalOrders: 1, totalItems: 2, tasks: [], orders: [] });
  });
  it('loads only the active batch for the selected warehouse', async () => {
