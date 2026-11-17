@@ -1,6 +1,6 @@
 <script lang="ts">
   import UiLoader from '../../../../../lib/components/UiLoader.svelte';
-  import { getContext } from 'svelte';
+  import { getContext, onMount } from 'svelte';
   import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
   import { createRefundsState } from '../state/refundsState.svelte';
 
@@ -10,9 +10,7 @@
   const formatMoney = (amount: number) => money.format(amount);
   const formatDate = (value: string | null) => value ? value.slice(0, 10) : '—';
 
-  $effect(() => {
-    const currentStatus = vm.status;
-    const currentSearch = vm.search;
+  onMount(() => {
     void vm.load();
   });
 </script>
