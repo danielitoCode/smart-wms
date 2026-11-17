@@ -140,6 +140,10 @@ def test_forward_migration_marks_preexisting_orders_untracked_and_new_orders_tra
                 to_id INT NOT NULL REFERENCES transfer_orders(to_id) ON DELETE CASCADE
             );
             CREATE TABLE inventory (inventory_id SERIAL PRIMARY KEY, quantity_allocated INT NOT NULL DEFAULT 0);
+            CREATE TABLE pick_tasks (
+                pick_task_id SERIAL PRIMARY KEY,
+                quantity_picked INT NOT NULL DEFAULT 0
+            );
             """
         )
         cur.execute(
