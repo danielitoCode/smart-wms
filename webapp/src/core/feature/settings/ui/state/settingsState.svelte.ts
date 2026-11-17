@@ -1,5 +1,9 @@
 import { createSettingsDependencies } from '../../di/settings.dependencies';
-import { KNOWN_SETTING_KEYS, type SettingsMap } from '../../domain/entity/Setting';
+import {
+	KNOWN_SETTING_KEYS,
+	withSettingDefaults,
+	type SettingsMap
+} from '../../domain/entity/Setting';
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 
 const deps = createSettingsDependencies();
@@ -18,7 +22,8 @@ export function createSettingsState() {
 		error = null;
 		saved = false;
 		try {
-			values = await deps.listKnown.execute(KNOWN_SETTING_KEYS);
+			const persisted = await deps.getSettings.execute();
+			values = withSettingDefaults(persisted);
 			draft = { ...values };
 		} catch (e) {
 			error = toUserMessage(e, 'No se pudieron cargar los ajustes');
@@ -28,8 +33,13 @@ export function createSettingsState() {
 	}
 
 	function setDraft(key: string, value: string) {
+		if (!KNOWN_SETTING_KEYS.includes(key as (typeof KNOWN_SETTING_KEYS)[number])) {
+			error = `Clave de configuración desconocida: ${key}`;
+			return;
+		}
 		draft = { ...draft, [key]: value };
 		saved = false;
+		error = null;
 	}
 
 	async function save() {
@@ -47,7 +57,8 @@ export function createSettingsState() {
 				return true;
 			}
 			await deps.update.execute(changed);
-			values = { ...draft };
+			values = { ...values, ...changed };
+			draft = { ...values };
 			saved = true;
 			return true;
 		} catch (e) {
