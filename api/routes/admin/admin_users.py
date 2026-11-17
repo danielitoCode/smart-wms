@@ -95,6 +95,37 @@ def _unknown_warehouse_ids(db, warehouse_ids):
     return [warehouse_id for warehouse_id in ids if warehouse_id not in existing]
 
 
+@admin_bp.route("/users/warehouse-options", methods=["GET"])
+@require_auth
+@require_admin_or_page_permission("users")
+@with_db
+def list_user_warehouse_options():
+    """Return the warehouse choices needed by user administration.
+
+    This endpoint is gated by the users grant, not the general warehouses
+    grant: assigning a user to a warehouse is part of user administration
+    and must not require unrelated warehouse CRUD/navigation access.
+    """
+    rows = g.db.execute(
+        text(
+            "SELECT warehouse_id, warehouse_code, warehouse_name, is_active "
+            "FROM warehouses ORDER BY warehouse_id"
+        )
+    ).fetchall()
+    return jsonify({
+        "warehouses": [
+            {
+                "warehouse_id": row.warehouse_id,
+                "warehouse_code": row.warehouse_code,
+                "warehouse_name": row.warehouse_name,
+                "is_active": row.is_active,
+            }
+            for row in rows
+        ],
+        "total": len(rows),
+    })
+
+
 @admin_bp.route("/users", methods=["GET"])
 @require_auth
 @require_admin_or_page_permission("users")
