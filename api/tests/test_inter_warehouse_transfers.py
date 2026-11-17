@@ -195,7 +195,7 @@ def test_failure_before_commit_rolls_back_stock_transfer_and_receipt(
 ):
     from routes.admin import admin_warehouse
 
-    item_id, from_bin, from_wh, to_bin = _source_destination()
+    item_id, from_bin, from_wh, to_bin, to_wh = _source_destination()
     key = str(uuid.uuid4())
     payload = _body(item_id, from_bin, from_wh, to_bin, to_wh, key=key)
     before_source, before_destination = _quantity(item_id, from_bin), _quantity(item_id, to_bin)
