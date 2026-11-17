@@ -18,12 +18,13 @@ describe('TransferOrderMapper', () => {
     const order = mapper.header(header, [line], [{
       to_approval_id: 9, to_id: 12, submitted_by: 'picker', submitted_at: '2026-11-17T10:00:00Z',
       approved_by: null, approved_at: null, rejected_at: null, rejection_reason: null,
-      status: 'PENDING', external_id: 'approval-9'
+      status: 'PENDING', external_id: 'approval-9',
+      lines_snapshot: { lines: [{ to_line_id: 31, item_id: 7, picked_in_snapshot: 5 }] }
     }]);
     expect(order.sourceWarehouseId).toBe(2);
     expect(order.destinationWarehouseId).toBe(4);
     expect(order.lines[0]).toMatchObject({ requestedQuantity: 10, committedQuantity: 8, pickedQuantity: 5, approvedQuantity: 2, sku: 'SKU-7' });
-    expect(order.approvals[0]).toMatchObject({ approvalId: 9, status: 'PENDING' });
+    expect(order.approvals[0]).toMatchObject({ approvalId: 9, status: 'PENDING', linesSnapshot: [{ toLineId: 31, itemId: 7, pickedQuantity: 5 }] });
   });
 
   it('preserves pagination metadata and maps warehouse choices', () => {
