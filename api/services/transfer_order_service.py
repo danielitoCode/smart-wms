@@ -234,6 +234,47 @@ def update_transfer_order_line_picked(db, to_line_id: int, delta: int) -> dict:
     }
 
 
+def record_transfer_order_reservation_pick(
+    db, to_id: int, to_line_id: int, inventory_id: int, item_id: int, delta: int,
+) -> None:
+    """Record a scanner pick against the exact reserved inventory row.
+
+    inventory_id is carried by the pick task so multiple lots in one bin
+    cannot be confused when a submission is later approved or rejected.
+    """
+    if delta <= 0:
+        raise ValueError(f"reservation pick delta must be > 0, got {delta!r}")
+    from sqlalchemy import text
+
+    row = db.execute(
+        text(
+            """
+            UPDATE transfer_order_reservations
+               SET quantity_picked = quantity_picked + :delta,
+                   updated_at = NOW()
+             WHERE to_id = :tid
+               AND to_line_id = :lid
+               AND inventory_id = :inventory_id
+               AND item_id = :iid
+               AND quantity_picked + :delta + quantity_released <= quantity_reserved
+            RETURNING reservation_id
+            """
+        ),
+        {
+            "tid": to_id,
+            "lid": to_line_id,
+            "inventory_id": inventory_id,
+            "iid": item_id,
+            "delta": delta,
+        },
+    ).fetchone()
+    if row is None:
+        raise ValueError(
+            f"pick task inventory row {inventory_id} is not reserved for "
+            f"transfer order {to_id}, line {to_line_id}"
+        )
+
+
 def maybe_promote_header_to_awaiting_approval(db, to_id: int) -> bool:
     """When every TO line has reached PICKED or SHORT_CLOSED, the
     header advances to AWAITING_APPROVAL. Called after confirm_pick
@@ -376,23 +417,55 @@ def submit_picks(db, to_id: int, username: str) -> dict:
             SELECT to_line_id, item_id, picked_qty, approved_qty,
                    committed_qty, status
               FROM transfer_order_lines
-             WHERE to_id = :tid AND picked_qty > approved_qty
+             WHERE to_id = :tid
+               AND picked_qty > approved_qty
+               AND status <> :short_closed
              ORDER BY line_number
             """
         ),
-        {"tid": to_id},
+        {"tid": to_id, "short_closed": TO_LINE_SHORT_CLOSED},
     ).fetchall()
     if not lines:
         return {"ok": False, "reason": "nothing_picked"}
 
-    snapshot_lines = [
-        {
+    snapshot_lines = []
+    for line in lines:
+        picked_delta = line.picked_qty - line.approved_qty
+        inventory_slices = db.execute(
+            text(
+                """
+                SELECT inventory_id, quantity_picked - quantity_consumed
+                           AS picked_in_snapshot
+                  FROM transfer_order_reservations
+                 WHERE to_line_id = :lid
+                   AND quantity_picked > quantity_consumed
+                 ORDER BY inventory_id ASC
+                """
+            ),
+            {"lid": line.to_line_id},
+        ).fetchall()
+        slices = [
+            {
+                "inventory_id": row.inventory_id,
+                "picked_in_snapshot": row.picked_in_snapshot,
+            }
+            for row in inventory_slices
+            if row.picked_in_snapshot > 0
+        ]
+        if sum(row["picked_in_snapshot"] for row in slices) != picked_delta:
+            return {
+                "ok": False,
+                "reason": "reservation_snapshot_mismatch",
+                "to_line_id": line.to_line_id,
+                "expected_picked": picked_delta,
+                "reserved_picked": sum(row["picked_in_snapshot"] for row in slices),
+            }
+        snapshot_lines.append({
             "to_line_id": line.to_line_id,
             "item_id": line.item_id,
-            "picked_in_snapshot": line.picked_qty - line.approved_qty,
-        }
-        for line in lines
-    ]
+            "picked_in_snapshot": picked_delta,
+            "inventory_slices": slices,
+        })
     approval_row = db.execute(
         text(
             """
