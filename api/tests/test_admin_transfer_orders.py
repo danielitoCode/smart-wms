@@ -106,7 +106,7 @@ def _bump_inventory_allocated(item_id, warehouse_id, delta):
     cur = conn.cursor()
     try:
         cur.execute(
-            "SELECT to_line_id, to_id, approved_qty FROM transfer_order_lines "
+            "SELECT to_line_id, to_id, approved_qty, picked_qty FROM transfer_order_lines "
             " WHERE item_id = %s ORDER BY to_line_id DESC LIMIT 1",
             (item_id,),
         )
@@ -127,11 +127,11 @@ def _bump_inventory_allocated(item_id, warehouse_id, delta):
         cur.execute(
             "INSERT INTO transfer_order_reservations "
             "(to_id, to_line_id, inventory_id, item_id, warehouse_id, "
-            "quantity_reserved, quantity_consumed) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            "quantity_reserved, quantity_picked, quantity_consumed) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
             (
                 line[1], line[0], inventory_id, item_id, warehouse_id,
-                delta + line[2], line[2],
+                delta + line[2], line[3], line[2],
             ),
         )
     finally:
