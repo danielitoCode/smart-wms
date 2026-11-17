@@ -38,3 +38,29 @@ describe('resolveBackorderWarehouseScope', () => {
     })).toBe(9);
   });
 });
+
+
+import { canCancelBackorder } from '../../../../../core/feature/backorders/domain/policy/BackorderScopePolicy';
+
+describe('canCancelBackorder', () => {
+  it('allows only explicit child backorders with a parent order number', () => {
+    expect(canCancelBackorder({
+      orderType: 'backorder', parentSalesOrderNumber: 'SO-10'
+    } as never)).toBe(true);
+  });
+
+  it.each(['sale', 'replacement', 'exchange', 'refund', 'return'])(
+    'does not expose cancel for POS/post-fulfillment order type %s',
+    (orderType) => {
+      expect(canCancelBackorder({
+        orderType, parentSalesOrderNumber: 'SO-10'
+      } as never)).toBe(false);
+    }
+  );
+
+  it('does not expose cancel for a POS shortage without a parent', () => {
+    expect(canCancelBackorder({
+      orderType: 'sale', parentSalesOrderNumber: null
+    } as never)).toBe(false);
+  });
+});
