@@ -383,7 +383,7 @@ def test_concurrent_transfer_reservations_cannot_overdraw_locked_source_rows():
         finally:
             conn.close()
 
-    threads = [threading.Thread(target=worker) for _ in range(2)]
+    threads = [threading.Thread(target=worker, daemon=True) for _ in range(2)]
     try:
         for thread in threads:
             thread.start()
