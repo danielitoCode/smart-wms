@@ -1,9 +1,26 @@
-import type {TransferOrder,TransferOrderLine,TransferOrderApproval,CreateTransferOrder,TransferOrderImportResult} from '../../domain/entity/TransferOrder';
-import type {TransferOrderHeaderDto,TransferOrderLineDto,TransferOrderApprovalDto,TransferOrderImportDto} from '../dto/TransferOrderDto';
-export const TransferOrderMapper={
- line(d:TransferOrderLineDto):TransferOrderLine{return {toLineId:d.to_line_id,transferOrderId:d.to_id,itemId:d.item_id,lineNumber:d.line_number,requestedQuantity:d.requested_qty,committedQuantity:d.committed_qty,pickedQuantity:d.picked_qty,approvedQuantity:d.approved_qty,status:d.status as TransferOrderLine['status'],sku:d.sku,itemName:d.item_name};},
- approval(d:TransferOrderApprovalDto):TransferOrderApproval{return {approvalId:d.to_approval_id,transferOrderId:d.to_id,submittedBy:d.submitted_by,submittedAt:d.submitted_at,approvedBy:d.approved_by,approvedAt:d.approved_at,rejectedAt:d.rejected_at,rejectionReason:d.rejection_reason,status:d.status as TransferOrderApproval['status'],externalId:d.external_id};},
- header(d:TransferOrderHeaderDto,lines:TransferOrderLineDto[]=[],approvals:TransferOrderApprovalDto[]=[]):TransferOrder{return {transferOrderId:d.to_id,transferOrderNumber:d.to_number,sourceWarehouseId:d.source_warehouse_id,destinationWarehouseId:d.destination_warehouse_id,status:d.status as TransferOrder['status'],createdBy:d.created_by,externalId:d.external_id,createdAt:d.created_at,updatedAt:d.updated_at,notes:d.notes,lines:lines.map(x=>TransferOrderMapper.line(x)),approvals:approvals.map(x=>TransferOrderMapper.approval(x))};},
- create(v:CreateTransferOrder){return {source_warehouse_code:v.sourceWarehouseCode,destination_warehouse_code:v.destinationWarehouseCode,notes:v.notes,records:v.records.map(x=>({sku:x.sku,quantity:x.quantity}))};},
- importResult(d:TransferOrderImportDto):TransferOrderImportResult{return {toId:d.to_id,toNumber:d.to_number,sourceWarehouseId:d.source_warehouse_id,destinationWarehouseId:d.destination_warehouse_id,lineCount:d.line_count,shortages:(d.shortages??[]).map(x=>({sku:x.sku,requestedQuantity:x.requested_qty,committedQuantity:x.committed_qty,shortfall:x.shortfall}))};}
+import type { CreateTransferOrder, TransferOrder, TransferOrderApproval, TransferOrderImportResult, TransferOrderLine, TransferOrderPage, TransferOrderWarehouse } from '../../domain/entity/TransferOrder';
+import type { TransferOrderApprovalDto, TransferOrderHeaderDto, TransferOrderImportDto, TransferOrderLineDto, TransferOrderWarehouseDto } from '../dto/TransferOrderDto';
+
+export const TransferOrderMapper = {
+  line(dto: TransferOrderLineDto): TransferOrderLine {
+    return { toLineId: dto.to_line_id, transferOrderId: dto.to_id, itemId: dto.item_id, lineNumber: dto.line_number, requestedQuantity: dto.requested_qty, committedQuantity: dto.committed_qty, pickedQuantity: dto.picked_qty, approvedQuantity: dto.approved_qty, status: dto.status as TransferOrderLine['status'], sku: dto.sku, itemName: dto.item_name };
+  },
+  approval(dto: TransferOrderApprovalDto): TransferOrderApproval {
+    return { approvalId: dto.to_approval_id, transferOrderId: dto.to_id, submittedBy: dto.submitted_by, submittedAt: dto.submitted_at, approvedBy: dto.approved_by, approvedAt: dto.approved_at, rejectedAt: dto.rejected_at, rejectionReason: dto.rejection_reason, status: dto.status as TransferOrderApproval['status'], externalId: dto.external_id };
+  },
+  header(dto: TransferOrderHeaderDto, lines: TransferOrderLineDto[] = [], approvals: TransferOrderApprovalDto[] = []): TransferOrder {
+    return { transferOrderId: dto.to_id, transferOrderNumber: dto.to_number, sourceWarehouseId: dto.source_warehouse_id, destinationWarehouseId: dto.destination_warehouse_id, status: dto.status as TransferOrder['status'], createdBy: dto.created_by, externalId: dto.external_id, createdAt: dto.created_at, updatedAt: dto.updated_at, notes: dto.notes, lines: lines.map(TransferOrderMapper.line), approvals: approvals.map(TransferOrderMapper.approval) };
+  },
+  page(dto: { transfer_orders: TransferOrderHeaderDto[]; total: number; page: number; pages: number; per_page: number }): TransferOrderPage {
+    return { orders: dto.transfer_orders.map(row => TransferOrderMapper.header(row)), total: dto.total, page: dto.page, pages: dto.pages, perPage: dto.per_page };
+  },
+  warehouse(dto: TransferOrderWarehouseDto): TransferOrderWarehouse {
+    return { warehouseId: dto.warehouse_id, warehouseCode: dto.warehouse_code, warehouseName: dto.warehouse_name, active: dto.is_active };
+  },
+  create(input: CreateTransferOrder) {
+    return { source_warehouse_code: input.sourceWarehouseCode.trim(), destination_warehouse_code: input.destinationWarehouseCode.trim(), notes: input.notes?.trim() || null, records: input.records.map(row => ({ sku: row.sku.trim(), quantity: row.quantity })) };
+  },
+  importResult(dto: TransferOrderImportDto): TransferOrderImportResult {
+    return { toId: dto.to_id, toNumber: dto.to_number, sourceWarehouseId: dto.source_warehouse_id, destinationWarehouseId: dto.destination_warehouse_id, lineCount: dto.line_count, shortages: (dto.shortages ?? []).map(row => ({ rowIndex: row.row_index, sku: row.sku, requestedQuantity: row.requested_qty, availableQuantity: row.available_qty, committedQuantity: row.committed_qty, shortfall: row.shortfall })) };
+  }
 };
