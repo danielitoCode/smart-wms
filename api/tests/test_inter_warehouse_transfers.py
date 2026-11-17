@@ -230,27 +230,59 @@ def test_failure_before_commit_rolls_back_stock_transfer_and_receipt(
     assert _quantity(item_id, to_bin) == before_destination + 1
 
 
-def test_idempotency_migration_is_repeatable():
+def test_idempotency_user_identity_migration_is_repeatable():
     migration_path = os.path.join(
         os.path.dirname(__file__), "..", "..", "db", "migrations",
-        "083_inter_warehouse_transfer_idempotency.sql",
+        "084_inter_warehouse_transfer_user_identity.sql",
     )
     with open(migration_path, encoding="utf-8") as migration_file:
         sql = migration_file.read()
+    schema = "iwh_migration_" + uuid.uuid4().hex[:12]
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     conn.autocommit = True
     try:
         cur = conn.cursor()
+        cur.execute(f'CREATE SCHEMA "{schema}"')
+        cur.execute(f'SET search_path TO "{schema}"')
+        cur.execute("CREATE TABLE users (user_id SERIAL PRIMARY KEY, username VARCHAR(50) UNIQUE NOT NULL)")
+        cur.execute("INSERT INTO users (username) VALUES ('migrated-user') RETURNING user_id")
+        user_id = cur.fetchone()[0]
+        cur.execute(
+            """CREATE TABLE inter_warehouse_transfer_requests (
+                   username VARCHAR(100) NOT NULL,
+                   idempotency_key UUID NOT NULL,
+                   request_payload JSONB NOT NULL,
+                   response_payload JSONB NOT NULL,
+                   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                   PRIMARY KEY (username, idempotency_key)
+               )"""
+        )
+        key = str(uuid.uuid4())
+        cur.execute(
+            """INSERT INTO inter_warehouse_transfer_requests
+                   (username, idempotency_key, request_payload, response_payload)
+               VALUES ('migrated-user', %s, '{}'::jsonb, '{}'::jsonb)""",
+            (key,),
+        )
+        cur.execute(sql)
         cur.execute(sql)
         cur.execute(
+            "SELECT user_id, idempotency_key FROM inter_warehouse_transfer_requests"
+        )
+        migrated = cur.fetchone()
+        assert migrated[0] == user_id
+        assert str(migrated[1]) == key
+        cur.execute(
             "SELECT column_name FROM information_schema.columns "
-            "WHERE table_name = 'inter_warehouse_transfer_requests'"
+            "WHERE table_schema = %s AND table_name = 'inter_warehouse_transfer_requests'",
+            (schema,),
         )
         columns = {row[0] for row in cur.fetchall()}
-        assert {"user_id", "idempotency_key", "request_payload", "response_payload", "created_at"} <= columns
+        assert "user_id" in columns and "username" not in columns
     finally:
+        cur = conn.cursor()
+        cur.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
         conn.close()
-
 
 def test_same_idempotency_key_is_serialized_by_postgres_transaction_lock():
     key = "test-user:" + str(uuid.uuid4())
