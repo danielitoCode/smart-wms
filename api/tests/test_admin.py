@@ -1860,6 +1860,114 @@ class TestUsers:
         assert client.get("/api/admin/users", headers=user_headers).status_code == 200
 
 
+class TestF41UserAuthorizationRegression:
+    """F4.1: user assignment compatibility and live authorization refresh."""
+
+    def test_legacy_single_warehouse_create_populates_authoritative_array(self, client, auth_headers):
+        response = client.post("/api/admin/users", json={
+            "username": "f41_legacy_wh_create",
+            "password": "warehouse123",
+            "full_name": "Legacy Warehouse Create",
+            "role": "USER",
+            "warehouse_id": 1,
+        }, headers=auth_headers)
+        assert response.status_code == 201, response.get_json()
+        assert response.get_json()["warehouse_id"] == 1
+        assert response.get_json()["warehouse_ids"] == [1]
+        assert _query_val(
+            "SELECT warehouse_ids = ARRAY[1] FROM users WHERE user_id = %s",
+            (response.get_json()["user_id"],),
+        ) is True
+
+    def test_legacy_single_warehouse_update_syncs_and_clears_array(self, client, auth_headers):
+        created = client.post("/api/admin/users", json={
+            "username": "f41_legacy_wh_update",
+            "password": "warehouse123",
+            "full_name": "Legacy Warehouse Update",
+            "role": "USER",
+            "warehouse_ids": [1],
+        }, headers=auth_headers)
+        uid = created.get_json()["user_id"]
+
+        cleared = client.put(
+            f"/api/admin/users/{uid}", json={"warehouse_id": None}, headers=auth_headers,
+        )
+        assert cleared.status_code == 200, cleared.get_json()
+        assert cleared.get_json()["warehouse_id"] is None
+        assert cleared.get_json()["warehouse_ids"] == []
+        assert _query_val(
+            "SELECT warehouse_id IS NULL AND warehouse_ids = ARRAY[]::integer[] FROM users WHERE user_id = %s",
+            (uid,),
+        ) is True
+
+    def test_unknown_warehouse_assignment_is_rejected_without_mutation(self, client, auth_headers):
+        created = client.post("/api/admin/users", json={
+            "username": "f41_unknown_wh",
+            "password": "warehouse123",
+            "full_name": "Unknown Warehouse",
+            "role": "USER",
+            "warehouse_ids": [1],
+        }, headers=auth_headers)
+        uid = created.get_json()["user_id"]
+
+        rejected_create = client.post("/api/admin/users", json={
+            "username": "f41_unknown_wh_create",
+            "password": "warehouse123",
+            "full_name": "Unknown Warehouse Create",
+            "role": "USER",
+            "warehouse_ids": [999999],
+        }, headers=auth_headers)
+        assert rejected_create.status_code == 400
+        assert rejected_create.get_json()["unknown"] == [999999]
+
+        rejected_update = client.put(
+            f"/api/admin/users/{uid}", json={"warehouse_ids": [999999]}, headers=auth_headers,
+        )
+        assert rejected_update.status_code == 400
+        assert _query_val(
+            "SELECT warehouse_ids FROM users WHERE user_id = %s", (uid,),
+        ) == [1]
+
+    def test_role_changes_are_reflected_in_existing_session(self, client, auth_headers):
+        uid, user_headers = _web_user_with_pages(
+            client, ["users"], username="f41_live_role_change",
+        )
+        assert client.get("/api/admin/users", headers=user_headers).status_code == 200
+
+        promoted = client.put(
+            f"/api/admin/users/{uid}", json={"role": "ADMIN"}, headers=auth_headers,
+        )
+        assert promoted.status_code == 200, promoted.get_json()
+        # Existing JWT now observes ADMIN bypass, without another login.
+        assert client.get("/api/admin/users", headers=user_headers).status_code == 200
+
+        demoted = client.put(
+            f"/api/admin/users/{uid}", json={"role": "USER"}, headers=auth_headers,
+        )
+        assert demoted.status_code == 200, demoted.get_json()
+        # Promotion clears stale grants; demotion must not restore them.
+        assert client.get("/api/admin/users", headers=user_headers).status_code == 403
+
+    def test_admin_permissions_return_exact_server_catalog(self, client, auth_headers):
+        from constants import ALL_PAGE_KEYS, ALL_OVERRIDE_KEYS
+
+        created = client.post("/api/admin/users", json={
+            "username": "f41_catalog_admin",
+            "password": "warehouse123",
+            "full_name": "Catalog Admin",
+            "role": "ADMIN",
+        }, headers=auth_headers)
+        assert created.status_code == 201, created.get_json()
+        permissions = client.get(
+            f"/api/admin/users/{created.get_json()['user_id']}/permissions",
+            headers=auth_headers,
+        )
+        assert permissions.status_code == 200
+        payload = permissions.get_json()
+        assert payload["is_full_access"] is True
+        assert set(payload["page_keys"]) == set(ALL_PAGE_KEYS) | set(ALL_OVERRIDE_KEYS)
+
+
 # ── Audit Log ─────────────────────────────────────────────────────────────────
 
 class TestAuditLog:
