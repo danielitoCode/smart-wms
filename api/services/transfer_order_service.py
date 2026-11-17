@@ -413,6 +413,13 @@ def submit_picks(db, to_id: int, username: str) -> dict:
     if not lines:
         return {"ok": False, "reason": "nothing_picked"}
 
+    pending_tasks = db.execute(
+        text("SELECT COUNT(*) FROM pick_tasks WHERE to_id = :tid AND status = 'PENDING'"),
+        {"tid": to_id},
+    ).scalar()
+    if pending_tasks:
+        return {"ok": False, "reason": "pending_pick_tasks_exist", "pending_tasks": pending_tasks}
+
     pending_approval = db.execute(
         text(
             "SELECT to_approval_id FROM transfer_order_approvals "
