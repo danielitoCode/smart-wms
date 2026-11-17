@@ -42,6 +42,26 @@ export type PickTaskDto = {
 
 export type MessageDto = {
 	message: string;
+	task?: {
+		pick_task_id: number;
+		status: string;
+		sku: string;
+		quantity_picked?: number;
+		quantity_to_pick?: number;
+		shortage?: number;
+		bin_code?: string;
+		tote_number?: string | null;
+	};
+	remaining_tasks?: number;
+	batch_id?: number;
+	batch_number?: string;
+	summary?: {
+		total_orders: number;
+		total_items_picked: number;
+		total_shorts: number;
+		orders: Array<{ so_number: string; status: string }>;
+	};
+	released_tasks?: number;
 };
 
 /** Matches test_wave_picking.py wave-validate bodies. */
