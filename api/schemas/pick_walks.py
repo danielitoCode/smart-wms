@@ -32,17 +32,20 @@ class WaveCreateRequest(BaseModel):
 
 class ConfirmPickRequest(BaseModel):
     pick_task_id: int = Field(..., gt=0)
+    warehouse_id: Optional[int] = Field(default=None, gt=0)
     scanned_barcode: str = Field(..., min_length=1, max_length=128)
     quantity_picked: int = Field(..., gt=0, le=100000)
 
 
 class ShortPickRequest(BaseModel):
     pick_task_id: int = Field(..., gt=0)
+    warehouse_id: Optional[int] = Field(default=None, gt=0)
     quantity_available: int = Field(0, ge=0, le=100000)
 
 
 class CompleteBatchRequest(BaseModel):
     batch_id: int = Field(..., gt=0)
+    warehouse_id: Optional[int] = Field(default=None, gt=0)
 
 
 class CancelBatchRequest(BaseModel):
