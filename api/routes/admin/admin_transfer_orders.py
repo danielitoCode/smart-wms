@@ -860,6 +860,19 @@ def start_to_picking(to_id):
             "to_approval_id": pending_approval.to_approval_id,
         }), 409
 
+    existing_pending_tasks = g.db.execute(
+        text(
+            "SELECT COUNT(*) FROM pick_tasks "
+            " WHERE to_id = :tid AND status = 'PENDING'"
+        ),
+        {"tid": to_id},
+    ).scalar()
+    if existing_pending_tasks:
+        return jsonify({
+            "error": "picking_batch_already_open",
+            "pending_task_count": existing_pending_tasks,
+        }), 409
+
     # Lines that still need picking (committed > picked) and are not
     # SHORT_CLOSED. Walk in line_number ASC for predictable picker UX.
     lines = g.db.execute(
@@ -909,6 +922,7 @@ def start_to_picking(to_id):
     tasks_created = 0
     for line in lines:
         remaining = line.committed_qty - line.picked_qty
+        already_picked_unapproved = max(0, line.picked_qty - line.approved_qty)
         inv_rows = g.db.execute(
             text(
                 """
@@ -928,7 +942,11 @@ def start_to_picking(to_id):
         for ir in inv_rows:
             if remaining <= 0:
                 break
-            take = min(remaining, ir.quantity_remaining)
+            reserved_remaining = ir.quantity_remaining
+            already_picked_here = min(already_picked_unapproved, reserved_remaining)
+            already_picked_unapproved -= already_picked_here
+            slice_to_pick = reserved_remaining - already_picked_here
+            take = min(remaining, slice_to_pick)
             if take == 0:
                 continue
             pick_sequence += 1
