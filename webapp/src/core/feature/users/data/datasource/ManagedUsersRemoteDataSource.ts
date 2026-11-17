@@ -9,7 +9,7 @@ export class ManagedUsersRemoteDataSource {
 	constructor(private readonly api: ApiClient) {}
 
 	async listWarehouses(): Promise<ManagedWarehouseDto[]> {
-		const response = await this.api.get<{warehouses:ManagedWarehouseDto[]}>('/api/admin/warehouses');
+		const response = await this.api.get<{warehouses:ManagedWarehouseDto[]}>('/api/admin/users/warehouse-options');
 		return response.warehouses ?? [];
 	}
 
