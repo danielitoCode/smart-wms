@@ -99,33 +99,6 @@ def _seed_concurrent_to_pick():
     }
 
 
-def _cleanup_concurrent_to_pick(ids):
-    with db.engine.begin() as conn:
-        conn.execute(
-            text(
-                "DELETE FROM audit_log "
-                "WHERE details->>'pick_task_id' = :task_id"
-            ),
-            {"task_id": str(ids["task_id"])},
-        )
-        conn.execute(
-            text("DELETE FROM pick_tasks WHERE pick_task_id = :tid"),
-            {"tid": ids["task_id"]},
-        )
-        conn.execute(
-            text("DELETE FROM pick_batches WHERE batch_id = :bid"),
-            {"bid": ids["batch_id"]},
-        )
-        conn.execute(
-            text("DELETE FROM transfer_orders WHERE to_id = :tid"),
-            {"tid": ids["to_id"]},
-        )
-        conn.execute(
-            text("DELETE FROM inventory WHERE inventory_id = :iid"),
-            {"iid": ids["inventory_id"]},
-        )
-
-
 def test_duplicate_pick_confirmations_serialize_on_independent_connections():
     ids = _seed_concurrent_to_pick()
     factory = sessionmaker(bind=db.engine, expire_on_commit=False)
@@ -185,8 +158,6 @@ def test_duplicate_pick_confirmations_serialize_on_independent_connections():
         assert line == 5
         assert tuple(reservation) == (5, 0)
         assert audit_count == 1
-    finally:
-        _cleanup_concurrent_to_pick(ids)
 
 
 def test_duplicate_shipping_fulfillments_serialize_on_independent_connections(
@@ -281,29 +252,3 @@ def test_duplicate_shipping_fulfillments_serialize_on_independent_connections(
         assert audit == 1
     finally:
         db.SessionLocal = original_factory
-        with db.engine.begin() as conn:
-            conn.execute(
-                text(
-                    "DELETE FROM item_fulfillment_lines "
-                    "WHERE fulfillment_id IN "
-                    "(SELECT fulfillment_id FROM item_fulfillments WHERE so_id = :sid)"
-                ),
-                {"sid": so_id},
-            )
-            conn.execute(
-                text("DELETE FROM item_fulfillments WHERE so_id = :sid"),
-                {"sid": so_id},
-            )
-            conn.execute(
-                text(
-                    "DELETE FROM integration_events "
-                    "WHERE aggregate_type = 'sales_order' AND aggregate_id = :sid"
-                ),
-                {"sid": so_id},
-            )
-            conn.execute(
-                text("DELETE FROM audit_log WHERE action_type = 'SHIP' AND entity_id = :sid"),
-                {"sid": so_id},
-            )
-            conn.execute(text("DELETE FROM sales_order_lines WHERE so_id = :sid"), {"sid": so_id})
-            conn.execute(text("DELETE FROM sales_orders WHERE so_id = :sid"), {"sid": so_id})
