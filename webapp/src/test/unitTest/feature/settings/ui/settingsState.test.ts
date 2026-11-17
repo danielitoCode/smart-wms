@@ -21,7 +21,8 @@ describe('Settings UI state persistence and validation', () => {
 		persisted = {
 			count_show_expected: 'false',
 			require_packing_before_shipping: 'true',
-			pos_activity_enabled: 'false'
+			pos_activity_enabled: 'false',
+			legacy_setting_not_exposed: 'keep-me'
 		};
 		deps.getSettings.execute.mockImplementation(async () => ({ ...persisted }));
 		deps.update.execute.mockImplementation(async (patch: Record<string, string>) => {
@@ -41,7 +42,8 @@ describe('Settings UI state persistence and validation', () => {
 		expect(persisted).toEqual({
 			count_show_expected: 'false',
 			require_packing_before_shipping: 'true',
-			pos_activity_enabled: 'true'
+			pos_activity_enabled: 'true',
+			legacy_setting_not_exposed: 'keep-me'
 		});
 
 		const afterReload = createSettingsState();
@@ -49,6 +51,14 @@ describe('Settings UI state persistence and validation', () => {
 		expect(afterReload.draft.pos_activity_enabled).toBe('true');
 		expect(afterReload.draft.count_show_expected).toBe('false');
 		expect(afterReload.draft.require_packing_before_shipping).toBe('true');
+	});
+
+	it('rejects attempts to edit unknown keys', async () => {
+		const state = createSettingsState();
+		await state.load();
+		state.setDraft('legacy_setting_not_exposed', 'overwrite');
+		expect(state.error).toContain('desconocida');
+		expect(state.draft.legacy_setting_not_exposed).toBeUndefined();
 	});
 
 	it('blocks invalid values before calling the update use case', async () => {
