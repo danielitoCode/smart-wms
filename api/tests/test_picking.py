@@ -1046,3 +1046,38 @@ def test_next_task_includes_identity_fields_required_by_scanner_dto(client, auth
     assert data["item_id"] > 0
     assert data["bin_id"] > 0
     assert data["sku"]
+
+
+def test_confirm_pick_rejects_task_outside_selected_warehouse(client, auth_headers):
+    created = _create_batch(client, auth_headers, ["SO-2026-001"])
+    batch_id = created.get_json()["batch_id"]
+    task = client.get(f"/api/picking/batch/{batch_id}/next", headers=auth_headers).get_json()
+    response = client.post(
+        "/api/picking/confirm",
+        json={"pick_task_id": task["pick_task_id"], "warehouse_id": 2,
+              "scanned_barcode": task["upc"], "quantity_picked": task["quantity_to_pick"]},
+        headers=auth_headers,
+    )
+    assert response.status_code == 404
+
+
+def test_short_pick_rejects_task_outside_selected_warehouse(client, auth_headers):
+    created = _create_batch(client, auth_headers, ["SO-2026-001"])
+    batch_id = created.get_json()["batch_id"]
+    task = client.get(f"/api/picking/batch/{batch_id}/next", headers=auth_headers).get_json()
+    response = client.post(
+        "/api/picking/short",
+        json={"pick_task_id": task["pick_task_id"], "warehouse_id": 2, "quantity_available": 0},
+        headers=auth_headers,
+    )
+    assert response.status_code == 404
+
+
+def test_complete_batch_rejects_batch_outside_selected_warehouse(client, auth_headers):
+    created = _create_batch(client, auth_headers, ["SO-2026-001"])
+    response = client.post(
+        "/api/picking/complete-batch",
+        json={"batch_id": created.get_json()["batch_id"], "warehouse_id": 2},
+        headers=auth_headers,
+    )
+    assert response.status_code == 404
