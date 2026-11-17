@@ -100,7 +100,7 @@ export type WaveCreateResult = {
 	totalUnits: number;
 	orders: Array<{ soId: number; soNumber: string; lineCount: number }>;
 	firstPick?: PickTask | null;
-	warnings?: string[];
+	warnings?: Array<{ sku: string; needed: number; available: number }>;
 };
 
 export type CreateBatchResult = {
