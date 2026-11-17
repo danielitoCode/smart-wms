@@ -10,8 +10,8 @@ import { ShippingMapper } from '../mapper/ShippingMapper';
 export class ShippingRepositoryImpl implements ShippingRepository {
 	constructor(private readonly datasource: ShippingRemoteDataSource) {}
 
-	async loadOrder(barcode: string): Promise<ShippingOrderDetail> {
-		return ShippingMapper.toDetail(await this.datasource.loadOrder(barcode));
+	async loadOrder(barcode: string, warehouseId: number): Promise<ShippingOrderDetail> {
+		return ShippingMapper.toDetail(await this.datasource.loadOrder(barcode, warehouseId));
 	}
 
 	async fulfill(input: FulfillShipmentInput): Promise<FulfillShipmentResult> {
