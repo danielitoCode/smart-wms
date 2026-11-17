@@ -70,10 +70,10 @@
 		<div class="table-wrap">
 			<table>
 				<thead><tr>
-					<th><button class="sort" type="button" onclick={() => void vm.changeSort('created_at')}>{i18n.t('Fecha')} {vm.sortBy === 'created_at' ? (vm.sortDirection === 'asc' ? '↑' : '↓') : ''}</button></th>
-					<th><button class="sort" type="button" onclick={() => void vm.changeSort('action_type')}>{i18n.t('Acción')} {vm.sortBy === 'action_type' ? (vm.sortDirection === 'asc' ? '↑' : '↓') : ''}</button></th>
-					<th><button class="sort" type="button" onclick={() => void vm.changeSort('entity_type')}>{i18n.t('Recurso')} {vm.sortBy === 'entity_type' ? (vm.sortDirection === 'asc' ? '↑' : '↓') : ''}</button></th>
-					<th>{i18n.t('Actor')}</th><th>{i18n.t('Almacén')}</th><th>{i18n.t('Contexto')}</th><th></th>
+					<th><button class="sort" type="button" disabled={vm.loading} onclick={() => void vm.changeSort('created_at')}>{i18n.t('Fecha')} {vm.sortBy === 'created_at' ? (vm.sortDirection === 'asc' ? '↑' : '↓') : ''}</button></th>
+					<th><button class="sort" type="button" disabled={vm.loading} onclick={() => void vm.changeSort('action_type')}>{i18n.t('Acción')} {vm.sortBy === 'action_type' ? (vm.sortDirection === 'asc' ? '↑' : '↓') : ''}</button></th>
+					<th><button class="sort" type="button" disabled={vm.loading} onclick={() => void vm.changeSort('entity_type')}>{i18n.t('Recurso')} {vm.sortBy === 'entity_type' ? (vm.sortDirection === 'asc' ? '↑' : '↓') : ''}</button></th>
+					<th><button class="sort" type="button" disabled={vm.loading} onclick={() => void vm.changeSort('user_id')}>{i18n.t('Actor')} {vm.sortBy === 'user_id' ? (vm.sortDirection === 'asc' ? '↑' : '↓') : ''}</button></th><th>{i18n.t('Almacén')}</th><th>{i18n.t('Contexto')}</th><th></th>
 				</tr></thead>
 				<tbody>
 					{#each vm.rows as row (row.logId)}
