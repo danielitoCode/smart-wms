@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS transfer_order_reservations (
     item_id              INT NOT NULL REFERENCES items(item_id),
     warehouse_id         INT NOT NULL REFERENCES warehouses(warehouse_id),
     quantity_reserved    INT NOT NULL CHECK (quantity_reserved > 0),
+    quantity_picked      INT NOT NULL DEFAULT 0 CHECK (quantity_picked >= 0),
     quantity_consumed    INT NOT NULL DEFAULT 0 CHECK (quantity_consumed >= 0),
     quantity_released    INT NOT NULL DEFAULT 0 CHECK (quantity_released >= 0),
     created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -30,8 +31,17 @@ CREATE TABLE IF NOT EXISTS transfer_order_reservations (
         FOREIGN KEY (to_line_id, to_id)
         REFERENCES transfer_order_lines(to_line_id, to_id) ON DELETE CASCADE,
     CONSTRAINT transfer_order_reservation_balance_ck
-        CHECK (quantity_consumed + quantity_released <= quantity_reserved)
+        CHECK (
+            quantity_consumed <= quantity_picked
+            AND quantity_picked + quantity_released <= quantity_reserved
+        )
 );
+
+-- Preserve the exact inventory row (and therefore bin/lot) on each TO pick.
+ALTER TABLE pick_tasks
+    ADD COLUMN IF NOT EXISTS inventory_id INT REFERENCES inventory(inventory_id);
+CREATE INDEX IF NOT EXISTS ix_pick_tasks_inventory
+    ON pick_tasks(inventory_id);
 
 CREATE INDEX IF NOT EXISTS ix_to_reservations_to_line
     ON transfer_order_reservations(to_id, to_line_id);
