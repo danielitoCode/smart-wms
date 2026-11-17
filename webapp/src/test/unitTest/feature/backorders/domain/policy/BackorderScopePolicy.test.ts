@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveBackorderWarehouseScope } from '../../../../../../core/feature/backorders/domain/policy/BackorderScopePolicy';
+import { canCancelBackorder, resolveBackorderWarehouseScope } from '../../../../../../core/feature/backorders/domain/policy/BackorderScopePolicy';
 
 describe('resolveBackorderWarehouseScope', () => {
   it('sends the selected assigned warehouse for a scoped operator', () => {
@@ -38,9 +38,6 @@ describe('resolveBackorderWarehouseScope', () => {
     })).toBe(9);
   });
 });
-
-
-import { canCancelBackorder } from '../../../../../core/feature/backorders/domain/policy/BackorderScopePolicy';
 
 describe('canCancelBackorder', () => {
   it('allows only explicit child backorders with a parent order number', () => {
