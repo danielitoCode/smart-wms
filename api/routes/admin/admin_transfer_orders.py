@@ -405,7 +405,7 @@ def _release_line_reservations(db, to_line_id: int, quantity: Optional[int] = No
     return target
 
 
-def _consume_line_reservations(db, to_line_id: int, quantity: int, inventory_id: int) -> None:
+def _consume_line_reservations(db, to_line_id: int, quantity: int, inventory_id: int, expected_item_id: int, expected_warehouse_id: int, expected_bin_id: int) -> None:
     """Consume the exact source inventory rows reserved by this TO line."""
     ledger = _assert_line_reservation_ledger(db, to_line_id)
     if quantity <= 0:
@@ -414,7 +414,8 @@ def _consume_line_reservations(db, to_line_id: int, quantity: int, inventory_id:
         text(
             """
             SELECT r.reservation_id, r.reserved_qty, r.consumed_qty,
-                   r.released_qty, inv.inventory_id,
+                   r.released_qty, inv.inventory_id, inv.item_id,
+                   inv.warehouse_id, inv.bin_id,
                    inv.quantity_allocated, inv.quantity_on_hand
               FROM transfer_order_reservations r
               JOIN inventory inv ON inv.inventory_id = r.inventory_id
@@ -437,6 +438,15 @@ def _consume_line_reservations(db, to_line_id: int, quantity: int, inventory_id:
             f"reservation mismatch for transfer_order_line={to_line_id}: "
             f"approval={quantity}, outstanding={outstanding}"
         )
+    for row in rows:
+        if (
+            row.item_id != expected_item_id
+            or row.warehouse_id != expected_warehouse_id
+            or row.bin_id != expected_bin_id
+        ):
+            raise ValueError(
+                f"reservation inventory identity mismatch for inventory_id={row.inventory_id}"
+            )
     remaining = quantity
     for row in rows:
         if remaining <= 0:
@@ -1595,7 +1605,80 @@ def approve_transfer_order_approval(to_id, approval_id):
             qty = int(snap["picked_in_snapshot"])
             if qty <= 0:
                 continue
-            _consume_line_reservations(g.db, line_id, qty)
+            tasks_snapshot = snap.get("tasks", []) or []
+            allocation_snapshot = snap.get("inventory_allocations", []) or []
+            if not tasks_snapshot or not allocation_snapshot:
+                raise ValueError(f"approval snapshot has no inventory-row task detail for line={line_id}")
+
+            line = g.db.execute(
+                text(
+                    "SELECT item_id, picked_qty, approved_qty, committed_qty "
+                    "  FROM transfer_order_lines "
+                    " WHERE to_line_id = :lid AND to_id = :tid FOR UPDATE"
+                ),
+                {"lid": line_id, "tid": to_id},
+            ).fetchone()
+            if (
+                not line
+                or line.item_id != item_id
+                or line.picked_qty - line.approved_qty != qty
+                or qty > line.committed_qty - line.approved_qty
+            ):
+                raise ValueError(f"approval snapshot no longer matches line={line_id}")
+
+            task_totals = {}
+            task_delta = 0
+            for task_snap in tasks_snapshot:
+                task_qty = int(task_snap["picked_in_snapshot"])
+                inventory_id = int(task_snap["inventory_id"])
+                bin_id = int(task_snap["bin_id"])
+                if task_qty <= 0:
+                    raise ValueError(f"invalid task quantity in approval snapshot for line={line_id}")
+                task_delta += task_qty
+                task_totals[inventory_id] = task_totals.get(inventory_id, 0) + task_qty
+                task_changed = g.db.execute(
+                    text(
+                        """
+                        UPDATE pick_tasks
+                           SET quantity_approved = quantity_approved + :qty
+                         WHERE pick_task_id = :pid
+                           AND to_id = :tid AND to_line_id = :lid
+                           AND inventory_id = :iid AND bin_id = :bid
+                           AND status = 'PICKED'
+                           AND quantity_picked - quantity_approved = :qty
+                        RETURNING pick_task_id
+                        """
+                    ),
+                    {
+                        "qty": task_qty, "pid": int(task_snap["pick_task_id"]),
+                        "tid": to_id, "lid": line_id,
+                        "iid": inventory_id, "bid": bin_id,
+                    },
+                ).fetchone()
+                if not task_changed:
+                    raise ValueError(
+                        f"picked task changed since submission for line={line_id}"
+                    )
+
+            allocation_totals = {}
+            for allocation in allocation_snapshot:
+                inventory_id = int(allocation["inventory_id"])
+                allocation_qty = int(allocation["quantity"])
+                allocation_totals[inventory_id] = allocation_totals.get(inventory_id, 0) + allocation_qty
+            if task_delta != qty or allocation_totals != task_totals:
+                raise ValueError(f"approval inventory snapshot mismatch for line={line_id}")
+
+            for allocation in sorted(allocation_snapshot, key=lambda row: int(row["inventory_id"])):
+                _consume_line_reservations(
+                    g.db,
+                    line_id,
+                    int(allocation["quantity"]),
+                    int(allocation["inventory_id"]),
+                    item_id,
+                    header.source_warehouse_id,
+                    int(allocation["bin_id"]),
+                )
+
             changed_line = g.db.execute(
                 text(
                     """
