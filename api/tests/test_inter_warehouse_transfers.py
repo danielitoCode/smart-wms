@@ -172,6 +172,28 @@ def test_failure_before_commit_rolls_back_stock_transfer_and_receipt(
     )[0][0] == 0
 
 
+def test_idempotency_migration_is_repeatable():
+    migration_path = os.path.join(
+        os.path.dirname(__file__), "..", "..", "db", "migrations",
+        "083_inter_warehouse_transfer_idempotency.sql",
+    )
+    with open(migration_path, encoding="utf-8") as migration_file:
+        sql = migration_file.read()
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    conn.autocommit = True
+    try:
+        cur = conn.cursor()
+        cur.execute(sql)
+        cur.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'inter_warehouse_transfer_requests'"
+        )
+        columns = {row[0] for row in cur.fetchall()}
+        assert {"username", "idempotency_key", "request_payload", "response_payload", "created_at"} <= columns
+    finally:
+        conn.close()
+
+
 def test_same_idempotency_key_is_serialized_by_postgres_transaction_lock():
     key = "test-user:" + str(uuid.uuid4())
     first = psycopg2.connect(os.environ["DATABASE_URL"])
