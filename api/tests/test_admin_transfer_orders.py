@@ -254,6 +254,51 @@ class TestListAndDetail:
 # ----------------------------------------------------------------------
 
 
+class TestExactTaskApprovalSnapshots:
+    def test_submit_snapshots_exact_inventory_rows_and_blocks_next_batch_until_approval(
+        self, client, auth_headers,
+    ):
+        to_id = _seed_to(source_wh=1, dest_wh=2, status="PARTIALLY_PICKED")
+        line_id = _seed_to_line(
+            to_id, item_id=1, committed=10, picked=5, status="PARTIALLY_PICKED",
+        )
+        inventory_id = _bump_inventory_allocated(1, 1, 10, line_id)
+        task_id, bin_id = _seed_to_pick_task(
+            to_id, line_id, inventory_id, quantity_to_pick=5, quantity_picked=5,
+        )
+
+        submitted = client.post(
+            f"/api/admin/picker/transfer-orders/{to_id}/submit",
+            headers=auth_headers,
+        )
+        assert submitted.status_code == 201, submitted.get_json()
+        approval_id = submitted.get_json()["to_approval_id"]
+        snapshot = _query(
+            "SELECT lines_snapshot FROM transfer_order_approvals WHERE to_approval_id = %s",
+            (approval_id,),
+        )[0][0]
+        line_snapshot = snapshot["lines"][0]
+        assert line_snapshot["picked_in_snapshot"] == 5
+        assert line_snapshot["tasks"] == [{
+            "pick_task_id": task_id,
+            "inventory_id": inventory_id,
+            "bin_id": bin_id,
+            "picked_in_snapshot": 5,
+        }]
+        assert line_snapshot["inventory_allocations"] == [{
+            "inventory_id": inventory_id,
+            "bin_id": bin_id,
+            "quantity": 5,
+        }]
+
+        next_batch = client.post(
+            f"/api/admin/transfer-orders/{to_id}/start-picking",
+            headers=auth_headers,
+        )
+        assert next_batch.status_code == 409
+        assert next_batch.get_json()["error"] == "pending_approval_exists"
+
+
 class TestExactBinPickingPlan:
     def test_start_picking_uses_only_owned_bins_and_resumes_after_prior_picks(
         self, client, auth_headers,
