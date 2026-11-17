@@ -1,13 +1,18 @@
 import type {
-	ManagedUser, CreateManagedUser, UpdateManagedUser,
+	ManagedUser,
+	ManagedWarehouse, CreateManagedUser, UpdateManagedUser,
 	UserPagePermissions, UpdateUserPagePermissions,
 } from '../../domain/entity/UserManagement';
 import type {
+	ManagedWarehouseDto,
 	ManagedUserDto, UserPermissionsDto, CreateManagedUserRequestDto,
 	UpdateManagedUserRequestDto, UpdateUserPermissionsRequestDto,
 } from '../dto/ManagedUserDto';
 
 export const ManagedUserMapper = {
+	warehouseToDomain(dto: ManagedWarehouseDto): ManagedWarehouse {
+		return { warehouseId:dto.warehouse_id, warehouseCode:dto.warehouse_code, warehouseName:dto.warehouse_name, isActive:dto.is_active };
+	},
 	toDomain(dto: ManagedUserDto): ManagedUser {
 		return {
 			userId: dto.user_id,
