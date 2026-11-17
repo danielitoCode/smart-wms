@@ -29,7 +29,7 @@ describe('InterWarehouseTransferUseCases', () => {
   it('enforces positive integer IDs, distinct warehouses and server quantity bounds', async () => {
     const repository = { list: vi.fn(), create: vi.fn().mockResolvedValue(undefined) } as unknown as InterWarehouseTransfersRepository;
     const create = new CreateInterWarehouseTransferUseCase(repository);
-    const valid = { itemId: 1, sourceBinId: 2, sourceWarehouseId: 3, destinationBinId: 4, destinationWarehouseId: 5, quantity: 100000 };
+    const valid = { itemId: 1, sourceBinId: 2, sourceWarehouseId: 3, destinationBinId: 4, destinationWarehouseId: 5, quantity: 100000, idempotencyKey: '550e8400-e29b-41d4-a716-446655440000' };
     await expect(create.execute(valid)).resolves.toBeUndefined();
     expect(() => create.execute({ ...valid, destinationWarehouseId: 3 })).toThrow();
     expect(() => create.execute({ ...valid, quantity: 100001 })).toThrow();
@@ -40,7 +40,7 @@ describe('InterWarehouseTransferUseCases', () => {
   it('normalizes an empty reason before persistence', async () => {
     const repository = { list: vi.fn(), create: vi.fn().mockResolvedValue(undefined) } as unknown as InterWarehouseTransfersRepository;
     const create = new CreateInterWarehouseTransferUseCase(repository);
-    await create.execute({ itemId: 1, sourceBinId: 2, sourceWarehouseId: 3, destinationBinId: 4, destinationWarehouseId: 5, quantity: 1, reason: '   ' });
+    await create.execute({ itemId: 1, sourceBinId: 2, sourceWarehouseId: 3, destinationBinId: 4, destinationWarehouseId: 5, quantity: 1, reason: '   ', idempotencyKey: '550e8400-e29b-41d4-a716-446655440000' });
     expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ reason: null }));
   });
 });
