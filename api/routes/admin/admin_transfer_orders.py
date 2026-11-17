@@ -129,6 +129,7 @@ def _serialise_to_approval(row) -> dict:
         "rejection_reason": row.rejection_reason,
         "status": row.status,
         "external_id": str(row.external_id),
+        "lines_snapshot": row.lines_snapshot,
     }
 
 
@@ -491,10 +492,16 @@ def short_close_to_line(to_id, line_id):
     # transitions to SHORT_CLOSED to lock the remaining out.
     remaining = line.committed_qty - line.approved_qty
     if remaining > 0:
-        _release_inventory_allocation(
-            g.db, line.item_id, line.source_warehouse_id, remaining,
-        )
+        try:
+            _release_line_reservations(g.db, line_id, remaining)
+        except ValueError as exc:
+            g.db.rollback()
+            return jsonify({"error": "reservation_integrity_error", "detail": str(exc)}), 409
 
+    g.db.execute(
+        text("DELETE FROM pick_tasks WHERE to_line_id = :lid AND status = 'PENDING'"),
+        {"lid": line_id},
+    )
     g.db.execute(
         text(
             "UPDATE transfer_order_lines "
@@ -741,7 +748,7 @@ def import_transfer_order():
         # the line lands SHORT_CLOSED so it does not block closure
         # and the operator surfaces it in the shortage modal.
         line_status = TO_LINE_PENDING if committed > 0 else TO_LINE_SHORT_CLOSED
-        g.db.execute(
+        line_result = g.db.execute(
             text(
                 """
                 INSERT INTO transfer_order_lines
@@ -905,20 +912,23 @@ def start_to_picking(to_id):
         inv_rows = g.db.execute(
             text(
                 """
-                SELECT inv.inventory_id, inv.bin_id, inv.quantity_on_hand,
-                       inv.quantity_allocated
-                  FROM inventory inv
-                 WHERE inv.item_id = :iid AND inv.warehouse_id = :wid
-                   AND inv.quantity_on_hand > 0
-                 ORDER BY inv.inventory_id ASC
+                SELECT r.inventory_id, inv.bin_id,
+                       r.quantity_reserved - r.quantity_consumed - r.quantity_released
+                           AS quantity_remaining
+                  FROM transfer_order_reservations r
+                  JOIN inventory inv ON inv.inventory_id = r.inventory_id
+                 WHERE r.to_line_id = :lid
+                   AND r.quantity_consumed + r.quantity_released < r.quantity_reserved
+                 ORDER BY r.inventory_id ASC, r.reservation_id ASC
+                 FOR UPDATE OF r, inv
                 """
             ),
-            {"iid": line.item_id, "wid": header.source_warehouse_id},
+            {"lid": line.to_line_id},
         ).fetchall()
         for ir in inv_rows:
             if remaining <= 0:
                 break
-            take = min(remaining, ir.quantity_on_hand)
+            take = min(remaining, ir.quantity_remaining)
             if take == 0:
                 continue
             pick_sequence += 1
@@ -1272,7 +1282,7 @@ def approve_transfer_order_approval(to_id, approval_id):
             qty = int(snap["picked_in_snapshot"])
             if qty <= 0:
                 continue
-            g.db.execute(
+            updated_line = g.db.execute(
                 text(
                     """
                     UPDATE transfer_order_lines
@@ -1284,12 +1294,21 @@ def approve_transfer_order_approval(to_id, approval_id):
                                ELSE status
                            END
                      WHERE to_line_id = :lid
+                       AND to_id = :tid
+                       AND item_id = :iid
+                       AND approved_qty + :qty <= picked_qty
+                       AND approved_qty + :qty <= committed_qty
+                    RETURNING to_line_id
                     """
                 ),
-                {"qty": qty, "lid": line_id},
-            )
-            _decrement_source_inventory(
-                g.db, item_id, header.source_warehouse_id, qty,
+                {"qty": qty, "lid": line_id, "tid": to_id, "iid": item_id},
+            ).fetchone()
+            if not updated_line:
+                raise ValueError(
+                    f"approval snapshot exceeds current picked quantity for line {line_id}"
+                )
+            _consume_line_reservations(
+                g.db, line_id, item_id, header.source_warehouse_id, qty,
             )
             _credit_destination_inventory(
                 g.db, item_id, header.destination_warehouse_id, qty,
@@ -1471,8 +1490,9 @@ def reject_transfer_order_approval(to_id, approval_id):
             }), 409
         restored_picked = line.picked_qty - rejected_qty
         restored_status = (
-            TO_LINE_APPROVED if restored_picked == line.committed_qty
-            else TO_LINE_PARTIALLY_PICKED if restored_picked > 0
+            TO_LINE_APPROVED if line.approved_qty == line.committed_qty
+            else TO_LINE_PARTIALLY_PICKED
+            if line.approved_qty > 0 or restored_picked > 0
             else TO_LINE_PENDING
         )
         g.db.execute(
