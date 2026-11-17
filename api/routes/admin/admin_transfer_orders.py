@@ -1237,6 +1237,19 @@ def _credit_destination_inventory(
 @require_admin_or_page_permission("transfer-orders")
 @with_db
 def approve_transfer_order_approval(to_id, approval_id):
+    # Every lifecycle mutation locks the header first, then approval/line
+    # rows. This single lock order serializes approve/reject/short-close.
+    header = g.db.execute(
+        text(
+            "SELECT to_id, to_number, status, source_warehouse_id, "
+            "       destination_warehouse_id, external_id "
+            "  FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
+        ),
+        {"tid": to_id},
+    ).fetchone()
+    if not header:
+        return jsonify({"error": "Transfer order not found"}), 404
+
     approval = g.db.execute(
         text(
             """
@@ -1268,17 +1281,6 @@ def approve_transfer_order_approval(to_id, approval_id):
                 "a different admin must approve this submission."
             ),
         }), 403
-
-    header = g.db.execute(
-        text(
-            "SELECT to_id, to_number, status, source_warehouse_id, "
-            "       destination_warehouse_id, external_id "
-            "  FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
-        ),
-        {"tid": to_id},
-    ).fetchone()
-    if not header:
-        return jsonify({"error": "Transfer order not found"}), 404
     denied = _check_transfer_order_warehouses(header.source_warehouse_id, header.destination_warehouse_id)
     if denied:
         return denied
@@ -1452,6 +1454,17 @@ def approve_transfer_order_approval(to_id, approval_id):
 def reject_transfer_order_approval(to_id, approval_id):
     body = request.get_json() or {}
     rejection_reason = (body.get("rejection_reason") or "").strip()[:1000]
+    # Keep the same header -> approval -> line lock order as approve.
+    header = g.db.execute(
+        text(
+            "SELECT to_id, to_number, status, source_warehouse_id, destination_warehouse_id "
+            "  FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
+        ),
+        {"tid": to_id},
+    ).fetchone()
+    if not header:
+        return jsonify({"error": "Transfer order not found"}), 404
+
     approval = g.db.execute(
         text(
             """
@@ -1471,16 +1484,6 @@ def reject_transfer_order_approval(to_id, approval_id):
             "error": "approval_not_pending",
             "current_status": approval.status,
         }), 409
-
-    header = g.db.execute(
-        text(
-            "SELECT to_number, source_warehouse_id, destination_warehouse_id "
-            "  FROM transfer_orders WHERE to_id = :tid"
-        ),
-        {"tid": to_id},
-    ).fetchone()
-    if not header:
-        return jsonify({"error": "Transfer order not found"}), 404
     denied = _check_transfer_order_warehouses(header.source_warehouse_id, header.destination_warehouse_id)
     if denied:
         return denied
