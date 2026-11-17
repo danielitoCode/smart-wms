@@ -24,6 +24,16 @@ def _require_packing(db):
 @require_auth
 @with_db
 def get_order(barcode):
+    raw_warehouse_id = request.args.get("warehouse_id")
+    if raw_warehouse_id is not None:
+        try:
+            context_warehouse_id = int(raw_warehouse_id)
+            if context_warehouse_id <= 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            return jsonify({"error": "warehouse_id must be a positive integer"}), 400
+    else:
+        context_warehouse_id = None
     """Look up an order for shipping. Respects the require_packing setting."""
     if not barcode or not barcode.strip():
         return jsonify({"error": "Barcode is required"}), 400
@@ -40,10 +50,11 @@ def get_order(barcode):
             FROM sales_orders
             WHERE (so_barcode = :barcode OR so_number = :barcode)
               {scope_clause}
+              AND (:context_warehouse_id IS NULL OR warehouse_id = :context_warehouse_id)
             LIMIT 1
             """
         ),
-        {"barcode": barcode, **scope_params},
+        {"barcode": barcode, "context_warehouse_id": context_warehouse_id, **scope_params},
     ).fetchone()
 
     if not so:
