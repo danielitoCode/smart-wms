@@ -1014,3 +1014,21 @@ class TestCancelBatch:
             "WHERE so_id = 1 AND line_number = 1"
         )
         assert sol[0] > sol[1]
+
+
+def test_active_batch_is_filtered_by_selected_warehouse(client, auth_headers):
+    created = _create_batch(client, auth_headers, ["SO-2026-001"])
+    assert created.status_code == 200
+    active = client.get("/api/picking/active-batch?warehouse_id=1", headers=auth_headers)
+    assert active.status_code == 200
+    assert active.get_json()["active"] is True
+    assert active.get_json()["warehouse_id"] == 1
+
+    other = client.get("/api/picking/active-batch?warehouse_id=2", headers=auth_headers)
+    assert other.status_code == 200
+    assert other.get_json() == {"active": False}
+
+
+def test_active_batch_rejects_invalid_warehouse_context(client, auth_headers):
+    response = client.get("/api/picking/active-batch?warehouse_id=0", headers=auth_headers)
+    assert response.status_code == 400
