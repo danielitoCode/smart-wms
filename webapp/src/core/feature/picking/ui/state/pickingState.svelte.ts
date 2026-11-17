@@ -93,7 +93,7 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 		busy = true; error = null; waveResult = null; info = null;
 		try {
 			waveResult = await deps.waveCreate.execute(soIds, activeWarehouseId());
-			info = `Wave batch #${waveResult.batchId} (${waveResult.batchStatus})`;
+			info = `Wave ${waveResult.batchNumber} · ${waveResult.totalUnits} unidades · ${waveResult.totalPicks} tareas`;
 			clearValidated();
 			return true;
 		} catch (err) { error = toUserMessage(err, 'No se pudo crear el wave'); return false; }
