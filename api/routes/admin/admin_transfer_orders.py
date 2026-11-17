@@ -1874,18 +1874,63 @@ def reject_transfer_order_approval(to_id, approval_id):
         rejected_qty = int(snapshot["picked_in_snapshot"])
         line = g.db.execute(
             text(
-                "SELECT picked_qty, approved_qty, committed_qty "
+                "SELECT item_id, picked_qty, approved_qty, committed_qty "
                 "  FROM transfer_order_lines "
                 " WHERE to_line_id = :lid AND to_id = :tid FOR UPDATE"
             ),
             {"lid": line_id, "tid": to_id},
         ).fetchone()
-        if not line or rejected_qty <= 0 or line.picked_qty - rejected_qty < line.approved_qty:
+        task_snapshot = snapshot.get("tasks", []) or []
+        task_total = sum(int(task["picked_in_snapshot"]) for task in task_snapshot)
+        if (
+            not line
+            or line.item_id != int(snapshot.get("item_id", -1))
+            or rejected_qty <= 0
+            or task_total != rejected_qty
+            or line.picked_qty - rejected_qty < line.approved_qty
+        ):
             g.db.rollback()
             return jsonify({
                 "error": "approval_snapshot_mismatch",
                 "to_line_id": line_id,
             }), 409
+
+        # Return the rejected scan delta to its original pick tasks. Keep any
+        # already-approved portion on the task; otherwise make it pending so
+        # the same task can be picked again without inventing a new bin.
+        for task in task_snapshot:
+            task_qty = int(task["picked_in_snapshot"])
+            changed_task = g.db.execute(
+                text(
+                    """
+                    UPDATE pick_tasks
+                       SET quantity_picked = quantity_approved,
+                           status = CASE WHEN quantity_approved = 0 THEN 'PENDING' ELSE 'PICKED' END,
+                           picked_by = CASE WHEN quantity_approved = 0 THEN NULL ELSE picked_by END,
+                           picked_at = CASE WHEN quantity_approved = 0 THEN NULL ELSE picked_at END,
+                           scan_confirmed = CASE WHEN quantity_approved = 0 THEN FALSE ELSE scan_confirmed END
+                     WHERE pick_task_id = :pid
+                       AND to_id = :tid AND to_line_id = :lid
+                       AND inventory_id = :iid AND bin_id = :bid
+                       AND status = 'PICKED'
+                       AND quantity_picked - quantity_approved = :qty
+                    RETURNING pick_task_id
+                    """
+                ),
+                {
+                    "pid": int(task["pick_task_id"]), "tid": to_id,
+                    "lid": line_id, "iid": int(task["inventory_id"]),
+                    "bid": int(task["bin_id"]), "qty": task_qty,
+                },
+            ).fetchone()
+            if not changed_task:
+                g.db.rollback()
+                return jsonify({
+                    "error": "approval_task_snapshot_mismatch",
+                    "to_line_id": line_id,
+                    "pick_task_id": task["pick_task_id"],
+                }), 409
+
         restored_picked = line.picked_qty - rejected_qty
         restored_status = (
             TO_LINE_PICKED if restored_picked == line.committed_qty
