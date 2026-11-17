@@ -57,6 +57,7 @@ export class SalesOrderRepositoryImpl implements SalesOrderRepository {
         quantity_ordered: quantityOrdered
       }))
     };
+    if (input.soBarcode != null && input.soBarcode !== '') payload.so_barcode = input.soBarcode;
     if (input.customerName != null && input.customerName !== '') payload.customer_name = input.customerName;
     if (input.customerEmail != null && input.customerEmail !== '') payload.customer_email = input.customerEmail;
     if (input.customerPhone != null && input.customerPhone !== '') payload.customer_phone = input.customerPhone;
