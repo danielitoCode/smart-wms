@@ -94,6 +94,18 @@ def _seed_inventory(item_id, warehouse_id, on_hand, allocated=0,
     cur = conn.cursor()
     try:
         cur.execute(
+            "SELECT to_line_id, to_id, committed_qty, picked_qty, approved_qty "
+            "  FROM transfer_order_lines WHERE item_id = %s "
+            " ORDER BY to_line_id DESC LIMIT 1",
+            (item_id,),
+        )
+        line = cur.fetchone()
+        assert line, "seed a transfer-order line before its inventory row"
+        reserved = line[2]
+        picked = line[3]
+        consumed = line[4]
+        allocated = max(allocated, reserved - consumed)
+        cur.execute(
             "DELETE FROM inventory WHERE item_id = %s AND warehouse_id = %s",
             (item_id, warehouse_id),
         )
@@ -104,7 +116,21 @@ def _seed_inventory(item_id, warehouse_id, on_hand, allocated=0,
             "VALUES (%s, %s, %s, %s, %s, %s) RETURNING inventory_id",
             (item_id, bin_id, warehouse_id, on_hand, allocated, lot_number),
         )
-        return cur.fetchone()[0]
+        inventory_id = cur.fetchone()[0]
+        if reserved > 0:
+            cur.execute(
+                """
+                INSERT INTO transfer_order_reservations
+                    (to_id, to_line_id, inventory_id, item_id, warehouse_id,
+                     quantity_reserved, quantity_picked, quantity_consumed)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    line[1], line[0], inventory_id, item_id, warehouse_id,
+                    reserved, picked, consumed,
+                ),
+            )
+        return inventory_id
     finally:
         cur.close()
 
