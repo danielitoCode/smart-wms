@@ -32,7 +32,7 @@ from constants import (
     ACTION_TO_REJECTED,
     ACTION_TO_SUBMITTED,
 )
-from middleware.auth_middleware import require_admin_or_page_permission, require_auth
+from middleware.auth_middleware import check_warehouse_access, require_admin_or_page_permission, require_auth
 from middleware.db import with_db
 from routes.admin import admin_bp
 from schemas.csv_import import TransferOrderImportRow
@@ -132,6 +132,30 @@ def _serialise_to_approval(row) -> dict:
 
 
 # ----------------------------------------------------------------------
+# Warehouse scope
+# ----------------------------------------------------------------------
+
+
+def _transfer_order_scope_sql() -> tuple[str, dict]:
+    """Non-admin page grantees must be assigned to BOTH warehouses."""
+    if g.current_user.get("role") == "ADMIN":
+        return "", {}
+    return (
+        " AND source_warehouse_id = ANY(:_to_warehouse_scope)"
+        " AND destination_warehouse_id = ANY(:_to_warehouse_scope)",
+        {"_to_warehouse_scope": g.current_user.get("warehouse_ids") or []},
+    )
+
+
+def _check_transfer_order_warehouses(source_id: int, destination_id: int):
+    for warehouse_id in (source_id, destination_id):
+        allowed, denied = check_warehouse_access(warehouse_id)
+        if not allowed:
+            return denied
+    return None
+
+
+# ----------------------------------------------------------------------
 # List + detail
 # ----------------------------------------------------------------------
 
@@ -148,7 +172,8 @@ def list_transfer_orders():
     source_warehouse = request.args.get("source_warehouse_id", type=int)
     destination_warehouse = request.args.get("destination_warehouse_id", type=int)
 
-    where_clauses, params = [], {}
+    scope_sql, params = _transfer_order_scope_sql()
+    where_clauses = [scope_sql.removeprefix(' AND ')] if scope_sql else []
     if status_filter:
         where_clauses.append("status = :status")
         params["status"] = status_filter
@@ -196,6 +221,7 @@ def list_transfer_orders():
 @require_admin_or_page_permission("transfer-orders")
 @with_db
 def get_transfer_order(to_id):
+    scope_sql, scope_params = _transfer_order_scope_sql()
     header = g.db.execute(
         text(
             """
@@ -325,13 +351,16 @@ def _release_inventory_allocation(
 def cancel_transfer_order(to_id):
     header = g.db.execute(
         text(
-            "SELECT to_id, to_number, status, source_warehouse_id "
+            "SELECT to_id, to_number, status, source_warehouse_id, destination_warehouse_id "
             "  FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
         ),
         {"tid": to_id},
     ).fetchone()
     if not header:
         return jsonify({"error": "Transfer order not found"}), 404
+    denied = _check_transfer_order_warehouses(header.source_warehouse_id, header.destination_warehouse_id)
+    if denied:
+        return denied
 
     try:
         validate_header_transition(header.status, TO_STATUS_CANCELLED)
@@ -391,13 +420,16 @@ def cancel_transfer_order(to_id):
 def delete_transfer_order(to_id):
     header = g.db.execute(
         text(
-            "SELECT to_id, to_number, status, source_warehouse_id "
+            "SELECT to_id, to_number, status, source_warehouse_id, destination_warehouse_id "
             "  FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
         ),
         {"tid": to_id},
     ).fetchone()
     if not header:
         return jsonify({"error": "Transfer order not found"}), 404
+    denied = _check_transfer_order_warehouses(header.source_warehouse_id, header.destination_warehouse_id)
+    if denied:
+        return denied
 
     # Hard delete only allowed pre-approval and pre-pick. Once any line
     # has picked_qty > 0 OR any approval row exists, the audit trail
@@ -468,7 +500,7 @@ def short_close_to_line(to_id, line_id):
             SELECT tol.to_line_id, tol.to_id, tol.item_id, tol.line_number,
                    tol.requested_qty, tol.committed_qty, tol.picked_qty,
                    tol.approved_qty, tol.status,
-                   o.source_warehouse_id, o.to_number
+                   o.source_warehouse_id, o.destination_warehouse_id, o.to_number
               FROM transfer_order_lines tol
               JOIN transfer_orders o ON o.to_id = tol.to_id
              WHERE tol.to_line_id = :lid AND tol.to_id = :tid
@@ -479,6 +511,9 @@ def short_close_to_line(to_id, line_id):
     ).fetchone()
     if not line:
         return jsonify({"error": "Transfer order line not found"}), 404
+    denied = _check_transfer_order_warehouses(line.source_warehouse_id, line.destination_warehouse_id)
+    if denied:
+        return denied
 
     try:
         validate_line_transition(line.status, TO_LINE_SHORT_CLOSED)
@@ -590,6 +625,9 @@ def import_transfer_order():
             "field": "destination_warehouse_code",
             "value": body.destination_warehouse_code,
         }), 404
+    denied = _check_transfer_order_warehouses(src_id, dst_id)
+    if denied:
+        return denied
 
     # Per-row Pydantic + SKU resolution. Aggregate row errors so the
     # operator sees every bad row at once rather than fixing one at a
@@ -805,13 +843,16 @@ def start_to_picking(to_id):
     """
     header = g.db.execute(
         text(
-            "SELECT to_id, to_number, status, source_warehouse_id "
+            "SELECT to_id, to_number, status, source_warehouse_id, destination_warehouse_id "
             "  FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
         ),
         {"tid": to_id},
     ).fetchone()
     if not header:
         return jsonify({"error": "Transfer order not found"}), 404
+    denied = _check_transfer_order_warehouses(header.source_warehouse_id, header.destination_warehouse_id)
+    if denied:
+        return denied
     if header.status not in (TO_STATUS_OPEN, TO_STATUS_PARTIALLY_PICKED):
         return jsonify({
             "error": "invalid_status_for_start_picking",
@@ -954,6 +995,9 @@ def picker_get_transfer_order(to_id):
     ).fetchone()
     if not header:
         return jsonify({"error": "Transfer order not found"}), 404
+    allowed, denied = check_warehouse_access(header.source_warehouse_id)
+    if not allowed:
+        return denied
 
     lines = g.db.execute(
         text(
@@ -991,6 +1035,15 @@ def submit_transfer_order_picks(to_id):
     per TO are normal: each batch is approved or rejected
     independently. Inventory does not move at submit time.
     """
+    header = g.db.execute(
+        text("SELECT source_warehouse_id FROM transfer_orders WHERE to_id = :tid"),
+        {"tid": to_id},
+    ).fetchone()
+    if not header:
+        return jsonify({"error": "Transfer order not found"}), 404
+    allowed, denied = check_warehouse_access(header.source_warehouse_id)
+    if not allowed:
+        return denied
     result = submit_picks(g.db, to_id, g.current_user["username"])
     if not result["ok"]:
         reason = result["reason"]
@@ -1193,6 +1246,9 @@ def approve_transfer_order_approval(to_id, approval_id):
     ).fetchone()
     if not header:
         return jsonify({"error": "Transfer order not found"}), 404
+    denied = _check_transfer_order_warehouses(header.source_warehouse_id, header.destination_warehouse_id)
+    if denied:
+        return denied
 
     snapshot_lines = (approval.lines_snapshot or {}).get("lines", []) or []
     if not snapshot_lines:
