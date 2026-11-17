@@ -443,3 +443,13 @@ def test_shipping_order_lookup_is_scoped_to_selected_warehouse(client, auth_head
         headers=auth_headers,
     )
     assert response.status_code == 404
+
+
+def test_shipping_fulfill_rejects_order_outside_selected_warehouse(client, auth_headers):
+    so_id = _advance_so_to_packed(client, auth_headers, "SO-2026-001")
+    response = client.post(
+        "/api/shipping/fulfill",
+        json={"so_id": so_id, "warehouse_id": 2, "tracking_number": "TRACK-WH2", "carrier": "Carrier"},
+        headers=auth_headers,
+    )
+    assert response.status_code == 404
