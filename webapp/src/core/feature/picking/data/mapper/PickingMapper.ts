@@ -57,6 +57,7 @@ export const PickingMapper = {
 			transferOrderNumber: dto.to_number ?? null,
 			pickNumber: dto.pick_number,
 			totalPicks: dto.total_picks,
+			pickSequence: dto.pick_sequence,
 			status: dto.status ?? 'PENDING'
 		};
 	},
