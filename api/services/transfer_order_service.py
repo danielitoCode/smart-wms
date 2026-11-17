@@ -156,6 +156,10 @@ def is_header_closeable(line_states: Iterable[tuple]) -> bool:
 # ============================================================
 
 
+class TransferOrderSubmissionConflict(Exception):
+    """A completed picker batch cannot be safely snapshotted for approval."""
+
+
 class OverPickAttempt(Exception):
     """picked_qty + delta would exceed committed_qty. The WHERE clause
     guard on update_transfer_order_line_picked is the atomic safety net
