@@ -320,7 +320,8 @@ def search_bins():
                    b.aisle, b.row_num, b.level_num, z.zone_name, b.warehouse_id
             FROM bins b
             LEFT JOIN zones z ON z.zone_id = b.zone_id
-            WHERE (b.bin_code ILIKE :q OR b.bin_barcode ILIKE :q)
+            WHERE b.is_active = TRUE
+              AND (b.bin_code ILIKE :q OR b.bin_barcode ILIKE :q)
               {scope_clause}
               {warehouse_filter}
             ORDER BY b.bin_code
