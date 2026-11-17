@@ -52,10 +52,10 @@ def _seed_transfer_pick():
         )
         line_id = cur.fetchone()[0]
         cur.execute(
-            "SELECT inventory_id FROM inventory WHERE item_id = 1 AND warehouse_id = 1 "
+            "SELECT inventory_id, bin_id FROM inventory WHERE item_id = 1 AND warehouse_id = 1 "
             "ORDER BY inventory_id LIMIT 1"
         )
-        inventory_id = cur.fetchone()[0]
+        inventory_id, bin_id = cur.fetchone()
         cur.execute(
             "UPDATE inventory SET quantity_allocated = quantity_allocated + 1 "
             " WHERE inventory_id = %s",
@@ -80,10 +80,10 @@ def _seed_transfer_pick():
             INSERT INTO pick_tasks
                 (batch_id, so_id, so_line_id, to_id, to_line_id, item_id,
                  bin_id, quantity_to_pick, pick_sequence, status)
-            VALUES (%s, NULL, NULL, %s, %s, 1, 3, 1, 1, 'PENDING')
+            VALUES (%s, NULL, NULL, %s, %s, 1, %s, 1, 1, 'PENDING')
             RETURNING pick_task_id
             """,
-            (batch_id, to_id, line_id),
+            (batch_id, to_id, line_id, bin_id),
         )
         task_id = cur.fetchone()[0]
         conn.commit()
@@ -154,14 +154,19 @@ def _seed_shipping_order():
         )
         batch_id = cur.fetchone()[0]
         cur.execute(
+            "SELECT bin_id FROM inventory WHERE item_id = 1 AND warehouse_id = 1 "
+            "ORDER BY inventory_id LIMIT 1"
+        )
+        bin_id = cur.fetchone()[0]
+        cur.execute(
             """
             INSERT INTO pick_tasks
                 (batch_id, so_id, so_line_id, item_id, bin_id,
                  quantity_to_pick, quantity_picked, pick_sequence, status)
-            VALUES (%s, %s, %s, 1, 3, 1, 1, 1, 'PICKED')
+            VALUES (%s, %s, %s, 1, %s, 1, 1, 1, 'PICKED')
             RETURNING pick_task_id
             """,
-            (batch_id, so_id, line_id),
+            (batch_id, so_id, line_id, bin_id),
         )
         task_id = cur.fetchone()[0]
         conn.commit()
