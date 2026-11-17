@@ -3342,7 +3342,10 @@ def receive_return_route(so_id, validated):
             idempotency_key=validated.idempotency_key,
         )
     except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
+        message = str(exc)
+        status_code = 404 if message.startswith(f"RMA {so_id} not found") else 400
+        g.db.rollback()
+        return jsonify({"error": message}), status_code
     g.db.commit()
     return jsonify({"message": "Return received", **result})
 
