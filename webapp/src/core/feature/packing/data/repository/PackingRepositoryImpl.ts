@@ -10,8 +10,8 @@ import { PackingMapper } from '../mapper/PackingMapper';
 export class PackingRepositoryImpl implements PackingRepository {
 	constructor(private readonly datasource: PackingRemoteDataSource) {}
 
-	async loadOrder(barcode: string): Promise<PackingOrderDetail> {
-		return PackingMapper.toDetail(await this.datasource.loadOrder(barcode));
+	async loadOrder(barcode: string, warehouseId: number): Promise<PackingOrderDetail> {
+		return PackingMapper.toDetail(await this.datasource.loadOrder(barcode, warehouseId));
 	}
 
 	async verify(input: VerifyPackInput): Promise<SimpleMessageResult> {
