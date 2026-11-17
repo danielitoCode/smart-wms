@@ -20,6 +20,11 @@ describe('RefundMapper', () => {
 
   it('flags non-negative or missing credit amounts instead of silently treating them as valid', () => {
     expect(RefundMapper.header({ ...header, order_total: '12.50' }).amountIntegrity).toBe('NON_NEGATIVE');
+    const lineMismatch = RefundMapper.header({ ...header, order_total: '-12.50' }, [{
+      so_line_id: 1, line_number: 1, item_id: 4, sku: 'SKU-4', item_name: 'Item',
+      quantity_ordered: 2, status: 'SHIPPED'
+    }]);
+    expect(lineMismatch.amountIntegrity).toBe('LINE_SIGN_MISMATCH');
     const missing = RefundMapper.header({ ...header, order_total: null });
     expect(missing.amountIntegrity).toBe('MISSING');
     expect(missing.signedAmount).toBeNull();
