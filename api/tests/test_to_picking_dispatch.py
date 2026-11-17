@@ -372,6 +372,54 @@ class TestStartPicking:
         )
         assert remainder == [(inventory_id, 2)]
 
+    def test_submit_picks_snapshots_exact_inventory_id_and_quantity(
+        self, client, auth_headers,
+    ):
+        to_id = _seed_to()
+        line_id = _seed_to_line(to_id, item_id=1, committed=5)
+        inventory_id = _seed_inventory(1, 1, on_hand=10, bin_id=1)
+        started = client.post(
+            f"/api/admin/transfer-orders/{to_id}/start-picking",
+            headers=auth_headers,
+        )
+        assert started.status_code == 201, started.get_json()
+        task_id = _query(
+            "SELECT pick_task_id FROM pick_tasks WHERE to_id = %s",
+            (to_id,),
+        )[0][0]
+
+        from services.picking_service import confirm_pick
+        session = _open_session()
+        try:
+            confirm_pick(session, task_id, "100000000001", 3, "picker")
+        finally:
+            session.close()
+
+        from services.transfer_order_service import submit_picks
+        session = _open_session()
+        try:
+            submitted = submit_picks(session, to_id, "picker")
+            session.commit()
+        finally:
+            session.close()
+        assert submitted["ok"] is True
+
+        snapshot = _query(
+            """
+            SELECT lines_snapshot
+              FROM transfer_order_approvals
+             WHERE to_id = %s AND status = 'PENDING'
+            """,
+            (to_id,),
+        )[0][0]
+        line = snapshot["lines"][0]
+        assert line["to_line_id"] == line_id
+        assert line["picked_in_snapshot"] == 3
+        assert line["inventory_slices"] == [{
+            "inventory_id": inventory_id,
+            "picked_in_snapshot": 3,
+        }]
+
     def test_no_pickable_inventory_returns_409(
         self, client, auth_headers,
     ):
