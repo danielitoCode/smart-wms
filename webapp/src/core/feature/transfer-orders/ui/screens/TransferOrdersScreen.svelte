@@ -245,6 +245,9 @@
     <section class="detail-panel">
       <div class="section-heading"><div><p class="eyebrow">{i18n.t('DETALLE DE TRANSFERENCIA')}</p><h2>{vm.selected.transferOrderNumber}</h2><p>{warehouseCode(vm.selected.sourceWarehouseId)} → {warehouseCode(vm.selected.destinationWarehouseId)} · <span class="status">{vm.selected.status}</span></p></div><button onclick={() => vm.clearSelected()}>{i18n.t('Cerrar detalle')}</button></div>
       {#if vm.selected.notes}<p class="muted">{vm.selected.notes}</p>{/if}
+      {#if hasPendingApproval()}
+        <p class="alert error">{i18n.t('Hay un envío pendiente de aprobación. Debe aprobarse o rechazarse antes de iniciar otra preparación o enviar más cantidades.')}</p>
+      {/if}
       <div class="action-bar">
         <button disabled={vm.saving || !canDelete()} onclick={() => { if (confirm('¿Eliminar definitivamente esta orden sin picking ni aprobaciones?')) void vm.remove(vm.selected!.transferOrderId).then(ok => { if (ok) vm.clearSelected(); }); }}>{i18n.t('Eliminar')}</button>
         <button disabled={vm.saving || hasPendingApproval() || vm.selected.approvals.length > 0 || !['OPEN', 'PARTIALLY_PICKED'].includes(vm.selected.status)} onclick={() => { if (confirm('¿Cancelar la transferencia y liberar la reserva no aprobada?')) void vm.cancel(vm.selected!.transferOrderId); }}>{i18n.t('Cancelar orden')}</button>
