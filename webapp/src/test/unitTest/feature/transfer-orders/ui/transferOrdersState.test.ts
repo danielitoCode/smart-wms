@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createTransferOrdersState } from '../../../../../core/feature/transfer-orders/ui/state/transferOrdersState.svelte';
+import { ApiError } from '../../../../../core/infrastructure/errors/ApiError';
 
 function dependencies() {
   return {
