@@ -7,7 +7,13 @@ describe('Operational bin lookup use cases', () => {
 	it('normalizes search text and returns operational matches from the dedicated port', async () => {
 		const repository = { searchOperationalBins: vi.fn().mockResolvedValue([]) } as unknown as BinLookupRepository;
 		await expect(new SearchBinsUseCase(repository).execute('  A-01  ')).resolves.toEqual([]);
-		expect(repository.searchOperationalBins).toHaveBeenCalledWith('A-01');
+		expect(repository.searchOperationalBins).toHaveBeenCalledWith('A-01', undefined);
+	});
+
+	it('passes a selected warehouse to the scoped search port', async () => {
+		const repository = { searchOperationalBins: vi.fn().mockResolvedValue([]) } as unknown as BinLookupRepository;
+		await new SearchBinsUseCase(repository).execute('B-02', 8);
+		expect(repository.searchOperationalBins).toHaveBeenCalledWith('B-02', 8);
 	});
 
 	it('does not call the operational endpoint for an empty search', async () => {
