@@ -32,9 +32,12 @@ function toCreateInput(input: CreateSalesOrder) {
   return {
     soNumber: input.salesOrderNumber,
     warehouseId: input.warehouseId,
+    soBarcode: input.soBarcode,
     customerName: input.customerName,
     customerEmail: input.customerEmail,
     customerPhone: input.customerPhone,
+    customerAddress: input.customerAddress,
+    orderOrigin: input.orderOrigin,
     shipAddress: input.shipAddress,
     shipMethod: input.shipMethod,
     shipByDate: input.shipByDate,
