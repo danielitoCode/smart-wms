@@ -60,7 +60,7 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 		busy = true; error = null; info = null;
 		try {
 			assertDetailWarehouse();
-			const result = await deps.complete.execute(detail.salesOrder.soId);
+			const result = await deps.complete.execute(detail.salesOrder.soId, activeWarehouseId());
 			info = result.message;
 			detail = null;
 			return true;
