@@ -1,7 +1,7 @@
 import type { AuditEvent } from '../../domain/entity/AuditLogEntry';
 import type { AuditLogEntryDto } from '../dto/AuditLogDto';
 
-const SENSITIVE_KEY = /(password|passwd|secret|token|authorization|cookie|credential|api[_-]?key|private[_-]?key|email|phone|address|customer|recipient|billing|shipping)/i;
+const SENSITIVE_KEY = /(password|passwd|secret|token(?![_-]?name)|authorization|cookie|credential|api[_-]?key|private[_-]?key|email|phone|address|customer|recipient|billing|shipping)/i;
 
 function redact(value: unknown): unknown {
 	if (Array.isArray(value)) return value.map(redact);
