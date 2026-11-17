@@ -29,9 +29,11 @@
   localError=null;if(!fullName.trim()){localError='El nombre completo es obligatorio';return;}
   if(!editing&&(!username.trim()||!password)){localError='Usuario y contraseña son obligatorios';return;}
   let ok=false;
+  let savedUserId=editing?.userId;
   if(editing){ok=await vm.update({userId:editing.userId,fullName:fullName.trim(),role,warehouseIds:[...warehouseIds],allowedFunctions:[...functions],isActive:active,password:password||undefined});}
-  else {ok=await vm.create({username:username.trim(),password,fullName:fullName.trim(),role,warehouseIds:[...warehouseIds],allowedFunctions:[...functions]});}
-  if(ok){if(!editing){const created=vm.users.find(u=>u.username===username.trim());if(created&&role==='USER'&&pageKeys.length)await vm.savePermissions(created.userId,pageKeys);}reset();}
+  else {ok=await vm.create({username:username.trim(),password,fullName:fullName.trim(),role,warehouseIds:[...warehouseIds],allowedFunctions:[...functions]});if(ok)savedUserId=vm.users.find(u=>u.username===username.trim())?.userId;}
+  if(ok&&savedUserId&&role==='USER'){const savedPermissions=await vm.savePermissions(savedUserId,pageKeys);if(!savedPermissions)return;}
+  if(ok)reset();}
  }
  function toggleGroup(g:PermissionGroup,on:boolean){const keys=g.pages.map(p=>p[0]);pageKeys=on?[...new Set([...pageKeys,...keys])]:pageKeys.filter(k=>!keys.includes(k));}
  async function editPermissions(u:ManagedUser){permissionsUser=u;permissionLoading=true;const p=await vm.loadPermissions(u.userId);pageKeys=p?[...p.pageKeys]:[];permissionLoading=false;}
