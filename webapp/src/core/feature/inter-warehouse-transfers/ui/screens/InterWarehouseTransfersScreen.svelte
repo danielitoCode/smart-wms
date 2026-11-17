@@ -48,17 +48,17 @@
     vm.searchBins('destination', '', 0);
   }
   function searchSourceBins(value: string) {
-    fromBinQuery = value; fromBinId = 0; fromBinLabel = ''; fromBinOpen = true; invalidateKey();
+    fromBinQuery = value; fromBinId = 0; fromBinLabel = ''; fromBinOpen = true; invalidateKey(); void vm.searchBins('source', '', 0);
     if (sourceTimer) clearTimeout(sourceTimer);
     sourceTimer = setTimeout(() => void vm.searchBins('source', value, fromWarehouseId), 220);
   }
   function searchDestinationBins(value: string) {
-    toBinQuery = value; toBinId = 0; toBinLabel = ''; toBinOpen = true; invalidateKey();
+    toBinQuery = value; toBinId = 0; toBinLabel = ''; toBinOpen = true; invalidateKey(); void vm.searchBins('destination', '', 0);
     if (destinationTimer) clearTimeout(destinationTimer);
     destinationTimer = setTimeout(() => void vm.searchBins('destination', value, toWarehouseId), 220);
   }
   function searchItemOptions(value: string) {
-    itemQuery = value; itemId = 0; itemLabel = ''; itemOpen = true; invalidateKey();
+    itemQuery = value; itemId = 0; itemLabel = ''; itemOpen = true; invalidateKey(); void vm.searchItems('');
     if (itemTimer) clearTimeout(itemTimer);
     itemTimer = setTimeout(() => void vm.searchItems(value), 220);
   }
