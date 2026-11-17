@@ -6,7 +6,7 @@ describe('LoadShippingOrderUseCase', () => {
 	it('rejects empty barcode', () => {
 		const repo = { loadOrder: vi.fn() } as unknown as ShippingRepository;
 		const uc = new LoadShippingOrderUseCase(repo);
-		expect(() => uc.execute('  ')).toThrow(/barcode/);
+		expect(() => uc.execute('  ', 7)).toThrow(/barcode/);
 	});
 
 	it('trims barcode before load', async () => {
