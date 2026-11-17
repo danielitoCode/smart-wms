@@ -21,6 +21,6 @@ describe('RefundsRemoteDataSource', () => {
     await source.related(17);
     expect(api.get).toHaveBeenNthCalledWith(1, '/api/admin/sales-orders/17');
     expect(api.get).toHaveBeenNthCalledWith(2, '/api/admin/sales-orders/17/related');
-    expect(Object.keys(source)).toEqual([]);
+    expect(Object.getOwnPropertyNames(RefundsRemoteDataSource.prototype)).toEqual(['constructor', 'list', 'detail', 'related']);
   });
 });
