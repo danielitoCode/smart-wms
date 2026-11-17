@@ -97,8 +97,7 @@
 		</form>
 		{#if state.waveResult}
 			<p class="ok">
-				{i18n.t('Lote de trabajo')} #{state.waveResult.batchId} · {state.waveResult.batchStatus}
-				· {i18n.t('Pedidos')}: {state.waveResult.totalOrders} · {i18n.t('Líneas por recoger')}: {state.waveResult.totalPicks}
+				{state.waveResult.batchNumber} (#{state.waveResult.batchId}) · {i18n.t('Pedidos')}: {state.waveResult.totalOrders} · {i18n.t('Unidades')}: {state.waveResult.totalUnits} · {i18n.t('Tareas')}: {state.waveResult.totalPicks}
 			</p>
 		{/if}
 	</section>
