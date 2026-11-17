@@ -3065,7 +3065,7 @@ def list_backorders():
         text(
             f"""
             SELECT bo.so_id, bo.so_number, bo.warehouse_id, bo.status,
-                   bo.customer_name, bo.backorder_opened_at,
+                   bo.order_type, bo.customer_name, bo.backorder_opened_at,
                    bo.backorder_fulfillable_at,
                    parent.so_number AS parent_so_number,
                    EXTRACT(EPOCH FROM (NOW() - bo.backorder_opened_at))::bigint AS waiting_seconds
@@ -3173,6 +3173,7 @@ def list_backorders():
                 "parent_so_number": r.parent_so_number,
                 "warehouse_id":    r.warehouse_id,
                 "status":          r.status,
+                "order_type":      r.order_type,
                 "customer_name":   r.customer_name,
                 "items":           items_by_so.get(r.so_id, []),
                 "days_waiting":    (int(r.waiting_seconds) // 86400) if r.waiting_seconds else 0,
