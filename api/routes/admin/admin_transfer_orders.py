@@ -224,13 +224,13 @@ def get_transfer_order(to_id):
     scope_sql, scope_params = _transfer_order_scope_sql()
     header = g.db.execute(
         text(
-            """
+            f"""
             SELECT to_id, to_number, source_warehouse_id, destination_warehouse_id,
                    status, created_by, notes, external_id, created_at, updated_at
-              FROM transfer_orders WHERE to_id = :tid
+              FROM transfer_orders WHERE to_id = :tid {scope_sql}
             """
         ),
-        {"tid": to_id},
+        {"tid": to_id, **scope_params},
     ).fetchone()
     if not header:
         return jsonify({"error": "Transfer order not found"}), 404
