@@ -1424,6 +1424,19 @@ def reject_transfer_order_approval(to_id, approval_id):
             "current_status": approval.status,
         }), 409
 
+    header = g.db.execute(
+        text(
+            "SELECT to_number, source_warehouse_id, destination_warehouse_id "
+            "  FROM transfer_orders WHERE to_id = :tid"
+        ),
+        {"tid": to_id},
+    ).fetchone()
+    if not header:
+        return jsonify({"error": "Transfer order not found"}), 404
+    denied = _check_transfer_order_warehouses(header.source_warehouse_id, header.destination_warehouse_id)
+    if denied:
+        return denied
+
     rejected_at = datetime.now(timezone.utc)
     g.db.execute(
         text(
@@ -1441,14 +1454,6 @@ def reject_transfer_order_approval(to_id, approval_id):
             "aid": approval_id,
         },
     )
-
-    header = g.db.execute(
-        text(
-            "SELECT to_number, source_warehouse_id "
-            "  FROM transfer_orders WHERE to_id = :tid"
-        ),
-        {"tid": to_id},
-    ).fetchone()
 
     write_audit_log(
         g.db,
