@@ -49,7 +49,7 @@ class RmaLineEntry(BaseModel):
     back, and the original line it derives from."""
     item_id: int = Field(..., gt=0)
     quantity: int = Field(..., gt=0, le=1000000)
-    original_so_line_id: Optional[int] = Field(None, gt=0)
+    original_so_line_id: int = Field(..., gt=0)
 
 
 class CreateRmaRequest(BaseModel):
