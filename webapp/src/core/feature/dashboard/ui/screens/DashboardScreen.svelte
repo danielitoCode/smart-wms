@@ -17,7 +17,7 @@
  function refresh(){const w=warehouse.warehouseId,r=range();if(!w||!r)return;void vm.loadTab(w,r);}
  function setRange(v:DashboardRangeKey){vm.rangeKey=v;refresh();}
  function reorder(slug:DashboardEvent,dir:number){const a=[...vm.preferences.chartOrder],i=a.indexOf(slug),j=i+dir;if(i<0||j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];void vm.updatePreferences({chartOrder:a});}
- function csv(){const p=vm.productivity;if(!p)return;const events=p.eventsVisible,rows=[['User',...events.map(s=>labels[s]?.title??s),'Total']];for(const u of p.users)rows.push([u.displayName||u.username,...events.map(s=>String(u.metrics[s]??0)),String(u.total??0)]);const quote=(v:string)=>'"'+v.replace(/"/g,'""')+'"';const blob=new Blob([rows.map(row=>row.map(quote).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='productivity-'+p.range.start+'_'+p.range.end+'.csv';a.click();URL.revokeObjectURL(url);}
+ function csv(){const p=vm.productivity;if(!p)return;const blob=new Blob([buildProductivityCsv(p)],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='productivity-'+p.range.start+'_'+p.range.end+'.csv';a.click();URL.revokeObjectURL(url);}
  function moveTo(slug:DashboardEvent){vm.focusedSource=vm.focusedSource===slug?null:slug;}
  async function doPickup(){if(vm.confirmPickup==null)return;const id=vm.confirmPickup;if(await vm.markPickup(id))refresh();}
  function openPickupEdit(o:LocalPickupOrder){editingPickup=o;pickupForm={customerName:o.customerName??'',customerPhone:o.customerPhone??'',shipMethod:o.shipMethod??'',shipAddress:o.shipAddress??'',priority:String(o.priority??0),memo:o.memo??''};}
