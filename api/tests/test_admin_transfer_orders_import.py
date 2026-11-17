@@ -159,6 +159,20 @@ class TestImport:
         assert rows[0] == (5, 5, "PENDING")
         assert rows[1] == (12, 12, "PENDING")
 
+        reservations = _query(
+            """
+            SELECT tol.line_number, SUM(r.quantity_reserved),
+                   SUM(r.quantity_consumed), SUM(r.quantity_released)
+              FROM transfer_order_reservations r
+              JOIN transfer_order_lines tol ON tol.to_line_id = r.to_line_id
+             WHERE r.to_id = %s
+             GROUP BY tol.line_number
+             ORDER BY tol.line_number
+            """,
+            (body["to_id"],),
+        )
+        assert reservations == [(1, 5, 0, 0), (2, 12, 0, 0)]
+
         # Audit row written
         audit = _query(
             "SELECT details FROM audit_log "
@@ -249,6 +263,18 @@ class TestImport:
             (body["to_id"],),
         )
         assert rows == [(1, 5), (2, 3)]
+        reservation_rows = _query(
+            """
+            SELECT tol.line_number, SUM(r.quantity_reserved)
+              FROM transfer_order_reservations r
+              JOIN transfer_order_lines tol ON tol.to_line_id = r.to_line_id
+             WHERE r.to_id = %s
+             GROUP BY tol.line_number
+             ORDER BY tol.line_number
+            """,
+            (body["to_id"],),
+        )
+        assert reservation_rows == [(1, 5), (2, 3)]
 
 
 # ----------------------------------------------------------------------
