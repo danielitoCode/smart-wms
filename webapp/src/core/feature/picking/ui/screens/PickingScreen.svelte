@@ -66,7 +66,7 @@
 		{#if state.validateResult}
 			<p class={state.validateResult.valid ? 'ok' : 'err'}>
 				{state.validateResult.valid ? i18n.t('Válida') : i18n.t('No válida')}
-				{#if state.validateResult.soNumber} · {state.validateResult.soNumber}{/if}
+				{#if state.validateResult.soNumber} · {state.validateResult.soNumber}{:else if state.validateResult.toNumber} · {state.validateResult.toNumber}{/if}
 				{#if state.validateResult.lineCount != null} · líneas {state.validateResult.lineCount}{/if}
 				{#if state.validateResult.totalUnits != null} · uds {state.validateResult.totalUnits}{/if}
 				{#if state.validateResult.error} · {state.validateResult.error}{/if}
@@ -161,7 +161,7 @@
 		<p class="meta">
 			{i18n.t('Lote de trabajo')} #{state.batch.batchId}
 			· {i18n.t('Líneas recogidas')}: {state.batch.completedPicks}/{state.batch.totalPicks}
-			· {i18n.t('Pedidos')}: {state.batch.totalOrders}
+			{#if state.batch.kind === 'TO'} · TO {state.batch.transferOrderNumber ?? ''}{:else} · {i18n.t('Pedidos')}: {state.batch.totalOrders}{/if}
 		</p>
 	{/if}
 
@@ -170,6 +170,7 @@
 			<h2>{state.task.sku}</h2>
 			<p class="meta">
 				{state.task.itemName}
+				{#if state.task.transferOrderNumber} · TO {state.task.transferOrderNumber}{:else if state.task.salesOrderNumber} · SO {state.task.salesOrderNumber}{/if}
 				{#if state.task.binCode}
 					· ubicación: {state.task.binCode}
 				{/if}
@@ -200,9 +201,11 @@
 				</label>
 				<div class="actions">
 					<button type="submit" class="accent" disabled={state.busy}>{i18n.t('Confirmar recogida')}</button>
-					<button type="button" class="secondary" onclick={() => state.shortPick()} disabled={state.busy}>
-						{i18n.t("Indicar faltante (0)")}
-					</button>
+					{#if state.batch?.kind !== 'TO'}
+						<button type="button" class="secondary" onclick={() => state.shortPick()} disabled={state.busy}>
+							{i18n.t("Indicar faltante (0)")}
+						</button>
+					{/if}
 				</div>
 			</form>
 		</article>
