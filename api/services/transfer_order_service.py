@@ -433,7 +433,7 @@ def submit_picks(db, to_id: int, username: str) -> dict:
         tasks = db.execute(
             text(
                 """
-                SELECT pick_task_id, inventory_id, bin_id,
+                SELECT pick_task_id, item_id, inventory_id, bin_id,
                        quantity_picked, quantity_approved
                   FROM pick_tasks
                  WHERE to_id = :tid AND to_line_id = :lid
@@ -450,7 +450,7 @@ def submit_picks(db, to_id: int, username: str) -> dict:
         task_total = 0
         for task in tasks:
             delta = task.quantity_picked - task.quantity_approved
-            if task.inventory_id is None or delta <= 0:
+            if task.item_id != line.item_id or task.inventory_id is None or delta <= 0:
                 return {"ok": False, "reason": "reservation_task_mismatch"}
             task_total += delta
             task_snapshot.append({
