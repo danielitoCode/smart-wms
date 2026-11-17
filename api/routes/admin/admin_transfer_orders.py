@@ -1103,18 +1103,35 @@ def start_to_picking(to_id):
             "to_approval_id": pending_approval.to_approval_id,
         }), 409
 
-    # Lines that still need picking (committed > picked) and are not
-    # SHORT_CLOSED. Walk in line_number ASC for predictable picker UX.
+    pending_tasks = g.db.execute(
+        text(
+            "SELECT COUNT(*) FROM pick_tasks "
+            " WHERE to_id = :tid AND status = 'PENDING'"
+        ),
+        {"tid": to_id},
+    ).scalar()
+    if pending_tasks:
+        return jsonify({
+            "error": "pending_pick_tasks_exist",
+            "pending_tasks": pending_tasks,
+            "detail": "Complete or resolve the current picking batch before starting another.",
+        }), 409
+
+    # Build the next task plan exclusively from the inventory rows owned by
+    # each TO line. Never redistribute a line across arbitrary SKU bins:
+    # quantity_allocated is shared with Sales Orders and is not an ownership
+    # record. Locks follow item_id -> inventory_id order, matching import,
+    # approval, and release paths.
     lines = g.db.execute(
         text(
             """
             SELECT to_line_id, item_id, line_number,
-                   committed_qty, picked_qty
+                   committed_qty, picked_qty, approved_qty
               FROM transfer_order_lines
              WHERE to_id = :tid
                AND status IN ('PENDING', 'PARTIALLY_PICKED')
                AND committed_qty > picked_qty
-             ORDER BY line_number
+             ORDER BY item_id, line_number, to_line_id
             """
         ),
         {"tid": to_id},
@@ -1125,7 +1142,121 @@ def start_to_picking(to_id):
             "detail": "Every line is either fully picked or short-closed.",
         }), 409
 
-    # Create pick_batch anchor.
+    task_plan = []
+    for line in lines:
+        allocations = g.db.execute(
+            text(
+                """
+                SELECT r.reservation_id, r.reserved_qty, r.consumed_qty,
+                       r.released_qty, inv.inventory_id, inv.bin_id,
+                       inv.quantity_on_hand, inv.quantity_allocated,
+                       COALESCE((
+                           SELECT SUM(pt.quantity_picked)
+                             FROM pick_tasks pt
+                            WHERE pt.to_line_id = r.to_line_id
+                              AND pt.bin_id = inv.bin_id
+                              AND pt.status IN ('PICKED', 'SHORT')
+                       ), 0) AS picked_in_bin
+                  FROM transfer_order_reservations r
+                  JOIN inventory inv ON inv.inventory_id = r.inventory_id
+                 WHERE r.to_line_id = :lid
+                 ORDER BY inv.inventory_id
+                 FOR UPDATE OF r, inv
+                """
+            ),
+            {"lid": line.to_line_id},
+        ).fetchall()
+
+        reserved_total = sum(row.reserved_qty for row in allocations)
+        consumed_total = sum(row.consumed_qty for row in allocations)
+        released_total = sum(row.released_qty for row in allocations)
+        picked_total = sum(row.picked_in_bin for row in allocations)
+        outstanding_total = sum(
+            row.reserved_qty - row.consumed_qty - row.released_qty
+            for row in allocations
+        )
+        expected_outstanding = line.committed_qty - line.approved_qty - released_total
+        expected_to_pick = line.committed_qty - line.picked_qty - released_total
+        if (
+            reserved_total != line.committed_qty
+            or consumed_total != line.approved_qty
+            or released_total > line.committed_qty - line.approved_qty
+            or outstanding_total != expected_outstanding
+            or picked_total != line.picked_qty
+            or expected_to_pick < 0
+        ):
+            g.db.rollback()
+            return jsonify({
+                "error": "reservation_integrity_error",
+                "to_line_id": line.to_line_id,
+                "detail": "The per-bin reservation ledger does not match committed, approved and picked quantities.",
+            }), 409
+
+        planned_for_line = 0
+        for allocation in allocations:
+            # Picked includes both approved and not-yet-approved scans. Since
+            # the reservation row's consumed_qty tracks the approved portion,
+            # subtract all picks from its original bin to avoid recreating
+            # tasks for already picked stock.
+            remaining_in_bin = (
+                allocation.reserved_qty
+                - allocation.released_qty
+                - allocation.picked_in_bin
+            )
+            if remaining_in_bin < 0:
+                g.db.rollback()
+                return jsonify({
+                    "error": "reservation_integrity_error",
+                    "to_line_id": line.to_line_id,
+                    "inventory_id": allocation.inventory_id,
+                    "detail": "Picked quantity exceeds the bin reservation.",
+                }), 409
+            if remaining_in_bin == 0:
+                continue
+            reservation_open = (
+                allocation.reserved_qty
+                - allocation.consumed_qty
+                - allocation.released_qty
+            )
+            if (
+                allocation.quantity_allocated < reservation_open
+                or allocation.quantity_on_hand < remaining_in_bin
+            ):
+                g.db.rollback()
+                return jsonify({
+                    "error": "no_pickable_inventory",
+                    "to_line_id": line.to_line_id,
+                    "inventory_id": allocation.inventory_id,
+                    "bin_id": allocation.bin_id,
+                    "remaining": remaining_in_bin,
+                    "available": allocation.quantity_on_hand,
+                }), 409
+            task_plan.append({
+                "to_line_id": line.to_line_id,
+                "item_id": line.item_id,
+                "line_number": line.line_number,
+                "inventory_id": allocation.inventory_id,
+                "bin_id": allocation.bin_id,
+                "quantity": remaining_in_bin,
+            })
+            planned_for_line += remaining_in_bin
+
+        if planned_for_line != expected_to_pick:
+            g.db.rollback()
+            return jsonify({
+                "error": "reservation_integrity_error",
+                "to_line_id": line.to_line_id,
+                "detail": "Per-bin remaining quantities do not equal the line's unpicked commitment.",
+            }), 409
+
+    if not task_plan:
+        return jsonify({
+            "error": "no_lines_to_pick",
+            "detail": "Every committed unit is already picked or short-closed.",
+        }), 409
+
+    # Create the batch only after every line's reservation plan has passed
+    # validation, so no partial batch survives a stock/ledger mismatch.
     from datetime import datetime
     batch_number = (
         f"BATCH-TO-{header.to_number[3:]}-"
@@ -1145,73 +1276,37 @@ def start_to_picking(to_id):
     ).fetchone()
     batch_id = batch_row.batch_id
 
-    # For each line, walk inventory bins at the source warehouse (in
-    # inventory_id ASC) and create pick_tasks until the line's
-    # remaining commitment is covered.
     pick_sequence = 0
-    tasks_created = 0
-    for line in lines:
-        remaining = line.committed_qty - line.picked_qty
-        inv_rows = g.db.execute(
+    for task in sorted(task_plan, key=lambda row: (
+        row["line_number"], row["inventory_id"],
+    )):
+        pick_sequence += 1
+        g.db.execute(
             text(
                 """
-                SELECT inv.inventory_id, inv.bin_id, inv.quantity_on_hand,
-                       inv.quantity_allocated
-                  FROM inventory inv
-                 WHERE inv.item_id = :iid AND inv.warehouse_id = :wid
-                   AND inv.quantity_on_hand > 0
-                 ORDER BY inv.inventory_id ASC
+                INSERT INTO pick_tasks
+                    (batch_id, to_id, to_line_id, item_id, bin_id,
+                     quantity_to_pick, pick_sequence, status)
+                VALUES (:bid, :tid, :lid, :iid, :binid, :qty,
+                        :seq, 'PENDING')
                 """
             ),
-            {"iid": line.item_id, "wid": header.source_warehouse_id},
-        ).fetchall()
-        for ir in inv_rows:
-            if remaining <= 0:
-                break
-            take = min(remaining, ir.quantity_on_hand)
-            if take == 0:
-                continue
-            pick_sequence += 1
-            g.db.execute(
-                text(
-                    """
-                    INSERT INTO pick_tasks
-                        (batch_id, to_id, to_line_id, item_id, bin_id,
-                         quantity_to_pick, pick_sequence, status)
-                    VALUES (:bid, :tid, :lid, :iid, :binid, :qty,
-                            :seq, 'PENDING')
-                    """
-                ),
-                {
-                    "bid": batch_id,
-                    "tid": to_id,
-                    "lid": line.to_line_id,
-                    "iid": line.item_id,
-                    "binid": ir.bin_id,
-                    "qty": take,
-                    "seq": pick_sequence,
-                },
-            )
-            remaining -= take
-            tasks_created += 1
-        if remaining > 0:
-            # Source warehouse cannot fulfil the committed quantity in
-            # any bin. The line keeps its committed_qty (the importer
-            # already validated availability) but the picker can't
-            # walk to anything; surface for operator action.
-            g.db.rollback()
-            return jsonify({
-                "error": "no_pickable_inventory",
-                "to_line_id": line.to_line_id,
-                "item_id": line.item_id,
-                "remaining": remaining,
-            }), 409
+            {
+                "bid": batch_id,
+                "tid": to_id,
+                "lid": task["to_line_id"],
+                "iid": task["item_id"],
+                "binid": task["bin_id"],
+                "qty": task["quantity"],
+                "seq": pick_sequence,
+            },
+        )
 
     g.db.commit()
     return jsonify({
         "batch_id": batch_id,
         "batch_number": batch_number,
-        "tasks_created": tasks_created,
+        "tasks_created": len(task_plan),
     }), 201
 
 
