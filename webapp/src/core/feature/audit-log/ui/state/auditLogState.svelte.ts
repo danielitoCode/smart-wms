@@ -64,6 +64,13 @@ export function createAuditLogState() {
 		await load();
 	}
 
+	async function changePerPage(next: number) {
+		if (!Number.isInteger(next) || next < 1 || next > 1000 || loading) return;
+		perPage = next;
+		page = 1;
+		await load();
+	}
+
 	async function changePage(next: number) {
 		if (next < 1 || next > pages || loading) return;
 		page = next;
@@ -103,6 +110,6 @@ export function createAuditLogState() {
 		setEndDate(v: string) { endDate = v; },
 		openDetail(row: AuditEvent) { selected = row; },
 		closeDetail() { selected = null; },
-		applyFilters, clearFilters, changePage, changeSort, load
+		applyFilters, clearFilters, changePage, changePerPage, changeSort, load
 	};
 }
