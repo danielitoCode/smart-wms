@@ -1154,7 +1154,7 @@ def start_to_picking(to_id):
                            SELECT SUM(pt.quantity_picked)
                              FROM pick_tasks pt
                             WHERE pt.to_line_id = r.to_line_id
-                              AND pt.bin_id = inv.bin_id
+                              AND pt.inventory_id = inv.inventory_id
                               AND pt.status IN ('PICKED', 'SHORT')
                        ), 0) AS picked_in_bin
                   FROM transfer_order_reservations r
@@ -1297,9 +1297,9 @@ def start_to_picking(to_id):
             text(
                 """
                 INSERT INTO pick_tasks
-                    (batch_id, to_id, to_line_id, item_id, bin_id,
+                    (batch_id, to_id, to_line_id, item_id, bin_id, inventory_id,
                      quantity_to_pick, pick_sequence, status)
-                VALUES (:bid, :tid, :lid, :iid, :binid, :qty,
+                VALUES (:bid, :tid, :lid, :iid, :binid, :invid, :qty,
                         :seq, 'PENDING')
                 """
             ),
@@ -1309,6 +1309,7 @@ def start_to_picking(to_id):
                 "lid": task["to_line_id"],
                 "iid": task["item_id"],
                 "binid": task["bin_id"],
+                "invid": task["inventory_id"],
                 "qty": task["quantity"],
                 "seq": pick_sequence,
             },
