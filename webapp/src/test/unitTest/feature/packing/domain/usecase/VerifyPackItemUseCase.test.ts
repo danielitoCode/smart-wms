@@ -7,13 +7,13 @@ describe('VerifyPackItemUseCase', () => {
 		const repo = { verify: vi.fn() } as unknown as PackingRepository;
 		const uc = new VerifyPackItemUseCase(repo);
 		expect(() =>
-			uc.execute({ soId: 0, scannedBarcode: 'x', quantity: 1 })
+			uc.execute({ soId: 0, warehouseId: 7, scannedBarcode: 'x', quantity: 1 })
 		).toThrow(/soId/);
 		expect(() =>
-			uc.execute({ soId: 1, scannedBarcode: '  ', quantity: 1 })
+			uc.execute({ soId: 1, warehouseId: 7, scannedBarcode: '  ', quantity: 1 })
 		).toThrow(/scannedBarcode/);
 		expect(() =>
-			uc.execute({ soId: 1, scannedBarcode: 'x', quantity: 0 })
+			uc.execute({ soId: 1, warehouseId: 7, scannedBarcode: 'x', quantity: 0 })
 		).toThrow(/quantity/);
 	});
 
@@ -22,9 +22,10 @@ describe('VerifyPackItemUseCase', () => {
 			verify: vi.fn().mockResolvedValue({ message: 'ok' })
 		} as unknown as PackingRepository;
 		const uc = new VerifyPackItemUseCase(repo);
-		await uc.execute({ soId: 1, scannedBarcode: ' abc ' });
+		await uc.execute({ soId: 1, warehouseId: 7, scannedBarcode: ' abc ' });
 		expect(repo.verify).toHaveBeenCalledWith({
 			soId: 1,
+			warehouseId: 7,
 			scannedBarcode: 'abc',
 			quantity: 1
 		});
