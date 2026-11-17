@@ -59,9 +59,9 @@ def _insert_so_line(so_id, item_id, *, qty=2, line_number=1, status="SHIPPED"):
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO sales_order_lines "
-        "(so_id, item_id, quantity_ordered, line_number, status) "
-        "VALUES (%s, %s, %s, %s, %s) RETURNING so_line_id",
-        (so_id, item_id, qty, line_number, status),
+        "(so_id, item_id, quantity_ordered, quantity_shipped, line_number, status) "
+        "VALUES (%s, %s, %s, %s, %s, %s) RETURNING so_line_id",
+        (so_id, item_id, qty, qty, line_number, status),
     )
     so_line_id = cur.fetchone()[0]
     cur.close()
@@ -111,6 +111,93 @@ class TestCreateRma:
         assert rows[0].status == "OPEN"
         assert rows[1].original_so_line_id == line_b
         assert rows[1].quantity_ordered == 2
+
+    def test_rejects_duplicate_original_line_in_one_authorization(self, _db_transaction):
+        from services.sales_order_service import create_rma
+        db = _db_transaction
+        parent_id = _insert_so(f"POS-{uuid.uuid4().hex[:8]}")
+        item_id = _insert_item()
+        line_id = _insert_so_line(parent_id, item_id, qty=3)
+
+        with pytest.raises(ValueError, match="duplicate original"):
+            create_rma(
+                db, original_so_id=parent_id, created_by="op",
+                lines=[
+                    {"item_id": item_id, "quantity": 1, "original_so_line_id": line_id},
+                    {"item_id": item_id, "quantity": 1, "original_so_line_id": line_id},
+                ],
+            )
+        assert db.execute(
+            sa_text("SELECT count(*) FROM sales_orders WHERE parent_so_id=:p AND order_type='return'"),
+            {"p": parent_id},
+        ).scalar() == 0
+
+    def test_rejects_item_not_belonging_to_original_line(self, _db_transaction):
+        from services.sales_order_service import create_rma
+        db = _db_transaction
+        parent_id = _insert_so(f"POS-{uuid.uuid4().hex[:8]}")
+        authorized_item, foreign_item = _insert_item(), _insert_item()
+        line_id = _insert_so_line(parent_id, authorized_item, qty=2)
+
+        with pytest.raises(ValueError, match="not authorized"):
+            create_rma(
+                db, original_so_id=parent_id, created_by="op",
+                lines=[{"item_id": foreign_item, "quantity": 1, "original_so_line_id": line_id}],
+            )
+        assert db.execute(
+            sa_text("SELECT count(*) FROM sales_orders WHERE parent_so_id=:p AND order_type='return'"),
+            {"p": parent_id},
+        ).scalar() == 0
+
+    def test_rejects_invalid_quantity_and_unlinked_authorization_line(self, _db_transaction):
+        from services.sales_order_service import create_rma
+        db = _db_transaction
+        parent_id = _insert_so(f"POS-{uuid.uuid4().hex[:8]}")
+        item_id = _insert_item()
+        line_id = _insert_so_line(parent_id, item_id, qty=2)
+
+        with pytest.raises(ValueError, match="positive integer"):
+            create_rma(
+                db, original_so_id=parent_id, created_by="op",
+                lines=[{"item_id": item_id, "quantity": 0, "original_so_line_id": line_id}],
+            )
+        with pytest.raises(ValueError, match="must reference"):
+            create_rma(
+                db, original_so_id=parent_id, created_by="op",
+                lines=[{"item_id": item_id, "quantity": 1}],
+            )
+
+    def test_cannot_authorize_more_than_shipped_or_authorize_it_twice(self, _db_transaction):
+        from services.sales_order_service import create_rma
+        db = _db_transaction
+        parent_id = _insert_so(f"POS-{uuid.uuid4().hex[:8]}")
+        item_id = _insert_item()
+        line_id = _insert_so_line(parent_id, item_id, qty=3)
+
+        first = create_rma(
+            db, original_so_id=parent_id, created_by="op",
+            lines=[{"item_id": item_id, "quantity": 2, "original_so_line_id": line_id}],
+        )
+        assert first["so_id"] > 0
+        with pytest.raises(ValueError, match="exceeds remaining shipped quantity"):
+            create_rma(
+                db, original_so_id=parent_id, created_by="op",
+                lines=[{"item_id": item_id, "quantity": 2, "original_so_line_id": line_id}],
+            )
+
+    def test_rejects_non_sale_parent(self, _db_transaction):
+        from services.sales_order_service import create_rma
+        db = _db_transaction
+        parent_id = _insert_so(
+            f"BO-{uuid.uuid4().hex[:8]}", order_type="backorder",
+        )
+        item_id = _insert_item()
+        line_id = _insert_so_line(parent_id, item_id, qty=2)
+        with pytest.raises(ValueError, match="original sale"):
+            create_rma(
+                db, original_so_id=parent_id, created_by="op",
+                lines=[{"item_id": item_id, "quantity": 1, "original_so_line_id": line_id}],
+            )
 
     def test_missing_original_raises(self, _db_transaction):
         from services.sales_order_service import create_rma
