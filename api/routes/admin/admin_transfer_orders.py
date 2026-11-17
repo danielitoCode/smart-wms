@@ -290,8 +290,8 @@ def _release_line_reservations(db, to_line_id: int, quantity: int) -> int:
     rows = db.execute(
         text(
             """
-            SELECT reservation_id, inventory_id, quantity_reserved,
-                   quantity_consumed, quantity_released
+            SELECT reservation_id, inventory_id, item_id, warehouse_id,
+                   quantity_reserved, quantity_consumed, quantity_released
               FROM transfer_order_reservations
              WHERE to_line_id = :lid
                AND quantity_consumed + quantity_released < quantity_reserved
@@ -314,11 +314,16 @@ def _release_line_reservations(db, to_line_id: int, quantity: int) -> int:
                    SET quantity_allocated = quantity_allocated - :qty,
                        updated_at = NOW()
                  WHERE inventory_id = :inv_id
+                   AND item_id = :iid
+                   AND warehouse_id = :wid
                    AND quantity_allocated >= :qty
                 RETURNING inventory_id
                 """
             ),
-            {"qty": give, "inv_id": row.inventory_id},
+            {
+                "qty": give, "inv_id": row.inventory_id,
+                "iid": row.item_id, "wid": row.warehouse_id,
+            },
         ).fetchone()
         if not updated:
             raise ValueError(
@@ -442,6 +447,13 @@ def _consume_line_reservations(
 @require_admin_or_page_permission("transfer-orders")
 @with_db
 def short_close_to_line(to_id, line_id):
+    header_lock = g.db.execute(
+        text("SELECT to_id FROM transfer_orders WHERE to_id = :tid FOR UPDATE"),
+        {"tid": to_id},
+    ).fetchone()
+    if not header_lock:
+        return jsonify({"error": "Transfer order not found"}), 404
+
     line = g.db.execute(
         text(
             """
@@ -1117,57 +1129,6 @@ def _self_approval_blocked(db) -> bool:
         ),
     ).fetchone()
     return bool(row and str(row.value).lower() == "true")
-
-
-def _decrement_source_inventory(
-    db, item_id: int, warehouse_id: int, qty: int,
-) -> None:
-    """Decrement quantity_allocated AND quantity_on_hand at source by
-    qty, distributing across bins in inventory_id ASC up to each row's
-    own quantity_allocated. Mirrors the import + cancel lock ordering
-    so concurrent operations stay deadlock-free."""
-    inv_rows = db.execute(
-        text(
-            """
-            SELECT inv.inventory_id, inv.quantity_on_hand,
-                   inv.quantity_allocated
-              FROM inventory inv
-             WHERE inv.item_id = :iid AND inv.warehouse_id = :wid
-               AND inv.quantity_allocated > 0
-             ORDER BY inv.inventory_id ASC
-             FOR UPDATE OF inv
-            """
-        ),
-        {"iid": item_id, "wid": warehouse_id},
-    ).fetchall()
-    remaining = qty
-    for ir in inv_rows:
-        if remaining <= 0:
-            break
-        give = min(remaining, ir.quantity_allocated, ir.quantity_on_hand)
-        if give == 0:
-            continue
-        db.execute(
-            text(
-                """
-                UPDATE inventory
-                   SET quantity_allocated = quantity_allocated - :delta,
-                       quantity_on_hand   = quantity_on_hand   - :delta,
-                       updated_at = NOW()
-                 WHERE inventory_id = :inv_id
-                """
-            ),
-            {"delta": give, "inv_id": ir.inventory_id},
-        )
-        remaining -= give
-    if remaining > 0:
-        # Source under-funded: import-time reservation must have been
-        # released by a concurrent cancel. Surface as 409 so the
-        # admin investigates rather than silently absorbing.
-        raise ValueError(
-            f"source inventory under-funded: still {remaining} units to "
-            f"deduct for item_id={item_id} at warehouse_id={warehouse_id}"
-        )
 
 
 def _credit_destination_inventory(
