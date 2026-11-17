@@ -44,11 +44,18 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 		if (!Number.isInteger(quantity) || quantity <= 0) { error = 'La cantidad debe ser un entero mayor que 0'; return false; }
 		busy = true; error = null; info = null;
 		const soNumber = detail.salesOrder.soNumber;
+		const soId = detail.salesOrder.soId;
 		try {
 			assertDetailWarehouse();
-			const result = await deps.verify.execute({ soId: detail.salesOrder.soId, scannedBarcode: scannedBarcode.trim(), quantity });
+			const warehouseId = activeWarehouseId();
+			const result = await deps.verify.execute({ soId, warehouseId, scannedBarcode: scannedBarcode.trim(), quantity });
 			info = result.message;
-			detail = await deps.loadOrder.execute(soNumber, activeWarehouseId());
+			if (warehouseSelection.warehouseId !== warehouseId) {
+				detail = null;
+				info = `Lectura registrada en el almacén #${warehouseId}; vuelve a escanear al cambiar de almacén.`;
+				return true;
+			}
+			detail = await deps.loadOrder.execute(soNumber, warehouseId);
 			scannedBarcode = ''; quantity = 1;
 			return true;
 		} catch (err) { error = toUserMessage(err, 'No se pudo verificar el ítem'); return false; }
