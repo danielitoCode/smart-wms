@@ -140,6 +140,44 @@ def _bump_inventory_allocated(
         cur.close()
 
 
+def _seed_to_pick_task(
+    to_id, to_line_id, inventory_id, quantity_to_pick,
+    quantity_picked, quantity_approved=0,
+):
+    conn = db_test_context.get_raw_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT item_id, bin_id FROM inventory WHERE inventory_id = %s", (inventory_id,))
+        item_id, bin_id = cur.fetchone()
+        cur.execute(
+            """
+            INSERT INTO pick_batches (batch_number, warehouse_id, status, assigned_to)
+            VALUES (%s, 1, 'COMPLETED', 'transfer-order-test')
+            RETURNING batch_id
+            """,
+            (f"BATCH-TO-TEST-{uuid.uuid4().hex[:10]}",),
+        )
+        batch_id = cur.fetchone()[0]
+        cur.execute(
+            """
+            INSERT INTO pick_tasks
+                (batch_id, to_id, to_line_id, item_id, bin_id, inventory_id,
+                 quantity_to_pick, quantity_picked, quantity_approved,
+                 pick_sequence, status, picked_by, picked_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 1,
+                    'PICKED', 'picker', NOW())
+            RETURNING pick_task_id
+            """,
+            (
+                batch_id, to_id, to_line_id, item_id, bin_id, inventory_id,
+                quantity_to_pick, quantity_picked, quantity_approved,
+            ),
+        )
+        return cur.fetchone()[0], bin_id
+    finally:
+        cur.close()
+
+
 def _allocated(item_id, warehouse_id):
     rows = _query(
         "SELECT quantity_allocated FROM inventory "
@@ -332,7 +370,10 @@ class TestExactReservationApproval:
         line_id = _seed_to_line(
             to_id, item_id=1, committed=5, picked=5, status="PICKED",
         )
-        _bump_inventory_allocated(1, 1, 5, line_id)
+        inventory_id = _bump_inventory_allocated(1, 1, 5, line_id)
+        task_id, bin_id = _seed_to_pick_task(
+            to_id, line_id, inventory_id, quantity_to_pick=5, quantity_picked=5,
+        )
         approval_id = _seed_to_approval(
             to_id,
             lines_snapshot={
@@ -340,6 +381,13 @@ class TestExactReservationApproval:
                     "to_line_id": line_id,
                     "item_id": 1,
                     "picked_in_snapshot": 5,
+                    "tasks": [{
+                        "pick_task_id": task_id, "inventory_id": inventory_id,
+                        "bin_id": bin_id, "picked_in_snapshot": 5,
+                    }],
+                    "inventory_allocations": [{
+                        "inventory_id": inventory_id, "bin_id": bin_id, "quantity": 5,
+                    }],
                 }],
             },
         )
@@ -395,11 +443,15 @@ class TestExactReservationApproval:
     ):
         to_id = _seed_to(source_wh=1, dest_wh=2, status="AWAITING_APPROVAL")
         line_id = _seed_to_line(
-            to_id, item_id=1, committed=10, picked=8, approved=2,
+            to_id, item_id=1, committed=10, picked=5, approved=2,
             status="PARTIALLY_PICKED",
         )
-        _bump_inventory_allocated(
+        inventory_id = _bump_inventory_allocated(
             1, 1, 8, line_id, reserved_qty=10, consumed_qty=2,
+        )
+        task_id, bin_id = _seed_to_pick_task(
+            to_id, line_id, inventory_id, quantity_to_pick=5,
+            quantity_picked=5, quantity_approved=2,
         )
         approval_id = _seed_to_approval(
             to_id,
@@ -408,6 +460,13 @@ class TestExactReservationApproval:
                     "to_line_id": line_id,
                     "item_id": 1,
                     "picked_in_snapshot": 3,
+                    "tasks": [{
+                        "pick_task_id": task_id, "inventory_id": inventory_id,
+                        "bin_id": bin_id, "picked_in_snapshot": 3,
+                    }],
+                    "inventory_allocations": [{
+                        "inventory_id": inventory_id, "bin_id": bin_id, "quantity": 3,
+                    }],
                 }],
             },
         )
@@ -431,7 +490,7 @@ class TestExactReservationApproval:
             "  FROM transfer_order_lines WHERE to_line_id = %s",
             (line_id,),
         )[0]
-        assert line == (5, 2, "PARTIALLY_PICKED")
+        assert line == (2, 2, "PARTIALLY_PICKED")
         reservation = _query(
             "SELECT reserved_qty, consumed_qty, released_qty "
             "  FROM transfer_order_reservations WHERE to_line_id = %s",
