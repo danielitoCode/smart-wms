@@ -22,6 +22,14 @@ from constants import (
 )
 
 
+class TransferOrderShortPickNotSupported(Exception):
+    """TO stock is reserved and only moved after admin approval.
+
+    A picker must not short-pick a TO task through the SO inventory
+    mutation path; the admin uses the TO line Short-Close action.
+    """
+
+
 class InsufficientCoverageError(Exception):
     """Raised at batch creation when one or more SOs cannot be fully covered
     by pickable inventory in the target warehouse. Carries a structured list
@@ -891,8 +899,9 @@ def short_pick(db, pick_task_id, quantity_available, username):
     task = db.execute(
         text(
             """
-            SELECT pt.pick_task_id, pt.batch_id, pt.so_id, pt.so_line_id, pt.item_id,
-                   pt.bin_id, pt.quantity_to_pick, pt.status, pt.tote_number
+            SELECT pt.pick_task_id, pt.batch_id, pt.so_id, pt.so_line_id,
+                   pt.to_id, pt.item_id, pt.bin_id, pt.quantity_to_pick,
+                   pt.status, pt.tote_number
             FROM pick_tasks pt
             WHERE pt.pick_task_id = :tid
             """
@@ -904,6 +913,11 @@ def short_pick(db, pick_task_id, quantity_available, username):
         raise ValueError("Pick task not found")
     if task.status != TASK_PENDING:
         raise ValueError(f"Pick task is already {task.status}")
+    if task.to_id is not None:
+        raise TransferOrderShortPickNotSupported(
+            "Transfer Order tasks cannot use short-pick. Ask the admin to "
+            "short-close the transfer line so its remaining reservation is released."
+        )
 
     if quantity_available > task.quantity_to_pick:
         raise ValueError(
