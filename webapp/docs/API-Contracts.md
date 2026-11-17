@@ -89,6 +89,7 @@ Salvo excepción anotada, cada grupo usa `require_auth` + `require_admin_or_page
 | Método | Endpoint | Request | Response / semántica |
 |---|---|---|---|
 | GET | `/api/admin/users?page=1&per_page=50` | Query: `page >= 1`, `1 <= per_page <= 1000` | `{ users: ManagedUser[], total, page, per_page, pages }`; cada usuario contiene `user_id, username, full_name, role, warehouse_id, warehouse_ids, allowed_functions, is_active, created_at, last_login`. |
+| GET | `/api/admin/users/warehouse-options` | — | `{ warehouses: [{ warehouse_id, warehouse_code, warehouse_name, is_active }], total }`; catálogo de asignación autorizado por `users`, independiente del permiso de navegación/CRUD `warehouses`. |
 | POST | `/api/admin/users` | `CreateUserRequest`: username, password, full_name, role, warehouse_ids, warehouse_id legado opcional, allowed_functions | Un usuario; HTTP 201. Contraseña validada por política y almacenada como hash. |
 | PUT | `/api/admin/users/{user_id}` | `UpdateUserRequest` parcial: full_name, role, warehouse_id, warehouse_ids, allowed_functions, is_active, password | Usuario actualizado. Protege auto-desactivación/auto-degradación y último ADMIN activo. |
 | DELETE | `/api/admin/users/{user_id}` | — | `{ message: "User deleted" }`; no permite autoeliminación ni borrar el último ADMIN activo. |
