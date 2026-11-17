@@ -874,8 +874,10 @@ def list_inter_warehouse_transfers():
     """Return only transfers whose source AND destination are in user scope."""
     try:
         limit = int(request.args.get("limit", "50"))
-        from_warehouse_id = request.args.get("from_warehouse_id", type=int)
-        to_warehouse_id = request.args.get("to_warehouse_id", type=int)
+        from_raw = request.args.get("from_warehouse_id")
+        to_raw = request.args.get("to_warehouse_id")
+        from_warehouse_id = int(from_raw) if from_raw is not None else None
+        to_warehouse_id = int(to_raw) if to_raw is not None else None
     except (TypeError, ValueError):
         return jsonify({"error": "Invalid transfer history filters"}), 400
     if limit < 1 or limit > 500:
