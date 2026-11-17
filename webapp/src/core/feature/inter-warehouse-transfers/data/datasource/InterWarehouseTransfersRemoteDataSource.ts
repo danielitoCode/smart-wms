@@ -3,12 +3,17 @@ import type { InterWarehouseTransferDto, InterWarehouseTransferListDto, InterWar
 
 export class InterWarehouseTransfersRemoteDataSource {
   constructor(private readonly api: ApiClient) {}
+
   async list(limit = 100): Promise<InterWarehouseTransferDto[]> {
-    const params = new URLSearchParams({ limit: String(limit) });
-    const response = await this.api.get<InterWarehouseTransferListDto>(`/api/admin/inter-warehouse-transfers?${params.toString()}`);
-    return response.transfers ?? [];
+    const safeLimit = Math.min(500, Math.max(1, Math.trunc(limit)));
+    const params = new URLSearchParams({ limit: String(safeLimit) });
+    const response = await this.api.get<InterWarehouseTransferListDto>(
+      '/api/admin/inter-warehouse-transfers?' + params.toString()
+    );
+    return Array.isArray(response.transfers) ? response.transfers : [];
   }
-  async create(body: unknown): Promise<InterWarehouseTransferCreateResponseDto> {
+
+  create(body: unknown): Promise<InterWarehouseTransferCreateResponseDto> {
     return this.api.post<InterWarehouseTransferCreateResponseDto>('/api/admin/inter-warehouse-transfer', body);
   }
 }
