@@ -10,7 +10,7 @@ import PackingScreen from '../../../../../core/feature/packing/ui/screens/Packin
 
 describe('PackingScreen scanner UI', () => {
  it('shows the active warehouse and disables lookup without a warehouse', () => {
-  const { body } = render(PackingScreen, { context: new Map([['i18n', { t: (v: string) => v }], ['warehouseSelection', warehouse]]) });
+  const { body } = render(PackingScreen, { context: new Map<string, any>([['i18n', { t: (v: string) => v }], ['warehouseSelection', warehouse]]) });
   expect(body).toContain('Almacén activo: #7');
   expect(body).toContain('Código de barras a verificar');
   expect(body).toContain('Completar empaque');
