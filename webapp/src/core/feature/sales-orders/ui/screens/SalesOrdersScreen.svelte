@@ -349,11 +349,15 @@
     const order = vm.selected;
     if (!order) return;
     const lines = Object.entries(rmaQuantities)
-      .map(([itemId, quantity]) => {
-        const line = order.lines.find((candidate) => candidate.itemId === Number(itemId));
-        return { itemId: Number(itemId), quantity: Number(quantity), originalSoLineId: line?.soLineId ?? null };
+      .map(([soLineId, quantity]) => {
+        const line = order.lines.find((candidate) => candidate.soLineId === Number(soLineId));
+        return {
+          itemId: line?.itemId ?? 0,
+          quantity: Number(quantity),
+          originalSoLineId: Number(soLineId)
+        };
       })
-      .filter((line) => Number.isInteger(line.quantity) && line.quantity > 0);
+      .filter((line) => line.itemId > 0 && Number.isInteger(line.quantity) && line.quantity > 0);
     const ok = await vm.createRma({ lines, reason: rmaReason || null });
     if (ok) {
       showRma = false;
@@ -692,7 +696,7 @@
         {#if canPartialFulfill(order)}<button type="button" aria-expanded={showPartialFulfill} onclick={() => { if (!showPartialFulfill) { partialShorts = {}; partialReason = ''; } showPartialFulfill = !showPartialFulfill; }}>{i18n.t('Fulfillment parcial')}</button>{/if}
         {#if ['PICKED', 'PACKED', 'SHIPPED'].includes(order.status) && canAdminFulfillment(order)}<button type="button" onclick={() => { revertTargetStatus = order.status === 'SHIPPED' ? 'PACKED' : order.status === 'PACKED' ? 'PICKED' : 'OPEN'; releasePickTaskIds = []; releaseOnly = false; showRevertForm = !showRevertForm; }}>{i18n.t('Revertir estado')}</button>{/if}
         {#if order.pickTasks.length > 0 && order.orderType !== 'return'}<button type="button" onclick={() => { revertTargetStatus = order.status; releasePickTaskIds = []; releaseOnly = true; showRevertForm = true; }}>{i18n.t('Liberar cantidades recogidas')}</button>{/if}
-        {#if order.orderType !== 'return' && order.orderType !== 'refund' && order.lines.some((line) => line.quantityShipped > 0)}<button type="button" onclick={() => { rmaQuantities = {}; showRma = true; }}>{i18n.t('Crear RMA')}</button>{/if}
+        {#if order.orderType === 'sale' && order.lines.some((line) => line.quantityShipped > 0)}<button type="button" onclick={() => { rmaQuantities = {}; showRma = true; }}>{i18n.t('Crear RMA')}</button>{/if}
         {#if order.orderType === 'return' && ['OPEN', 'PARTIALLY_RECEIVED'].includes(order.status)}<button type="button" onclick={() => { returnWarehouseId = String(order.warehouseId ?? ''); returnIdempotencyKey = createIdempotencyKey(); showReceiveReturn = true; }}>{i18n.t('Recibir devolución')}</button>{#if order.status === 'OPEN' && authGuard?.user?.role === 'ADMIN'}<button class="so-danger" type="button" onclick={() => void voidCurrentReturn()}>{i18n.t('Anular RMA')}</button>{/if}{/if}
       </nav>
 
@@ -863,7 +867,7 @@
     <div class="so-table-wrap"><table><thead><tr><th>SKU</th><th>{i18n.t('Enviada')}</th><th>{i18n.t('Recibida')}</th><th>{i18n.t('Devolver')}</th></tr></thead><tbody>
       {#each vm.selected.lines as line (line.soLineId)}
         {@const remaining = Math.max(0, line.quantityShipped - line.quantityReceived)}
-        {#if remaining > 0}<tr><td>{line.sku}</td><td>{line.quantityShipped}</td><td>{line.quantityReceived}</td><td><input type="number" min="0" max={remaining} step="1" value={rmaQuantities[line.itemId ?? 0] ?? ''} oninput={(event) => rmaQuantities[line.itemId ?? 0] = event.currentTarget.value} /></td></tr>{/if}
+        {#if remaining > 0}<tr><td>{line.sku}</td><td>{line.quantityShipped}</td><td>{line.quantityReceived}</td><td><input type="number" min="0" max={remaining} step="1" value={rmaQuantities[line.soLineId] ?? ''} oninput={(event) => rmaQuantities[line.soLineId] = event.currentTarget.value} /></td></tr>{/if}
       {/each}
     </tbody></table></div>
     <label>{i18n.t('Motivo / notas')}<textarea maxlength="4000" bind:value={rmaReason}></textarea></label>
