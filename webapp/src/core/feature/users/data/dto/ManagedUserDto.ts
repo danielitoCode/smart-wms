@@ -51,3 +51,5 @@ export type UpdateManagedUserRequestDto = Partial<{
 }>;
 
 export type UpdateUserPermissionsRequestDto = { page_keys: string[] };
+
+export type ManagedWarehouseDto = { warehouse_id:number; warehouse_code:string; warehouse_name:string; is_active?:boolean };
