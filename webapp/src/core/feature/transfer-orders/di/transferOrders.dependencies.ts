@@ -1,2 +1,22 @@
-import {apiClient} from '../../../infrastructure/api/ApiClient';import {TransferOrdersRemoteDataSource} from '../data/datasource/TransferOrdersRemoteDataSource';import {TransferOrdersRepositoryImpl} from '../data/repository/TransferOrdersRepositoryImpl';import * as U from '../domain/usecase/TransferOrderUseCases';
-export function createTransferOrdersDependencies(){const r=new TransferOrdersRepositoryImpl(new TransferOrdersRemoteDataSource(apiClient));return {list:new U.ListTransferOrdersUseCase(r),detail:new U.GetTransferOrderUseCase(r),create:new U.CreateTransferOrderUseCase(r),startPicking:new U.StartTransferOrderPickingUseCase(r),submitPicks:new U.SubmitTransferOrderPicksUseCase(r),approve:new U.ApproveTransferOrderUseCase(r),reject:new U.RejectTransferOrderUseCase(r),cancel:new U.CancelTransferOrderUseCase(r),remove:new U.DeleteTransferOrderUseCase(r),shortClose:new U.ShortCloseTransferOrderLineUseCase(r)};}
+import { apiClient } from '../../../infrastructure/api/ApiClient';
+import { TransferOrdersRemoteDataSource } from '../data/datasource/TransferOrdersRemoteDataSource';
+import { TransferOrdersRepositoryImpl } from '../data/repository/TransferOrdersRepositoryImpl';
+import * as U from '../domain/usecase/TransferOrderUseCases';
+
+export function createTransferOrdersDependencies() {
+  const repository = new TransferOrdersRepositoryImpl(new TransferOrdersRemoteDataSource(apiClient));
+  return {
+    list: new U.ListTransferOrdersUseCase(repository),
+    warehouses: new U.ListTransferOrderWarehousesUseCase(repository),
+    detail: new U.GetTransferOrderUseCase(repository),
+    pickerDetail: new U.GetPickerTransferOrderUseCase(repository),
+    create: new U.CreateTransferOrderUseCase(repository),
+    startPicking: new U.StartTransferOrderPickingUseCase(repository),
+    submitPickerResult: new U.SubmitPickerResultUseCase(repository),
+    approve: new U.ApproveTransferOrderUseCase(repository),
+    reject: new U.RejectTransferOrderUseCase(repository),
+    cancel: new U.CancelTransferOrderUseCase(repository),
+    remove: new U.DeleteTransferOrderUseCase(repository),
+    shortClose: new U.ShortCloseTransferOrderLineUseCase(repository)
+  };
+}
