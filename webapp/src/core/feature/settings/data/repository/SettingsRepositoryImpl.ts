@@ -14,7 +14,7 @@ export class SettingsRepositoryImpl implements SettingsRepository {
 		const response = await this.remote.list();
 		const result: SettingsMap = {};
 		for (const dto of response.settings ?? []) {
-			const setting = SettingMapper.toDomain(dto);
+			const setting = SettingMapper.toListItemDomain(dto);
 			result[setting.key] = setting.value;
 		}
 		return result;
