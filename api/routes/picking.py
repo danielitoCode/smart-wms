@@ -21,6 +21,7 @@ from schemas.pick_walks import (
     WaveCreateRequest,
     WaveValidateRequest,
 )
+from services.transfer_order_service import OverPickAttempt
 from services.picking_service import (
     AlreadyInBatchError,
     BarcodeError,
@@ -266,15 +267,12 @@ def confirm(validated):
             username=g.current_user["username"],
         )
         return jsonify({"message": "Pick confirmed", **result})
-    except Exception as e:
-        from services.transfer_order_service import OverPickAttempt
-        if isinstance(e, OverPickAttempt):
-            g.db.rollback()
-            return jsonify({
-                "error": "transfer_order_pick_conflict",
-                "detail": str(e),
-            }), 409
-        raise
+    except OverPickAttempt as e:
+        g.db.rollback()
+        return jsonify({
+            "error": "transfer_order_pick_conflict",
+            "detail": str(e),
+        }), 409
     except BarcodeError as e:
         g.db.rollback()
         return jsonify({"error": str(e)}), 400
