@@ -11,7 +11,7 @@ describe('PickingMapper Flask response contracts', () => {
   expect(PickingMapper.toPickTask({ batch_id: 4, item_id: 0, sku: '', message: 'All tasks complete' })).toBeNull();
  });
  it('maps the next-task scanner fields', () => {
-  expect(PickingMapper.toPickTask({ pick_task_id: 8, batch_id: 4, item_id: 3, sku: 'SKU-3', item_name: 'Item 3', upc: 'UPC-3', quantity_to_pick: 2, bin_id: 9, bin_code: 'A-09', status: 'PENDING', pick_sequence: 4, bin_barcode: 'BIN-9', zone: 'PICK', aisle: 'A', tote_number: 'TOTE-1', so_number: 'SO-1' })).toMatchObject({ pickTaskId: 8, quantityToPick: 2, binCode: 'A-09', status: 'PENDING' });
+  expect(PickingMapper.toPickTask({ pick_task_id: 8, batch_id: 4, item_id: 3, sku: 'SKU-3', item_name: 'Item 3', upc: 'UPC-3', quantity_to_pick: 2, bin_id: 9, bin_code: 'A-09', status: 'PENDING', pick_sequence: 4, bin_barcode: 'BIN-9', zone: 'PICK', aisle: 'A', tote_number: 'TOTE-1', so_number: 'SO-1', quantity_picked: 1, contributing_orders: [{ so_number: 'SO-1', quantity: 2 }] })).toMatchObject({ pickTaskId: 8, quantityToPick: 2, binCode: 'A-09', status: 'PENDING', quantityPicked: 1, contributingOrders: [{ soNumber: 'SO-1', quantity: 2 }] });
  });
  it('maps the actual wave-create response contract', () => {
   expect(PickingMapper.toWaveCreate({
