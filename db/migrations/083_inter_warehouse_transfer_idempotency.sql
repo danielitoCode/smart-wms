@@ -1,13 +1,13 @@
 -- 083: durable idempotency receipts for inter-warehouse transfers.
--- A request row and every stock/audit/bin_transfers mutation commit atomically.
--- user_id prevents username reuse from inheriting an earlier actor's receipt.
+-- The actor is initially stored by username; migration 084 upgrades this
+-- to the immutable users.user_id identity.
 CREATE TABLE IF NOT EXISTS inter_warehouse_transfer_requests (
-    user_id           INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    username          VARCHAR(100) NOT NULL,
     idempotency_key   UUID NOT NULL,
     request_payload   JSONB NOT NULL,
     response_payload  JSONB NOT NULL,
     created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (user_id, idempotency_key)
+    PRIMARY KEY (username, idempotency_key)
 );
 
 CREATE INDEX IF NOT EXISTS ix_inter_warehouse_transfer_requests_created
