@@ -1,10 +1,11 @@
-import type { AuditLogEntry, AuditLogQuery } from '../entity/AuditLogEntry';
+import type { AuditEvent, AuditLogQuery } from '../entity/AuditLogEntry';
 
 export type AuditLogPage = {
-	rows: AuditLogEntry[];
+	rows: AuditEvent[];
 	page: number;
 	perPage: number;
 	total: number;
+	pages: number;
 };
 
 export interface AuditLogRepository {
