@@ -21,7 +21,10 @@ describe('PickingMapper Flask response contracts', () => {
    warnings: [{ sku: 'SKU-7', needed: 5, available: 3 }]
   })).toMatchObject({
    batchId: 5, batchNumber: 'WAVE-5', totalOrders: 2, totalPicks: 4, totalUnits: 9,
-   orders: [{ soId: 3, soNumber: 'SO-3', lineCount: 2 }], firstPick: { pickTaskId: 12, batchId: 5, itemId: 7, sku: 'SKU-7', itemName: '', upc: null, quantityToPick: 2, quantityPicked: 0, binId: null, binCode: null, binBarcode: null, zone: null, aisle: null, rowNum: null, levelNum: null, toteNumber: null, salesOrderNumber: null, transferOrderNumber: null, pickNumber: undefined, totalPicks: undefined, contributingOrders: undefined, pickSequence: undefined, status: 'PENDING' }, warnings: [{ sku: 'SKU-7', needed: 5, available: 3 }]
+   orders: [
+    { soId: 3, soNumber: 'SO-3', lineCount: 2 },
+    { soId: 4, soNumber: 'SO-4', lineCount: 1 }
+   ], firstPick: { pickTaskId: 12, batchId: 5, itemId: 7, sku: 'SKU-7', itemName: '', upc: null, quantityToPick: 2, quantityPicked: 0, binId: null, binCode: null, binBarcode: null, zone: null, aisle: null, rowNum: null, levelNum: null, toteNumber: null, salesOrderNumber: null, transferOrderNumber: null, pickNumber: undefined, totalPicks: undefined, contributingOrders: undefined, pickSequence: undefined, status: 'PENDING' }, warnings: [{ sku: 'SKU-7', needed: 5, available: 3 }]
   });
  });
 
