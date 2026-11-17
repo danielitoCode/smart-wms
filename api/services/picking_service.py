@@ -1283,7 +1283,12 @@ def complete_batch(db, batch_id, username):
         {"bid": batch_id},
     ).fetchall()
     for to_row in to_id_rows:
-        submit_picks(db, to_row.to_id, username)
+        submission = submit_picks(db, to_row.to_id, username)
+        if not submission.get("ok") and submission.get("reason") != "nothing_picked":
+            raise ValueError(
+                f"Transfer Order {to_row.to_id} could not submit its picked tasks: "
+                f"{submission.get('reason')}"
+            )
 
     # 4. Audit log
     write_audit_log(
