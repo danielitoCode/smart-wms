@@ -15,9 +15,9 @@ export type ActiveBatchDto = {
 export type PickTaskDto = {
 	pick_task_id?: number;
 	task_id?: number;
-	batch_id: number;
-	item_id: number;
-	sku: string;
+	batch_id?: number;
+	item_id?: number;
+	sku?: string;
 	item_name?: string;
 	name?: string;
 	upc?: string | null;
