@@ -88,13 +88,15 @@ Salvo excepción anotada, cada grupo usa `require_auth` + `require_admin_or_page
 
 | Método | Endpoint | Request | Response / semántica |
 |---|---|---|---|
-| GET | `/api/admin/users?page=1&per_page=50` | Query: `page >= 1`, `1 <= per_page <= 1000` | `{ users: ManagedUser[], total, page, per_page, pages }`; cada usuario contiene `user_id, username, full_name, role, warehouse_id, warehouse_ids, allowed_functions, is_active, created_at, last_login`. |
+| GET | `/api/admin/users?page=1&per_page=50` | Query: `page >= 1`, `1 <= per_page <= 1000` | `{ users: ManagedUser[], total, page, per_page, pages }`; cada usuario contiene `user_id, username, full_name, role, warehouse_id, warehouse_ids, allowed_functions, is_active, must_change_password, created_at, last_login`. |
 | GET | `/api/admin/users/warehouse-options` | — | `{ warehouses: [{ warehouse_id, warehouse_code, warehouse_name, is_active }], total }`; catálogo de asignación autorizado por `users`, independiente del permiso de navegación/CRUD `warehouses`. |
-| POST | `/api/admin/users` | `CreateUserRequest`: username, password, full_name, role, warehouse_ids, warehouse_id legado opcional, allowed_functions | Un usuario; HTTP 201. Contraseña validada por política y almacenada como hash. |
-| PUT | `/api/admin/users/{user_id}` | `UpdateUserRequest` parcial: full_name, role, warehouse_id, warehouse_ids, allowed_functions, is_active, password | Usuario actualizado. Protege auto-desactivación/auto-degradación y último ADMIN activo. |
+| POST | `/api/admin/users` | `CreateUserRequest`: username, password, full_name, role, warehouse_ids, warehouse_id legado opcional, allowed_functions, must_change_password opcional | Un usuario; HTTP 201. Contraseña validada por política y almacenada como hash. |
+| PUT | `/api/admin/users/{user_id}` | `UpdateUserRequest` parcial: full_name, role, warehouse_id, warehouse_ids, allowed_functions, is_active, must_change_password, password | Usuario actualizado. Protege auto-desactivación/auto-degradación y último ADMIN activo. |
 | DELETE | `/api/admin/users/{user_id}` | — | `{ message: "User deleted" }`; no permite autoeliminación ni borrar el último ADMIN activo. |
 | GET | `/api/admin/users/{user_id}/permissions` | — | `{ user_id, role, page_keys, is_full_access }`; ADMIN recibe el catálogo completo y `is_full_access=true`. |
 | PUT | `/api/admin/users/{user_id}/permissions` | `{ page_keys: string[] }` | Reemplaza el conjunto completo de grants de páginas + overrides; valida contra `ALL_PAGE_KEYS ∪ ALL_OVERRIDE_KEYS`. Para ADMIN es no-op y devuelve acceso completo. |
+
+**Cambio obligatorio de contraseña:** `must_change_password` se puede establecer en creación y actualización. El valor se devuelve en listado/alta/edición. `require_auth` bloquea las demás rutas con `403 password_change_required` hasta que el usuario complete `POST /api/auth/change-password`; `GET /api/auth/me` expone el estado para la UI de autenticación.
 
 **Semántica de almacenes:** `warehouse_ids` es la asignación autoritativa. En PUT, enviar `warehouse_ids: []` elimina todas las asignaciones y limpia también el campo legado `warehouse_id`; si hay almacenes, `warehouse_id` refleja el primero. El DTO frontend debe preservar la diferencia entre omitir `warehouse_ids` (no cambiar asignación) y enviar una lista vacía (revocarla).
 
