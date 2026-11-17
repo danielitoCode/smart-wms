@@ -62,6 +62,7 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 			assertDetailWarehouse();
 			const result = await deps.complete.execute(detail.salesOrder.soId);
 			info = result.message;
+			detail = null;
 			return true;
 		} catch (err) { error = toUserMessage(err, 'No se pudo completar el packing'); return false; }
 		finally { busy = false; }
