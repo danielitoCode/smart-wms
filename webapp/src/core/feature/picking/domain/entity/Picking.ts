@@ -50,12 +50,14 @@ export type PickTask = {
 
 export type ConfirmPickInput = {
 	pickTaskId: number;
+	warehouseId: number;
 	scannedBarcode: string;
 	quantityPicked: number;
 };
 
 export type ShortPickInput = {
 	pickTaskId: number;
+	warehouseId: number;
 	quantityAvailable: number;
 };
 
