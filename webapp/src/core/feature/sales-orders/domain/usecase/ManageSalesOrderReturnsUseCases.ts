@@ -6,10 +6,18 @@ export class CreateSalesOrderRmaUseCase {
   execute(id: number, input: CreateRmaInput): Promise<void> {
     validateOrderId(id);
     if (!input.lines.length) throw new Error('Selecciona al menos una línea para devolver');
+    const sourceLineIds = new Set<number>();
     for (const line of input.lines) {
-      if (![line.itemId, line.quantity].every((value) => Number.isInteger(value) && value > 0)) {
-        throw new Error('Cada línea de devolución requiere artículo y cantidad positivos');
+      if (![line.itemId, line.quantity, line.originalSoLineId].every((value) => Number.isInteger(value) && value > 0)) {
+        throw new Error('Cada autorización requiere artículo, línea original y cantidad positivos');
       }
+      if (sourceLineIds.has(line.originalSoLineId)) {
+        throw new Error('No se puede duplicar una línea original en la misma autorización RMA');
+      }
+      sourceLineIds.add(line.originalSoLineId);
+    }
+    if (input.reason != null && input.reason.length > 4000) {
+      throw new Error('El motivo del RMA supera los 4000 caracteres');
     }
     return this.repository.createRma(id, input);
   }
