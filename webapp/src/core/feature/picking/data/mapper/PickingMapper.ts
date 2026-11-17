@@ -36,7 +36,7 @@ export const PickingMapper = {
 			return null;
 		}
 		const pickTaskId = dto.pick_task_id ?? dto.task_id;
-		if (pickTaskId == null) return null;
+		if (pickTaskId == null || dto.batch_id == null || dto.item_id == null || !dto.sku) return null;
 		return {
 			pickTaskId,
 			batchId: dto.batch_id,
