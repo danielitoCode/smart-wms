@@ -10,7 +10,7 @@ import ShippingScreen from '../../../../../core/feature/shipping/ui/screens/Ship
 
 describe('ShippingScreen scanner UI', () => {
  it('shows active warehouse context and fulfillment controls', () => {
-  const { body } = render(ShippingScreen, { context: new Map([['i18n', { t: (v: string) => v }], ['warehouseSelection', warehouse]]) });
+  const { body } = render(ShippingScreen, { context: new Map<string, any>([['i18n', { t: (v: string) => v }], ['warehouseSelection', warehouse]]) });
   expect(body).toContain('Almacén activo: #6');
   expect(body).toContain('Código de seguimiento');
   expect(body).toContain('Transportista');
