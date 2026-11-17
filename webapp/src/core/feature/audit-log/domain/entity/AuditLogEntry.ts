@@ -1,23 +1,27 @@
-export type AuditLogEntry = {
+export type AuditEvent = {
 	logId: number;
-	actionType: string;
-	entityType: string;
-	entityId: string | number | null;
-	userId: number | null;
-	username: string | null;
-	warehouseId: number | null;
+	action: string;
+	resourceType: string;
+	resourceId: string | number | null;
+	resourceName: string | null;
+	actor: string | null;
 	deviceId: string | null;
-	details: unknown;
-	createdAt: string | null;
+	warehouseId: number | null;
+	warehouseCode: string | null;
+	metadata: unknown | null;
+	occurredAt: string | null;
 };
+
+export type AuditLogEntry = AuditEvent;
 
 export type AuditLogQuery = {
 	actionType?: string;
-	entityType?: string;
-	userId?: number;
-	warehouseId?: number | null;
-	from?: string;
-	to?: string;
+	actor?: string;
+	itemId?: number;
+	startDate?: string;
+	endDate?: string;
+	sortBy?: 'created_at' | 'action_type' | 'user_id' | 'entity_type';
+	sortDirection?: 'asc' | 'desc';
 	page?: number;
 	perPage?: number;
 };
