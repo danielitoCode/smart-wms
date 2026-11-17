@@ -4,6 +4,7 @@ import type {ManagedUsersRemoteDataSource} from '../datasource/ManagedUsersRemot
 import {ManagedUserMapper as M} from '../mapper/ManagedUserMapper';
 export class ManagedUsersRepositoryImpl implements ManagedUsersRepository{
  constructor(private readonly remote:ManagedUsersRemoteDataSource){}
+ async listWarehouses():Promise<ManagedWarehouse[]>{return (await this.remote.listWarehouses()).map(M.warehouseToDomain);}
  async list():Promise<ManagedUser[]>{return (await this.remote.list()).map(M.toDomain);}
  async create(v:CreateManagedUser):Promise<ManagedUser>{return M.toDomain(await this.remote.create(M.createToDto(v)));}
  async update(v:UpdateManagedUser):Promise<ManagedUser>{return M.toDomain(await this.remote.update(v.userId,M.updateToDto(v)));}
