@@ -228,12 +228,12 @@ class TestExactBinPickingPlan:
               FROM inventory
              WHERE item_id = 1 AND warehouse_id = 1
              ORDER BY inventory_id
-             LIMIT 2
+             LIMIT 3
             """
         )
-        if len(inventory_rows) < 2:
-            pytest.skip("seed warehouse needs two inventory rows for exact-bin coverage")
-        first, second = inventory_rows
+        if len(inventory_rows) < 3:
+            pytest.skip("seed warehouse needs three inventory rows for reservation-isolation coverage")
+        first, unreserved, second = inventory_rows
         assert first[2] >= 3 and second[2] >= 2
 
         conn = db_test_context.get_raw_connection()
@@ -242,6 +242,13 @@ class TestExactBinPickingPlan:
             "UPDATE inventory SET quantity_allocated = quantity_allocated + 3 "
             " WHERE inventory_id = %s",
             (first[0],),
+        )
+        # Simulate another workflow's allocation in an intervening bin.
+        # A TO task must not steal this shared aggregate allocation.
+        cur.execute(
+            "UPDATE inventory SET quantity_allocated = quantity_allocated + 5 "
+            " WHERE inventory_id = %s",
+            (unreserved[0],),
         )
         cur.execute(
             "UPDATE inventory SET quantity_allocated = quantity_allocated + 2 "
