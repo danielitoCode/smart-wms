@@ -1032,3 +1032,17 @@ def test_active_batch_is_filtered_by_selected_warehouse(client, auth_headers):
 def test_active_batch_rejects_invalid_warehouse_context(client, auth_headers):
     response = client.get("/api/picking/active-batch?warehouse_id=0", headers=auth_headers)
     assert response.status_code == 400
+
+
+def test_next_task_includes_identity_fields_required_by_scanner_dto(client, auth_headers):
+    created = _create_batch(client, auth_headers, ["SO-2026-001"])
+    assert created.status_code == 200
+    batch_id = created.get_json()["batch_id"]
+    response = client.get(f"/api/picking/batch/{batch_id}/next", headers=auth_headers)
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["pick_task_id"] > 0
+    assert data["batch_id"] == batch_id
+    assert data["item_id"] > 0
+    assert data["bin_id"] > 0
+    assert data["sku"]
