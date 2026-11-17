@@ -14,12 +14,13 @@ export class PackingRemoteDataSource {
 	verify(input: VerifyPackInput): Promise<VerifyPackResponseDto> {
 		return this.api.post<VerifyPackResponseDto>('/api/packing/verify', {
 			so_id: input.soId,
+			warehouse_id: input.warehouseId,
 			scanned_barcode: input.scannedBarcode,
 			quantity: input.quantity ?? 1
 		});
 	}
 
-	complete(soId: number): Promise<CompletePackingResponseDto> {
-		return this.api.post<CompletePackingResponseDto>('/api/packing/complete', { so_id: soId });
+	complete(soId: number, warehouseId: number): Promise<CompletePackingResponseDto> {
+		return this.api.post<CompletePackingResponseDto>('/api/packing/complete', { so_id: soId, warehouse_id: warehouseId });
 	}
 }
