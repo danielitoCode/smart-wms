@@ -99,13 +99,23 @@ def test_create_then_receive_rma_via_routes(client, auth_headers, _db_transactio
     ).scalar() >= 1
 
 
-def test_create_rma_unknown_original_returns_400(client, auth_headers):
+def test_create_rma_unknown_original_returns_400(client, auth_headers, _db_transaction):
+    # Supply a schema-valid source-line reference so the route reaches the
+    # service's missing-parent guard instead of failing request validation.
+    parent_id = _insert_so(f"POS-{uuid.uuid4().hex[:8]}")
+    item_id = _insert_item()
+    original_line_id = _insert_so_line(parent_id, item_id, qty=1)
     r = client.post(
         "/api/admin/sales-orders/999999999/create-rma",
-        json={"lines": [{"item_id": 1, "quantity": 1}]},
+        json={"lines": [{
+            "item_id": item_id,
+            "quantity": 1,
+            "original_so_line_id": original_line_id,
+        }]},
         headers=auth_headers,
     )
     assert r.status_code == 400, r.get_data(as_text=True)
+    assert "not found" in r.get_json()["error"].lower()
 
 
 def test_list_filters_by_order_type_return(client, auth_headers, _db_transaction):
