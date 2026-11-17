@@ -31,8 +31,8 @@ export class PickingRepositoryImpl implements PickingRepository {
 		return PickingMapper.toMessage(await this.datasource.short(input));
 	}
 
-	async completeBatch(batchId: number): Promise<SimpleMessageResult> {
-		return PickingMapper.toMessage(await this.datasource.completeBatch(batchId));
+	async completeBatch(batchId: number, warehouseId: number): Promise<SimpleMessageResult> {
+		return PickingMapper.toMessage(await this.datasource.completeBatch(batchId, warehouseId));
 	}
 
 	async cancelBatch(batchId: number): Promise<SimpleMessageResult> {
