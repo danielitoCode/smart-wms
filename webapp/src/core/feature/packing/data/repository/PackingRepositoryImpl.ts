@@ -18,7 +18,7 @@ export class PackingRepositoryImpl implements PackingRepository {
 		return PackingMapper.toMessage(await this.datasource.verify(input));
 	}
 
-	async complete(soId: number): Promise<SimpleMessageResult> {
-		return PackingMapper.toMessage(await this.datasource.complete(soId));
+	async complete(soId: number, warehouseId: number): Promise<SimpleMessageResult> {
+		return PackingMapper.toMessage(await this.datasource.complete(soId, warehouseId));
 	}
 }
