@@ -120,7 +120,7 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 		if (!Number.isInteger(quantityPicked) || quantityPicked <= 0) { error = 'quantity_picked debe ser un entero > 0'; return false; }
 		busy = true; error = null; info = null;
 		try {
-			const result = await deps.confirmPick.execute({ pickTaskId: task.pickTaskId, scannedBarcode: scannedBarcode.trim(), quantityPicked });
+			const result = await deps.confirmPick.execute({ pickTaskId: task.pickTaskId, warehouseId: activeWarehouseId(), scannedBarcode: scannedBarcode.trim(), quantityPicked });
 			info = result.message;
 			return true;
 		} catch (err) { error = toUserMessage(err, 'No se pudo confirmar el pick'); return false; }
@@ -131,7 +131,7 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 		if (!task || busy || loading) return false;
 		busy = true; error = null; info = null;
 		try {
-			const result = await deps.shortPick.execute({ pickTaskId: task.pickTaskId, quantityAvailable: 0 });
+			const result = await deps.shortPick.execute({ pickTaskId: task.pickTaskId, warehouseId: activeWarehouseId(), quantityAvailable: 0 });
 			info = result.message; return true;
 		} catch (err) { error = toUserMessage(err, 'No se pudo reportar short'); return false; }
 		finally { busy = false; await refresh(); }
@@ -141,7 +141,7 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 		if (!batch?.batchId || busy || loading) return false;
 		busy = true; error = null;
 		try {
-			const result = await deps.completeBatch(batch.batchId);
+			const result = await deps.completeBatch(batch.batchId, activeWarehouseId());
 			info = result.message; return true;
 		} catch (err) { error = toUserMessage(err, 'No se pudo completar el batch'); return false; }
 		finally { busy = false; await refresh(); }
