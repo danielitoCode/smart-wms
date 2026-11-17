@@ -17,11 +17,11 @@
 	}
 	function formatMetadata(value: unknown): string {
 		if (value == null) return 'Sin metadata disponible';
-		try { return JSON.stringify(value, null, 2); } catch { return String(value); }
+		try { return JSON.stringify(value, null, 2) ?? String(value); } catch { return String(value); }
 	}
 	function metadataPreview(value: unknown): string {
 		if (value == null) return '—';
-		const raw = typeof value === 'string' ? value : JSON.stringify(value);
+		const raw = typeof value === 'string' ? value : (JSON.stringify(value) ?? String(value));
 		return raw.length > 140 ? raw.slice(0, 137) + '…' : raw;
 	}
 	function actorLabel(row: AuditEvent) { return row.actor || 'Actor no disponible'; }
