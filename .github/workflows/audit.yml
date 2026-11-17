@@ -179,5 +179,9 @@ jobs:
           #
           # GHSA-w3rx-r6r6-pgpr -- ICNS parser infinite loop (DoS).
           # GHSA-5p2g-fcmc-qvqq -- JXL and HEIF parser infinite loops (DoS).
-          AUDIT_ALLOW: GHSA-w3rx-r6r6-pgpr GHSA-5p2g-fcmc-qvqq
+          # GHSA-fc5q-39xc-vjpf -- picomatch is reached through Expo's
+          # Metro/CLI build tooling; it does not process user-controlled
+          # runtime input. No upstream fixed release is published yet.
+          # Remove this narrow exception when a patched release ships.
+          AUDIT_ALLOW: GHSA-w3rx-r6r6-pgpr GHSA-5p2g-fcmc-qvqq GHSA-fc5q-39xc-vjpf
         run: python3 "${{ github.workspace }}/.github/scripts/npm_audit_gate.py"
