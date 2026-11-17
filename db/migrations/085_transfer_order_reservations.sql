@@ -7,10 +7,13 @@ SET statement_timeout = '60s';
 
 BEGIN;
 
+CREATE UNIQUE INDEX IF NOT EXISTS ux_transfer_order_lines_id_to
+    ON transfer_order_lines(to_line_id, to_id);
+
 CREATE TABLE IF NOT EXISTS transfer_order_reservations (
     reservation_id       BIGSERIAL PRIMARY KEY,
-    to_id                INT NOT NULL REFERENCES transfer_orders(to_id) ON DELETE CASCADE,
-    to_line_id           INT NOT NULL REFERENCES transfer_order_lines(to_line_id) ON DELETE CASCADE,
+    to_id                INT NOT NULL,
+    to_line_id           INT NOT NULL,
     inventory_id         INT NOT NULL REFERENCES inventory(inventory_id),
     item_id              INT NOT NULL REFERENCES items(item_id),
     warehouse_id         INT NOT NULL REFERENCES warehouses(warehouse_id),
@@ -23,6 +26,9 @@ CREATE TABLE IF NOT EXISTS transfer_order_reservations (
         UNIQUE (to_line_id, inventory_id),
     CONSTRAINT transfer_order_reservation_line_owner_ck
         CHECK (to_id > 0 AND to_line_id > 0),
+    CONSTRAINT transfer_order_reservation_line_fk
+        FOREIGN KEY (to_line_id, to_id)
+        REFERENCES transfer_order_lines(to_line_id, to_id) ON DELETE CASCADE,
     CONSTRAINT transfer_order_reservation_balance_ck
         CHECK (quantity_consumed + quantity_released <= quantity_reserved)
 );
