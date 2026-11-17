@@ -93,7 +93,13 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Audit admin dependencies
-        # No AUDIT_ALLOW entries: the admin tree is clean at high severity.
+        env:
+          # picomatch is reached only through Vite/Vitest build and test
+          # tooling in this tree; it is not part of the shipped admin runtime
+          # and no request/user-controlled glob is passed to the matcher.
+          # Upstream has not published a fixed release for GHSA-fc5q-39xc-vjpf
+          # as of 2026-11-17. Remove this narrow exception when one ships.
+          AUDIT_ALLOW: GHSA-fc5q-39xc-vjpf
         run: python3 "${{ github.workspace }}/.github/scripts/npm_audit_gate.py"
 
   npm-audit-mobile:
@@ -130,7 +136,11 @@ jobs:
           #
           # GHSA-w3rx-r6r6-pgpr -- ICNS parser infinite loop (DoS).
           # GHSA-5p2g-fcmc-qvqq -- JXL and HEIF parser infinite loops (DoS).
-          AUDIT_ALLOW: GHSA-w3rx-r6r6-pgpr GHSA-5p2g-fcmc-qvqq
+          # GHSA-fc5q-39xc-vjpf -- picomatch is only reached through Expo's
+          # Metro/CLI build tooling; it does not process user-controlled
+          # runtime input. No upstream fixed release is published yet.
+          # Remove this narrow exception when a patched release ships.
+          AUDIT_ALLOW: GHSA-w3rx-r6r6-pgpr GHSA-5p2g-fcmc-qvqq GHSA-fc5q-39xc-vjpf
         run: python3 "${{ github.workspace }}/.github/scripts/npm_audit_gate.py" --omit=dev
 
   npm-audit-mobile-dev:
