@@ -1,8 +1,6 @@
 /**
- * User administration contracts backed by users and user_page_permissions.
- * The backend supports only ADMIN and USER. Page grants and allowedFunctions
- * are separate authorization mechanisms; there is no persisted generic RBAC
- * Role/Permission catalogue.
+ * Contracts for the Flask users table and user_page_permissions.
+ * Backend roles are ADMIN/USER; page grants and allowedFunctions are separate.
  */
 export type ManagedUserRole = 'ADMIN' | 'USER';
 
@@ -11,7 +9,9 @@ export type ManagedUser = {
 	username: string;
 	fullName: string;
 	role: ManagedUserRole;
+	/** Legacy single-warehouse mirror; null is valid for unassigned users. */
 	warehouseId: number | null;
+	/** Authoritative multi-warehouse assignment. */
 	warehouseIds: number[];
 	allowedFunctions: string[];
 	isActive: boolean;
@@ -40,7 +40,7 @@ export type UpdateManagedUser = {
 	password?: string;
 };
 
-/** Keys are validated by the backend against ALL_PAGE_KEYS + ALL_OVERRIDE_KEYS. */
+/** pageKeys includes ALL_PAGE_KEYS and ALL_OVERRIDE_KEYS. ADMIN has full access. */
 export type UserPagePermissions = {
 	userId: number;
 	role: ManagedUserRole;
@@ -48,6 +48,7 @@ export type UserPagePermissions = {
 	isFullAccess: boolean;
 };
 
+/** PUT replaces the complete page + override grant set, not a patch. */
 export type UpdateUserPagePermissions = {
 	userId: number;
 	pageKeys: string[];
