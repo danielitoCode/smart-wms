@@ -29,7 +29,7 @@ describe('TransferOrderMapper', () => {
   it('preserves pagination metadata and maps warehouse choices', () => {
     const page = mapper.page({ transfer_orders: [header], total: 101, page: 2, pages: 3, per_page: 50 });
     expect(page).toMatchObject({ total: 101, page: 2, pages: 3, perPage: 50, orders: [{ transferOrderId: 12 }] });
-    expect(mapper.warehouse({ warehouse_id: 4, warehouse_code: 'WH-4', warehouse_name: 'Destination', is_active: true })).toEqual({
+    expect(mapper.warehouse({ id: 4, code: 'WH-4', name: 'Destination' })).toEqual({
       warehouseId: 4, warehouseCode: 'WH-4', warehouseName: 'Destination', active: true
     });
   });
