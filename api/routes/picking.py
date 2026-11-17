@@ -33,6 +33,7 @@ from services.picking_service import (
     get_batch_tasks,
     get_next_task,
     short_pick,
+    TransferOrderShortPickNotSupported,
     wave_create,
     wave_validate,
 )
@@ -265,6 +266,15 @@ def confirm(validated):
             username=g.current_user["username"],
         )
         return jsonify({"message": "Pick confirmed", **result})
+    except Exception as e:
+        from services.transfer_order_service import OverPickAttempt
+        if isinstance(e, OverPickAttempt):
+            g.db.rollback()
+            return jsonify({
+                "error": "transfer_order_pick_conflict",
+                "detail": str(e),
+            }), 409
+        raise
     except BarcodeError as e:
         g.db.rollback()
         return jsonify({"error": str(e)}), 400
@@ -295,6 +305,12 @@ def short(validated):
             username=g.current_user["username"],
         )
         return jsonify({"message": "Short pick recorded", **result})
+    except TransferOrderShortPickNotSupported as e:
+        g.db.rollback()
+        return jsonify({
+            "error": "transfer_order_short_pick_not_supported",
+            "detail": str(e),
+        }), 409
     except ValueError as e:
         g.db.rollback()
         return jsonify({"error": str(e)}), 400
