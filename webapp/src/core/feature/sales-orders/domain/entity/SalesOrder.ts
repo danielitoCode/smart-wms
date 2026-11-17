@@ -210,8 +210,9 @@ export interface RevertSalesOrderInput {
   releasePickTaskIds: number[];
 }
 
+/** RMA authorization: each requested quantity must be tied to one shipped source line. */
 export interface CreateRmaInput {
-  lines: Array<{ itemId: number; quantity: number; originalSoLineId?: number | null }>;
+  lines: Array<{ itemId: number; quantity: number; originalSoLineId: number }>;
   reason?: string | null;
 }
 
