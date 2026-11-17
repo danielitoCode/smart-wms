@@ -562,6 +562,11 @@ def delete_transfer_order(to_id):
         g.db.rollback()
         return jsonify({"error": "reservation_integrity_error", "detail": str(exc)}), 409
 
+    g.db.execute(
+        text("DELETE FROM pick_tasks WHERE to_id = :tid AND status = 'PENDING'"),
+        {"tid": to_id},
+    )
+
     write_audit_log(
         g.db,
         action_type=ACTION_TO_DELETED,
