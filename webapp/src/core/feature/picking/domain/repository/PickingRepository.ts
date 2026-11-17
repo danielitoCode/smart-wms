@@ -10,7 +10,7 @@ import type {
 } from '../entity/Picking';
 
 export interface PickingRepository {
-	getActiveBatch(): Promise<ActiveBatch>;
+	getActiveBatch(warehouseId: number): Promise<ActiveBatch>;
 	getNextTask(batchId: number): Promise<PickTask | null>;
 	confirm(input: ConfirmPickInput): Promise<SimpleMessageResult>;
 	short(input: ShortPickInput): Promise<SimpleMessageResult>;
