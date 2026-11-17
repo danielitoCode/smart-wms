@@ -958,6 +958,9 @@ def start_to_picking(to_id):
             text(
                 """
                 SELECT r.inventory_id, inv.bin_id,
+                       inv.quantity_on_hand, inv.quantity_allocated,
+                       r.quantity_reserved - r.quantity_consumed - r.quantity_released
+                           AS reservation_remaining,
                        r.quantity_reserved - r.quantity_picked - r.quantity_released
                            AS quantity_remaining
                   FROM transfer_order_reservations r
@@ -979,6 +982,17 @@ def start_to_picking(to_id):
         for ir in inv_rows:
             if remaining <= 0:
                 break
+            if (
+                ir.quantity_on_hand < ir.reservation_remaining
+                or ir.quantity_allocated < ir.reservation_remaining
+            ):
+                g.db.rollback()
+                return jsonify({
+                    "error": "no_pickable_inventory",
+                    "to_line_id": line.to_line_id,
+                    "inventory_id": ir.inventory_id,
+                    "detail": "Reserved source inventory is no longer fully available.",
+                }), 409
             take = min(remaining, ir.quantity_remaining)
             if take == 0:
                 continue
