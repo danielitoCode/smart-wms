@@ -1,9 +1,5 @@
 import type { InterWarehouseTransfersRepository } from '../repository/InterWarehouseTransfersRepository';
-import type { RecordInterWarehouseTransfer } from '../entity/InterWarehouseTransfer';
-
-export type InterWarehouseTransferListFilters = {
-  fromWarehouseId?: number; toWarehouseId?: number; limit?: number;
-};
+import type { RecordInterWarehouseTransfer, InterWarehouseTransferListFilters } from '../entity/InterWarehouseTransfer';
 
 export class ListInterWarehouseTransfersUseCase {
   constructor(private readonly repository: InterWarehouseTransfersRepository) {}
