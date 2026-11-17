@@ -163,3 +163,18 @@ Para cada feature, completar con tests: campos obligatorios/opcionales, nulabili
 5. Registrar side effects: inventario, estado de pedido, auditoría, eventos, notificaciones.
 6. Añadir test de contrato en Svelte con fixtures del backend y verificar DTO/mapper.
 7. Si la operación no existe, documentar bloqueo; no simular persistencia en frontend.
+
+
+## 7. Dashboard (F4.2)
+
+| Method | Endpoint | Query / body | Response contract and authorization |
+|---|---|---|---|
+| GET | `/api/v1/dashboard/productivity` | `start`, `end` (inclusive ISO dates), `warehouse_id` | ADMIN only; `range`, `events_visible`, `users[]` with `user_id, username, display_name, metrics, total`, `totals_per_event`, `total_orders`, `total_picks`, `total_units`, `warnings`. Maximum 90 days. |
+| GET | `/api/v1/dashboard/preferences` | — | Authenticated; current user only. Returns `chart_order`, `default_range`, `default_view`, `updated_at`; defaults when no row exists. |
+| PUT | `/api/v1/dashboard/preferences` | Partial `chart_order`, `default_range`, `default_view` | Authenticated; user ID comes from session, not body. Unknown/duplicate chart keys, invalid ranges/views and empty patches return 422. |
+| GET | `/api/v1/dashboard/received` | `warehouse_id` required; optional inclusive `start/end` | Authenticated; returns `{warehouse_id, range, pos[]}`; each PO includes `po_id, po_number, vendor_name, status, units_received, lines_received, receive_events, receivers, last_received_at`. |
+| GET | `/api/v1/dashboard/shipping-health` | `warehouse_id` required; optional inclusive `start/end` | Authenticated; returns `{warehouse_id, range, by_source[]}`; each source includes received/shipped counts, current `need_to_ship_today`, and up to 200 drill-down orders. Channel list is configured by `app_settings.dashboard_bubble_origins`; empty/malformed setting returns an empty array. |
+| GET | `/api/admin/sales-orders` | `warehouse_id`, `local_pickup=true`, optional `q`, `status`, `per_page` | Auth + `sales-orders` page permission; list envelope `sales_orders,total,page,per_page,pages`. Local pickup filter matches `ship_method` containing `local` or `pickup`. |
+| PUT | `/api/admin/sales-orders/{so_id}` | `{status:"SHIPPED"}` for pickup handoff | Auth + Sales Orders grant; SHIPPED transition only from PICKED/PACKED; tracking number waived only when ship method indicates pickup. UI also checks ADMIN or `so-full-edit` before enabling the action. |
+
+Dashboard date presets use local calendar dates (not UTC ISO conversion): Today, Yesterday, Last 7d, Last 30d and inclusive Custom; the productivity endpoint caps the range at 90 days. `/api/admin/dashboard` is a separate admin summary endpoint (including pending transfer-order approvals), not the data source for the four React dashboard tabs.
