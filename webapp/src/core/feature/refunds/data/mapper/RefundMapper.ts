@@ -1,5 +1,5 @@
 import type { SalesOrderAddress, SalesOrderLine } from '../../../sales-orders/domain/entity/SalesOrder';
-import type { Refund } from '../../domain/entity/Refund';
+import type { Refund, RefundRelatedRecord } from '../../domain/entity/Refund';
 import type { RefundHeaderDto, RefundLineDto } from '../dto/RefundDto';
 
 function address(line1: string | null | undefined): SalesOrderAddress {
@@ -30,7 +30,7 @@ function line(dto: RefundLineDto): SalesOrderLine {
 
 export const RefundMapper = {
   line,
-  header(dto: RefundHeaderDto, lines: RefundLineDto[] = []): Refund {
+  header(dto: RefundHeaderDto, lines: RefundLineDto[] = [], related: RefundRelatedRecord[] = []): Refund {
     return {
       salesOrderId: dto.so_id,
       salesOrderNumber: dto.so_number,
@@ -57,7 +57,14 @@ export const RefundMapper = {
       carrier: dto.carrier ?? null,
       trackingNumber: dto.tracking_number ?? null,
       memo: dto.memo ?? null,
-      orderTotal: dto.order_total === null ? 0 : Number(dto.order_total),
+      orderTotal: dto.order_total == null || !Number.isFinite(Number(dto.order_total))
+        ? 0 : Math.abs(Number(dto.order_total)),
+      signedAmount: dto.order_total == null || !Number.isFinite(Number(dto.order_total))
+        ? null : Number(dto.order_total),
+      amountIntegrity: dto.order_total == null || !Number.isFinite(Number(dto.order_total))
+        ? 'MISSING'
+        : Number(dto.order_total) < 0 ? 'VALID' : 'NON_NEGATIVE',
+      relatedRecords: related,
       customerShippingPaid: null,
       sourceSystem: dto.source_system ?? null,
       cancellationReason: null,
