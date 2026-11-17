@@ -101,6 +101,16 @@ Salvo excepción anotada, cada grupo usa `require_auth` + `require_admin_or_page
 
 **Casos de uso Domain/Application:** `ListManagedUsersUseCase`, `CreateManagedUserUseCase`, `UpdateManagedUserUseCase`, `DeleteManagedUserUseCase`, `GetUserPagePermissionsUseCase` y `UpdateUserPagePermissionsUseCase`. Los dos últimos operan sobre grants completos; no modelan un CRUD genérico de roles.
 
+**Catálogo de autorización para la UI (F4.1.3):** Svelte refleja las claves de `api/constants.py` `ALL_PAGE_KEYS` y `ALL_OVERRIDE_KEYS`. Las claves de override se muestran en un grupo separado, pero se envían en el mismo `page_keys` porque Flask las persiste en `user_page_permissions`. La prueba `userPermissionGroups.test.ts` fija el catálogo completo para detectar divergencias.
+
+**Compatibilidad de almacenes:** la creación y actualización validan que todos los IDs existan. Clientes antiguos que envían solo `warehouse_id` se normalizan a `warehouse_ids=[warehouse_id]`; el campo múltiple sigue siendo la fuente autoritativa. La omisión de ambos campos no modifica asignaciones; `warehouse_ids: []` revoca todas.
+
+**Revalidación de sesión:** `require_auth` vuelve a consultar en cada petición el estado activo, rol, almacenes y grants de páginas del usuario. Por tanto, una desactivación, cambio de rol, revocación de permisos o reasignación de almacenes se aplica al siguiente request con el mismo JWT, sin esperar al refresh/expiración del token. La UI no debe simular este control únicamente en cliente.
+
+**Límites persistidos:** `users.username` admite 50 caracteres y `users.full_name` 100; los schemas Pydantic y límites del formulario Svelte respetan esos máximos.
+
+**Pruebas F4.1.5:** `api/tests/test_admin.py` cubre usuarios sin almacenes, asignación múltiple, revocación de grants, reasignación durante sesión, desactivación inmediata, ADMIN full-access, overrides, compatibilidad con `warehouse_id` legado, IDs inexistentes y cambios de rol con token existente. En Svelte, `ManagedUserMapper.test.ts` y `userPermissionGroups.test.ts` cubren serialización de revocación y paridad del catálogo.
+
 ## 4. DTO backend → frontend
 
 Los request DTO Pydantic y los response DTO JSON son contratos diferentes. La forma de respuesta se define en cada `jsonify`; no asumir que coincide con el esquema de entrada.
