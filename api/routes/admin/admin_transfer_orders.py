@@ -371,20 +371,19 @@ def cancel_transfer_order(to_id):
             "detail": str(exc),
         }), 409
 
-    # Block cancel once any approval has flipped non-PENDING (an
-    # APPROVED or REJECTED approval row already moved inventory or
-    # produced an audit trail; cancelling beneath it loses state).
-    non_pending_approvals = g.db.execute(
+    # A submitted snapshot is an in-flight transfer decision. Do not
+    # release its reservation while an approval could still move it.
+    approval_count = g.db.execute(
         text(
             "SELECT COUNT(*) FROM transfer_order_approvals "
-            " WHERE to_id = :tid AND status <> 'PENDING'"
+            " WHERE to_id = :tid"
         ),
         {"tid": to_id},
     ).scalar()
-    if non_pending_approvals > 0:
+    if approval_count > 0:
         return jsonify({
             "error": "to_already_partially_approved",
-            "non_pending_approvals": non_pending_approvals,
+            "approval_count": approval_count,
         }), 409
 
     _release_reservations(g.db, to_id, header.source_warehouse_id)
@@ -514,6 +513,20 @@ def short_close_to_line(to_id, line_id):
     denied = _check_transfer_order_warehouses(line.source_warehouse_id, line.destination_warehouse_id)
     if denied:
         return denied
+
+    pending_approval = g.db.execute(
+        text(
+            "SELECT to_approval_id FROM transfer_order_approvals "
+            " WHERE to_id = :tid AND status = 'PENDING' "
+            " ORDER BY to_approval_id LIMIT 1"
+        ),
+        {"tid": to_id},
+    ).fetchone()
+    if pending_approval:
+        return jsonify({
+            "error": "line_has_pending_approval",
+            "to_approval_id": pending_approval.to_approval_id,
+        }), 409
 
     try:
         validate_line_transition(line.status, TO_LINE_SHORT_CLOSED)
@@ -858,6 +871,19 @@ def start_to_picking(to_id):
             "error": "invalid_status_for_start_picking",
             "current_status": header.status,
         }), 409
+    pending_approval = g.db.execute(
+        text(
+            "SELECT to_approval_id FROM transfer_order_approvals "
+            " WHERE to_id = :tid AND status = 'PENDING' "
+            " ORDER BY to_approval_id LIMIT 1"
+        ),
+        {"tid": to_id},
+    ).fetchone()
+    if pending_approval:
+        return jsonify({
+            "error": "pending_approval_exists",
+            "to_approval_id": pending_approval.to_approval_id,
+        }), 409
 
     # Lines that still need picking (committed > picked) and are not
     # SHORT_CLOSED. Walk in line_number ASC for predictable picker UX.
@@ -1054,6 +1080,11 @@ def submit_transfer_order_picks(to_id):
                 "error": "invalid_status_for_submit",
                 "current_status": result["current_status"],
             }), 409
+        if reason == "pending_approval_exists":
+            return jsonify({
+                "error": "pending_approval_exists",
+                "to_approval_id": result["to_approval_id"],
+            }), 409
         # nothing_picked
         return jsonify({
             "error": "nothing_picked",
@@ -1249,6 +1280,11 @@ def approve_transfer_order_approval(to_id, approval_id):
     denied = _check_transfer_order_warehouses(header.source_warehouse_id, header.destination_warehouse_id)
     if denied:
         return denied
+    if header.status in (TO_STATUS_CANCELLED, TO_STATUS_CLOSED):
+        return jsonify({
+            "error": "transfer_order_not_approvable",
+            "current_status": header.status,
+        }), 409
 
     snapshot_lines = (approval.lines_snapshot or {}).get("lines", []) or []
     if not snapshot_lines:
@@ -1408,7 +1444,8 @@ def reject_transfer_order_approval(to_id, approval_id):
     approval = g.db.execute(
         text(
             """
-            SELECT to_approval_id, to_id, submitted_by, status, external_id
+            SELECT to_approval_id, to_id, submitted_by, status,
+                   lines_snapshot, external_id
               FROM transfer_order_approvals
              WHERE to_approval_id = :aid AND to_id = :tid
              FOR UPDATE
@@ -1436,6 +1473,61 @@ def reject_transfer_order_approval(to_id, approval_id):
     denied = _check_transfer_order_warehouses(header.source_warehouse_id, header.destination_warehouse_id)
     if denied:
         return denied
+
+    snapshot_lines = (approval.lines_snapshot or {}).get("lines", []) or []
+    if not snapshot_lines:
+        return jsonify({
+            "error": "approval_snapshot_empty",
+            "detail": "Approval row has no line snapshot; nothing to reject.",
+        }), 422
+
+    # Rejection leaves source inventory untouched and releases the
+    # submitted pick result back to the picker. A fresh pick batch can
+    # then be generated for committed_qty - approved_qty.
+    for snapshot in snapshot_lines:
+        line_id = int(snapshot["to_line_id"])
+        rejected_qty = int(snapshot["picked_in_snapshot"])
+        line = g.db.execute(
+            text(
+                "SELECT picked_qty, approved_qty, committed_qty "
+                "  FROM transfer_order_lines "
+                " WHERE to_line_id = :lid AND to_id = :tid FOR UPDATE"
+            ),
+            {"lid": line_id, "tid": to_id},
+        ).fetchone()
+        if not line or rejected_qty <= 0 or line.picked_qty - rejected_qty < line.approved_qty:
+            g.db.rollback()
+            return jsonify({
+                "error": "approval_snapshot_mismatch",
+                "to_line_id": line_id,
+            }), 409
+        restored_picked = line.picked_qty - rejected_qty
+        restored_status = (
+            TO_LINE_APPROVED if restored_picked == line.committed_qty
+            else TO_LINE_PARTIALLY_PICKED if restored_picked > 0
+            else TO_LINE_PENDING
+        )
+        g.db.execute(
+            text(
+                "UPDATE transfer_order_lines "
+                "   SET picked_qty = :picked, status = :status "
+                " WHERE to_line_id = :lid"
+            ),
+            {"picked": restored_picked, "status": restored_status, "lid": line_id},
+        )
+
+    g.db.execute(
+        text(
+            "UPDATE transfer_orders SET status = :st, updated_at = NOW() "
+            " WHERE to_id = :tid AND status NOT IN (:closed, :cancelled)"
+        ),
+        {
+            "st": TO_STATUS_PARTIALLY_PICKED,
+            "tid": to_id,
+            "closed": TO_STATUS_CLOSED,
+            "cancelled": TO_STATUS_CANCELLED,
+        },
+    )
 
     rejected_at = datetime.now(timezone.utc)
     g.db.execute(
