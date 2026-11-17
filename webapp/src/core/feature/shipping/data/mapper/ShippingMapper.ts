@@ -15,7 +15,6 @@ export const ShippingMapper = {
 			itemName: line.item_name,
 			quantityOrdered: line.quantity_ordered,
 			quantityPicked: line.quantity_picked,
-			quantityPacked: line.quantity_packed
 		}));
 		return {
 			salesOrder: {
