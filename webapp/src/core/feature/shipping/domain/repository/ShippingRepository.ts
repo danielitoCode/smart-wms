@@ -5,6 +5,6 @@ import type {
 } from '../entity/Shipping';
 
 export interface ShippingRepository {
-	loadOrder(barcode: string): Promise<ShippingOrderDetail>;
+	loadOrder(barcode: string, warehouseId: number): Promise<ShippingOrderDetail>;
 	fulfill(input: FulfillShipmentInput): Promise<FulfillShipmentResult>;
 }
