@@ -434,3 +434,12 @@ class TestCarrierFromShipMethod:
         assert carrier_from_ship_method("usps ground advantage") == "USPS"
         # "usps" contains no "ups" substring, so it never mis-resolves to UPS.
         assert carrier_from_ship_method("USPS") == "USPS"
+
+
+def test_shipping_order_lookup_is_scoped_to_selected_warehouse(client, auth_headers):
+    _advance_so_to_packed(client, auth_headers, "SO-2026-001")
+    response = client.get(
+        "/api/shipping/order/SO-2026-001?warehouse_id=2",
+        headers=auth_headers,
+    )
+    assert response.status_code == 404
