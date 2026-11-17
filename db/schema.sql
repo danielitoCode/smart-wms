@@ -2017,6 +2017,34 @@ CREATE TABLE transfer_order_lines (
 CREATE INDEX ix_transfer_order_lines_to   ON transfer_order_lines(to_id);
 CREATE INDEX ix_transfer_order_lines_item ON transfer_order_lines(item_id);
 
+-- Transfer Order reservation ownership (mig 085).
+-- quantity_allocated remains the aggregate ATP counter; these rows identify
+-- the exact TO line and inventory/bin/lot that owns each reserved quantity.
+CREATE TABLE transfer_order_reservations (
+    reservation_id       BIGSERIAL PRIMARY KEY,
+    to_id                INT NOT NULL REFERENCES transfer_orders(to_id) ON DELETE CASCADE,
+    to_line_id           INT NOT NULL REFERENCES transfer_order_lines(to_line_id) ON DELETE CASCADE,
+    inventory_id         INT NOT NULL REFERENCES inventory(inventory_id),
+    item_id              INT NOT NULL REFERENCES items(item_id),
+    warehouse_id         INT NOT NULL REFERENCES warehouses(warehouse_id),
+    quantity_reserved    INT NOT NULL CHECK (quantity_reserved > 0),
+    quantity_consumed    INT NOT NULL DEFAULT 0 CHECK (quantity_consumed >= 0),
+    quantity_released    INT NOT NULL DEFAULT 0 CHECK (quantity_released >= 0),
+    created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT transfer_order_reservation_line_inventory_uq
+        UNIQUE (to_line_id, inventory_id),
+    CONSTRAINT transfer_order_reservation_line_owner_ck
+        CHECK (to_id > 0 AND to_line_id > 0),
+    CONSTRAINT transfer_order_reservation_balance_ck
+        CHECK (quantity_consumed + quantity_released <= quantity_reserved)
+);
+
+CREATE INDEX ix_to_reservations_to_line
+    ON transfer_order_reservations(to_id, to_line_id);
+CREATE INDEX ix_to_reservations_inventory
+    ON transfer_order_reservations(inventory_id);
+
 CREATE TABLE transfer_order_approvals (
     to_approval_id    SERIAL PRIMARY KEY,
     to_id             INT NOT NULL REFERENCES transfer_orders(to_id) ON DELETE CASCADE,
