@@ -17,7 +17,7 @@ describe('Audit log Flask data contract', () => {
 		expect(Object.fromEntries(url.searchParams.entries())).toEqual({
 			page: '2', per_page: '25', sort_by: 'created_at', sort_direction: 'asc',
 			action_type: 'TOKEN_ISSUE', user_id: 'operator', item_id: '42',
-			start_date: '2026-11-01', end_date: '2026-11-17'
+			start_date: '2026-11-01', end_date: '2026-11-17T23:59:59.999999'
 		});
 		expect(result.pages).toBe(2);
 	});
