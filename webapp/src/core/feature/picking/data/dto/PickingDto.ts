@@ -47,6 +47,12 @@ export type MessageDto = {
 /** Matches test_wave_picking.py wave-validate bodies. */
 export type WaveValidateDto = {
 	valid?: boolean;
+	kind?: 'SO' | 'TO';
+	to_id?: number;
+	to_number?: string;
+	batch_number?: string;
+	assigned_to?: string;
+	to_status?: string;
 	so_id?: number;
 	so_number?: string;
 	line_count?: number;
