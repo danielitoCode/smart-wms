@@ -76,7 +76,7 @@ Salvo excepción anotada, cada grupo usa `require_auth` + `require_admin_or_page
 
 ### 3.2 Autorización efectiva de Users (F4.1.3–F4.1.5)
 
-- El selector de almacenes consume `GET /api/admin/warehouses` y guarda IDs reales; la lista vacía es una revocación explícita, no un campo omitido.
+- El selector de almacenes consume `GET /api/admin/warehouses` mediante `ListManagedWarehousesUseCase` y el puerto de repositorio; el mapper convierte el DTO a `ManagedWarehouse`. Guarda IDs reales; la lista vacía es una revocación explícita, no un campo omitido.
 - Los módulos móviles usan `allowed_functions`; el acceso web usa `page_keys`. Los overrides (por ahora `so-full-edit`) viajan en el mismo conjunto de permisos que las páginas y se reemplazan de forma atómica.
 - Al promover un usuario a `ADMIN`, se eliminan grants USER antiguos de `user_page_permissions`. Si posteriormente se degrada a `USER`, no recupera privilegios obsoletos automáticamente.
 - `require_auth` consulta la fila actual del usuario y sus permisos en cada petición. Cambios de rol, almacenes, grants y estado se aplican a la siguiente petición con el mismo JWT; una cuenta inactiva recibe 401, una petición a almacén revocado recibe 403 y una página revocada recibe 403.
