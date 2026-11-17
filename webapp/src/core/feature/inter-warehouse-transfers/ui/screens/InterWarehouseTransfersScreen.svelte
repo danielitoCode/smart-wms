@@ -34,7 +34,7 @@
       const stored = sessionStorage.getItem(pendingKeysStorageKey);
       const entries: unknown = stored ? JSON.parse(stored) : [];
       if (!Array.isArray(entries)) return;
-      for (const entry of entries.slice(-20)) {
+      for (const entry of entries) {
         if (Array.isArray(entry) && typeof entry[0] === 'string' && typeof entry[1] === 'string' && uuidPattern.test(entry[1])) {
           pendingKeys.set(entry[0], entry[1]);
         }
@@ -45,11 +45,6 @@
   }
   function persistPendingKeys() {
     try {
-      while (pendingKeys.size > 20) {
-        const oldest = pendingKeys.keys().next().value;
-        if (oldest === undefined) break;
-        pendingKeys.delete(oldest);
-      }
       sessionStorage.setItem(pendingKeysStorageKey, JSON.stringify([...pendingKeys.entries()]));
     } catch {
       // The server remains idempotent for retries that retain the current-page key.
