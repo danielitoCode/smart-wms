@@ -6,7 +6,7 @@
   import type { User } from '../../../auth/domain/entity/User';
   import { createBackordersState } from '../state/backordersState.svelte';
   import type { Backorder, BackorderQueueTab, CancelBackorderReason } from '../../domain/entity/Backorder';
-  import { resolveBackorderWarehouseScope } from '../../domain/policy/BackorderScopePolicy';
+  import { canCancelBackorder, resolveBackorderWarehouseScope } from '../../domain/policy/BackorderScopePolicy';
 
   const i18n = getContext<I18nState>('i18n');
   const selection = getContext<{ warehouseId: number | null }>('warehouseSelection');
@@ -73,8 +73,7 @@
   function openCancel(row: Backorder): void {
     if (
       !canOpenSalesOrderDetail ||
-      row.orderType !== 'backorder' ||
-      !row.parentSalesOrderNumber ||
+      !canCancelBackorder(row) ||
       !canAccessWarehouse(row.warehouseId)
     ) return;
     cancelTarget = row;
@@ -217,7 +216,7 @@
           <div class="card-actions">
             {#if canOpenSalesOrderDetail}
               <a class="detail-link" href={'/management/backorders/' + row.salesOrderId + '?tab=' + activeTab}>{i18n.t('Ver detalle')}</a>
-              {#if row.orderType === 'backorder' && row.parentSalesOrderNumber && canAccessWarehouse(row.warehouseId)}
+              {#if canCancelBackorder(row) && canAccessWarehouse(row.warehouseId)}
                 <button class="cancel-link" type="button" onclick={() => openCancel(row)}>
                   {i18n.t('Cancelar backorder')}
                 </button>
