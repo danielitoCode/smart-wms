@@ -13,7 +13,7 @@ export class TransferOrdersRemoteDataSource {
   }
 
   async warehouses(): Promise<TransferOrderWarehouseListDto> {
-    return this.api.get<TransferOrderWarehouseListDto>('/api/admin/warehouses?page=1&per_page=1000');
+    return this.api.get<TransferOrderWarehouseListDto>('/api/warehouses/list');
   }
 
   detail(id: number): Promise<TransferOrderDetailDto> {
