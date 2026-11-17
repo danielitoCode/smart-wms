@@ -338,7 +338,7 @@ export interface AdminShipResponseDto {
 }
 
 export interface CreateRmaRequestDto {
-  lines: Array<{ item_id: number; quantity: number; original_so_line_id?: number }>;
+  lines: Array<{ item_id: number; quantity: number; original_so_line_id: number }>;
   memo?: string | null;
 }
 
