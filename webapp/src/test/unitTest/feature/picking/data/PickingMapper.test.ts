@@ -17,10 +17,11 @@ describe('PickingMapper Flask response contracts', () => {
   expect(PickingMapper.toWaveCreate({
    batch_id: 5, batch_number: 'WAVE-5', total_orders: 2, total_picks: 4, total_units: 9,
    orders: [{ so_id: 3, so_number: 'SO-3', line_count: 2 }, { so_id: 4, so_number: 'SO-4', line_count: 1 }],
-   warnings: ['partial coverage warning']
+   first_pick: { pick_task_id: 12, batch_id: 5, item_id: 7, sku: 'SKU-7', quantity_to_pick: 2, quantity_picked: 0 },
+   warnings: [{ sku: 'SKU-7', needed: 5, available: 3 }]
   })).toMatchObject({
    batchId: 5, batchNumber: 'WAVE-5', totalOrders: 2, totalPicks: 4, totalUnits: 9,
-   orders: [{ soId: 3, soNumber: 'SO-3', lineCount: 2 }], warnings: ['partial coverage warning']
+   orders: [{ soId: 3, soNumber: 'SO-3', lineCount: 2 }], firstPick: { pickTaskId: 12, batchId: 5, itemId: 7, sku: 'SKU-7', itemName: '', upc: null, quantityToPick: 2, quantityPicked: 0, binId: null, binCode: null, binBarcode: null, zone: null, aisle: null, rowNum: null, levelNum: null, toteNumber: null, salesOrderNumber: null, transferOrderNumber: null, pickNumber: undefined, totalPicks: undefined, contributingOrders: undefined, pickSequence: undefined, status: 'PENDING' }, warnings: [{ sku: 'SKU-7', needed: 5, available: 3 }]
   });
  });
 
