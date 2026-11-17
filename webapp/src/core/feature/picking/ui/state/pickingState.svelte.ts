@@ -68,12 +68,14 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 		try {
 			const result = await deps.waveValidate.execute(validateBarcode.trim(), activeWarehouseId());
 			validateResult = result;
-			if (result.valid && result.soId != null && !validatedSoIds.includes(result.soId)) {
+			if (result.valid && result.kind === 'TO') {
+				info = `TO ${result.toNumber ?? validateBarcode.trim()} validada · lote ${result.batchNumber ?? result.batchId ?? 'activo'} · continúa con las tareas del lote`;
+			} else if (result.valid && result.soId != null && !validatedSoIds.includes(result.soId)) {
 				validatedSoIds = [...validatedSoIds, result.soId];
 				soIdsInput = validatedSoIds.join(', ');
 			}
-			if (!result.valid) error = result.error ?? result.message ?? 'SO no válida para wave';
-			else info = `SO ${result.soNumber} válida · líneas ${result.lineCount ?? 0} · unidades ${result.totalUnits ?? 0}`;
+			if (!result.valid) error = result.error ?? result.message ?? 'Pedido no válido para picking';
+			else if (result.kind !== 'TO') info = `SO ${result.soNumber} válida · líneas ${result.lineCount ?? 0} · unidades ${result.totalUnits ?? 0}`;
 			return result.valid;
 		} catch (err) { error = toUserMessage(err, 'No se pudo validar el SO'); return false; }
 		finally { busy = false; }
