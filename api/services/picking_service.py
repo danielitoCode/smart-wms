@@ -708,6 +708,7 @@ def confirm_pick(db, pick_task_id, scanned_barcode, quantity_picked, username):
                    pt.tote_number
             FROM pick_tasks pt
             WHERE pt.pick_task_id = :tid
+            FOR UPDATE
             """
         ),
         {"tid": pick_task_id},
@@ -734,17 +735,25 @@ def confirm_pick(db, pick_task_id, scanned_barcode, quantity_picked, username):
         raise BarcodeError(f"Wrong item scanned. Expected SKU: {item.sku}")
 
     # 3. Update pick task
-    db.execute(
+    claimed = db.execute(
         text(
             """
             UPDATE pick_tasks
             SET status = :task_status, quantity_picked = :qty, picked_by = :user,
                 picked_at = NOW(), scan_confirmed = TRUE
-            WHERE pick_task_id = :tid
+            WHERE pick_task_id = :tid AND status = :pending_status
             """
         ),
-        {"qty": quantity_picked, "user": username, "tid": pick_task_id, "task_status": TASK_PICKED},
+        {
+            "qty": quantity_picked,
+            "user": username,
+            "tid": pick_task_id,
+            "task_status": TASK_PICKED,
+            "pending_status": TASK_PENDING,
+        },
     )
+    if claimed.rowcount != 1:
+        raise ValueError("Pick task is no longer pending; refresh the task before scanning again")
 
     # 4. Branch on the pick_tasks discriminator (mig 049 #281). SO
     # picks update sales_order_lines as before; TO picks update
@@ -905,6 +914,7 @@ def short_pick(db, pick_task_id, quantity_available, username):
                    pt.status, pt.tote_number
             FROM pick_tasks pt
             WHERE pt.pick_task_id = :tid
+            FOR UPDATE
             """
         ),
         {"tid": pick_task_id},
@@ -929,16 +939,24 @@ def short_pick(db, pick_task_id, quantity_available, username):
     shortage = task.quantity_to_pick - quantity_available
 
     # 2. Update pick task
-    db.execute(
+    claimed = db.execute(
         text(
             """
             UPDATE pick_tasks
             SET status = :task_status, quantity_picked = :qty, picked_by = :user, picked_at = NOW()
-            WHERE pick_task_id = :tid
+            WHERE pick_task_id = :tid AND status = :pending_status
             """
         ),
-        {"qty": quantity_available, "user": username, "tid": pick_task_id, "task_status": TASK_SHORT},
+        {
+            "qty": quantity_available,
+            "user": username,
+            "tid": pick_task_id,
+            "task_status": TASK_SHORT,
+            "pending_status": TASK_PENDING,
+        },
     )
+    if claimed.rowcount != 1:
+        raise ValueError("Pick task is no longer pending; refresh the task before recording a short pick")
 
     # 3. Update inventory (floor at zero for safety)
     db.execute(
