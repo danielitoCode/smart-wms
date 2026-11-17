@@ -98,7 +98,9 @@ export interface SalesOrder {
   cancellationReason: string | null;
   backorderOpenedAt?: string | null;
   backorderFulfillableAt?: string | null;
+  orderDate: string | null;
   createdAt: string | null;
+  packedAt: string | null;
   printedAt?: string | null;
   primaryBinCode?: string | null;
   primaryBinPickSequence?: number | null;
@@ -154,6 +156,7 @@ export interface CreateSalesOrderLineInput {
 
 export interface CreateSalesOrderInput {
   soNumber: string;
+  soBarcode?: string | null;
   warehouseId: number;
   customerName?: string | null;
   customerEmail?: string | null;
@@ -169,10 +172,13 @@ export interface CreateSalesOrderInput {
 
 export type CreateSalesOrder = {
   salesOrderNumber: string;
+  soBarcode?: string | null;
   warehouseId: number;
   customerName?: string | null;
   customerEmail?: string | null;
   customerPhone?: string | null;
+  customerAddress?: string | null;
+  orderOrigin?: string | null;
   shipAddress?: string | null;
   shipMethod?: string | null;
   shipByDate?: string | null;
