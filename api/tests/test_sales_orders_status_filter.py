@@ -69,3 +69,25 @@ class TestRefundReadProjection:
         row = next(r for r in rows if r["so_id"] == 1)
         assert row["order_total"] == "-12.34"
         assert row["parent_so_number"]
+
+
+
+def test_sales_order_detail_exposes_complete_webapp_projection(client, auth_headers):
+    response = client.get("/api/admin/sales-orders/1", headers=auth_headers)
+    assert response.status_code == 200, response.get_json()
+    payload = response.get_json()
+    assert {"sales_order", "lines", "pick_tasks"}.issubset(payload)
+
+    order = payload["sales_order"]
+    assert {
+        "so_id", "so_number", "so_barcode", "order_type", "parent_so_id",
+        "order_date", "created_at", "picked_at", "packed_at", "shipped_at",
+        "source_system", "order_origin", "customer_address",
+    }.issubset(order)
+
+    if payload["lines"]:
+        line = payload["lines"][0]
+        assert {
+            "so_line_id", "item_id", "quantity_ordered", "quantity_picked",
+            "quantity_packed", "quantity_shipped", "quantity_received",
+        }.issubset(line)
