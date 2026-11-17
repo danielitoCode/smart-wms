@@ -70,6 +70,7 @@ describe('Settings use cases', () => {
 			value: 'true'
 		});
 		await expect(new GetSettingUseCase(repository).execute('unknown')).rejects.toThrow('desconocida');
+		await expect(new UpdateSettingsUseCase(repository).execute({ unknown_setting: 'x' })).rejects.toThrow('desconocida');
 	});
 
 	it('validates before update and sends only the supplied partial patch', async () => {
