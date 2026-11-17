@@ -4,7 +4,7 @@ import type { BackorderDto } from '../../../../../core/feature/backorders/data/d
 
 const waitingDto: BackorderDto = {
   so_id: 41, so_number: 'BO-41', parent_so_number: 'SO-10', warehouse_id: 3,
-  status: 'WAITING_STOCK', customer_name: 'Customer', days_waiting: 12,
+  status: 'WAITING_STOCK', order_type: 'backorder', customer_name: 'Customer', days_waiting: 12,
   backorder_opened_at: '2026-11-01T00:00:00Z', fulfillable_since: null,
   items: [{
     sku: 'SKU-1', item_name: 'Item 1', qty: 4,
@@ -16,6 +16,7 @@ describe('BackorderMapper', () => {
   it('maps a no-availability backorder and its open purchase-order projection', () => {
     const result = BackorderMapper.toDomain(waitingDto);
     expect(result.status).toBe('WAITING_STOCK');
+    expect(result.orderType).toBe('backorder');
     expect(result.daysWaiting).toBe(12);
     expect(result.items[0]).toMatchObject({
       sku: 'SKU-1', itemName: 'Item 1', quantity: 4,
