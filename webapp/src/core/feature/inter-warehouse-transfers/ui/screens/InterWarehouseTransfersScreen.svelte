@@ -27,11 +27,39 @@
   let quantity = $state('1');
   let reason = $state('');
   const pendingKeys = new Map<string, string>();
+  const pendingKeysStorageKey = 'sentry_inter_warehouse_transfer_pending_keys';
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  function restorePendingKeys() {
+    try {
+      const stored = sessionStorage.getItem(pendingKeysStorageKey);
+      const entries: unknown = stored ? JSON.parse(stored) : [];
+      if (!Array.isArray(entries)) return;
+      for (const entry of entries.slice(-20)) {
+        if (Array.isArray(entry) && typeof entry[0] === 'string' && typeof entry[1] === 'string' && uuidPattern.test(entry[1])) {
+          pendingKeys.set(entry[0], entry[1]);
+        }
+      }
+    } catch {
+      // Storage may be unavailable; current-page retry still retains the in-memory key.
+    }
+  }
+  function persistPendingKeys() {
+    try {
+      while (pendingKeys.size > 20) {
+        const oldest = pendingKeys.keys().next().value;
+        if (oldest === undefined) break;
+        pendingKeys.delete(oldest);
+      }
+      sessionStorage.setItem(pendingKeysStorageKey, JSON.stringify([...pendingKeys.entries()]));
+    } catch {
+      // The server remains idempotent for retries that retain the current-page key.
+    }
+  }
   let sourceTimer: ReturnType<typeof setTimeout> | undefined;
   let destinationTimer: ReturnType<typeof setTimeout> | undefined;
   let itemTimer: ReturnType<typeof setTimeout> | undefined;
 
-  onMount(() => { void vm.load(); });
+  onMount(() => { restorePendingKeys(); void vm.load(); });
   onDestroy(() => {
     if (sourceTimer) clearTimeout(sourceTimer);
     if (destinationTimer) clearTimeout(destinationTimer);
@@ -94,10 +122,12 @@
     if (!key) {
       key = crypto.randomUUID();
       pendingKeys.set(fingerprint, key);
+      persistPendingKeys();
     }
     const value: RecordInterWarehouseTransfer = { ...payload, idempotencyKey: key };
     if (await vm.create(value)) {
       pendingKeys.delete(fingerprint);
+      persistPendingKeys();
       open = false;
       resetForm();
     }
