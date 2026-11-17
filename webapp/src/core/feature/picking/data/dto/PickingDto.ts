@@ -22,6 +22,7 @@ export type PickTaskDto = {
 	name?: string;
 	upc?: string | null;
 	quantity_to_pick?: number;
+	quantity_picked?: number;
 	qty_to_pick?: number;
 	bin_id?: number | null;
 	bin_code?: string | null;
@@ -38,6 +39,7 @@ export type PickTaskDto = {
 	to_number?: string | null;
 	pick_number?: number;
 	total_picks?: number;
+	contributing_orders?: Array<{ so_number: string; quantity: number }>;
 };
 
 export type MessageDto = {
