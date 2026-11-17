@@ -63,7 +63,6 @@ export function withSettingDefaults(settings: SettingsMap): SettingsMap {
 	return result;
 }
 
-/** Returns a field-specific validation message, or null when the value is valid. */
 export function validateSettingValue(key: string, value: unknown): string | null {
 	const definition = getSettingDefinition(key);
 	if (!definition) return `Clave de configuración desconocida: ${key}`;
@@ -73,9 +72,12 @@ export function validateSettingValue(key: string, value: unknown): string | null
 		case 'boolean':
 			return value === 'true' || value === 'false' ? null : `Valor booleano inválido para ${key}`;
 		case 'bin-id':
-			return value === '' || /^[1-9][0-9]*$/.test(value) ? null : 'La ubicación de recepción debe ser un ID positivo o estar vacía';
+			return value === '' || /^[1-9][0-9]*$/.test(value)
+				? null
+				: 'La ubicación de recepción debe ser un ID positivo o estar vacía';
 		case 'url':
 			if (value === '') return null;
+			if (value.startsWith('/') && !value.startsWith('//')) return null;
 			try {
 				const url = new URL(value);
 				return url.protocol === 'http:' || url.protocol === 'https:' ? null : 'El logo debe usar HTTP o HTTPS';
@@ -92,8 +94,9 @@ export function validateSettingValue(key: string, value: unknown): string | null
 					const row = entry as Record<string, unknown>;
 					if (typeof row.origin !== 'string' || !row.origin.trim()) return 'Cada origen necesita un nombre no vacío';
 					if (row.label !== undefined && typeof row.label !== 'string') return 'La etiqueta del origen debe ser texto';
-					if (seen.has(row.origin)) return `Origen duplicado: ${row.origin}`;
-					seen.add(row.origin);
+					const origin = row.origin.trim();
+					if (seen.has(origin)) return `Origen duplicado: ${origin}`;
+					seen.add(origin);
 				}
 				return null;
 			} catch {
