@@ -1627,6 +1627,7 @@ def approve_transfer_order_approval(to_id, approval_id):
                 raise ValueError(f"approval snapshot no longer matches line={line_id}")
 
             task_totals = {}
+            task_bins = {}
             task_delta = 0
             for task_snap in tasks_snapshot:
                 task_qty = int(task_snap["picked_in_snapshot"])
@@ -1636,6 +1637,9 @@ def approve_transfer_order_approval(to_id, approval_id):
                     raise ValueError(f"invalid task quantity in approval snapshot for line={line_id}")
                 task_delta += task_qty
                 task_totals[inventory_id] = task_totals.get(inventory_id, 0) + task_qty
+                if inventory_id in task_bins and task_bins[inventory_id] != bin_id:
+                    raise ValueError(f"inventory row changed bins in approval snapshot for line={line_id}")
+                task_bins[inventory_id] = bin_id
                 task_changed = g.db.execute(
                     text(
                         """
@@ -1661,11 +1665,17 @@ def approve_transfer_order_approval(to_id, approval_id):
                     )
 
             allocation_totals = {}
+            allocation_bins = {}
             for allocation in allocation_snapshot:
                 inventory_id = int(allocation["inventory_id"])
                 allocation_qty = int(allocation["quantity"])
                 allocation_totals[inventory_id] = allocation_totals.get(inventory_id, 0) + allocation_qty
-            if task_delta != qty or allocation_totals != task_totals:
+                allocation_bins[inventory_id] = int(allocation["bin_id"])
+            if (
+                task_delta != qty
+                or allocation_totals != task_totals
+                or allocation_bins != task_bins
+            ):
                 raise ValueError(f"approval inventory snapshot mismatch for line={line_id}")
 
             for allocation in sorted(allocation_snapshot, key=lambda row: int(row["inventory_id"])):
