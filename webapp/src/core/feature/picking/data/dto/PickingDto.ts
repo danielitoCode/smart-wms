@@ -93,7 +93,7 @@ export type WaveCreateDto = {
 	total_units: number;
 	orders: Array<{ so_id: number; so_number: string; line_count: number }>;
 	first_pick?: PickTaskDto | null;
-	warnings?: string[];
+	warnings?: Array<{ sku: string; needed: number; available: number }>;
 };
 
 /** Matches TestCreateBatch in test_picking.py. */
