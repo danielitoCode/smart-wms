@@ -50,4 +50,14 @@ describe('Picking scanner state warehouse context', () => {
   expect(state.waveResult?.batchNumber).toBe('WAVE-4');
  });
 
+ it('recognizes a validated TO without adding it to an SO wave', async () => {
+  deps.waveValidate.execute.mockResolvedValueOnce({ valid: true, kind: 'TO', toId: 90, toNumber: 'TO-90', batchId: 4, batchNumber: 'TO-BATCH-4' });
+  const state = createPickingState(warehouse as never);
+  state.setValidateBarcode('TO-90');
+  expect(await state.validateWaveSo()).toBe(true);
+  expect(state.validatedSoIds).toEqual([]);
+  expect(state.soIdsInput).toBe('');
+  expect(state.info).toContain('TO-90');
+ });
+
 });
