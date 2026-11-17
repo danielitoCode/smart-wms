@@ -3,8 +3,15 @@ export type SettingDto = {
 	value: string;
 };
 
+export type SettingDetailDto = SettingDto;
+
+export type SettingListItemDto = SettingDto & {
+	id: number;
+	updated_at: string | null;
+};
+
 export type SettingsListDto = {
-	settings: Array<SettingDto & { id?: number; updated_at?: string | null }>;
+	settings: SettingListItemDto[];
 };
 
 export type UpdateSettingsRequestDto = {
