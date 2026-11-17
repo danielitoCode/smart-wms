@@ -10,6 +10,7 @@ class FulfillRequest(BaseModel):
     tracking_number: str = Field(..., min_length=1, max_length=255)
     carrier: str = Field(..., min_length=1, max_length=100)
     ship_method: Optional[str] = Field(None, max_length=100)
+    warehouse_id: Optional[int] = Field(None, gt=0)
 
     @field_validator("tracking_number", "carrier")
     @classmethod
