@@ -298,10 +298,21 @@ def search_bins():
         return jsonify([])
     if len(q) > 128:
         return jsonify({"error": "Search query cannot exceed 128 characters"}), 400
+    warehouse_arg = request.args.get("warehouse_id")
+    try:
+        warehouse_id = int(warehouse_arg) if warehouse_arg is not None else None
+    except (TypeError, ValueError):
+        return jsonify({"error": "warehouse_id must be an integer"}), 400
+    if warehouse_id is not None and warehouse_id <= 0:
+        return jsonify({"error": "warehouse_id must be positive"}), 400
 
     # Apply warehouse scope in SQL before LIMIT so authorized matches are
-    # not displaced by rows belonging to other warehouses.
+    # not displaced by rows belonging to other warehouses. The optional
+    # warehouse filter is a selector constraint, never an authorization bypass.
     scope_clause, scope_params = warehouse_scope_clause("b.warehouse_id")
+    warehouse_filter = " AND b.warehouse_id = :warehouse_id" if warehouse_id is not None else ""
+    if warehouse_id is not None:
+        scope_params["warehouse_id"] = warehouse_id
     rows = g.db.execute(
         text(
             f"""
@@ -311,6 +322,7 @@ def search_bins():
             LEFT JOIN zones z ON z.zone_id = b.zone_id
             WHERE (b.bin_code ILIKE :q OR b.bin_barcode ILIKE :q)
               {scope_clause}
+              {warehouse_filter}
             ORDER BY b.bin_code
             LIMIT 50
             """
