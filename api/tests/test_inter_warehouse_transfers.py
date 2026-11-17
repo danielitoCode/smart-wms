@@ -57,11 +57,23 @@ def _source_destination():
               AND inv.quantity_on_hand > inv.quantity_allocated
             ORDER BY inv.item_id, inv.bin_id LIMIT 1"""
     )
-    destination = _query(
-        "SELECT bin_id FROM bins WHERE warehouse_id = 2 AND is_active = TRUE ORDER BY bin_id LIMIT 1"
-    )
-    assert source and destination, "seed database must contain source stock in warehouse 1 and an active bin in warehouse 2"
-    return source[0][0], source[0][1], source[0][2], destination[0][0]
+    assert source, "seed database must contain source stock in warehouse 1"
+    suffix = uuid.uuid4().hex[:10].upper()
+    warehouse_id = _query(
+        "INSERT INTO warehouses (warehouse_code, warehouse_name) VALUES (%s, %s) RETURNING warehouse_id",
+        ("IWH-" + suffix, "Inter-warehouse test " + suffix),
+    )[0][0]
+    zone_id = _query(
+        "INSERT INTO zones (warehouse_id, zone_code, zone_name, zone_type) "
+        "VALUES (%s, %s, %s, 'STORAGE') RETURNING zone_id",
+        (warehouse_id, "Z-" + suffix, "Test zone " + suffix),
+    )[0][0]
+    destination_bin_id = _query(
+        """INSERT INTO bins (zone_id, warehouse_id, bin_code, bin_barcode, bin_type, external_id)
+           VALUES (%s, %s, %s, %s, 'Pickable', %s) RETURNING bin_id""",
+        (zone_id, warehouse_id, "B-" + suffix, "BC-" + suffix, str(uuid.uuid4())),
+    )[0][0]
+    return source[0][0], source[0][1], source[0][2], destination_bin_id, warehouse_id
 
 
 def _body(item_id, from_bin, from_wh, to_bin, to_wh, key=None, quantity=1):
@@ -80,8 +92,8 @@ def _quantity(item_id, bin_id):
 
 
 def test_create_requires_access_to_both_warehouses(client):
-    item_id, from_bin, from_wh, to_bin = _source_destination()
-    payload = _body(item_id, from_bin, from_wh, to_bin, 2)
+    item_id, from_bin, from_wh, to_bin, to_wh = _source_destination()
+    payload = _body(item_id, from_bin, from_wh, to_bin, to_wh)
     for allowed_ids in ([from_wh], [2], []):
         response = client.post(
             "/api/admin/inter-warehouse-transfer",
@@ -90,7 +102,7 @@ def test_create_requires_access_to_both_warehouses(client):
         )
         assert response.status_code == 404, (allowed_ids, response.get_json())
 
-    both = _headers(client, [from_wh, 2])
+    both = _headers(client, [from_wh, to_wh])
     response = client.post(
         "/api/admin/inter-warehouse-transfer",
         json={**payload, "idempotency_key": str(uuid.uuid4())},
@@ -121,12 +133,12 @@ def test_list_history_requires_access_to_both_warehouses(client, auth_headers):
     assert transfer_id in {row["transfer_id"] for row in response.get_json()["transfers"]}
 
     filtered = client.get(
-        f"/api/admin/inter-warehouse-transfers?from_warehouse_id={from_wh}&to_warehouse_id=2",
+        f"/api/admin/inter-warehouse-transfers?from_warehouse_id={from_wh}&to_warehouse_id=to_wh",
         headers=both,
     )
     assert transfer_id in {row["transfer_id"] for row in filtered.get_json()["transfers"]}
     reverse = client.get(
-        f"/api/admin/inter-warehouse-transfers?from_warehouse_id=2&to_warehouse_id={from_wh}",
+        f"/api/admin/inter-warehouse-transfers?from_warehouse_id=to_wh&to_warehouse_id={from_wh}",
         headers=both,
     )
     assert transfer_id not in {row["transfer_id"] for row in reverse.get_json()["transfers"]}
@@ -143,7 +155,7 @@ def test_allocated_source_inventory_cannot_be_transferred(client, auth_headers):
     )
     response = client.post(
         "/api/admin/inter-warehouse-transfer",
-        json=_body(item_id, from_bin, from_wh, to_bin, 2, quantity=1),
+        json=_body(item_id, from_bin, from_wh, to_bin, to_wh, quantity=1),
         headers=auth_headers,
     )
     assert response.status_code == 400
