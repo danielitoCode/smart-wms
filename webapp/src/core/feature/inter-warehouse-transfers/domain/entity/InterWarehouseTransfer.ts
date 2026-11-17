@@ -1,5 +1,6 @@
 /** Completed atomic stock movement recorded by Flask in bin_transfers. */
 export type InterWarehouseTransferStatus = 'completed';
+export type InterWarehouseTransferListFilters = { fromWarehouseId?: number; toWarehouseId?: number; limit?: number };
 export type InterWarehouseTransferLine = { itemId: number; quantity: number; sku?: string | null; itemName?: string | null };
 export type InterWarehouseTransfer = {
   transferId: number; sourceWarehouseId: number; sourceWarehouseName: string; sourceWarehouseCode: string;
