@@ -1456,6 +1456,12 @@ def submit_transfer_order_picks(to_id):
                 "error": "reservation_task_mismatch",
                 "detail": "Picked task history does not identify the exact inventory rows reserved for this transfer line.",
             }), 409
+        if reason == "pending_pick_tasks_exist":
+            return jsonify({
+                "error": "pending_pick_tasks_exist",
+                "pending_tasks": result.get("pending_tasks", 0),
+                "detail": "Resolve all pending tasks before submitting this transfer for approval.",
+            }), 409
         # nothing_picked
         return jsonify({
             "error": "nothing_picked",
