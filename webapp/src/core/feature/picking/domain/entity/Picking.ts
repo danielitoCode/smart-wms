@@ -42,6 +42,7 @@ export type PickTask = {
 	status: PickTaskStatus;
 	pickSequence?: number;
 	quantityPicked?: number;
+	contributingOrders?: Array<{ soNumber: string; quantity: number }>;
 	salesOrderId?: number | null;
 	salesOrderLineId?: number | null;
 	transferOrderId?: number | null;
