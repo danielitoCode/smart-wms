@@ -101,6 +101,7 @@ export const PickingMapper = {
 				soNumber: order.so_number,
 				lineCount: order.line_count
 			})),
+			firstPick: dto.first_pick ? mapPickTask(dto.first_pick) : null,
 			warnings: dto.warnings
 		};
 	},
