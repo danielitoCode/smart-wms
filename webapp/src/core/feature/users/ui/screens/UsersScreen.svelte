@@ -18,15 +18,15 @@
  let search=$state(''),formOpen=$state(false),editing=$state<ManagedUser|null>(null);
  let username=$state(''),password=$state(''),fullName=$state(''),role=$state<'ADMIN'|'USER'>('USER');
  let warehouseIds=$state<number[]>([]),functions=$state<string[]>([]),active=$state(true),pageKeys=$state<string[]>([]);
- let permissionsUser=$state<ManagedUser|null>(null),permissionLoading=$state(false),deleteTarget=$state<ManagedUser|null>(null),localError=$state<string|null>(null);
+ let permissionsUser=$state<ManagedUser|null>(null),permissionLoading=$state(false),permissionsReady=$state(true),deleteTarget=$state<ManagedUser|null>(null),localError=$state<string|null>(null);
  const filtered=$derived(vm.users.filter(u=>[u.username,u.fullName,u.role].join(' ').toLowerCase().includes(search.trim().toLowerCase())));
  onMount(()=>{void vm.load();void vm.loadWarehouses();});
  function toggle<T>(a:T[],v:T):T[]{return a.includes(v)?a.filter(x=>x!==v):[...a,v];}
- function reset(){formOpen=false;editing=null;username='';password='';fullName='';role='USER';warehouseIds=[];functions=[];active=true;pageKeys=[];localError=null;}
+ function reset(){formOpen=false;editing=null;username='';password='';fullName='';role='USER';warehouseIds=[];functions=[];active=true;pageKeys=[];permissionsReady=true;localError=null;}
  function openCreate(){reset();formOpen=true;}
- async function openEdit(u:ManagedUser){reset();editing=u;username=u.username;fullName=u.fullName;role=u.role;warehouseIds=[...u.warehouseIds];functions=[...u.allowedFunctions];active=u.isActive;formOpen=true;permissionLoading=true;const p=await vm.loadPermissions(u.userId);pageKeys=p?[...p.pageKeys]:[];permissionLoading=false;}
+ async function openEdit(u:ManagedUser){reset();editing=u;username=u.username;fullName=u.fullName;role=u.role;warehouseIds=[...u.warehouseIds];functions=[...u.allowedFunctions];active=u.isActive;formOpen=true;permissionLoading=true;const p=await vm.loadPermissions(u.userId);permissionsReady=!!p;pageKeys=p?[...p.pageKeys]:[];permissionLoading=false;}
  async function save(){
-  localError=null;if(!fullName.trim()){localError='El nombre completo es obligatorio';return;}
+  localError=null;if(editing&&!permissionsReady){localError='No se pudieron cargar los permisos; vuelve a abrir el usuario antes de guardar.';return;}if(!fullName.trim()){localError='El nombre completo es obligatorio';return;}
   if(!editing&&(!username.trim()||!password)){localError='Usuario y contraseña son obligatorios';return;}
   let ok=false;
   let savedUserId=editing?.userId;
@@ -36,7 +36,7 @@
   if(ok)reset();
  }
  function toggleGroup(g:PermissionGroup,on:boolean){const keys=g.pages.map(p=>p[0]);pageKeys=on?[...new Set([...pageKeys,...keys])]:pageKeys.filter(k=>!keys.includes(k));}
- async function editPermissions(u:ManagedUser){permissionsUser=u;permissionLoading=true;const p=await vm.loadPermissions(u.userId);pageKeys=p?[...p.pageKeys]:[];permissionLoading=false;}
+ async function editPermissions(u:ManagedUser){permissionsUser=u;permissionLoading=true;const p=await vm.loadPermissions(u.userId);permissionsReady=!!p;pageKeys=p?[...p.pageKeys]:[];permissionLoading=false;}
  async function savePerms(){if(permissionsUser&&await vm.savePermissions(permissionsUser.userId,pageKeys))permissionsUser=null;}
  async function confirmDelete(){if(deleteTarget&&await vm.remove(deleteTarget.userId))deleteTarget=null;}
  function whName(id:number){const w=vm.warehouses.find(x=>x.warehouse_id===id);return w?w.warehouse_code+' · '+w.warehouse_name:String(id);}
