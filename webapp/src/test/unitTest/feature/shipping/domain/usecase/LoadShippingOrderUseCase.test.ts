@@ -19,7 +19,7 @@ describe('LoadShippingOrderUseCase', () => {
 			})
 		} as unknown as ShippingRepository;
 		const uc = new LoadShippingOrderUseCase(repo);
-		await uc.execute(' SO-1 ');
-		expect(repo.loadOrder).toHaveBeenCalledWith('SO-1');
+		await uc.execute(' SO-1 ', 7);
+		expect(repo.loadOrder).toHaveBeenCalledWith('SO-1', 7);
 	});
 });
