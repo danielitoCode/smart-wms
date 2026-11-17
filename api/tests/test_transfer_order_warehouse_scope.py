@@ -25,7 +25,7 @@ def _query(sql, params=()):
 
 
 def _create_transfer_user(client, username, warehouse_ids):
-    _query("DELETE FROM login_attempts WHERE username = %s", (username,))
+    _query("DELETE FROM login_attempts")
     conn = db_test_context.get_raw_connection()
     cur = conn.cursor()
     try:
