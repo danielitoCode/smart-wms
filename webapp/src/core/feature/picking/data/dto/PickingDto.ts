@@ -28,6 +28,16 @@ export type PickTaskDto = {
 	status?: string;
 	message?: string;
 	pick_sequence?: number;
+	bin_barcode?: string | null;
+	zone?: string | null;
+	aisle?: string | null;
+	row_num?: string | number | null;
+	level_num?: string | number | null;
+	tote_number?: string | null;
+	so_number?: string | null;
+	to_number?: string | null;
+	pick_number?: number;
+	total_picks?: number;
 };
 
 export type MessageDto = {
