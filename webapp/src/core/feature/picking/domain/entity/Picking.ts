@@ -28,6 +28,8 @@ export type PickTask = {
 	upc: string | null;
 	quantityToPick: number;
 	binId: number | null;
+	inventoryId?: number | null;
+	lotNumber?: string | null;
 	binCode: string | null;
 	binBarcode?: string | null;
 	zone?: string | null;
