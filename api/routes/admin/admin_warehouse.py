@@ -1,5 +1,6 @@
 """Warehouse, Zone, and Bin endpoints."""
 
+import json
 import math
 import uuid
 
@@ -672,129 +673,197 @@ def delete_bin(bin_id):
 @validate_body(InterWarehouseTransferRequest)
 @with_db
 def create_inter_warehouse_transfer(validated):
-    """Move inventory from one warehouse/bin to another warehouse/bin."""
+    """Move available stock across warehouses exactly once per idempotency key."""
     item_id = validated.item_id
     from_bin_id = validated.from_bin_id
     from_warehouse_id = validated.from_warehouse_id
     to_bin_id = validated.to_bin_id
     to_warehouse_id = validated.to_warehouse_id
     quantity = validated.quantity
-    reason = validated.reason or ""
+    reason = (validated.reason or "").strip()
+    idempotency_key = str(validated.idempotency_key)
+    username = g.current_user["username"]
+    request_payload = {
+        "item_id": item_id, "from_bin_id": from_bin_id,
+        "from_warehouse_id": from_warehouse_id, "to_bin_id": to_bin_id,
+        "to_warehouse_id": to_warehouse_id, "quantity": quantity, "reason": reason,
+    }
 
-    # Validate item exists
-    item = g.db.execute(text("SELECT item_id, sku FROM items WHERE item_id = :iid"), {"iid": item_id}).fetchone()
+    # Scope both warehouse IDs in SQL before exposing whether they exist.
+    scope_sql, scope_params = warehouse_scope_clause("warehouse_id")
+    warehouse_rows = g.db.execute(
+        text(
+            "SELECT warehouse_id FROM warehouses "
+            "WHERE warehouse_id = ANY(:warehouse_ids) AND is_active = TRUE " + scope_sql
+        ),
+        {"warehouse_ids": [from_warehouse_id, to_warehouse_id], **scope_params},
+    ).fetchall()
+    if {row.warehouse_id for row in warehouse_rows} != {from_warehouse_id, to_warehouse_id}:
+        return jsonify({"error": "One or both warehouses are unavailable"}), 404
+
+    # Defence in depth: check both sides independently after the scoped lookup.
+    for warehouse_id in (from_warehouse_id, to_warehouse_id):
+        allowed, denial = check_warehouse_access(warehouse_id)
+        if not allowed:
+            return denial
+
+    # Serialize requests sharing a key, including requests arriving while
+    # the original transaction is still in flight.
+    lock_key = username + ":" + idempotency_key
+    g.db.execute(
+        text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
+        {"lock_key": lock_key},
+    )
+    prior = g.db.execute(
+        text(
+            "SELECT request_payload, response_payload "
+            "FROM inter_warehouse_transfer_requests "
+            "WHERE username = :username AND idempotency_key = :key"
+        ),
+        {"username": username, "key": idempotency_key},
+    ).fetchone()
+    if prior:
+        if prior.request_payload != request_payload:
+            return jsonify({"error": "Idempotency key was already used for a different transfer"}), 409
+        return jsonify(prior.response_payload), 201
+
+    item = g.db.execute(
+        text("SELECT item_id, sku FROM items WHERE item_id = :iid AND is_active = TRUE"),
+        {"iid": item_id},
+    ).fetchone()
     if not item:
-        return jsonify({"error": "Item not found"}), 404
+        return jsonify({"error": "Item not found or inactive"}), 404
 
-    # Validate source bin exists in source warehouse
+    source_scope, source_params = warehouse_scope_clause("b.warehouse_id")
     from_bin = g.db.execute(
-        text("SELECT bin_id, bin_code FROM bins WHERE bin_id = :bid AND warehouse_id = :wid"),
-        {"bid": from_bin_id, "wid": from_warehouse_id},
+        text(
+            "SELECT b.bin_id, b.bin_code, b.warehouse_id FROM bins b "
+            "WHERE b.bin_id = :bid AND b.warehouse_id = :wid AND b.is_active = TRUE "
+            + source_scope
+        ),
+        {"bid": from_bin_id, "wid": from_warehouse_id, **source_params},
     ).fetchone()
     if not from_bin:
-        return jsonify({"error": "Source bin not found in the specified source warehouse"}), 404
+        return jsonify({"error": "Source bin not found"}), 404
 
-    # Validate destination bin exists in destination warehouse
+    destination_scope, destination_params = warehouse_scope_clause("b.warehouse_id")
     to_bin = g.db.execute(
-        text("SELECT bin_id, bin_code FROM bins WHERE bin_id = :bid AND warehouse_id = :wid"),
-        {"bid": to_bin_id, "wid": to_warehouse_id},
+        text(
+            "SELECT b.bin_id, b.bin_code, b.warehouse_id FROM bins b "
+            "WHERE b.bin_id = :bid AND b.warehouse_id = :wid AND b.is_active = TRUE "
+            + destination_scope
+        ),
+        {"bid": to_bin_id, "wid": to_warehouse_id, **destination_params},
     ).fetchone()
     if not to_bin:
-        return jsonify({"error": "Destination bin not found in the specified destination warehouse"}), 404
+        return jsonify({"error": "Destination bin not found"}), 404
 
-    # Validate sufficient inventory in source bin
-    source_inv = g.db.execute(
-        text("SELECT inventory_id, quantity_on_hand FROM inventory WHERE item_id = :iid AND bin_id = :bid"),
-        {"iid": item_id, "bid": from_bin_id},
-    ).fetchone()
-    available = source_inv.quantity_on_hand if source_inv else 0
+    # Lock both item/bin identities in a stable order. add_inventory takes
+    # these same transaction locks, preventing opposite-direction deadlocks.
+    for bin_id in sorted((from_bin_id, to_bin_id)):
+        g.db.execute(
+            text("SELECT pg_advisory_xact_lock(:item_id, :bin_id)"),
+            {"item_id": item_id, "bin_id": bin_id},
+        )
+
+    source_rows = g.db.execute(
+        text(
+            "SELECT inventory_id, quantity_on_hand, quantity_allocated, lot_number "
+            "FROM inventory WHERE item_id = :iid AND bin_id = :bid AND warehouse_id = :wid "
+            "ORDER BY lot_number NULLS FIRST, inventory_id FOR UPDATE"
+        ),
+        {"iid": item_id, "bid": from_bin_id, "wid": from_warehouse_id},
+    ).fetchall()
+    available = sum(max(row.quantity_on_hand - row.quantity_allocated, 0) for row in source_rows)
     if available < quantity:
-        return jsonify({"error": f"Insufficient inventory in source bin. Available: {available}"}), 400
+        return jsonify({"error": f"Insufficient unallocated inventory in source bin. Available: {available}"}), 400
 
-    # Decrement source
-    new_source_qty = available - quantity
-    set_inventory_quantity(g.db, source_inv.inventory_id, new_source_qty)
+    remaining = quantity
+    transfer_ids = []
+    deferred_notifications = []
+    transferred_at = None
+    for source_row in source_rows:
+        row_available = max(source_row.quantity_on_hand - source_row.quantity_allocated, 0)
+        moved = min(row_available, remaining)
+        if moved <= 0:
+            continue
 
-    # Upsert destination (different warehouse, so use add_inventory directly)
-    add_inventory(g.db, item_id, to_bin_id, to_warehouse_id, quantity)
+        set_inventory_quantity(g.db, source_row.inventory_id, source_row.quantity_on_hand - moved)
+        add_inventory(g.db, item_id, to_bin_id, to_warehouse_id, moved, lot_number=source_row.lot_number)
+        transfer = g.db.execute(
+            text("""
+                INSERT INTO bin_transfers
+                    (item_id, from_bin_id, to_bin_id, warehouse_id, quantity,
+                     lot_number, transferred_by, transfer_type, reason, external_id)
+                VALUES
+                    (:iid, :from_bid, :to_bid, :wid, :qty,
+                     :lot, :username, 'INTER_WAREHOUSE', :reason, :ext_id)
+                RETURNING transfer_id, transferred_at
+            """),
+            {
+                "iid": item_id, "from_bid": from_bin_id, "to_bid": to_bin_id,
+                "wid": from_warehouse_id, "qty": moved, "lot": source_row.lot_number,
+                "username": username, "reason": reason, "ext_id": str(uuid.uuid4()),
+            },
+        ).fetchone()
+        transfer_ids.append(transfer.transfer_id)
+        transferred_at = transfer.transferred_at
+        remaining -= moved
+        if remaining == 0:
+            break
 
-    # Sourcing a backordered item from one warehouse into another lands it in
-    # exactly the warehouse the backorder is waiting on, and used to leave it
-    # in WAITING_STOCK. Only the destination warehouse can gain stock here;
-    # the source side is a decrement and cannot satisfy anything.
-    _deferred_notifications = []
+    # Stock, transfer rows, backorder releases, audit rows and idempotency
+    # receipt all share this one transaction.
     release_satisfiable_backorders(
-        g.db,
-        warehouse_id=to_warehouse_id,
-        item_id=item_id,
-        source_txn_id=g.source_txn_id,
-        deferred_notifications=_deferred_notifications,
+        g.db, warehouse_id=to_warehouse_id, item_id=item_id,
+        source_txn_id=g.source_txn_id, deferred_notifications=deferred_notifications,
         source=RELEASE_SOURCE_TRANSFER,
     )
 
-    # Create bin_transfers record
-    transfer = g.db.execute(
+    transfer_details = {
+        "transfer_ids": transfer_ids, "item_id": item_id,
+        "from_bin_id": from_bin_id, "to_bin_id": to_bin_id,
+        "from_warehouse_id": from_warehouse_id, "to_warehouse_id": to_warehouse_id,
+        "quantity": quantity, "reason": reason,
+    }
+    write_audit_log(
+        g.db, ACTION_TRANSFER, "ITEM", item_id, user_id=g.current_user["user_id"],
+        warehouse_id=from_warehouse_id, details={**transfer_details, "direction": "OUT"},
+    )
+    write_audit_log(
+        g.db, ACTION_TRANSFER, "ITEM", item_id, user_id=g.current_user["user_id"],
+        warehouse_id=to_warehouse_id, details={**transfer_details, "direction": "IN"},
+    )
+
+    response_payload = {
+        "transfer_id": transfer_ids[0], "transfer_ids": transfer_ids,
+        "item_id": item_id, "sku": item.sku,
+        "from_bin_id": from_bin_id, "from_bin_code": from_bin.bin_code,
+        "from_warehouse_id": from_warehouse_id,
+        "to_bin_id": to_bin_id, "to_bin_code": to_bin.bin_code,
+        "to_warehouse_id": to_warehouse_id, "quantity": quantity, "reason": reason,
+        "transferred_at": transferred_at.isoformat() if transferred_at else None,
+    }
+    g.db.execute(
         text("""
-            INSERT INTO bin_transfers (item_id, from_bin_id, to_bin_id, warehouse_id, quantity, transferred_by, transfer_type, reason, external_id)
-            VALUES (:iid, :from_bid, :to_bid, :wid, :qty, :username, 'INTER_WAREHOUSE', :reason, :ext_id)
-            RETURNING transfer_id, transferred_at
+            INSERT INTO inter_warehouse_transfer_requests
+                (username, idempotency_key, request_payload, response_payload)
+            VALUES (:username, :key, CAST(:request_payload AS jsonb),
+                    CAST(:response_payload AS jsonb))
         """),
         {
-            "iid": item_id, "from_bid": from_bin_id, "to_bid": to_bin_id,
-            "wid": from_warehouse_id,
-            "qty": quantity, "username": g.current_user["username"],
-            "reason": reason,
-            "ext_id": str(uuid.uuid4()),
+            "username": username, "key": idempotency_key,
+            "request_payload": json.dumps(request_payload, sort_keys=True),
+            "response_payload": json.dumps(response_payload, sort_keys=True),
         },
-    ).fetchone()
-
-    user_id = g.current_user["user_id"]
-    transfer_details = {
-        "transfer_id": transfer.transfer_id,
-        "item_id": item_id,
-        "from_bin_id": from_bin_id,
-        "to_bin_id": to_bin_id,
-        "from_warehouse_id": from_warehouse_id,
-        "to_warehouse_id": to_warehouse_id,
-        "quantity": quantity,
-        "reason": reason,
-    }
-
-    # Audit log for source warehouse
-    write_audit_log(
-        g.db, ACTION_TRANSFER, "ITEM", item_id,
-        user_id=user_id, warehouse_id=from_warehouse_id,
-        details={**transfer_details, "direction": "OUT"},
     )
-    # Audit log for destination warehouse
-    write_audit_log(
-        g.db, ACTION_TRANSFER, "ITEM", item_id,
-        user_id=user_id, warehouse_id=to_warehouse_id,
-        details={**transfer_details, "direction": "IN"},
-    )
-
     g.db.commit()
 
-    # after the commit, so a Teams send cannot block the response.
-    for event_type, payload, wid in _deferred_notifications:
-        dispatch_backorder_notification(
-            event_type=event_type, payload=payload, warehouse_id=wid,
-        )
+    # External notifications run only after commit.
+    for event_type, payload, wid in deferred_notifications:
+        dispatch_backorder_notification(event_type=event_type, payload=payload, warehouse_id=wid)
 
-    return jsonify({
-        "transfer_id": transfer.transfer_id,
-        "item_id": item_id,
-        "sku": item.sku,
-        "from_bin_id": from_bin_id,
-        "from_bin_code": from_bin.bin_code,
-        "from_warehouse_id": from_warehouse_id,
-        "to_bin_id": to_bin_id,
-        "to_bin_code": to_bin.bin_code,
-        "to_warehouse_id": to_warehouse_id,
-        "quantity": quantity,
-        "reason": reason,
-        "transferred_at": transfer.transferred_at.isoformat() if transfer.transferred_at else None,
-    }), 201
+    return jsonify(response_payload), 201
 
 
 @admin_bp.route("/inter-warehouse-transfers", methods=["GET"])
@@ -802,8 +871,29 @@ def create_inter_warehouse_transfer(validated):
 @require_admin_or_page_permission("transfer-orders")
 @with_db
 def list_inter_warehouse_transfers():
-    """Return recent inter-warehouse transfers with item, bin, and warehouse details."""
-    limit = min(request.args.get("limit", 50, type=int), 500)
+    """Return only transfers whose source AND destination are in user scope."""
+    try:
+        limit = int(request.args.get("limit", "50"))
+        from_warehouse_id = request.args.get("from_warehouse_id", type=int)
+        to_warehouse_id = request.args.get("to_warehouse_id", type=int)
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid transfer history filters"}), 400
+    if limit < 1 or limit > 500:
+        return jsonify({"error": "limit must be between 1 and 500"}), 400
+    for warehouse_id in (from_warehouse_id, to_warehouse_id):
+        if warehouse_id is not None and warehouse_id <= 0:
+            return jsonify({"error": "warehouse filters must be positive"}), 400
+
+    source_scope, source_params = warehouse_scope_clause("fb.warehouse_id")
+    destination_scope, destination_params = warehouse_scope_clause("tb.warehouse_id")
+    filters = []
+    params = {"lim": limit, **source_params, **destination_params}
+    if from_warehouse_id is not None:
+        filters.append("AND fb.warehouse_id = :from_warehouse_id")
+        params["from_warehouse_id"] = from_warehouse_id
+    if to_warehouse_id is not None:
+        filters.append("AND tb.warehouse_id = :to_warehouse_id")
+        params["to_warehouse_id"] = to_warehouse_id
 
     rows = g.db.execute(
         text("""
@@ -811,11 +901,9 @@ def list_inter_warehouse_transfers():
                    bt.quantity, bt.transferred_by, bt.transferred_at,
                    i.sku, i.item_name,
                    fb.bin_code AS from_bin_code, fb.warehouse_id AS from_warehouse_id,
-                   fw.warehouse_name AS from_warehouse_name,
-                   fw.warehouse_code AS from_warehouse_code,
+                   fw.warehouse_name AS from_warehouse_name, fw.warehouse_code AS from_warehouse_code,
                    tb.bin_code AS to_bin_code, tb.warehouse_id AS to_warehouse_id,
-                   tw.warehouse_name AS to_warehouse_name,
-                   tw.warehouse_code AS to_warehouse_code
+                   tw.warehouse_name AS to_warehouse_name, tw.warehouse_code AS to_warehouse_code
             FROM bin_transfers bt
             JOIN items i ON i.item_id = bt.item_id
             JOIN bins fb ON fb.bin_id = bt.from_bin_id
@@ -823,34 +911,25 @@ def list_inter_warehouse_transfers():
             JOIN bins tb ON tb.bin_id = bt.to_bin_id
             JOIN warehouses tw ON tw.warehouse_id = tb.warehouse_id
             WHERE bt.transfer_type = 'INTER_WAREHOUSE'
-            ORDER BY bt.transferred_at DESC
+            """ + source_scope + " " + destination_scope + " " + " ".join(filters) + """
+            ORDER BY bt.transferred_at DESC, bt.transfer_id DESC
             LIMIT :lim
         """),
-        {"lim": limit},
+        params,
     ).fetchall()
 
-    # #162: bin_transfers has no status column -- every row is a
-    # completed atomic move. Emit status='completed' so the admin
-    # table's status tag renders instead of an empty pill.
     return jsonify({
         "transfers": [
             {
-                "transfer_id": r.transfer_id,
-                "item_id": r.item_id,
-                "sku": r.sku,
-                "item_name": r.item_name,
-                "from_bin_id": r.from_bin_id,
-                "from_bin_code": r.from_bin_code,
+                "transfer_id": r.transfer_id, "item_id": r.item_id,
+                "sku": r.sku, "item_name": r.item_name,
+                "from_bin_id": r.from_bin_id, "from_bin_code": r.from_bin_code,
                 "from_warehouse_id": r.from_warehouse_id,
-                "from_warehouse_name": r.from_warehouse_name,
-                "from_warehouse_code": r.from_warehouse_code,
-                "to_bin_id": r.to_bin_id,
-                "to_bin_code": r.to_bin_code,
+                "from_warehouse_name": r.from_warehouse_name, "from_warehouse_code": r.from_warehouse_code,
+                "to_bin_id": r.to_bin_id, "to_bin_code": r.to_bin_code,
                 "to_warehouse_id": r.to_warehouse_id,
-                "to_warehouse_name": r.to_warehouse_name,
-                "to_warehouse_code": r.to_warehouse_code,
-                "quantity": r.quantity,
-                "transferred_by": r.transferred_by,
+                "to_warehouse_name": r.to_warehouse_name, "to_warehouse_code": r.to_warehouse_code,
+                "quantity": r.quantity, "transferred_by": r.transferred_by,
                 "transferred_at": r.transferred_at.isoformat() if r.transferred_at else None,
                 "status": "completed",
             }
