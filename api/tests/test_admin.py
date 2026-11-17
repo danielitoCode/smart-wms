@@ -1859,6 +1859,28 @@ class TestF41UserAuthorizationRegression:
         # Promotion clears stale grants; demotion must not restore them.
         assert client.get("/api/admin/users", headers=user_headers).status_code == 403
 
+    def test_users_grant_can_load_assignment_warehouses_without_warehouse_module_grant(self, client):
+        _uid, user_headers = _web_user_with_pages(
+            client, ["users"], username="f41_user_warehouse_catalog",
+        )
+        options = client.get("/api/admin/users/warehouse-options", headers=user_headers)
+        assert options.status_code == 200, options.get_json()
+        assert options.get_json()["total"] >= 1
+        assert any(row["warehouse_id"] == 1 for row in options.get_json()["warehouses"])
+
+        # The same user still cannot browse the independent warehouse module.
+        assert client.get("/api/admin/warehouses", headers=user_headers).status_code == 403
+
+        created = client.post("/api/admin/users", json={
+            "username": "f41_user_assigned",
+            "password": "warehouse123",
+            "full_name": "Assigned by User Manager",
+            "role": "USER",
+            "warehouse_ids": [1],
+        }, headers=user_headers)
+        assert created.status_code == 201, created.get_json()
+        assert created.get_json()["warehouse_ids"] == [1]
+
     def test_user_schema_limits_match_database_columns(self, client, auth_headers):
         too_long_username = client.post("/api/admin/users", json={
             "username": "u" * 51,
