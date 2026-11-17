@@ -34,3 +34,10 @@ export class UpdateUserPagePermissionsUseCase {
 	constructor(private readonly repository: ManagedUsersRepository) {}
 	execute(input: UpdateUserPagePermissions) { return this.repository.updatePermissions(input); }
 }
+
+
+/** Loads the selectable warehouse catalogue for user assignment. */
+export class ListManagedWarehousesUseCase {
+	constructor(private readonly repository: ManagedUsersRepository) {}
+	execute() { return this.repository.listWarehouses(); }
+}
