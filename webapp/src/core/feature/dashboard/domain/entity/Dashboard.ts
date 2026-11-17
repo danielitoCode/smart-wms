@@ -1,0 +1,14 @@
+export type DashboardRangeKey = 'today'|'yesterday'|'last_7d'|'last_30d'|'custom';
+export type DashboardView = 'charts'|'table';
+export type DashboardEvent = 'picking'|'packing'|'shipped'|'received_skus'|'putaway_skus';
+export type DashboardPreferences = { chartOrder: DashboardEvent[]; defaultRange: DashboardRangeKey; defaultView: DashboardView; updatedAt: string|null };
+export type ProductivityUser = { userId: number|string; username: string; displayName: string|null; metrics: Partial<Record<DashboardEvent,number>>; total: number };
+export type Productivity = { warehouseId:number; range:{start:string;end:string}; eventsVisible:DashboardEvent[]; users:ProductivityUser[]; totalsPerEvent:Partial<Record<DashboardEvent,number>>; totalOrders:number; totalPicks:number; totalUnits:number; warnings:string[] };
+export type ReceivedPo = { poId:number; poNumber:string; vendorName:string|null; status:string; unitsReceived:number; linesReceived:number; receiveEvents:number; receivers:string[]; lastReceivedAt:string|null };
+export type ReceivedDashboard = { warehouseId:number; range:{start:string;end:string}; pos:ReceivedPo[] };
+export type ShippingOrder = { soId:number; soNumber:string; customerName:string|null; status:string; shipByDate:string|null };
+export type ShippingSource = { orderOrigin:string; label:string; ordersReceived:number; ordersShipped:number; needToShipToday:number; orders:ShippingOrder[] };
+export type ShippingHealth = { warehouseId:number; range:{start:string;end:string}; bySource:ShippingSource[] };
+export type LocalPickupOrder = { soId:number; soNumber:string; customerName:string|null; status:string; orderDate:string|null; createdAt:string|null; shipMethod:string|null; customerPhone?:string|null; shipAddress?:string|null; priority?:number; memo?:string|null };
+export type LocalPickupPage = { orders:LocalPickupOrder[]; total:number };
+export type DashboardRange = {start:string;end:string};
