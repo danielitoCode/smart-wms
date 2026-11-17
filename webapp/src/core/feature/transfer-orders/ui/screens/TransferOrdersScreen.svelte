@@ -194,6 +194,7 @@
         </label>
       </div>
       {#if clientErrors.length}<ul class="validation-list">{#each clientErrors as item}<li>{item}</li>{/each}</ul>{/if}
+      {#if vm.importErrors.length}<ul class="validation-list">{#each vm.importErrors as item}<li>Fila {item.rowIndex + 1}: {item.errorKind}{#if item.sku} · SKU {item.sku}{/if}</li>{/each}</ul>{/if}
       {#if parseRecords().length}
         <div class="preview"><strong>{parseRecords().length} {i18n.t('filas detectadas')}</strong><div class="table-wrap"><table><thead><tr><th>#</th><th>SKU</th><th>{i18n.t('Cantidad')}</th></tr></thead><tbody>
           {#each parseRecords().slice(0, 50) as item}<tr><td>{item.rowIndex}</td><td class="mono">{item.sku}</td><td>{item.quantity}</td></tr>{/each}
