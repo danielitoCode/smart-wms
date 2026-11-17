@@ -48,16 +48,32 @@ picking_bp = Blueprint("picking", __name__)
 @with_db
 def active_batch():
     username = g.current_user["username"]
+    raw_warehouse_id = request.args.get("warehouse_id")
+    if raw_warehouse_id is not None:
+        try:
+            warehouse_id = int(raw_warehouse_id)
+            if warehouse_id <= 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            return jsonify({"error": "warehouse_id must be a positive integer"}), 400
+        ok, denied = check_warehouse_access(warehouse_id)
+        if not ok:
+            return denied
+    else:
+        warehouse_id = None
+
     batch = g.db.execute(
         text("""
-            SELECT batch_id, total_orders, created_at
+            SELECT batch_id, total_orders, created_at, warehouse_id
             FROM pick_batches
             WHERE assigned_to = :username
               AND status IN (:s_open, :s_inprog)
+              AND (:warehouse_id IS NULL OR warehouse_id = :warehouse_id)
             ORDER BY created_at DESC
             LIMIT 1
         """),
-        {"username": username, "s_open": BATCH_OPEN, "s_inprog": BATCH_IN_PROGRESS},
+        {"username": username, "s_open": BATCH_OPEN, "s_inprog": BATCH_IN_PROGRESS,
+         "warehouse_id": warehouse_id},
     ).fetchone()
 
     if not batch:
@@ -92,6 +108,7 @@ def active_batch():
     return jsonify({
         "active": True,
         "batch_id": batch.batch_id,
+        "warehouse_id": batch.warehouse_id,
         "total_picks": counts.total_picks,
         "completed_picks": counts.completed_picks,
         "total_orders": batch.total_orders,
