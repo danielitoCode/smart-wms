@@ -1116,6 +1116,21 @@ def start_to_picking(to_id):
             "to_approval_id": pending_approval.to_approval_id,
         }), 409
 
+    pending_approval = g.db.execute(
+        text(
+            "SELECT to_approval_id FROM transfer_order_approvals "
+            " WHERE to_id = :tid AND status = 'PENDING' "
+            " ORDER BY to_approval_id LIMIT 1"
+        ),
+        {"tid": to_id},
+    ).fetchone()
+    if pending_approval:
+        return jsonify({
+            "error": "pending_approval_exists",
+            "to_approval_id": pending_approval.to_approval_id,
+            "detail": "Resolve the current approval before starting another picking batch.",
+        }), 409
+
     pending_tasks = g.db.execute(
         text(
             "SELECT COUNT(*) FROM pick_tasks "
