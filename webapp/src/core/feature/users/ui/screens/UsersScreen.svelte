@@ -3,19 +3,11 @@
  import type {I18nState} from '../../../../../lib/i18n/i18n.svelte';
  import {createManagedUsersState} from '../state/managedUsersState.svelte';
  import type {ManagedUser} from '../../domain/entity/UserManagement';
+ import {MANAGED_USER_PERMISSION_GROUPS,MANAGED_USER_PERMISSION_KEYS,type ManagedUserPermissionGroup} from '../config/userPermissionGroups';
  const i18n=getContext<I18nState>('i18n'),vm=createManagedUsersState();
  const FUNCTIONS=[['pick','Pick'],['pack','Pack'],['ship','Ship'],['receive','Receive'],['putaway','Put-Away'],['count','Count'],['transfer','Transfer'],['sell','Sell (POS)']] as const;
- type PermissionGroup={label:string;isOverride?:boolean;pages:[string,string][]};
- const GROUPS:PermissionGroup[]=[
-  {label:'General',pages:[['dashboard','Dashboard']]},
-  {label:'Floor',pages:[['inventory','Inventory'],['cycle-counts','Cycle Counts'],['count-approvals','Count Approvals']]},
-  {label:'Inbound',pages:[['purchase-orders','Purchase Orders'],['receiving','Receiving'],['putaway','Put-away']]},
-  {label:'Outbound',pages:[['sales-orders','Sales Orders'],['backorders','Backorders'],['fraud','Fraud'],['picking-tickets','Picking Tickets'],['picking-batches','Picking Batches']]},
-  {label:'Warehouse',pages:[['items','Items'],['vendors','Vendors'],['adjustments','Inventory Adjustments'],['inter-warehouse-transfers','Inventory Transfers'],['transfer-orders','Transfer Orders'],['warehouses','Warehouses'],['bins','Bins'],['zones','Zones'],['preferred-bins','Preferred Bins']]},
-  {label:'System',pages:[['users','Users'],['api-tokens','API Tokens'],['inbound','Inbound Activity'],['consumer-groups','Consumer Groups'],['channels','Channels'],['webhooks','Webhooks'],['notifications','Notifications'],['audit-log','Audit Log'],['imports','Imports'],['integrations','Integrations'],['settings','Settings']]},
-  {label:'Overrides',isOverride:true,pages:[['so-full-edit','Full SO edit (past OPEN, incl. source_system + line CRUD)']]}
- ];
- const ALL_KEYS=GROUPS.flatMap(g=>g.pages.map(p=>p[0]));
+ const GROUPS=MANAGED_USER_PERMISSION_GROUPS;
+ const ALL_KEYS=MANAGED_USER_PERMISSION_KEYS;
  let search=$state(''),formOpen=$state(false),editing=$state<ManagedUser|null>(null);
  let username=$state(''),password=$state(''),fullName=$state(''),role=$state<'ADMIN'|'USER'>('USER');
  let warehouseIds=$state<number[]>([]),functions=$state<string[]>([]),active=$state(true),pageKeys=$state<string[]>([]);
@@ -40,7 +32,7 @@
   if(ok&&savedUserId&&role==='USER'){const savedPermissions=await vm.savePermissions(savedUserId,pageKeys);if(!savedPermissions)return;}
   if(ok)reset();
  }
- function toggleGroup(g:PermissionGroup,on:boolean){const keys=g.pages.map(p=>p[0]);pageKeys=on?[...new Set([...pageKeys,...keys])]:pageKeys.filter(k=>!keys.includes(k));}
+ function toggleGroup(g:ManagedUserPermissionGroup,on:boolean){const keys=g.pages.map(p=>p[0]);pageKeys=on?[...new Set([...pageKeys,...keys])]:pageKeys.filter(k=>!keys.includes(k));}
  async function editPermissions(u:ManagedUser){permissionsUser=u;permissionsReady=false;permissionLoading=true;const p=await vm.loadPermissions(u.userId);permissionsReady=!!p;pageKeys=p?[...p.pageKeys]:[];permissionLoading=false;}
  async function savePerms(){if(permissionsUser&&permissionsReady&&await vm.savePermissions(permissionsUser.userId,pageKeys))permissionsUser=null;}
  async function confirmDelete(){if(deleteTarget&&await vm.remove(deleteTarget.userId))deleteTarget=null;}
