@@ -1898,6 +1898,54 @@ class TestF41UserAuthorizationRegression:
         }, headers=auth_headers)
         assert too_long_name.status_code == 400
 
+    def test_forced_password_change_is_set_and_enforced_on_existing_session(self, client, auth_headers):
+        created = client.post("/api/admin/users", json={
+            "username": "f41_forced_password",
+            "password": "warehouse123",
+            "full_name": "Forced Password",
+            "role": "USER",
+            "warehouse_ids": [1],
+            "must_change_password": True,
+        }, headers=auth_headers)
+        assert created.status_code == 201, created.get_json()
+        uid = created.get_json()["user_id"]
+        assert created.get_json()["must_change_password"] is True
+
+        login = client.post("/api/auth/login", json={
+            "username": "f41_forced_password", "password": "warehouse123",
+        })
+        user_headers = {"Authorization": f"Bearer {login.get_json()['token']}"}
+        me = client.get("/api/auth/me", headers=user_headers)
+        assert me.status_code == 200 and me.get_json()["must_change_password"] is True
+        blocked = client.get("/api/admin/users", headers=user_headers)
+        assert blocked.status_code == 403
+        assert blocked.get_json()["error"] == "password_change_required"
+
+        changed = client.post("/api/auth/change-password", json={
+            "current_password": "warehouse123", "new_password": "warehouse456",
+        }, headers=user_headers)
+        assert changed.status_code == 200
+        me_after = client.get("/api/auth/me", headers=user_headers)
+        assert me_after.status_code == 200
+        assert me_after.get_json()["must_change_password"] is False
+
+    def test_admin_can_require_password_change_for_an_existing_user(self, client, auth_headers):
+        created = client.post("/api/admin/users", json={
+            "username": "f41_force_on_edit",
+            "password": "warehouse123",
+            "full_name": "Force On Edit",
+            "role": "USER",
+            "warehouse_ids": [1],
+        }, headers=auth_headers)
+        uid = created.get_json()["user_id"]
+        updated = client.put(
+            f"/api/admin/users/{uid}",
+            json={"must_change_password": True},
+            headers=auth_headers,
+        )
+        assert updated.status_code == 200, updated.get_json()
+        assert updated.get_json()["must_change_password"] is True
+
     def test_admin_permissions_return_exact_server_catalog(self, client, auth_headers):
         from constants import ALL_PAGE_KEYS, ALL_OVERRIDE_KEYS
 
