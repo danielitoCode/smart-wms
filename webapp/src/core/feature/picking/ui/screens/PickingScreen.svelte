@@ -2,12 +2,16 @@
 	import { getContext } from 'svelte';
 	import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
 	const i18n = getContext<I18nState>('i18n');
-	import { onMount } from 'svelte';
+	import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
 	import { createPickingState } from '../state/pickingState.svelte';
 
-	const state = createPickingState();
-
-	onMount(() => {
+	const warehouseSelection = getContext<WarehouseSelectionState>('warehouseSelection');
+	const state = createPickingState(warehouseSelection);
+	let lastWarehouseGeneration = -1;
+	$effect(() => {
+		const generation = warehouseSelection.generation;
+		if (!warehouseSelection.initialized || warehouseSelection.warehouseId == null || generation === lastWarehouseGeneration) return;
+		lastWarehouseGeneration = generation;
 		void state.refresh();
 	});
 
@@ -38,16 +42,7 @@
 		<p class="subtitle">{i18n.t('Valida pedidos de venta, organiza su preparación y registra cada producto recogido.')}</p>
 	</header>
 
-	<label class="wh">
-		{i18n.t("ID de almacén")}
-		<input
-			type="number"
-			min="1"
-			value={state.warehouseId}
-			oninput={(e) => state.setWarehouseId(Number(e.currentTarget.value))}
-			disabled={state.busy}
-		/>
-	</label>
+	<p class="meta">Almacén activo: #{warehouseSelection.warehouseId ?? '—'}</p>
 
 	<section class="panel">
 		<h2>{i18n.t('Validar pedido de venta')}</h2>
