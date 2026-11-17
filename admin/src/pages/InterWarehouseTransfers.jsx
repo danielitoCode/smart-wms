@@ -258,7 +258,7 @@ export default function InterWarehouseTransfers() {
               <select className="form-select" value={form.source_warehouse_id} onChange={(e) => updateField('source_warehouse_id', e.target.value)}>
                 <option value="">Select warehouse...</option>
                 {warehouses.map((w) => (
-                  <option key={w.warehouse_id} value={w.warehouse_id}>{w.warehouse_name} ({w.warehouse_code})</option>
+                  <option key={w.id} value={w.id}>{w.name} ({w.code})</option>
                 ))}
               </select>
             </div>
@@ -296,7 +296,7 @@ export default function InterWarehouseTransfers() {
               <select className="form-select" value={form.destination_warehouse_id} onChange={(e) => updateField('destination_warehouse_id', e.target.value)}>
                 <option value="">Select warehouse...</option>
                 {warehouses.map((w) => (
-                  <option key={w.warehouse_id} value={w.warehouse_id}>{w.warehouse_name} ({w.warehouse_code})</option>
+                  <option key={w.id} value={w.id}>{w.name} ({w.code})</option>
                 ))}
               </select>
             </div>
