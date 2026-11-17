@@ -6,7 +6,7 @@ describe('ManagedUserMapper', () => {
 		expect(ManagedUserMapper.toDomain({
 			user_id: 7, username: 'operator', full_name: 'Warehouse Operator',
 			role: 'USER', warehouse_id: null, warehouse_ids: [], allowed_functions: null,
-			is_active: true, created_at: null, last_login: null,
+			is_active: true, must_change_password: false, created_at: null, last_login: null,
 		})).toMatchObject({ userId: 7, warehouseId: null, warehouseIds: [], allowedFunctions: [], isActive: true });
 	});
 
@@ -33,4 +33,16 @@ describe('ManagedUserMapper', () => {
 			userId: 7, pageKeys: ['users', 'so-full-edit'],
 		})).toEqual({ page_keys: ['users', 'so-full-edit'] });
 	});
+	it('maps and serializes the forced password-change flag', () => {
+		const user = ManagedUserMapper.toDomain({
+			user_id: 9, username: 'new-user', full_name: 'New User', role: 'USER',
+			warehouse_id: null, warehouse_ids: [], allowed_functions: [], is_active: true,
+			must_change_password: true,
+		});
+		expect(user.mustChangePassword).toBe(true);
+		expect(ManagedUserMapper.updateToDto({
+			userId: 9, mustChangePassword: false,
+		})).toEqual({ must_change_password: false });
+	});
+
 });
