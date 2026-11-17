@@ -90,6 +90,14 @@ def test_create_requires_access_to_both_warehouses(client):
         )
         assert response.status_code == 404, (allowed_ids, response.get_json())
 
+    both = _headers(client, [from_wh, 2])
+    response = client.post(
+        "/api/admin/inter-warehouse-transfer",
+        json={**payload, "idempotency_key": str(uuid.uuid4())},
+        headers=both,
+    )
+    assert response.status_code == 201, response.get_json()
+
 
 def test_list_history_requires_access_to_both_warehouses(client, auth_headers):
     item_id, from_bin, from_wh, to_bin = _source_destination()
@@ -111,6 +119,35 @@ def test_list_history_requires_access_to_both_warehouses(client, auth_headers):
     response = client.get("/api/admin/inter-warehouse-transfers", headers=both)
     assert response.status_code == 200
     assert transfer_id in {row["transfer_id"] for row in response.get_json()["transfers"]}
+
+    filtered = client.get(
+        f"/api/admin/inter-warehouse-transfers?from_warehouse_id={from_wh}&to_warehouse_id=2",
+        headers=both,
+    )
+    assert transfer_id in {row["transfer_id"] for row in filtered.get_json()["transfers"]}
+    reverse = client.get(
+        f"/api/admin/inter-warehouse-transfers?from_warehouse_id=2&to_warehouse_id={from_wh}",
+        headers=both,
+    )
+    assert transfer_id not in {row["transfer_id"] for row in reverse.get_json()["transfers"]}
+    malformed = client.get("/api/admin/inter-warehouse-transfers?from_warehouse_id=bad", headers=both)
+    assert malformed.status_code == 400
+
+
+def test_allocated_source_inventory_cannot_be_transferred(client, auth_headers):
+    item_id, from_bin, from_wh, to_bin = _source_destination()
+    _query(
+        "UPDATE inventory SET quantity_allocated = quantity_on_hand "
+        "WHERE item_id = %s AND bin_id = %s",
+        (item_id, from_bin),
+    )
+    response = client.post(
+        "/api/admin/inter-warehouse-transfer",
+        json=_body(item_id, from_bin, from_wh, to_bin, 2, quantity=1),
+        headers=auth_headers,
+    )
+    assert response.status_code == 400
+    assert "unallocated" in response.get_json()["error"].lower()
 
 
 def test_idempotent_retry_moves_stock_once_and_rejects_key_reuse(client, auth_headers):
