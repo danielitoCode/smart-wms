@@ -36,6 +36,15 @@ describe('Transfer Order use cases', () => {
     expect(repo.create).not.toHaveBeenCalled();
   });
 
+  it('accepts the backend maximum quantity and rejects values above it', async () => {
+    const repo = repository();
+    const useCase = new CreateTransferOrderUseCase(repo);
+    const result = useCase.execute({ sourceWarehouseCode: 'A', destinationWarehouseCode: 'B', records: [{ sku: 'SKU', quantity: 1000000 }] });
+    expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ records: [{ sku: 'SKU', quantity: 1000000 }] }));
+    expect(result).toBeDefined();
+    expect(() => useCase.execute({ sourceWarehouseCode: 'A', destinationWarehouseCode: 'B', records: [{ sku: 'SKU', quantity: 1000001 }] })).toThrow(/Cantidad inválida/);
+  });
+
   it('validates identifiers for picker read and submit operations', async () => {
     const repo = repository();
     const picker = new GetPickerTransferOrderUseCase(repo);
