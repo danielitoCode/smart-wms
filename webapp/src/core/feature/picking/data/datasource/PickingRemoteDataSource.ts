@@ -23,6 +23,7 @@ export class PickingRemoteDataSource {
 	confirm(input: ConfirmPickInput): Promise<MessageDto> {
 		return this.api.post<MessageDto>('/api/picking/confirm', {
 			pick_task_id: input.pickTaskId,
+			warehouse_id: input.warehouseId,
 			scanned_barcode: input.scannedBarcode,
 			quantity_picked: input.quantityPicked
 		});
@@ -31,13 +32,15 @@ export class PickingRemoteDataSource {
 	short(input: ShortPickInput): Promise<MessageDto> {
 		return this.api.post<MessageDto>('/api/picking/short', {
 			pick_task_id: input.pickTaskId,
+			warehouse_id: input.warehouseId,
 			quantity_available: input.quantityAvailable
 		});
 	}
 
-	completeBatch(batchId: number): Promise<MessageDto> {
+	completeBatch(batchId: number, warehouseId: number): Promise<MessageDto> {
 		return this.api.post<MessageDto>('/api/picking/complete-batch', {
-			batch_id: batchId
+			batch_id: batchId,
+			warehouse_id: warehouseId
 		});
 	}
 
