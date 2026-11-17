@@ -2,9 +2,18 @@
 	import { getContext } from 'svelte';
 	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
 	const i18n = getContext<I18nState>('i18n');
+	import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
 	import { createShippingState } from '../state/shippingState.svelte';
 
-	const state = createShippingState();
+	const warehouseSelection = getContext<WarehouseSelectionState>('warehouseSelection');
+	const state = createShippingState(warehouseSelection);
+	let lastWarehouseGeneration = -1;
+	$effect(() => {
+		const generation = warehouseSelection.generation;
+		if (generation === lastWarehouseGeneration) return;
+		lastWarehouseGeneration = generation;
+		state.onWarehouseChanged();
+	});
 
 	function onLoad(e: Event) {
 		e.preventDefault();
@@ -20,6 +29,7 @@
 <section class="page">
 	<header>
 		<h1>{i18n.t('Despacho de pedidos')}</h1>
+		<p class="meta">Almacén activo: #{warehouseSelection.warehouseId ?? '—'}</p>
 		<p class="subtitle">{i18n.t('Consulta el pedido y registra su salida con los datos de transporte.')}</p>
 	</header>
 
@@ -31,7 +41,7 @@
 			oninput={(e) => state.setBarcode(e.currentTarget.value)}
 			disabled={state.loading || state.busy}
 		/>
-		<button type="submit" disabled={state.loading || !state.barcode.trim()}>
+		<button type="submit" disabled={state.loading || state.busy || warehouseSelection.warehouseId == null || !state.barcode.trim()}>
 			{state.loading ? i18n.t('Cargando…') : i18n.t('Cargar')}
 		</button>
 	</form>
