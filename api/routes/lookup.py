@@ -240,7 +240,7 @@ def search_items():
                 """
                 SELECT item_id, sku, item_name, upc, category, weight_lbs
                 FROM items
-                WHERE sku ILIKE :q OR item_name ILIKE :q OR upc ILIKE :q
+                WHERE is_active = TRUE AND (sku ILIKE :q OR item_name ILIKE :q OR upc ILIKE :q)
                 LIMIT 50
                 """
             ),
@@ -254,7 +254,7 @@ def search_items():
                 SELECT DISTINCT i.item_id, i.sku, i.item_name, i.upc,
                                 i.category, i.weight_lbs
                 FROM items i
-                WHERE (i.sku ILIKE :q OR i.item_name ILIKE :q OR i.upc ILIKE :q)
+                WHERE i.is_active = TRUE AND (i.sku ILIKE :q OR i.item_name ILIKE :q OR i.upc ILIKE :q)
                   AND (
                     EXISTS (
                         SELECT 1 FROM inventory inv
