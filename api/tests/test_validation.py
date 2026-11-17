@@ -304,6 +304,7 @@ class TestWarehouseSchemas:
         req = InterWarehouseTransferRequest(
             item_id=1, from_bin_id=1, from_warehouse_id=1,
             to_bin_id=2, to_warehouse_id=2, quantity=5,
+            idempotency_key='550e8400-e29b-41d4-a716-446655440000',
         )
         assert req.quantity == 5
 
