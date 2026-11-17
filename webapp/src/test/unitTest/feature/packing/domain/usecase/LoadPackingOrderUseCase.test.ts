@@ -16,8 +16,8 @@ describe('LoadPackingOrderUseCase', () => {
 			complete: vi.fn()
 		};
 		const useCase = new LoadPackingOrderUseCase(repo);
-		await useCase.execute('  SO-001  ');
-		expect(repo.loadOrder).toHaveBeenCalledWith('SO-001');
+		await useCase.execute('  SO-001  ', 7);
+		expect(repo.loadOrder).toHaveBeenCalledWith('SO-001', 7);
 	});
 
 	it('rejects empty barcode', async () => {
