@@ -189,12 +189,21 @@ def test_failure_before_commit_rolls_back_stock_transfer_and_receipt(
     before_transfers = _query(
         "SELECT COUNT(*) FROM bin_transfers WHERE transfer_type = 'INTER_WAREHOUSE'"
     )[0][0]
+    before_audits = _query(
+        "SELECT COUNT(*) FROM audit_log WHERE action_type = 'TRANSFER' AND entity_type = 'ITEM' AND entity_id = %s",
+        (item_id,),
+    )[0][0]
+    original_audit = admin_warehouse.write_audit_log
+    audit_calls = {"count": 0}
 
-    def fail_after_inventory_mutation(*args, **kwargs):
-        raise RuntimeError("forced rollback test")
+    def fail_second_audit(*args, **kwargs):
+        audit_calls["count"] += 1
+        if audit_calls["count"] == 2:
+            raise RuntimeError("forced rollback after first audit")
+        return original_audit(*args, **kwargs)
 
-    monkeypatch.setattr(admin_warehouse, "release_satisfiable_backorders", fail_after_inventory_mutation)
-    with pytest.raises(RuntimeError, match="forced rollback"):
+    monkeypatch.setattr(admin_warehouse, "write_audit_log", fail_second_audit)
+    with pytest.raises(RuntimeError, match="forced rollback after first audit"):
         client.post("/api/admin/inter-warehouse-transfer", json=payload, headers=auth_headers)
 
     assert _quantity(item_id, from_bin) == before_source
@@ -203,9 +212,21 @@ def test_failure_before_commit_rolls_back_stock_transfer_and_receipt(
         "SELECT COUNT(*) FROM bin_transfers WHERE transfer_type = 'INTER_WAREHOUSE'"
     )[0][0] == before_transfers
     assert _query(
+        "SELECT COUNT(*) FROM audit_log WHERE action_type = 'TRANSFER' AND entity_type = 'ITEM' AND entity_id = %s",
+        (item_id,),
+    )[0][0] == before_audits
+    assert _query(
         "SELECT COUNT(*) FROM inter_warehouse_transfer_requests WHERE idempotency_key = %s",
         (key,),
     )[0][0] == 0
+
+    # A failed transaction does not consume the key; a client retry can
+    # safely complete the same operation after the transient failure.
+    monkeypatch.undo()
+    retried = client.post("/api/admin/inter-warehouse-transfer", json=payload, headers=auth_headers)
+    assert retried.status_code == 201, retried.get_json()
+    assert _quantity(item_id, from_bin) == before_source - 1
+    assert _quantity(item_id, to_bin) == before_destination + 1
 
 
 def test_idempotency_migration_is_repeatable():
