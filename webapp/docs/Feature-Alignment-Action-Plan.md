@@ -382,6 +382,8 @@ Referencia: [React Dashboard.jsx](https://github.com/danielitoCode/smart-wms/blo
 4. **UI:** tabla, filtros, detalle, paginación y contexto.
 5. **Pruebas:** actor/metadata ausentes, paginación, orden/fechas y datos sensibles.
 
+**Verificación de contrato y avance Svelte (2026-11-17):** Flask confirma un único GET de listado; no existe endpoint de detalle. Filtros reales: `action_type`, `user_id`, `start_date`, `end_date`, `item_id`; orden: `created_at`, `action_type`, `user_id`, `entity_type`; paginación hasta 1000. La respuesta usa `username` como actor, `entity_name`, `warehouse_code` y `details` heterogéneo. Domain/Data/UI y pruebas unitarias iniciales implementados; el detalle se abre desde la fila y el mapper redacta claves sensibles reconocibles. **Pendiente de cierre:** ejecución CI satisfactoria y decidir si la redacción debe reforzarse también en servidor/escritores, ya que el handler actual devuelve `details` sin sanitización general.
+
 ## F4.5 API Tokens
 
 1. **Domain:** ApiToken, scopes, expiración y revocación.
