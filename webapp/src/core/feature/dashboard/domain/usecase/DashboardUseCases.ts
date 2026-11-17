@@ -7,3 +7,4 @@ export class GetPreferencesUseCase { constructor(private r:DashboardRepository){
 export class UpdatePreferencesUseCase { constructor(private r:DashboardRepository){} execute(p:Parameters<DashboardRepository['updatePreferences']>[0]){return this.r.updatePreferences(p);} }
 export class GetLocalPickupUseCase { constructor(private r:DashboardRepository){} execute(w:number,q:string,s:string){return this.r.localPickup(w,q,s);} }
 export class MarkLocalPickupUseCase { constructor(private r:DashboardRepository){} execute(id:number){return this.r.markPickedUp(id);} }
+export class UpdateLocalPickupUseCase { constructor(private r:DashboardRepository){} execute(id:number,p:Parameters<DashboardRepository['updateLocalPickup']>[1]){return this.r.updateLocalPickup(id,p);} }
