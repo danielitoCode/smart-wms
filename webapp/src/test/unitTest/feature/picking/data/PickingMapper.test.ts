@@ -24,4 +24,11 @@ describe('PickingMapper Flask response contracts', () => {
   });
  });
 
+ it('maps transfer-order validation separately from sales-order wave IDs', () => {
+  expect(PickingMapper.toWaveValidate({
+   valid: true, kind: 'TO', to_id: 90, to_number: 'TO-90', batch_id: 7,
+   batch_number: 'TO-BATCH-7', line_count: 2, total_units: 8
+  })).toMatchObject({ valid: true, kind: 'TO', toId: 90, toNumber: 'TO-90', batchId: 7, batchNumber: 'TO-BATCH-7' });
+ });
+
 });
