@@ -42,12 +42,12 @@ function useDebouncedBinSearch(warehouseId, query, selectedId) {
     setSearching(true);
     const handle = setTimeout(async () => {
       const res = await api.get(
-        `/admin/bins?warehouse_id=${warehouseId}&q=${encodeURIComponent(q)}&per_page=25`,
+        `/lookup/bin/search?warehouse_id=${warehouseId}&q=${encodeURIComponent(q)}`,
       );
       setSearching(false);
       if (!res?.ok) return;
       const data = await res.json();
-      setResults(data.bins || []);
+      setResults(Array.isArray(data) ? data : []);
     }, 200);
     return () => clearTimeout(handle);
   }, [warehouseId, query, selectedId]);
@@ -104,12 +104,12 @@ export default function InterWarehouseTransfers() {
     setItemSearching(true);
     const handle = setTimeout(async () => {
       const res = await api.get(
-        `/admin/items?q=${encodeURIComponent(q)}&per_page=25&active=true`,
+        `/lookup/item/search?q=${encodeURIComponent(q)}`,
       );
       setItemSearching(false);
       if (!res?.ok) return;
       const data = await res.json();
-      setItemResults(data.items || []);
+      setItemResults(Array.isArray(data) ? data : []);
     }, 200);
     return () => clearTimeout(handle);
   }, [itemSearch, form.item_id]);
@@ -142,7 +142,7 @@ export default function InterWarehouseTransfers() {
   }, [form.destination_warehouse_id]);
 
   async function loadWarehouses() {
-    const res = await api.get('/admin/warehouses', { silentPermissionDenied: true });
+    const res = await api.get('/warehouses/list', { silentPermissionDenied: true });
     if (res?.ok) {
       const data = await res.json();
       setWarehouses(data.warehouses || []);
