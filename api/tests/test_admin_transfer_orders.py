@@ -228,6 +228,43 @@ class TestCancel:
         assert audit
         assert audit[0][0]["previous_status"] == "OPEN"
 
+    def test_cancel_after_partial_picking_releases_reservation_without_moving_stock(
+        self, client, auth_headers,
+    ):
+        # TO picking records progress but deliberately leaves on_hand and
+        # quantity_allocated untouched until an admin approves a snapshot.
+        to_id = _seed_to(
+            source_wh=1, dest_wh=2, status="PARTIALLY_PICKED",
+        )
+        _seed_to_line(
+            to_id, item_id=1, committed=10, picked=4,
+            status="PARTIALLY_PICKED",
+        )
+        _bump_inventory_allocated(1, 1, 10)
+        before = _query(
+            "SELECT COALESCE(SUM(quantity_on_hand), 0), "
+            "       COALESCE(SUM(quantity_allocated), 0) "
+            "  FROM inventory WHERE item_id = %s AND warehouse_id = %s",
+            (1, 1),
+        )[0]
+
+        response = client.post(
+            f"/api/admin/transfer-orders/{to_id}/cancel",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200, response.get_json()
+        after = _query(
+            "SELECT COALESCE(SUM(quantity_on_hand), 0), "
+            "       COALESCE(SUM(quantity_allocated), 0) "
+            "  FROM inventory WHERE item_id = %s AND warehouse_id = %s",
+            (1, 1),
+        )[0]
+        assert after[0] == before[0]
+        assert after[1] == before[1] - 10
+        assert _query(
+            "SELECT status FROM transfer_orders WHERE to_id = %s", (to_id,),
+        )[0][0] == "CANCELLED"
+
     def test_cancel_blocked_when_non_pending_approval_exists(
         self, client, auth_headers,
     ):
