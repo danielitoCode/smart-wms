@@ -87,9 +87,15 @@ export const PickingMapper = {
 	toWaveCreate(dto: WaveCreateDto): WaveCreateResult {
 		return {
 			batchId: dto.batch_id,
-			batchStatus: dto.batch_status,
+			batchNumber: dto.batch_number,
 			totalOrders: dto.total_orders,
-			totalPicks: dto.total_picks
+			totalPicks: dto.total_picks,
+			totalUnits: dto.total_units,
+			orders: dto.orders.map((order) => ({
+				soId: order.so_id,
+				soNumber: order.so_number,
+				lineCount: order.line_count
+			}))
 		};
 	},
 
