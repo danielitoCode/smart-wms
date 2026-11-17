@@ -278,207 +278,154 @@ def get_transfer_order(to_id):
 # ----------------------------------------------------------------------
 
 
+def _reservation_remaining(row) -> int:
+    return row.quantity_reserved - row.quantity_consumed - row.quantity_released
+
+
+def _release_line_reservations(db, to_line_id: int, quantity: int) -> int:
+    """Release only this line's original bin/lot reservations."""
+    if quantity <= 0:
+        return 0
+    rows = db.execute(
+        text(
+            """
+            SELECT reservation_id, inventory_id, quantity_reserved,
+                   quantity_consumed, quantity_released
+              FROM transfer_order_reservations
+             WHERE to_line_id = :lid
+               AND quantity_consumed + quantity_released < quantity_reserved
+             ORDER BY inventory_id ASC, reservation_id ASC
+             FOR UPDATE
+            """
+        ),
+        {"lid": to_line_id},
+    ).fetchall()
+    remaining = quantity
+    released = 0
+    for row in rows:
+        if remaining <= 0:
+            break
+        give = min(remaining, _reservation_remaining(row))
+        updated = db.execute(
+            text(
+                """
+                UPDATE inventory
+                   SET quantity_allocated = quantity_allocated - :qty,
+                       updated_at = NOW()
+                 WHERE inventory_id = :inv_id
+                   AND quantity_allocated >= :qty
+                RETURNING inventory_id
+                """
+            ),
+            {"qty": give, "inv_id": row.inventory_id},
+        ).fetchone()
+        if not updated:
+            raise ValueError(
+                f"reservation inventory mismatch for to_line_id={to_line_id}, "
+                f"inventory_id={row.inventory_id}"
+            )
+        db.execute(
+            text(
+                """
+                UPDATE transfer_order_reservations
+                   SET quantity_released = quantity_released + :qty,
+                       updated_at = NOW()
+                 WHERE reservation_id = :rid
+                """
+            ),
+            {"qty": give, "rid": row.reservation_id},
+        )
+        remaining -= give
+        released += give
+    if remaining:
+        raise ValueError(
+            f"reservation ledger is short by {remaining} units for to_line_id={to_line_id}"
+        )
+    return released
+
+
 def _release_reservations(db, to_id: int, source_warehouse_id: int) -> None:
-    """For every line on the TO with committed_qty > approved_qty,
-    decrement inventory.quantity_allocated at the source warehouse so
-    the reservation does not survive the cancellation. Inventory is
-    per-bin so the release walks rows in the same order the import +
-    picker use (inventory_id ASC) and decrements each row up to its
-    own current allocated value."""
+    """Release every unconsumed reservation owned by a transfer order."""
     lines = db.execute(
         text(
             """
-            SELECT to_line_id, item_id, committed_qty - approved_qty AS to_release
+            SELECT to_line_id, committed_qty - approved_qty AS to_release
               FROM transfer_order_lines
              WHERE to_id = :tid AND committed_qty > approved_qty
-             ORDER BY item_id ASC
+             ORDER BY item_id ASC, to_line_id ASC
+             FOR UPDATE
             """
         ),
         {"tid": to_id},
     ).fetchall()
-    for row in lines:
-        if row.to_release <= 0:
-            continue
-        _release_inventory_allocation(
-            db, row.item_id, source_warehouse_id, row.to_release,
-        )
+    for line in lines:
+        _release_line_reservations(db, line.to_line_id, line.to_release)
 
 
-def _release_inventory_allocation(
-    db, item_id: int, warehouse_id: int, delta: int,
+def _consume_line_reservations(
+    db, to_line_id: int, item_id: int, warehouse_id: int, quantity: int,
 ) -> None:
-    """Decrement quantity_allocated across (item, warehouse) inventory
-    rows until ``delta`` units are released. Walks inventory_id ASC
-    under FOR UPDATE so concurrent operations see deterministic lock
-    ordering. Each row gives up at most its own quantity_allocated to
-    avoid driving the column negative."""
-    if delta <= 0:
-        return
-    inv_rows = db.execute(
+    """Consume the exact bin/lot reservations belonging to an approved line."""
+    if quantity <= 0:
+        raise ValueError("reservation consumption quantity must be positive")
+    rows = db.execute(
         text(
             """
-            SELECT inv.inventory_id, inv.quantity_allocated
-              FROM inventory inv
-             WHERE inv.item_id = :iid AND inv.warehouse_id = :wid
-               AND inv.quantity_allocated > 0
-             ORDER BY inv.inventory_id ASC
-             FOR UPDATE OF inv
+            SELECT r.reservation_id, r.inventory_id, r.quantity_reserved,
+                   r.quantity_consumed, r.quantity_released
+              FROM transfer_order_reservations r
+             WHERE r.to_line_id = :lid
+               AND r.item_id = :iid
+               AND r.warehouse_id = :wid
+               AND r.quantity_consumed + r.quantity_released < r.quantity_reserved
+             ORDER BY r.inventory_id ASC, r.reservation_id ASC
+             FOR UPDATE
             """
         ),
-        {"iid": item_id, "wid": warehouse_id},
+        {"lid": to_line_id, "iid": item_id, "wid": warehouse_id},
     ).fetchall()
-    remaining = delta
-    for ir in inv_rows:
+    remaining = quantity
+    for row in rows:
         if remaining <= 0:
             break
-        give = min(remaining, ir.quantity_allocated)
-        if give == 0:
-            continue
+        take = min(remaining, _reservation_remaining(row))
+        updated = db.execute(
+            text(
+                """
+                UPDATE inventory
+                   SET quantity_allocated = quantity_allocated - :qty,
+                       quantity_on_hand = quantity_on_hand - :qty,
+                       updated_at = NOW()
+                 WHERE inventory_id = :inv_id
+                   AND quantity_allocated >= :qty
+                   AND quantity_on_hand >= :qty
+                RETURNING inventory_id
+                """
+            ),
+            {"qty": take, "inv_id": row.inventory_id},
+        ).fetchone()
+        if not updated:
+            raise ValueError(
+                f"reserved inventory is no longer available for to_line_id={to_line_id}, "
+                f"inventory_id={row.inventory_id}"
+            )
         db.execute(
             text(
-                "UPDATE inventory "
-                "   SET quantity_allocated = quantity_allocated - :delta "
-                " WHERE inventory_id = :inv_id"
+                """
+                UPDATE transfer_order_reservations
+                   SET quantity_consumed = quantity_consumed + :qty,
+                       updated_at = NOW()
+                 WHERE reservation_id = :rid
+                """
             ),
-            {"delta": give, "inv_id": ir.inventory_id},
+            {"qty": take, "rid": row.reservation_id},
         )
-        remaining -= give
+        remaining -= take
+    if remaining:
+        raise ValueError(
+            f"reservation ledger is short by {remaining} units for to_line_id={to_line_id}"
+        )
 
-
-@admin_bp.route("/transfer-orders/<int:to_id>/cancel", methods=["POST"])
-@require_auth
-@require_admin_or_page_permission("transfer-orders")
-@with_db
-def cancel_transfer_order(to_id):
-    header = g.db.execute(
-        text(
-            "SELECT to_id, to_number, status, source_warehouse_id, destination_warehouse_id "
-            "  FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
-        ),
-        {"tid": to_id},
-    ).fetchone()
-    if not header:
-        return jsonify({"error": "Transfer order not found"}), 404
-    denied = _check_transfer_order_warehouses(header.source_warehouse_id, header.destination_warehouse_id)
-    if denied:
-        return denied
-
-    try:
-        validate_header_transition(header.status, TO_STATUS_CANCELLED)
-    except ValueError as exc:
-        return jsonify({
-            "error": "invalid_status_for_cancel",
-            "current_status": header.status,
-            "detail": str(exc),
-        }), 409
-
-    # A submitted snapshot is an in-flight transfer decision. Do not
-    # release its reservation while an approval could still move it.
-    approval_count = g.db.execute(
-        text(
-            "SELECT COUNT(*) FROM transfer_order_approvals "
-            " WHERE to_id = :tid"
-        ),
-        {"tid": to_id},
-    ).scalar()
-    if approval_count > 0:
-        return jsonify({
-            "error": "to_already_partially_approved",
-            "approval_count": approval_count,
-        }), 409
-
-    _release_reservations(g.db, to_id, header.source_warehouse_id)
-
-    g.db.execute(
-        text(
-            "UPDATE transfer_orders SET status = :st, updated_at = NOW() "
-            " WHERE to_id = :tid"
-        ),
-        {"st": TO_STATUS_CANCELLED, "tid": to_id},
-    )
-
-    write_audit_log(
-        g.db,
-        action_type=ACTION_TO_CANCELLED,
-        entity_type="TO",
-        entity_id=to_id,
-        user_id=g.current_user["username"],
-        warehouse_id=header.source_warehouse_id,
-        details={
-            "to_number": header.to_number,
-            "previous_status": header.status,
-        },
-    )
-    g.db.commit()
-    return jsonify({"to_id": to_id, "status": TO_STATUS_CANCELLED})
-
-
-@admin_bp.route("/transfer-orders/<int:to_id>", methods=["DELETE"])
-@require_auth
-@require_admin_or_page_permission("transfer-orders")
-@with_db
-def delete_transfer_order(to_id):
-    header = g.db.execute(
-        text(
-            "SELECT to_id, to_number, status, source_warehouse_id, destination_warehouse_id "
-            "  FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
-        ),
-        {"tid": to_id},
-    ).fetchone()
-    if not header:
-        return jsonify({"error": "Transfer order not found"}), 404
-    denied = _check_transfer_order_warehouses(header.source_warehouse_id, header.destination_warehouse_id)
-    if denied:
-        return denied
-
-    # Hard delete only allowed pre-approval and pre-pick. Once any line
-    # has picked_qty > 0 OR any approval row exists, the audit trail
-    # would lose state; require cancel instead.
-    any_picks = g.db.execute(
-        text(
-            "SELECT COUNT(*) FROM transfer_order_lines "
-            " WHERE to_id = :tid AND picked_qty > 0"
-        ),
-        {"tid": to_id},
-    ).scalar()
-    any_approvals = g.db.execute(
-        text(
-            "SELECT COUNT(*) FROM transfer_order_approvals "
-            " WHERE to_id = :tid"
-        ),
-        {"tid": to_id},
-    ).scalar()
-    if any_picks > 0 or any_approvals > 0:
-        return jsonify({
-            "error": "to_not_deletable",
-            "any_picks": any_picks,
-            "any_approvals": any_approvals,
-            "detail": (
-                "Use cancel for TOs with picks or approvals; delete "
-                "only applies to OPEN TOs with no downstream activity."
-            ),
-        }), 409
-
-    _release_reservations(g.db, to_id, header.source_warehouse_id)
-
-    write_audit_log(
-        g.db,
-        action_type=ACTION_TO_DELETED,
-        entity_type="TO",
-        entity_id=to_id,
-        user_id=g.current_user["username"],
-        warehouse_id=header.source_warehouse_id,
-        details={
-            "to_number": header.to_number,
-            "previous_status": header.status,
-        },
-    )
-    g.db.execute(
-        text("DELETE FROM transfer_orders WHERE to_id = :tid"),
-        {"tid": to_id},
-    )
-    g.db.commit()
-    return ("", 204)
 
 
 # ----------------------------------------------------------------------
