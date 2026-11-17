@@ -59,9 +59,9 @@ def _insert_so_line(so_id, item_id, *, qty=3, line_number=1):
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO sales_order_lines "
-        "(so_id, item_id, quantity_ordered, line_number, status) "
-        "VALUES (%s, %s, %s, %s, %s) RETURNING so_line_id",
-        (so_id, item_id, qty, line_number, "SHIPPED"),
+        "(so_id, item_id, quantity_ordered, quantity_shipped, line_number, status) "
+        "VALUES (%s, %s, %s, %s, %s, %s) RETURNING so_line_id",
+        (so_id, item_id, qty, qty, line_number, "SHIPPED"),
     )
     so_line_id = cur.fetchone()[0]
     cur.close()
