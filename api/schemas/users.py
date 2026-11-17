@@ -29,6 +29,7 @@ class CreateUserRequest(BaseModel):
     warehouse_ids: List[int] = Field(default_factory=list)
     warehouse_id: Optional[int] = Field(None, gt=0)
     allowed_functions: List[str] = Field(default_factory=list)
+    must_change_password: bool = False
 
     @field_validator("username", "full_name")
     @classmethod
@@ -70,6 +71,7 @@ class UpdateUserRequest(BaseModel):
     warehouse_ids: Optional[List[int]] = None
     allowed_functions: Optional[List[str]] = None
     is_active: Optional[bool] = None
+    must_change_password: Optional[bool] = None
     password: Optional[str] = Field(None, min_length=1, max_length=256)
 
     @field_validator("full_name")
