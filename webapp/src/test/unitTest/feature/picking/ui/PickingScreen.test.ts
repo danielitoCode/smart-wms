@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'svelte/server';
 const vm = vi.hoisted(() => ({
- batch: { active: true, batchId: 4, kind: 'SO', completedPicks: 0, totalPicks: 2, totalOrders: 1 }, task: { sku: 'SKU-3', itemName: 'Item 3', quantityToPick: 2, binCode: 'A-01', salesOrderNumber: 'SO-3' }, scannedBarcode: '', quantityPicked: 1, loading: false, busy: false,
+ batch: { active: true, batchId: 4, kind: 'SO', completedPicks: 0, totalPicks: 2, totalOrders: 1, transferOrderNumber: undefined }, task: { transferOrderNumber: undefined, sku: 'SKU-3', itemName: 'Item 3', quantityToPick: 2, binCode: 'A-01', salesOrderNumber: 'SO-3' }, scannedBarcode: '', quantityPicked: 1, loading: false, busy: false,
  error: null, info: null, warehouseId: 12, soIdsInput: '', waveResult: null, validateBarcode: '',
  validateResult: null, validatedSoIds: [], batchIdentifiersInput: '', createBatchResult: null,
  refresh: vi.fn(), validateWaveSo: vi.fn(), clearValidated: vi.fn(), createWave: vi.fn(), createBatch: vi.fn(),
