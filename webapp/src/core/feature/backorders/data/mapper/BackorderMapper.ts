@@ -24,6 +24,7 @@ export const BackorderMapper = {
       warehouseId: dto.warehouse_id,
       customerName: dto.customer_name,
       status: dto.status,
+      orderType: dto.order_type,
       openedAt: dto.backorder_opened_at,
       fulfillableSince: dto.fulfillable_since,
       daysWaiting: dto.days_waiting,
