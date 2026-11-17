@@ -5,9 +5,9 @@ import type { MessageDto, PackingOrderResponseDto } from '../dto/PackingDto';
 export class PackingRemoteDataSource {
 	constructor(private readonly api: ApiClient) {}
 
-	loadOrder(barcode: string): Promise<PackingOrderResponseDto> {
+	loadOrder(barcode: string, warehouseId: number): Promise<PackingOrderResponseDto> {
 		return this.api.get<PackingOrderResponseDto>(
-			`/api/packing/order/${encodeURIComponent(barcode)}`
+			`/api/packing/order/${encodeURIComponent(barcode)}?warehouse_id=${warehouseId}`
 		);
 	}
 
