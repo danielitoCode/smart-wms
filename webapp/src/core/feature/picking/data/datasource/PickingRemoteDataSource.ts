@@ -12,8 +12,8 @@ import type {
 export class PickingRemoteDataSource {
 	constructor(private readonly api: ApiClient) {}
 
-	getActiveBatch(): Promise<ActiveBatchDto> {
-		return this.api.get<ActiveBatchDto>('/api/picking/active-batch');
+	getActiveBatch(warehouseId: number): Promise<ActiveBatchDto> {
+		return this.api.get<ActiveBatchDto>(`/api/picking/active-batch?warehouse_id=${warehouseId}`);
 	}
 
 	getNextTask(batchId: number): Promise<PickTaskDto> {
