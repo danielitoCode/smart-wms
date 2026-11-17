@@ -126,8 +126,8 @@ def _bump_inventory_allocated(item_id, warehouse_id, delta):
         )
         cur.execute(
             "INSERT INTO transfer_order_reservations "
-            "(to_id, to_line_id, inventory_id, item_id, warehouse_id,
-             quantity_reserved, quantity_consumed) "
+            "(to_id, to_line_id, inventory_id, item_id, warehouse_id, "
+            "quantity_reserved, quantity_consumed) "
             "VALUES (%s, %s, %s, %s, %s, %s, %s)",
             (
                 line[1], line[0], inventory_id, item_id, warehouse_id,
