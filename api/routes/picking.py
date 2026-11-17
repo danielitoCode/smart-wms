@@ -270,6 +270,8 @@ def confirm(validated):
         text("SELECT pb.warehouse_id FROM pick_tasks pt JOIN pick_batches pb ON pb.batch_id = pt.batch_id WHERE pt.pick_task_id = :tid"),
         {"tid": validated.pick_task_id},
     ).fetchone()
+    if task_wh and validated.warehouse_id is not None and task_wh.warehouse_id != validated.warehouse_id:
+        return jsonify({"error": "Pick task is outside the selected warehouse"}), 404
     if task_wh:
         ok, denied = check_warehouse_access(task_wh.warehouse_id)
         if not ok:
@@ -340,6 +342,8 @@ def complete(validated):
         text("SELECT warehouse_id FROM pick_batches WHERE batch_id = :bid"),
         {"bid": validated.batch_id},
     ).fetchone()
+    if batch_wh and validated.warehouse_id is not None and batch_wh.warehouse_id != validated.warehouse_id:
+        return jsonify({"error": "Pick batch is outside the selected warehouse"}), 404
     if batch_wh:
         ok, denied = check_warehouse_access(batch_wh.warehouse_id)
         if not ok:
