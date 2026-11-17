@@ -134,10 +134,6 @@ def create_rma(db, *, original_so_id: int, lines, created_by: str, memo=None) ->
     Operational only: creating an RMA moves no money and no goods (goods move
     at receiving), so no financial event is emitted here.
     """
-    requested_lines = list(lines or [])
-    if not requested_lines:
-        raise ValueError("at least one return line is required")
-
     # Serialize authorizations for one source order. Besides preventing
     # duplicate RMA numbers, this makes the shipped-quantity allowance check
     # atomic across concurrent create-RMA requests.
@@ -152,6 +148,10 @@ def create_rma(db, *, original_so_id: int, lines, created_by: str, memo=None) ->
         raise ValueError(f"original SO {original_so_id} not found")
     if orig.order_type != "sale":
         raise ValueError("RMA can only be authorized against an original sale")
+
+    requested_lines = list(lines or [])
+    if not requested_lines:
+        raise ValueError("at least one return line is required")
 
     seen_original_lines = set()
     validated_lines = []
