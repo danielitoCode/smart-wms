@@ -5,8 +5,10 @@ import type { OperationalBinLookupDto, OperationalBinSearchResultDto } from '../
 export class BinLookupRemoteDataSource {
 	constructor(private readonly api: ApiClient) {}
 
-	search(query: string): Promise<OperationalBinSearchResultDto[]> {
-		return this.api.get<OperationalBinSearchResultDto[]>('/api/lookup/bin/search?q=' + encodeURIComponent(query));
+	search(query: string, warehouseId?: number): Promise<OperationalBinSearchResultDto[]> {
+		return this.api.get<OperationalBinSearchResultDto[]>('/api/lookup/bin/search', {
+			query: { q: query, warehouse_id: warehouseId }
+		});
 	}
 
 	lookupByBarcode(barcode: string): Promise<OperationalBinLookupDto> {
