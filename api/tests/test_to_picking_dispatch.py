@@ -324,6 +324,54 @@ class TestStartPicking:
         line_ids_in_tasks = {r[1] for r in rows}
         assert line_ids_in_tasks == {line1, line2}
 
+    def test_partial_pick_tracks_reserved_inventory_and_next_batch_uses_remainder(
+        self, client, auth_headers,
+    ):
+        to_id = _seed_to()
+        line_id = _seed_to_line(to_id, item_id=1, committed=5)
+        inventory_id = _seed_inventory(1, 1, on_hand=10, bin_id=1)
+        started = client.post(
+            f"/api/admin/transfer-orders/{to_id}/start-picking",
+            headers=auth_headers,
+        )
+        assert started.status_code == 201, started.get_json()
+        task_id = _query(
+            "SELECT pick_task_id FROM pick_tasks WHERE to_id = %s",
+            (to_id,),
+        )[0][0]
+
+        from services.picking_service import confirm_pick
+        session = _open_session()
+        try:
+            confirm_pick(session, task_id, "100000000001", 3, "picker")
+        finally:
+            session.close()
+
+        reservation = _query(
+            """
+            SELECT quantity_reserved, quantity_picked, quantity_consumed
+              FROM transfer_order_reservations
+             WHERE to_line_id = %s AND inventory_id = %s
+            """,
+            (line_id, inventory_id),
+        )[0]
+        assert reservation == (5, 3, 0)
+
+        restarted = client.post(
+            f"/api/admin/transfer-orders/{to_id}/start-picking",
+            headers=auth_headers,
+        )
+        assert restarted.status_code == 201, restarted.get_json()
+        remainder = _query(
+            """
+            SELECT inventory_id, quantity_to_pick
+              FROM pick_tasks
+             WHERE to_id = %s AND batch_id = %s
+            """,
+            (to_id, restarted.get_json()["batch_id"]),
+        )
+        assert remainder == [(inventory_id, 2)]
+
     def test_no_pickable_inventory_returns_409(
         self, client, auth_headers,
     ):
