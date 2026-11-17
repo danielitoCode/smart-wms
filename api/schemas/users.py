@@ -22,9 +22,9 @@ class UpdateUserPagePermissionsRequest(BaseModel):
 
 
 class CreateUserRequest(BaseModel):
-    username: str = Field(..., min_length=1, max_length=150)
+    username: str = Field(..., min_length=1, max_length=50)
     password: str = Field(..., min_length=1, max_length=256)
-    full_name: str = Field(..., min_length=1, max_length=256)
+    full_name: str = Field(..., min_length=1, max_length=100)
     role: str = Field(..., min_length=1, max_length=32)
     warehouse_ids: List[int] = Field(default_factory=list)
     warehouse_id: Optional[int] = Field(None, gt=0)
@@ -64,7 +64,7 @@ class CreateUserRequest(BaseModel):
 
 
 class UpdateUserRequest(BaseModel):
-    full_name: Optional[str] = Field(None, min_length=1, max_length=256)
+    full_name: Optional[str] = Field(None, min_length=1, max_length=100)
     role: Optional[str] = Field(None, min_length=1, max_length=32)
     warehouse_id: Optional[int] = Field(None, gt=0)
     warehouse_ids: Optional[List[int]] = None
