@@ -357,12 +357,14 @@ def _release_reservations(db, to_id: int, source_warehouse_id: int) -> None:
             """
             SELECT to_line_id, committed_qty - approved_qty AS to_release
               FROM transfer_order_lines
-             WHERE to_id = :tid AND committed_qty > approved_qty
+             WHERE to_id = :tid
+               AND committed_qty > approved_qty
+               AND status <> :short_closed
              ORDER BY item_id ASC, to_line_id ASC
              FOR UPDATE
             """
         ),
-        {"tid": to_id},
+        {"tid": to_id, "short_closed": TO_LINE_SHORT_CLOSED},
     ).fetchall()
     for line in lines:
         _release_line_reservations(db, line.to_line_id, line.to_release)
