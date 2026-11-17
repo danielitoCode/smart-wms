@@ -231,6 +231,39 @@ class TestSubmit:
         # Line 1 only -- line 2 has nothing to submit yet
         assert resp.get_json()["line_count"] == 1
 
+    def test_pending_approval_blocks_overlapping_submit_and_new_pick_batch(
+        self, client, auth_headers,
+    ):
+        to_id = _seed_to(status="PARTIALLY_PICKED")
+        _seed_to_line(
+            to_id, committed=5, picked=3, status="PARTIALLY_PICKED",
+        )
+        first = client.post(
+            f"/api/admin/picker/transfer-orders/{to_id}/submit",
+            headers=auth_headers,
+        )
+        assert first.status_code == 201, first.get_json()
+
+        second = client.post(
+            f"/api/admin/picker/transfer-orders/{to_id}/submit",
+            headers=auth_headers,
+        )
+        assert second.status_code == 409
+        assert second.get_json()["error"] == "pending_approval_exists"
+
+        start = client.post(
+            f"/api/admin/transfer-orders/{to_id}/start-picking",
+            headers=auth_headers,
+        )
+        assert start.status_code == 409
+        assert start.get_json()["error"] == "pending_approval_exists"
+
+        approvals = _query(
+            "SELECT COUNT(*) FROM transfer_order_approvals WHERE to_id = %s",
+            (to_id,),
+        )[0][0]
+        assert approvals == 1
+
     def test_nothing_picked_returns_422(self, client, auth_headers):
         to_id = _seed_to(status="PARTIALLY_PICKED")
         _seed_to_line(to_id, committed=5, picked=0, status="PENDING")
@@ -533,6 +566,54 @@ class TestReject:
         )
         assert audit
         assert audit[0][0]["rejection_reason"] == "wrong destination"
+
+    def test_rejection_restores_line_for_repick_without_moving_inventory(
+        self, client, auth_headers,
+    ):
+        to_id = _seed_to(status="AWAITING_APPROVAL", source_wh=1, dest_wh=2)
+        _set_inventory(1, 1, on_hand=5, allocated=5)
+        _ensure_dest_staging_bin(2)
+        line_id = _seed_to_line(
+            to_id, committed=5, picked=5, status="PICKED",
+        )
+        submitted = client.post(
+            f"/api/admin/picker/transfer-orders/{to_id}/submit",
+            headers=auth_headers,
+        )
+        assert submitted.status_code == 201
+        approval_id = submitted.get_json()["to_approval_id"]
+
+        rejected = client.post(
+            f"/api/admin/transfer-orders/{to_id}/approvals/{approval_id}/reject",
+            json={"rejection_reason": "wrong bin"},
+            headers=auth_headers,
+        )
+        assert rejected.status_code == 200, rejected.get_json()
+
+        line = _query(
+            "SELECT picked_qty, approved_qty, status "
+            "  FROM transfer_order_lines WHERE to_line_id = %s",
+            (line_id,),
+        )[0]
+        assert line == (0, 0, "PENDING")
+        header = _query(
+            "SELECT status FROM transfer_orders WHERE to_id = %s",
+            (to_id,),
+        )[0][0]
+        assert header == "PARTIALLY_PICKED"
+
+        source = _query(
+            "SELECT quantity_on_hand, quantity_allocated FROM inventory "
+            " WHERE item_id = 1 AND warehouse_id = 1",
+        )[0]
+        assert source == (5, 5)
+
+        repick = client.post(
+            f"/api/admin/transfer-orders/{to_id}/start-picking",
+            headers=auth_headers,
+        )
+        assert repick.status_code == 201, repick.get_json()
+        assert repick.get_json()["tasks_created"] == 1
 
     def test_reject_already_finalised_returns_409(
         self, client, auth_headers,
