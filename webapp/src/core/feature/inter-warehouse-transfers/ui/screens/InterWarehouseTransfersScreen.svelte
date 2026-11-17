@@ -116,7 +116,7 @@
       <label class="lookup">{i18n.t('Ubicación origen')}
         <input required autocomplete="off" disabled={!fromWarehouseId} placeholder={i18n.t('Busca código de ubicación')} value={fromBinQuery}
           oninput={event => searchSourceBins(event.currentTarget.value)} onfocus={() => fromBinOpen = true}/>
-        {#if fromBinOpen && vm.sourceBins.length > 0}
+        {#if fromBinOpen && !fromBinId && vm.sourceBins.length > 0}
           <div class="suggestions">{#each vm.sourceBins as bin (bin.id)}
             <button type="button" class="suggestion" onclick={() => chooseSourceBin(bin)}>{bin.code} <small>{bin.zoneName ?? bin.binType}</small></button>
           {/each}</div>
@@ -134,7 +134,7 @@
       <label class="lookup">{i18n.t('Ubicación destino')}
         <input required autocomplete="off" disabled={!toWarehouseId} placeholder={i18n.t('Busca código de ubicación')} value={toBinQuery}
           oninput={event => searchDestinationBins(event.currentTarget.value)} onfocus={() => toBinOpen = true}/>
-        {#if toBinOpen && vm.destinationBins.length > 0}
+        {#if toBinOpen && !toBinId && vm.destinationBins.length > 0}
           <div class="suggestions">{#each vm.destinationBins as bin (bin.id)}
             <button type="button" class="suggestion" onclick={() => chooseDestinationBin(bin)}>{bin.code} <small>{bin.zoneName ?? bin.binType}</small></button>
           {/each}</div>
@@ -144,7 +144,7 @@
       <label class="lookup">{i18n.t('Producto')}
         <input required autocomplete="off" placeholder={i18n.t('Busca por SKU o nombre (mín. 2 caracteres)')} value={itemQuery}
           oninput={event => searchItemOptions(event.currentTarget.value)} onfocus={() => itemOpen = true}/>
-        {#if itemOpen && vm.itemResults.length > 0}
+        {#if itemOpen && !itemId && vm.itemResults.length > 0}
           <div class="suggestions">{#each vm.itemResults as item (item.id)}
             <button type="button" class="suggestion" onclick={() => chooseItem(item)}><strong>{item.sku}</strong><small>{item.name}</small></button>
           {/each}</div>
