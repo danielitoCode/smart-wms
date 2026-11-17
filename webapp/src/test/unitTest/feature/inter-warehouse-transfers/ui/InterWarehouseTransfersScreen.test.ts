@@ -20,16 +20,14 @@ vi.mock('../../../../../core/feature/inter-warehouse-transfers/ui/state/interWar
 }));
 
 describe('InterWarehouseTransfersScreen selectors', () => {
-  it('renders authorized warehouse selectors and search typeaheads instead of numeric ID inputs', () => {
+  it('renders authorized warehouse choices in history filters without exposing numeric ID inputs', () => {
     const { body } = render(InterWarehouseTransfersScreen, {
       context: new Map([['i18n', { t: (value: string) => value }]])
     });
-    expect(body).toContain('Almacén origen');
-    expect(body).toContain('Almacén destino');
+    expect(body).toContain('Origen');
+    expect(body).toContain('Destino');
     expect(body).toContain('Warehouse A (WH-A)');
     expect(body).toContain('Warehouse B (WH-B)');
-    expect(body).toContain('Busca código de ubicación');
-    expect(body).toContain('Busca por SKU o nombre');
     expect(body).not.toContain('ID de producto');
     expect(body).not.toContain('ID de almacén');
   });
