@@ -121,7 +121,7 @@ def test_list_history_requires_access_to_both_warehouses(client, auth_headers):
     assert created.status_code == 201, created.get_json()
     transfer_id = created.get_json()["transfer_id"]
 
-    for allowed_ids in ([from_wh], [2], []):
+    for allowed_ids in ([from_wh], [to_wh], []):
         headers = _headers(client, allowed_ids)
         response = client.get("/api/admin/inter-warehouse-transfers", headers=headers)
         assert response.status_code == 200
@@ -133,12 +133,12 @@ def test_list_history_requires_access_to_both_warehouses(client, auth_headers):
     assert transfer_id in {row["transfer_id"] for row in response.get_json()["transfers"]}
 
     filtered = client.get(
-        f"/api/admin/inter-warehouse-transfers?from_warehouse_id={from_wh}&to_warehouse_id=to_wh",
+        f"/api/admin/inter-warehouse-transfers?from_warehouse_id={from_wh}&to_warehouse_id={to_wh}",
         headers=both,
     )
     assert transfer_id in {row["transfer_id"] for row in filtered.get_json()["transfers"]}
     reverse = client.get(
-        f"/api/admin/inter-warehouse-transfers?from_warehouse_id=to_wh&to_warehouse_id={from_wh}",
+        f"/api/admin/inter-warehouse-transfers?from_warehouse_id={to_wh}&to_warehouse_id={from_wh}",
         headers=both,
     )
     assert transfer_id not in {row["transfer_id"] for row in reverse.get_json()["transfers"]}
@@ -147,7 +147,7 @@ def test_list_history_requires_access_to_both_warehouses(client, auth_headers):
 
 
 def test_allocated_source_inventory_cannot_be_transferred(client, auth_headers):
-    item_id, from_bin, from_wh, to_bin = _source_destination()
+    item_id, from_bin, from_wh, to_bin, to_wh = _source_destination()
     _query(
         "UPDATE inventory SET quantity_allocated = quantity_on_hand "
         "WHERE item_id = %s AND bin_id = %s",
@@ -315,7 +315,7 @@ def test_same_idempotency_key_is_serialized_by_postgres_transaction_lock():
 
 
 def test_concurrent_transfer_reservations_cannot_overdraw_locked_source_rows():
-    item_id, from_bin, from_wh, _ = _source_destination()
+    item_id, from_bin, from_wh, _, _ = _source_destination()
     setup = psycopg2.connect(os.environ["DATABASE_URL"])
     try:
         cur = setup.cursor()
