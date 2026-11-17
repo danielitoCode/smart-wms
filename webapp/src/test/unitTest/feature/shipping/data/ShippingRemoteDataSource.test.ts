@@ -14,7 +14,7 @@ describe('ShippingRemoteDataSource', () => {
   expect(api.post).toHaveBeenCalledWith('/api/shipping/fulfill', { so_id: 9, warehouse_id: 9, tracking_number: 'TRACK-9', carrier: 'Carrier', ship_method: 'Ground' });
  });
  it('omits optional ship_method when blank', async () => {
-  await new ShippingRemoteDataSource(api).fulfill({ soId: 9, trackingNumber: 'TRACK-9', carrier: 'Carrier', shipMethod: null });
-  expect(api.post).toHaveBeenCalledWith('/api/shipping/fulfill', { so_id: 9, tracking_number: 'TRACK-9', carrier: 'Carrier' });
+  await new ShippingRemoteDataSource(api).fulfill({ soId: 9, warehouseId: 9, trackingNumber: 'TRACK-9', carrier: 'Carrier', shipMethod: null });
+  expect(api.post).toHaveBeenCalledWith('/api/shipping/fulfill', { so_id: 9, warehouse_id: 9, tracking_number: 'TRACK-9', carrier: 'Carrier' });
  });
 });
