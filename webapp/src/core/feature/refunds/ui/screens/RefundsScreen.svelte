@@ -110,7 +110,7 @@
 
       {#if vm.selected.amountIntegrity !== 'VALID'}
         <p class="warning-panel" role="alert">
-          {i18n.t('Inconsistencia del importe: la nota de crédito debería tener un order_total negativo. Verifica el registro en el POS y el libro contable.')}
+          {i18n.t('Inconsistencia del crédito: el importe debe ser negativo y las cantidades de sus líneas también. Verifica el registro en el POS y el libro contable.')}
           {#if vm.selected.signedAmount !== null}
             <span>{i18n.t('Valor almacenado')}: {formatMoney(vm.selected.signedAmount)}</span>
           {/if}
