@@ -86,7 +86,9 @@ def _apply_adjustment_delta(db, item_id, bin_id, warehouse_id, delta):
 @with_db
 def list_users():
     page = request.args.get("page", 1, type=int)
-    per_page = min(request.args.get("per_page", 50, type=int), 1000)
+    per_page = request.args.get("per_page", 50, type=int)
+    if page < 1 or not 1 <= per_page <= 1000:
+        return jsonify({"error": "page must be positive and per_page between 1 and 1000"}), 400
 
     total = g.db.execute(text("SELECT COUNT(*) FROM users")).scalar()
     pages = max(1, math.ceil(total / per_page))
@@ -193,7 +195,7 @@ def update_user(user_id, validated):
             if len(admins) <= 1:
                 return jsonify({"error": "Cannot remove the last active admin"}), 400
 
-    ALLOWED_FIELDS = {"full_name", "role", "warehouse_id", "is_active"}
+    ALLOWED_FIELDS = {"full_name", "role", "is_active"}
     fields, params = [], {"uid": user_id}
     for col in ALLOWED_FIELDS:
         if col in data:
@@ -201,12 +203,15 @@ def update_user(user_id, validated):
             params[col] = data[col]
 
     if "warehouse_ids" in data:
+        # warehouse_ids is authoritative. Clearing the final assignment must
+        # also clear the legacy warehouse_id mirror (not leave a stale scope).
         fields.append("warehouse_ids = :warehouse_ids")
         params["warehouse_ids"] = data["warehouse_ids"]
-        # Keep warehouse_id in sync (first warehouse)
-        if data["warehouse_ids"]:
-            fields.append("warehouse_id = :wid_sync")
-            params["wid_sync"] = data["warehouse_ids"][0]
+        fields.append("warehouse_id = :wid_sync")
+        params["wid_sync"] = data["warehouse_ids"][0] if data["warehouse_ids"] else None
+    elif "warehouse_id" in data:
+        fields.append("warehouse_id = :warehouse_id")
+        params["warehouse_id"] = data["warehouse_id"]
 
     if "allowed_functions" in data:
         fields.append("allowed_functions = :allowed_functions")
