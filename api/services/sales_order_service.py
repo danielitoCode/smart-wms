@@ -134,15 +134,83 @@ def create_rma(db, *, original_so_id: int, lines, created_by: str, memo=None) ->
     Operational only: creating an RMA moves no money and no goods (goods move
     at receiving), so no financial event is emitted here.
     """
+    requested_lines = list(lines or [])
+    if not requested_lines:
+        raise ValueError("at least one return line is required")
+
+    # Serialize authorizations for one source order. Besides preventing
+    # duplicate RMA numbers, this makes the shipped-quantity allowance check
+    # atomic across concurrent create-RMA requests.
     orig = db.execute(
         text(
-            "SELECT so_number, warehouse_id, order_source "
-            "FROM sales_orders WHERE so_id = :sid"
+            "SELECT so_number, warehouse_id, order_source, order_type "
+            "FROM sales_orders WHERE so_id = :sid FOR UPDATE"
         ),
         {"sid": original_so_id},
     ).fetchone()
     if orig is None:
         raise ValueError(f"original SO {original_so_id} not found")
+    if orig.order_type != "sale":
+        raise ValueError("RMA can only be authorized against an original sale")
+
+    seen_original_lines = set()
+    validated_lines = []
+    for ln in requested_lines:
+        item_id = ln.get("item_id")
+        quantity = ln.get("quantity")
+        original_line_id = ln.get("original_so_line_id")
+        if not isinstance(item_id, int) or item_id <= 0:
+            raise ValueError("RMA item_id must be a positive integer")
+        if not isinstance(quantity, int) or quantity <= 0:
+            raise ValueError("RMA quantity must be a positive integer")
+        if not isinstance(original_line_id, int) or original_line_id <= 0:
+            raise ValueError("each RMA line must reference an original sales-order line")
+        if original_line_id in seen_original_lines:
+            raise ValueError(f"duplicate original sales-order line {original_line_id}")
+        seen_original_lines.add(original_line_id)
+
+        original_line = db.execute(
+            text(
+                "SELECT item_id, quantity_shipped FROM sales_order_lines "
+                "WHERE so_line_id = :line_id AND so_id = :parent_id FOR UPDATE"
+            ),
+            {"line_id": original_line_id, "parent_id": original_so_id},
+        ).fetchone()
+        if original_line is None or original_line.item_id != item_id:
+            raise ValueError(
+                f"item {item_id} is not authorized by original sales-order line "
+                f"{original_line_id}"
+            )
+        shipped = int(original_line.quantity_shipped or 0)
+        already_authorized = db.execute(
+            text(
+                """
+                SELECT COALESCE(SUM(rl.quantity_ordered), 0)
+                  FROM sales_order_lines rl
+                  JOIN sales_orders r ON r.so_id = rl.so_id
+                 WHERE r.parent_so_id = :parent_id
+                   AND r.order_type = :return_type
+                   AND r.voided_at IS NULL
+                   AND rl.original_so_line_id = :line_id
+                """
+            ),
+            {
+                "parent_id": original_so_id,
+                "return_type": ORDER_TYPE_RETURN,
+                "line_id": original_line_id,
+            },
+        ).scalar() or 0
+        remaining = shipped - int(already_authorized)
+        if quantity > remaining:
+            raise ValueError(
+                f"RMA quantity {quantity} exceeds remaining shipped quantity "
+                f"{max(0, remaining)} for original line {original_line_id}"
+            )
+        validated_lines.append({
+            "item_id": item_id,
+            "quantity": quantity,
+            "original_so_line_id": original_line_id,
+        })
 
     so_number = mint_child_so_number(
         db,
@@ -180,7 +248,7 @@ def create_rma(db, *, original_so_id: int, lines, created_by: str, memo=None) ->
     ).fetchone()
     rma_so_id = row.so_id
 
-    for idx, ln in enumerate(lines):
+    for idx, ln in enumerate(validated_lines):
         db.execute(
             text(
                 """
