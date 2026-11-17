@@ -391,21 +391,6 @@ def submit_picks(db, to_id: int, username: str) -> dict:
             "current_status": header.status,
         }
 
-    pending_approval = db.execute(
-        text(
-            "SELECT to_approval_id FROM transfer_order_approvals "
-            " WHERE to_id = :tid AND status = 'PENDING' "
-            " ORDER BY to_approval_id LIMIT 1"
-        ),
-        {"tid": to_id},
-    ).fetchone()
-    if pending_approval:
-        return {
-            "ok": False,
-            "reason": "pending_approval_exists",
-            "to_approval_id": pending_approval.to_approval_id,
-        }
-
     # Lines with new picks since the last submit: picked_qty exceeds
     # what has already been APPROVED on this line. Snapshots the delta
     # so the approval row is independent of subsequent picks.
@@ -423,6 +408,21 @@ def submit_picks(db, to_id: int, username: str) -> dict:
     ).fetchall()
     if not lines:
         return {"ok": False, "reason": "nothing_picked"}
+
+    pending_approval = db.execute(
+        text(
+            "SELECT to_approval_id FROM transfer_order_approvals "
+            " WHERE to_id = :tid AND status = 'PENDING' "
+            " ORDER BY to_approval_id LIMIT 1"
+        ),
+        {"tid": to_id},
+    ).fetchone()
+    if pending_approval:
+        return {
+            "ok": False,
+            "reason": "pending_approval_exists",
+            "to_approval_id": pending_approval.to_approval_id,
+        }
 
     snapshot_lines = []
     for line in lines:
