@@ -27,6 +27,6 @@ describe('PickingScreen scanner UI', () => {
   const { body } = render(PickingScreen, { context: new Map([['i18n', { t: (v: string) => v }], ['warehouseSelection', warehouse]]) });
   expect(body).toContain('TO TO-4');
   expect(body).not.toContain('Indicar faltante (0)');
-  vm.batch.kind = 'SO'; delete vm.batch.transferOrderNumber; delete vm.task.transferOrderNumber;
+  vm.batch.kind = 'SO'; vm.batch.transferOrderNumber = undefined; vm.task.transferOrderNumber = undefined;
  });
 });
