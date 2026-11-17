@@ -15,8 +15,8 @@ import { PickingMapper } from '../mapper/PickingMapper';
 export class PickingRepositoryImpl implements PickingRepository {
 	constructor(private readonly datasource: PickingRemoteDataSource) {}
 
-	async getActiveBatch(): Promise<ActiveBatch> {
-		return PickingMapper.toActiveBatch(await this.datasource.getActiveBatch());
+	async getActiveBatch(warehouseId: number): Promise<ActiveBatch> {
+		return PickingMapper.toActiveBatch(await this.datasource.getActiveBatch(warehouseId));
 	}
 
 	async getNextTask(batchId: number): Promise<PickTask | null> {
