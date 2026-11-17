@@ -8,6 +8,7 @@ export type ManagedUserDto = {
 	warehouse_ids: number[] | null;
 	allowed_functions: string[] | null;
 	is_active: boolean;
+	must_change_password: boolean;
 	created_at?: string | null;
 	last_login?: string | null;
 };
@@ -38,6 +39,7 @@ export type CreateManagedUserRequestDto = {
 	warehouse_id: number | null;
 	warehouse_ids: number[];
 	allowed_functions: string[];
+	must_change_password: boolean;
 };
 
 export type UpdateManagedUserRequestDto = Partial<{
@@ -47,6 +49,7 @@ export type UpdateManagedUserRequestDto = Partial<{
 	warehouse_ids: number[];
 	allowed_functions: string[];
 	is_active: boolean;
+	must_change_password: boolean;
 	password: string;
 }>;
 
