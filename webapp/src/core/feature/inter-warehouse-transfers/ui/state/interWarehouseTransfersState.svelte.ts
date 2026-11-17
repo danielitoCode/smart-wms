@@ -60,6 +60,7 @@ export function createInterWarehouseTransfersState() {
     if (!Number.isSafeInteger(warehouseId) || warehouseId <= 0 || !query.trim()) {
       setResults([]); setSearching(false); return;
     }
+    setResults([]);
     setSearching(true);
     try {
       const results = await warehousesDependencies.searchOperationalBins.execute(query, warehouseId);
@@ -74,6 +75,7 @@ export function createInterWarehouseTransfersState() {
   async function searchItems(query: string) {
     const epoch = ++itemEpoch;
     if (query.trim().length < 2) { itemResults = []; itemSearching = false; return; }
+    itemResults = [];
     itemSearching = true;
     try {
       const results = await itemsDependencies.searchItems.execute(query);
