@@ -50,10 +50,10 @@ describe('TransferOrdersRemoteDataSource', () => {
     await remote.cancel(12);
     await remote.remove(12);
     expect(api.post.mock.calls).toEqual([
-      ['/api/admin/transfer-orders/12/approvals/8/approve', undefined],
+      ['/api/admin/transfer-orders/12/approvals/8/approve'],
       ['/api/admin/transfer-orders/12/approvals/8/reject', { rejection_reason: 'damaged' }],
-      ['/api/admin/transfer-orders/12/lines/31/short-close', undefined],
-      ['/api/admin/transfer-orders/12/cancel', undefined]
+      ['/api/admin/transfer-orders/12/lines/31/short-close'],
+      ['/api/admin/transfer-orders/12/cancel']
     ]);
     expect(api.delete).toHaveBeenCalledWith('/api/admin/transfer-orders/12');
   });
