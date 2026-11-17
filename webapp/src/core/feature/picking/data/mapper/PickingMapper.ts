@@ -15,6 +15,37 @@ import type {
 	WaveValidateDto
 } from '../dto/PickingDto';
 
+function mapPickTask(dto: PickTaskDto): PickTask | null {
+	if (dto.message && !dto.pick_task_id && !dto.task_id) return null;
+	const pickTaskId = dto.pick_task_id ?? dto.task_id;
+	if (pickTaskId == null || dto.batch_id == null || dto.item_id == null || !dto.sku) return null;
+	return {
+		pickTaskId,
+		batchId: dto.batch_id,
+		itemId: dto.item_id,
+		sku: dto.sku,
+		itemName: dto.item_name ?? dto.name ?? '',
+		upc: dto.upc ?? null,
+		quantityToPick: dto.quantity_to_pick ?? dto.qty_to_pick ?? 0,
+		quantityPicked: dto.quantity_picked,
+		binId: dto.bin_id ?? null,
+		binCode: dto.bin_code ?? null,
+		binBarcode: dto.bin_barcode ?? null,
+		zone: dto.zone ?? null,
+		aisle: dto.aisle ?? null,
+		rowNum: dto.row_num ?? null,
+		levelNum: dto.level_num ?? null,
+		toteNumber: dto.tote_number ?? null,
+		salesOrderNumber: dto.so_number ?? null,
+		transferOrderNumber: dto.to_number ?? null,
+		pickNumber: dto.pick_number,
+		totalPicks: dto.total_picks,
+		contributingOrders: dto.contributing_orders?.map((order) => ({ soNumber: order.so_number, quantity: order.quantity })),
+		pickSequence: dto.pick_sequence,
+		status: dto.status ?? 'PENDING'
+	};
+}
+
 export const PickingMapper = {
 	toActiveBatch(dto: ActiveBatchDto): ActiveBatch {
 		return {
@@ -32,36 +63,7 @@ export const PickingMapper = {
 	},
 
 	toPickTask(dto: PickTaskDto): PickTask | null {
-		if (dto.message && !dto.pick_task_id && !dto.task_id) {
-			return null;
-		}
-		const pickTaskId = dto.pick_task_id ?? dto.task_id;
-		if (pickTaskId == null || dto.batch_id == null || dto.item_id == null || !dto.sku) return null;
-		return {
-			pickTaskId,
-			batchId: dto.batch_id,
-			itemId: dto.item_id,
-			sku: dto.sku,
-			itemName: dto.item_name ?? dto.name ?? '',
-			upc: dto.upc ?? null,
-			quantityToPick: dto.quantity_to_pick ?? dto.qty_to_pick ?? 0,
-			quantityPicked: dto.quantity_picked,
-			contributingOrders: dto.contributing_orders?.map((order) => ({ soNumber: order.so_number, quantity: order.quantity })),
-			binId: dto.bin_id ?? null,
-			binCode: dto.bin_code ?? null,
-			binBarcode: dto.bin_barcode ?? null,
-			zone: dto.zone ?? null,
-			aisle: dto.aisle ?? null,
-			rowNum: dto.row_num ?? null,
-			levelNum: dto.level_num ?? null,
-			toteNumber: dto.tote_number ?? null,
-			salesOrderNumber: dto.so_number ?? null,
-			transferOrderNumber: dto.to_number ?? null,
-			pickNumber: dto.pick_number,
-			totalPicks: dto.total_picks,
-			pickSequence: dto.pick_sequence,
-			status: dto.status ?? 'PENDING'
-		};
+		return mapPickTask(dto);
 	},
 
 	toMessage(dto: MessageDto): SimpleMessageResult {
