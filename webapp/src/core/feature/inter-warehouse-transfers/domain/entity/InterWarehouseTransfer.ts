@@ -1,5 +1,14 @@
 /** Completed atomic stock movement recorded by Flask in bin_transfers. */
-export type InterWarehouseTransferStatus='completed';
-export type InterWarehouseTransferLine={itemId:number;quantity:number;sku?:string|null;itemName?:string|null};
-export type InterWarehouseTransfer={transferId:number;sourceWarehouseId:number;sourceWarehouseName:string;sourceWarehouseCode:string;sourceBinId:number;sourceBinCode:string;destinationWarehouseId:number;destinationWarehouseName:string;destinationWarehouseCode:string;destinationBinId:number;destinationBinCode:string;status:InterWarehouseTransferStatus;lines:InterWarehouseTransferLine[];transferredBy:string;transferredAt:string|null};
-export type RecordInterWarehouseTransfer={itemId:number;sourceBinId:number;sourceWarehouseId:number;destinationBinId:number;destinationWarehouseId:number;quantity:number;reason?:string|null};
+export type InterWarehouseTransferStatus = 'completed';
+export type InterWarehouseTransferLine = { itemId: number; quantity: number; sku?: string | null; itemName?: string | null };
+export type InterWarehouseTransfer = {
+  transferId: number; sourceWarehouseId: number; sourceWarehouseName: string; sourceWarehouseCode: string;
+  sourceBinId: number; sourceBinCode: string; destinationWarehouseId: number; destinationWarehouseName: string;
+  destinationWarehouseCode: string; destinationBinId: number; destinationBinCode: string;
+  status: InterWarehouseTransferStatus; lines: InterWarehouseTransferLine[];
+  transferredBy: string; transferredAt: string | null;
+};
+export type RecordInterWarehouseTransfer = {
+  itemId: number; sourceBinId: number; sourceWarehouseId: number; destinationBinId: number;
+  destinationWarehouseId: number; quantity: number; reason?: string | null; idempotencyKey: string;
+};
