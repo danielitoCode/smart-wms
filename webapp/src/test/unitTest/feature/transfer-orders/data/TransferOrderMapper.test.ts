@@ -27,6 +27,27 @@ describe('TransferOrderMapper', () => {
     expect(order.approvals[0]).toMatchObject({ approvalId: 9, status: 'PENDING', linesSnapshot: [{ toLineId: 31, itemId: 7, pickedQuantity: 5 }] });
   });
 
+
+  it('preserves rejection timestamps and distinguishes unavailable snapshots from empty snapshots', () => {
+    const rejected = mapper.header(header, [line], [{
+      to_approval_id: 10, to_id: 12, submitted_by: 'picker', submitted_at: '2026-11-17T10:00:00Z',
+      approved_by: null, approved_at: null, rejected_at: '2026-11-17T10:15:00Z',
+      rejection_reason: 'Damaged packaging', status: 'REJECTED', external_id: 'approval-10',
+      lines_snapshot: { lines: [] }
+    }]);
+    expect(rejected.approvals[0]).toMatchObject({
+      status: 'REJECTED', rejectedAt: '2026-11-17T10:15:00Z',
+      rejectionReason: 'Damaged packaging', linesSnapshot: []
+    });
+
+    const legacy = mapper.header(header, [line], [{
+      to_approval_id: 11, to_id: 12, submitted_by: 'picker', submitted_at: null,
+      approved_by: null, approved_at: null, rejected_at: null, rejection_reason: null,
+      status: 'PENDING', external_id: 'approval-11'
+    }]);
+    expect(legacy.approvals[0].linesSnapshot).toBeNull();
+  });
+
   it('preserves pagination metadata and maps warehouse choices', () => {
     const page = mapper.page({ transfer_orders: [header], total: 101, page: 2, pages: 3, per_page: 50 });
     expect(page).toMatchObject({ total: 101, page: 2, pages: 3, perPage: 50, orders: [{ transferOrderId: 12 }] });
