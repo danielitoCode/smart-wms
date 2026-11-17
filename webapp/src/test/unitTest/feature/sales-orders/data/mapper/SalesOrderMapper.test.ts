@@ -25,10 +25,10 @@ describe('SalesOrderMapper', () => {
   it('maps detail, nullable fields, addresses, lines and pick tasks', () => {
     const dto: SalesOrderDetailResponseDto = {
       sales_order: {
-        ...summary, customer_email: null, order_total: '0.00',
+        ...summary, order_date: '2026-11-02', customer_email: null, order_total: '0.00',
         customer_shipping_paid: null, shipped_date_local: null, shipped_at: null,
         source_system: null, order_origin: null, parent_so_number: null,
-        cancellation_reason: null, created_by: 'admin', picked_at: null, packed_at: null,
+        cancellation_reason: null, created_by: 'admin', picked_at: '2026-11-02T10:00:00Z', packed_at: '2026-11-02T10:30:00Z',
         backorder_opened_at: null, backorder_fulfillable_at: null,
         billing_address_name: 'Acme', billing_address_line1: '1 Main',
         billing_address_line2: null, billing_address_city: 'Havana',
@@ -52,6 +52,9 @@ describe('SalesOrderMapper', () => {
     };
     const order = SalesOrderMapper.toDetail(dto);
     expect(order.customerId).toBeNull();
+    expect(order.orderDate).toBe('2026-11-02');
+    expect(order.pickedAt).toBe('2026-11-02T10:00:00Z');
+    expect(order.packedAt).toBe('2026-11-02T10:30:00Z');
     expect(order.billingAddress).toMatchObject({ name: 'Acme', line1: '1 Main', city: 'Havana' });
     expect(order.lines[0]).toMatchObject({
       soLineId: 9, lineNumber: 1, itemId: 3, quantityOrdered: 5, quantityAllocated: 2
