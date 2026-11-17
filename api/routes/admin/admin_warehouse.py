@@ -683,6 +683,7 @@ def create_inter_warehouse_transfer(validated):
     reason = (validated.reason or "").strip()
     idempotency_key = str(validated.idempotency_key)
     username = g.current_user["username"]
+    user_id = g.current_user["user_id"]
     request_payload = {
         "item_id": item_id, "from_bin_id": from_bin_id,
         "from_warehouse_id": from_warehouse_id, "to_bin_id": to_bin_id,
@@ -709,7 +710,7 @@ def create_inter_warehouse_transfer(validated):
 
     # Serialize requests sharing a key, including requests arriving while
     # the original transaction is still in flight.
-    lock_key = username + ":" + idempotency_key
+    lock_key = str(user_id) + ":" + idempotency_key
     g.db.execute(
         text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
         {"lock_key": lock_key},
@@ -718,9 +719,9 @@ def create_inter_warehouse_transfer(validated):
         text(
             "SELECT request_payload, response_payload "
             "FROM inter_warehouse_transfer_requests "
-            "WHERE username = :username AND idempotency_key = :key"
+            "WHERE user_id = :user_id AND idempotency_key = :key"
         ),
-        {"username": username, "key": idempotency_key},
+        {"user_id": user_id, "key": idempotency_key},
     ).fetchone()
     if prior:
         if prior.request_payload != request_payload:
@@ -847,12 +848,12 @@ def create_inter_warehouse_transfer(validated):
     g.db.execute(
         text("""
             INSERT INTO inter_warehouse_transfer_requests
-                (username, idempotency_key, request_payload, response_payload)
-            VALUES (:username, :key, CAST(:request_payload AS jsonb),
+                (user_id, idempotency_key, request_payload, response_payload)
+            VALUES (:user_id, :key, CAST(:request_payload AS jsonb),
                     CAST(:response_payload AS jsonb))
         """),
         {
-            "username": username, "key": idempotency_key,
+            "user_id": user_id, "key": idempotency_key,
             "request_payload": json.dumps(request_payload, sort_keys=True),
             "response_payload": json.dumps(response_payload, sort_keys=True),
         },
