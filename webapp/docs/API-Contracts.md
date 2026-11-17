@@ -188,3 +188,15 @@ Para cada feature, completar con tests: campos obligatorios/opcionales, nulabili
 | PUT | `/api/admin/sales-orders/{so_id}` | `{status:"SHIPPED"}` for pickup handoff | Auth + Sales Orders grant; SHIPPED transition only from PICKED/PACKED; tracking number waived only when ship method indicates pickup. UI also checks ADMIN or `so-full-edit` before enabling the action. |
 
 Dashboard date presets use local calendar dates (not UTC ISO conversion): Today, Yesterday, Last 7d, Last 30d and inclusive Custom; the productivity endpoint caps the range at 90 days. `/api/admin/dashboard` is a separate admin summary endpoint (including pending transfer-order approvals), not the data source for the four React dashboard tabs.
+
+
+### Audit Log — contrato Flask verificado
+
+- **Ruta:** `GET /api/admin/audit-log` (cliente Svelte: `/api/admin/audit-log`).
+- **Autorización:** `require_auth` + `require_admin_or_page_permission("audit-log")`; no existe filtro adicional por almacén en este handler.
+- **Filtros admitidos:** `action_type`, `user_id`, `start_date`, `end_date`, `item_id`. No admite `entity_type`, `warehouse_id`, `from` ni `to`.
+- **Paginación:** `page` (por defecto 1), `per_page` (por defecto 50, máximo 1000); respuesta `total`, `page`, `per_page`, `pages`. `pages` tiene mínimo 1 incluso sin resultados.
+- **Orden:** `sort_by` admite `created_at`, `action_type`, `user_id`, `entity_type`; cualquier otro valor cae a `created_at`. `sort_direction=asc` produce ASC; cualquier otro valor produce DESC. Se añade `log_id DESC` como desempate.
+- **DTO de cada entrada:** `log_id`, `action_type`, `entity_type`, `entity_id`, `entity_name`, `username`, `device_id`, `warehouse_id`, `warehouse_code`, `details`, `created_at`. Actor se entrega como `username` (puede ser nulo); no se devuelve `user_id` separado. `details` puede contener objetos heterogéneos, valores resueltos o nulos.
+- **Detalle individual:** no existe GET por `log_id`; el detalle de UI se construye desde la entrada del listado. El historial por artículo usa `item_id` sobre el mismo endpoint.
+- **Datos sensibles:** `api/services/audit_service.py` persiste el diccionario `details` tal como lo reciben los escritores; este endpoint no aplica una redacción general al serializarlo. El cliente Svelte redacta claves de credenciales y datos personales reconocibles antes de presentarlas. Esto protege la presentación UI, no sustituye la minimización/redacción en los escritores o en el servidor.
