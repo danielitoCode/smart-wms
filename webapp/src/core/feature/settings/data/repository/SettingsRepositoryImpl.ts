@@ -10,18 +10,13 @@ export class SettingsRepositoryImpl implements SettingsRepository {
 		return SettingMapper.toDomain(await this.remote.get(key));
 	}
 
-	async listKnown(keys: readonly string[]): Promise<SettingsMap> {
+	async list(): Promise<SettingsMap> {
+		const response = await this.remote.list();
 		const result: SettingsMap = {};
-		await Promise.all(
-			keys.map(async (key) => {
-				try {
-					const setting = await this.get(key);
-					result[key] = setting.value;
-				} catch {
-					result[key] = '';
-				}
-			})
-		);
+		for (const dto of response.settings ?? []) {
+			const setting = SettingMapper.toDomain(dto);
+			result[setting.key] = setting.value;
+		}
 		return result;
 	}
 
