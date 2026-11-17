@@ -17,7 +17,7 @@ describe('Packing scanner state warehouse context', () => {
   expect(deps.loadOrder.execute).toHaveBeenCalledWith('SO-3', 7);
   state.setScannedBarcode('UPC-3');
   expect(await state.verify()).toBe(true);
-  expect(deps.verify.execute).toHaveBeenCalledWith({ soId: 3, scannedBarcode: 'UPC-3', quantity: 1 });
+  expect(deps.verify.execute).toHaveBeenCalledWith({ soId: 3, warehouseId: 7, scannedBarcode: 'UPC-3', quantity: 1 });
  });
  it('rejects a stale order after warehouse context changes', async () => {
   const state = createPackingState(context as never);
