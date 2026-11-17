@@ -48,6 +48,7 @@ export function createShippingState(warehouseSelection: WarehouseSelectionState)
 			assertDetailWarehouse();
 			lastResult = await deps.fulfill.execute({
 				soId: detail.salesOrder.soId,
+				warehouseId: activeWarehouseId(),
 				trackingNumber: trackingNumber.trim(),
 				carrier: carrier.trim(),
 				shipMethod: shipMethod.trim() || null
