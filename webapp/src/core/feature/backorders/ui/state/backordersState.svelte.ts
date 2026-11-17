@@ -55,6 +55,7 @@ export function createBackordersState() {
   }
 
   async function cancel(id: number, reason: CancelBackorderReason): Promise<boolean> {
+    if (saving) return false;
     saving = true;
     error = null;
     try {
