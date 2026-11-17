@@ -180,6 +180,13 @@ def test_forward_migration_marks_preexisting_orders_untracked_and_new_orders_tra
             "SELECT to_regclass('transfer_order_reservations')"
         )
         assert cur.fetchone()[0] == "transfer_order_reservations"
+        cur.execute(
+            "SELECT column_name FROM information_schema.columns "
+            " WHERE table_schema = %s AND table_name = 'pick_tasks' "
+            "   AND column_name IN ('inventory_id', 'quantity_approved')",
+            (schema_name,),
+        )
+        assert {row[0] for row in cur.fetchall()} == {"inventory_id", "quantity_approved"}
 
         cur.execute(
             "INSERT INTO transfer_order_lines (to_id) VALUES (%s) RETURNING to_line_id",
