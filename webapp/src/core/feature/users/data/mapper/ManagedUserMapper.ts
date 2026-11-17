@@ -23,6 +23,7 @@ export const ManagedUserMapper = {
 			warehouseIds: dto.warehouse_ids ?? [],
 			allowedFunctions: dto.allowed_functions ?? [],
 			isActive: dto.is_active,
+			mustChangePassword: dto.must_change_password ?? false,
 			createdAt: dto.created_at ?? null,
 			lastLogin: dto.last_login ?? null,
 		};
@@ -46,6 +47,7 @@ export const ManagedUserMapper = {
 			warehouse_ids: input.warehouseIds ?? [],
 			warehouse_id: input.warehouseIds?.[0] ?? input.warehouseId ?? null,
 			allowed_functions: input.allowedFunctions ?? [],
+			must_change_password: input.mustChangePassword ?? false,
 		};
 	},
 
@@ -64,6 +66,7 @@ export const ManagedUserMapper = {
 		}
 		if (input.allowedFunctions !== undefined) dto.allowed_functions = input.allowedFunctions;
 		if (input.isActive !== undefined) dto.is_active = input.isActive;
+		if (input.mustChangePassword !== undefined) dto.must_change_password = input.mustChangePassword;
 		if (input.password !== undefined && input.password !== '') dto.password = input.password;
 		return dto;
 	},
