@@ -1949,6 +1949,7 @@ def reject_transfer_order_approval(to_id, approval_id):
                      WHERE pick_task_id = :pid
                        AND to_id = :tid AND to_line_id = :lid
                        AND inventory_id = :iid AND bin_id = :bid
+                       AND item_id = :item_id
                        AND status = 'PICKED'
                        AND quantity_picked - quantity_approved = :qty
                     RETURNING pick_task_id
@@ -1957,7 +1958,8 @@ def reject_transfer_order_approval(to_id, approval_id):
                 {
                     "pid": int(task["pick_task_id"]), "tid": to_id,
                     "lid": line_id, "iid": int(task["inventory_id"]),
-                    "bid": int(task["bin_id"]), "qty": task_qty,
+                    "bid": int(task["bin_id"]), "item_id": line.item_id,
+                    "qty": task_qty,
                 },
             ).fetchone()
             if not changed_task:
