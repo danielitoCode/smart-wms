@@ -5,7 +5,7 @@
  */
 import type { SalesOrder, SalesOrderLine } from '../../../sales-orders/domain/entity/SalesOrder';
 
-export type RefundAmountIntegrity = 'VALID' | 'MISSING' | 'NON_NEGATIVE';
+export type RefundAmountIntegrity = 'VALID' | 'MISSING' | 'NON_NEGATIVE' | 'LINE_SIGN_MISMATCH';
 
 export type RefundRelatedRecord = {
   salesOrderId: number;
