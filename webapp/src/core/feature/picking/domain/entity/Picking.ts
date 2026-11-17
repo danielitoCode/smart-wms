@@ -29,6 +29,16 @@ export type PickTask = {
 	quantityToPick: number;
 	binId: number | null;
 	binCode: string | null;
+	binBarcode?: string | null;
+	zone?: string | null;
+	aisle?: string | null;
+	rowNum?: string | number | null;
+	levelNum?: string | number | null;
+	toteNumber?: string | null;
+	salesOrderNumber?: string | null;
+	transferOrderNumber?: string | null;
+	pickNumber?: number;
+	totalPicks?: number;
 	status: PickTaskStatus;
 	pickSequence?: number;
 	quantityPicked?: number;
