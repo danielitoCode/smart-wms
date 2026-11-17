@@ -272,12 +272,12 @@ def receive_rma(
             # created it. Reusing a key for another RMA/item/quantity/bin
             # must not silently acknowledge a different receipt.
             same_operation = (
-                int(prior.so_id) == int(rma_so_id)
+                prior.so_id == rma_so_id
                 and prior.so_line_id == line.so_line_id
-                and int(prior.item_id) == int(item_id)
-                and int(prior.quantity_received) == int(quantity)
-                and int(prior.bin_id) == int(bin_id)
-                and int(prior.warehouse_id) == int(warehouse_id)
+                and prior.item_id == item_id
+                and prior.quantity_received == quantity
+                and prior.bin_id == bin_id
+                and prior.warehouse_id == warehouse_id
             )
             if not same_operation:
                 raise ValueError("idempotency_key was already used for a different return receipt")
