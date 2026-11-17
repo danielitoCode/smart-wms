@@ -49,6 +49,7 @@ BEGIN
           FROM transfer_order_lines tol
           JOIN transfer_orders too ON too.to_id = tol.to_id
          WHERE tol.committed_qty > tol.approved_qty
+           AND tol.status <> 'SHORT_CLOSED'
            AND too.status NOT IN ('CLOSED', 'CANCELLED')
     ) THEN
         RAISE EXCEPTION
