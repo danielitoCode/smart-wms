@@ -1046,6 +1046,8 @@ def test_next_task_includes_identity_fields_required_by_scanner_dto(client, auth
     assert data["item_id"] > 0
     assert data["bin_id"] > 0
     assert data["sku"]
+    assert data["quantity_picked"] == 0
+    assert data["contributing_orders"] == []
 
 
 def test_confirm_pick_rejects_task_outside_selected_warehouse(client, auth_headers):
