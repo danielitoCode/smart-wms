@@ -51,14 +51,14 @@ describe('Audit log Flask data contract', () => {
 		const get = vi.fn().mockResolvedValue({
 			entries: [{
 				log_id: 3, action_type: 'TOKEN_ISSUE', entity_type: 'WMS_TOKEN',
-				details: { token_name: 'integration', token_hash: 'hash', nested: { api_key: 'secret', safe: 'ok' } }
+				details: { token_name: 'integration', token_hash: 'hash', billing_address: 'private address', nested: { api_key: 'secret', email: 'private@example.test', safe: 'ok' } }
 			}], page: 1, per_page: 50, total: 1, pages: 1
 		});
 		const repository = new AuditLogRepositoryImpl(new AuditLogRemoteDataSource({ get } as unknown as ApiClient));
 		const [row] = (await repository.list()).rows;
 		expect(row.metadata).toEqual({
-			token_name: 'integration', token_hash: '[REDACTED]',
-			nested: { api_key: '[REDACTED]', safe: 'ok' }
+			token_name: 'integration', token_hash: '[REDACTED]', billing_address: '[REDACTED]',
+			nested: { api_key: '[REDACTED]', email: '[REDACTED]', safe: 'ok' }
 		});
 	});
 });
