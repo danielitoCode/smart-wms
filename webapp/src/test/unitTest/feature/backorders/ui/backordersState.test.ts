@@ -18,6 +18,7 @@ const row = {
   salesOrderNumber: 'BO-41',
   warehouseId: 3,
   status: 'WAITING_STOCK',
+  orderType: 'backorder',
   daysWaiting: 12,
   items: []
 } as unknown as Backorder;
