@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ManagedUserMapper } from '../../../../../../core/feature/users/data/mapper/ManagedUserMapper';
+import { ManagedUserMapper } from '../../../../../core/feature/users/data/mapper/ManagedUserMapper';
 
 describe('ManagedUserMapper', () => {
 	it('maps nullable and multiple warehouse assignments without losing an empty assignment', () => {
