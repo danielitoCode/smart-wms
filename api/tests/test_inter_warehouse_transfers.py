@@ -163,7 +163,7 @@ def test_allocated_source_inventory_cannot_be_transferred(client, auth_headers):
 
 
 def test_idempotent_retry_moves_stock_once_and_rejects_key_reuse(client, auth_headers):
-    item_id, from_bin, from_wh, to_bin = _source_destination()
+    item_id, from_bin, from_wh, to_bin, to_wh = _source_destination()
     key = str(uuid.uuid4())
     payload = _body(item_id, from_bin, from_wh, to_bin, to_wh, key=key, quantity=1)
     before_source, before_destination = _quantity(item_id, from_bin), _quantity(item_id, to_bin)
