@@ -704,10 +704,11 @@ def confirm_pick(db, pick_task_id, scanned_barcode, quantity_picked, username):
             """
             SELECT pt.pick_task_id, pt.batch_id, pt.so_id, pt.so_line_id,
                    pt.to_id, pt.to_line_id,
-                   pt.item_id, pt.bin_id, pt.quantity_to_pick, pt.status,
-                   pt.tote_number
+                   pt.item_id, pt.bin_id, pt.inventory_id,
+                   pt.quantity_to_pick, pt.status, pt.tote_number
             FROM pick_tasks pt
             WHERE pt.pick_task_id = :tid
+            FOR UPDATE OF pt
             """
         ),
         {"tid": pick_task_id},
@@ -758,10 +759,19 @@ def confirm_pick(db, pick_task_id, scanned_barcode, quantity_picked, username):
         # surfaces 409.
         from services.transfer_order_service import (
             maybe_promote_header_to_partially_picked,
+            record_transfer_order_reservation_pick,
             update_transfer_order_line_picked,
         )
         update_transfer_order_line_picked(
             db, task.to_line_id, quantity_picked,
+        )
+        if task.inventory_id is None:
+            raise ValueError(
+                "Transfer Order pick task is missing its reserved inventory row"
+            )
+        record_transfer_order_reservation_pick(
+            db, task.to_id, task.to_line_id, task.inventory_id,
+            task.item_id, quantity_picked,
         )
         maybe_promote_header_to_partially_picked(db, task.to_id)
     else:
