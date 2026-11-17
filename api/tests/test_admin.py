@@ -1837,6 +1837,29 @@ class TestUsers:
         assert len(after.get_json()["page_keys"]) > 0
 
 
+    def test_override_grant_is_saved_and_revoked_with_the_complete_permission_set(self, client, auth_headers):
+        uid, user_headers = _web_user_with_pages(
+            client, ["so-full-edit"], username="f41_override_user",
+        )
+        before = client.get(f"/api/admin/users/{uid}/permissions", headers=auth_headers)
+        assert before.status_code == 200
+        assert "so-full-edit" in before.get_json()["page_keys"]
+
+        revoked = client.put(
+            f"/api/admin/users/{uid}/permissions",
+            json={"page_keys": ["users"]},
+            headers=auth_headers,
+        )
+        assert revoked.status_code == 200
+        assert revoked.get_json()["page_keys"] == ["users"]
+        after = client.get(f"/api/admin/users/{uid}/permissions", headers=auth_headers)
+        assert after.status_code == 200
+        assert "so-full-edit" not in after.get_json()["page_keys"]
+        assert "users" in after.get_json()["page_keys"]
+        # Same JWT sees the replacement set on its very next authenticated request.
+        assert client.get("/api/admin/users", headers=user_headers).status_code == 200
+
+
 # ── Audit Log ─────────────────────────────────────────────────────────────────
 
 class TestAuditLog:
