@@ -1,6 +1,7 @@
 """Inter-warehouse transfer authorization, transactional integrity and idempotency."""
 import os
 import sys
+import threading
 import uuid
 
 import pytest
@@ -267,3 +268,108 @@ def test_same_idempotency_key_is_serialized_by_postgres_transaction_lock():
     finally:
         first.close()
         second.close()
+
+
+def test_concurrent_transfer_reservations_cannot_overdraw_locked_source_rows():
+    item_id, from_bin, from_wh, _ = _source_destination()
+    setup = psycopg2.connect(os.environ["DATABASE_URL"])
+    try:
+        cur = setup.cursor()
+        cur.execute(
+            """SELECT inventory_id, quantity_on_hand, quantity_allocated
+                 FROM inventory
+                WHERE item_id = %s AND bin_id = %s AND warehouse_id = %s
+                ORDER BY inventory_id""",
+            (item_id, from_bin, from_wh),
+        )
+        snapshot = cur.fetchall()
+        assert snapshot
+        cur.execute(
+            "UPDATE inventory SET quantity_on_hand = 0, quantity_allocated = 0 "
+            "WHERE item_id = %s AND bin_id = %s AND warehouse_id = %s",
+            (item_id, from_bin, from_wh),
+        )
+        cur.execute(
+            "UPDATE inventory SET quantity_on_hand = 5, quantity_allocated = 0 "
+            "WHERE inventory_id = %s",
+            (snapshot[0][0],),
+        )
+        setup.commit()
+    finally:
+        setup.close()
+
+    barrier = threading.Barrier(2)
+    accepted, rejected, errors = [], [], []
+
+    def worker():
+        conn = psycopg2.connect(os.environ["DATABASE_URL"])
+        try:
+            cur = conn.cursor()
+            barrier.wait(timeout=5)
+            cur.execute(
+                """SELECT inventory_id, quantity_on_hand, quantity_allocated
+                     FROM inventory
+                    WHERE item_id = %s AND bin_id = %s AND warehouse_id = %s
+                    ORDER BY lot_number NULLS FIRST, inventory_id
+                    FOR UPDATE""",
+                (item_id, from_bin, from_wh),
+            )
+            rows = cur.fetchall()
+            available = sum(max(on_hand - allocated, 0) for _, on_hand, allocated in rows)
+            if available < 4:
+                conn.rollback()
+                rejected.append(available)
+                return
+            remaining = 4
+            for inventory_id, on_hand, allocated in rows:
+                moved = min(max(on_hand - allocated, 0), remaining)
+                if moved:
+                    cur.execute(
+                        "UPDATE inventory SET quantity_on_hand = quantity_on_hand - %s WHERE inventory_id = %s",
+                        (moved, inventory_id),
+                    )
+                    remaining -= moved
+                if remaining == 0:
+                    break
+            conn.commit()
+            accepted.append(4)
+        except Exception as exc:
+            conn.rollback()
+            errors.append(str(exc))
+        finally:
+            conn.close()
+
+    threads = [threading.Thread(target=worker) for _ in range(2)]
+    try:
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=10)
+        assert all(not thread.is_alive() for thread in threads)
+        assert not errors, errors
+        assert len(accepted) == 1
+        assert len(rejected) == 1
+        check = psycopg2.connect(os.environ["DATABASE_URL"])
+        try:
+            cur = check.cursor()
+            cur.execute(
+                "SELECT COALESCE(SUM(quantity_on_hand - quantity_allocated), 0) "
+                "FROM inventory WHERE item_id = %s AND bin_id = %s AND warehouse_id = %s",
+                (item_id, from_bin, from_wh),
+            )
+            assert cur.fetchone()[0] == 1
+        finally:
+            check.close()
+    finally:
+        restore = psycopg2.connect(os.environ["DATABASE_URL"])
+        try:
+            cur = restore.cursor()
+            for inventory_id, on_hand, allocated in snapshot:
+                cur.execute(
+                    "UPDATE inventory SET quantity_on_hand = %s, quantity_allocated = %s "
+                    "WHERE inventory_id = %s",
+                    (on_hand, allocated, inventory_id),
+                )
+            restore.commit()
+        finally:
+            restore.close()
