@@ -112,6 +112,15 @@ class TestCreateRma:
         assert rows[1].original_so_line_id == line_b
         assert rows[1].quantity_ordered == 2
 
+        # A second authorization receives a stable, non-colliding child number.
+        second = create_rma(
+            db,
+            original_so_id=parent_id,
+            lines=[{"item_id": item_a, "quantity": 1, "original_so_line_id": line_a}],
+            created_by="op",
+        )
+        assert second["so_number"] == f"{parent_no}-RMA-2"
+
     def test_rejects_duplicate_original_line_in_one_authorization(self, _db_transaction):
         from services.sales_order_service import create_rma
         db = _db_transaction
