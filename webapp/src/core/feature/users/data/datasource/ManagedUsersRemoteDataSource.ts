@@ -9,10 +9,21 @@ export class ManagedUsersRemoteDataSource {
 	constructor(private readonly api: ApiClient) {}
 
 	async list(): Promise<ManagedUserDto[]> {
-		const response = await this.api.get<ManagedUsersListDto>(
-			'/api/admin/users?page=1&per_page=1000',
+		const pageSize = 1000;
+		const firstPage = await this.api.get<ManagedUsersListDto>(
+			`/api/admin/users?page=1&per_page=${pageSize}`,
 		);
-		return response.users ?? [];
+		const users = [...(firstPage.users ?? [])];
+
+		// The backend caps per_page at 1000; consume the remaining pages rather
+		// than silently hiding users when an installation exceeds that limit.
+		for (let page = 2; page <= firstPage.pages; page += 1) {
+			const response = await this.api.get<ManagedUsersListDto>(
+				`/api/admin/users?page=${page}&per_page=${pageSize}`,
+			);
+			users.push(...(response.users ?? []));
+		}
+		return users;
 	}
 
 	create(body: CreateManagedUserRequestDto): Promise<ManagedUserDto> {
