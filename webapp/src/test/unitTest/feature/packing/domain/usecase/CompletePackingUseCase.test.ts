@@ -6,7 +6,7 @@ describe('CompletePackingUseCase', () => {
 	it('rejects non-positive soId', () => {
 		const repo = { complete: vi.fn() } as unknown as PackingRepository;
 		const uc = new CompletePackingUseCase(repo);
-		expect(() => uc.execute(0)).toThrow(/soId/);
+		expect(() => uc.execute(0, 7)).toThrow(/soId/);
 	});
 
 	it('delegates to repository', async () => {
@@ -14,7 +14,7 @@ describe('CompletePackingUseCase', () => {
 			complete: vi.fn().mockResolvedValue({ message: 'packed' })
 		} as unknown as PackingRepository;
 		const uc = new CompletePackingUseCase(repo);
-		await expect(uc.execute(4)).resolves.toEqual({ message: 'packed' });
-		expect(repo.complete).toHaveBeenCalledWith(4);
+		await expect(uc.execute(4, 7)).resolves.toEqual({ message: 'packed' });
+		expect(repo.complete).toHaveBeenCalledWith(4, 7);
 	});
 });
