@@ -1188,11 +1188,17 @@ def start_to_picking(to_id):
                   FROM transfer_order_reservations r
                   JOIN inventory inv ON inv.inventory_id = r.inventory_id
                  WHERE r.to_line_id = :lid
+                   AND inv.item_id = :iid
+                   AND inv.warehouse_id = :wid
                  ORDER BY inv.inventory_id
                  FOR UPDATE OF r, inv
                 """
             ),
-            {"lid": line.to_line_id},
+            {
+                "lid": line.to_line_id,
+                "iid": line.item_id,
+                "wid": header.source_warehouse_id,
+            },
         ).fetchall()
 
         reserved_total = sum(row.reserved_qty for row in allocations)
@@ -1668,6 +1674,7 @@ def approve_transfer_order_approval(to_id, approval_id):
                          WHERE pick_task_id = :pid
                            AND to_id = :tid AND to_line_id = :lid
                            AND inventory_id = :iid AND bin_id = :bid
+                           AND item_id = :item_id
                            AND status = 'PICKED'
                            AND quantity_picked - quantity_approved = :qty
                         RETURNING pick_task_id
@@ -1676,7 +1683,7 @@ def approve_transfer_order_approval(to_id, approval_id):
                     {
                         "qty": task_qty, "pid": int(task_snap["pick_task_id"]),
                         "tid": to_id, "lid": line_id,
-                        "iid": inventory_id, "bid": bin_id,
+                        "iid": inventory_id, "bid": bin_id, "item_id": item_id,
                     },
                 ).fetchone()
                 if not task_changed:
