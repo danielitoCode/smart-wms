@@ -256,8 +256,8 @@ def test_idempotency_user_identity_migration_is_repeatable():
         cur = conn.cursor()
         cur.execute(f'CREATE SCHEMA "{schema}"')
         cur.execute(f'SET search_path TO "{schema}"')
-        cur.execute("CREATE TABLE users (user_id SERIAL PRIMARY KEY, username VARCHAR(50) UNIQUE NOT NULL)")
-        cur.execute("INSERT INTO users (username) VALUES ('migrated-user') RETURNING user_id")
+        cur.execute("CREATE TABLE users (user_id SERIAL PRIMARY KEY, username VARCHAR(50) UNIQUE NOT NULL, external_id UUID NOT NULL UNIQUE)")
+        cur.execute("INSERT INTO users (username, external_id) VALUES ('migrated-user', %s) RETURNING user_id", (str(uuid.uuid4()),))
         user_id = cur.fetchone()[0]
         cur.execute(
             """CREATE TABLE inter_warehouse_transfer_requests (
