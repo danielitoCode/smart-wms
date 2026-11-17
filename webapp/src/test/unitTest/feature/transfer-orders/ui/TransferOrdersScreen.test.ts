@@ -5,7 +5,7 @@ import TransferOrdersScreen from '../../../../../core/feature/transfer-orders/ui
 const vm = vi.hoisted(() => ({
   rows: [], total: 0, page: 1, pages: 1, status: '', sourceWarehouseId: null,
   destinationWarehouseId: null, warehouses: [], loading: false, saving: false,
-  error: null, notice: null, created: null, importErrors: [],
+  error: null as string | null, notice: null, created: null, importErrors: [],
   selected: {
     transferOrderId: 12, transferOrderNumber: 'TO-12', sourceWarehouseId: 2,
     destinationWarehouseId: 4, status: 'PARTIALLY_PICKED', createdBy: 'operator',
