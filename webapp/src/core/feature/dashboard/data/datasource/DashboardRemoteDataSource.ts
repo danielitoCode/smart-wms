@@ -11,4 +11,5 @@ export class DashboardRemoteDataSource {
  updatePreferences(p:Partial<DashboardPreferences>){const body:{chart_order?:string[];default_range?:string;default_view?:string}={};if(p.chartOrder!==undefined)body.chart_order=p.chartOrder;if(p.defaultRange!==undefined)body.default_range=p.defaultRange;if(p.defaultView!==undefined)body.default_view=p.defaultView;return this.api.put<PreferencesDto>('/api/v1/dashboard/preferences',body);}
  localPickup(w:number,q:string,s:string){const p=new URLSearchParams({warehouse_id:String(w),local_pickup:'true',per_page:'1000'});if(q.trim())p.set('q',q.trim());if(s!=='All')p.set('status',s);return this.api.get<LocalPickupDto>('/api/admin/sales-orders?'+p);}
  async markPickedUp(id:number){await this.api.put('/api/admin/sales-orders/'+id,{status:'SHIPPED'});}
+ async updateLocalPickup(id:number,patch:{customer_name:string|null;customer_phone:string|null;ship_method:string|null;ship_address:string|null;priority:number;memo:string|null}){await this.api.put('/api/admin/sales-orders/'+id,patch);}
 }
