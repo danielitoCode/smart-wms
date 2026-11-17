@@ -154,7 +154,10 @@
         <div class="table-wrap"><table><thead><tr><th>SKU</th><th>{i18n.t('Solicitado')}</th><th>{i18n.t('Disponible')}</th><th>{i18n.t('Comprometido')}</th><th>{i18n.t('Faltante')}</th></tr></thead><tbody>
           {#each vm.created.shortages as shortage}<tr><td class="mono">{shortage.sku}</td><td>{shortage.requestedQuantity}</td><td>{shortage.availableQuantity}</td><td>{shortage.committedQuantity}</td><td class="warning-text">{shortage.shortfall}</td></tr>{/each}
         </tbody></table></div>
-        <button onclick={exportShortages}>{i18n.t('Descargar faltantes CSV')}</button>
+        <div class="actions">
+          <button onclick={exportShortages}>{i18n.t('Descargar faltantes CSV')}</button>
+          <button class="danger" onclick={() => { if (confirm('¿Eliminar la transferencia y liberar la reserva parcial?')) void vm.remove(vm.created!.toId).then(ok => { if (ok) vm.clearCreated(); }); }}>{i18n.t('Cancelar y liberar reserva')}</button>
+        </div>
       {/if}
     </section>
   {/if}
