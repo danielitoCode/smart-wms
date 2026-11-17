@@ -20,11 +20,11 @@ describe('PickingRemoteDataSource', () => {
  });
  it('posts scanner confirmations, short picks and completion using Flask field names', async () => {
   const ds = new PickingRemoteDataSource(api);
-  await ds.confirm({ pickTaskId: 8, scannedBarcode: 'UPC', quantityPicked: 2 });
-  await ds.short({ pickTaskId: 8, quantityAvailable: 0 });
-  await ds.completeBatch(5);
-  expect(api.post).toHaveBeenNthCalledWith(1, '/api/picking/confirm', { pick_task_id: 8, scanned_barcode: 'UPC', quantity_picked: 2 });
-  expect(api.post).toHaveBeenNthCalledWith(2, '/api/picking/short', { pick_task_id: 8, quantity_available: 0 });
-  expect(api.post).toHaveBeenNthCalledWith(3, '/api/picking/complete-batch', { batch_id: 5 });
+  await ds.confirm({ pickTaskId: 8, warehouseId: 12, scannedBarcode: 'UPC', quantityPicked: 2 });
+  await ds.short({ pickTaskId: 8, warehouseId: 12, quantityAvailable: 0 });
+  await ds.completeBatch(5, 12);
+  expect(api.post).toHaveBeenNthCalledWith(1, '/api/picking/confirm', { pick_task_id: 8, warehouse_id: 12, scanned_barcode: 'UPC', quantity_picked: 2 });
+  expect(api.post).toHaveBeenNthCalledWith(2, '/api/picking/short', { pick_task_id: 8, warehouse_id: 12, quantity_available: 0 });
+  expect(api.post).toHaveBeenNthCalledWith(3, '/api/picking/complete-batch', { batch_id: 5, warehouse_id: 12 });
  });
 });
