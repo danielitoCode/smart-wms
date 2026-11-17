@@ -21,7 +21,7 @@ export function createPickingDependencies() {
 		waveValidate: new WaveValidateUseCase(repository),
 		waveCreate: new WaveCreateUseCase(repository),
 		createBatch: new CreateBatchUseCase(repository),
-		completeBatch: (batchId: number) => repository.completeBatch(batchId),
+		completeBatch: (batchId: number, warehouseId: number) => repository.completeBatch(batchId, warehouseId),
 		cancelBatch: (batchId: number) => repository.cancelBatch(batchId)
 	};
 }
