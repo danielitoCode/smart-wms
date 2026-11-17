@@ -643,7 +643,7 @@ def import_transfer_order():
     # decrement quantity_on_hand-quantity_allocated availability per
     # row until requested_qty is satisfied or rows exhausted.
     shortages = []
-    line_inserts = []  # (item_id, line_number, requested, committed)
+    line_inserts = []  # (item_id, line_number, requested, committed, inventory slices)
     for line_number, row in enumerate(rows, start=1):
         inv_rows = g.db.execute(
             text(
@@ -664,6 +664,7 @@ def import_transfer_order():
         )
         committed = max(0, min(row["requested_qty"], total_available))
         remaining = committed
+        reservation_slices = []
         for ir in inv_rows:
             if remaining <= 0:
                 break
@@ -679,6 +680,7 @@ def import_transfer_order():
                 ),
                 {"delta": take, "inv_id": ir.inventory_id},
             )
+            reservation_slices.append((ir.inventory_id, take))
             remaining -= take
         if committed < row["requested_qty"]:
             shortages.append({
@@ -691,6 +693,7 @@ def import_transfer_order():
             })
         line_inserts.append((
             row["item_id"], line_number, row["requested_qty"], committed,
+            reservation_slices,
         ))
 
     # Insert TO header. Same-millisecond collision retried once before
@@ -730,7 +733,7 @@ def import_transfer_order():
     if to_id is None:
         return jsonify({"error": "to_number_collision"}), 500
 
-    for item_id, line_number, requested, committed in line_inserts:
+    for item_id, line_number, requested, committed, reservation_slices in line_inserts:
         # Pick the line state at insert time: PENDING when fully
         # committed, SHORT_CLOSED when committed=0 (no available
         # inventory to commit so the line cannot be picked). Plan
@@ -745,13 +748,30 @@ def import_transfer_order():
                     (to_id, item_id, line_number, requested_qty,
                      committed_qty, status)
                 VALUES (:tid, :iid, :ln, :req, :com, :st)
+                RETURNING to_line_id
                 """
             ),
             {
                 "tid": to_id, "iid": item_id, "ln": line_number,
                 "req": requested, "com": committed, "st": line_status,
             },
-        )
+        ).fetchone()
+        to_line_id = line_result.to_line_id
+        for inventory_id, reserved_qty in reservation_slices:
+            g.db.execute(
+                text(
+                    """
+                    INSERT INTO transfer_order_reservations
+                        (to_id, to_line_id, inventory_id, item_id, warehouse_id,
+                         quantity_reserved)
+                    VALUES (:tid, :lid, :inv_id, :iid, :wid, :qty)
+                    """
+                ),
+                {
+                    "tid": to_id, "lid": to_line_id, "inv_id": inventory_id,
+                    "iid": item_id, "wid": src_id, "qty": reserved_qty,
+                },
+            )
 
     write_audit_log(
         g.db,
