@@ -1,9 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiClient } from '../../../../../core/infrastructure/api/ApiClient';
 import { PickingRemoteDataSource } from '../../../../../core/feature/picking/data/datasource/PickingRemoteDataSource';
 
 describe('PickingRemoteDataSource', () => {
  const api = { get: vi.fn(), post: vi.fn() } as unknown as ApiClient;
+ beforeEach(() => vi.clearAllMocks());
  it('queries active batch for the selected warehouse', async () => {
   await new PickingRemoteDataSource(api).getActiveBatch(12);
   expect(api.get).toHaveBeenCalledWith('/api/picking/active-batch?warehouse_id=12');
