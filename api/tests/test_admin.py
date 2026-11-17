@@ -1948,6 +1948,23 @@ class TestF41UserAuthorizationRegression:
         # Promotion clears stale grants; demotion must not restore them.
         assert client.get("/api/admin/users", headers=user_headers).status_code == 403
 
+    def test_user_schema_limits_match_database_columns(self, client, auth_headers):
+        too_long_username = client.post("/api/admin/users", json={
+            "username": "u" * 51,
+            "password": "warehouse123",
+            "full_name": "Valid Name",
+            "role": "USER",
+        }, headers=auth_headers)
+        assert too_long_username.status_code == 400
+
+        too_long_name = client.post("/api/admin/users", json={
+            "username": "f41_long_name",
+            "password": "warehouse123",
+            "full_name": "n" * 101,
+            "role": "USER",
+        }, headers=auth_headers)
+        assert too_long_name.status_code == 400
+
     def test_admin_permissions_return_exact_server_catalog(self, client, auth_headers):
         from constants import ALL_PAGE_KEYS, ALL_OVERRIDE_KEYS
 
