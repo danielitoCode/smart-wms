@@ -114,6 +114,16 @@ Salvo excepción anotada, cada grupo usa `require_auth` + `require_admin_or_page
 
 **Pruebas F4.1.5:** `api/tests/test_admin.py` cubre usuarios sin almacenes, asignación múltiple, revocación de grants, reasignación durante sesión, desactivación inmediata, ADMIN full-access, overrides, compatibilidad con `warehouse_id` legado, IDs inexistentes, cambios de rol con token existente, catálogo de almacenes bajo permiso `users` y cambio obligatorio de contraseña. Se añadieron nueve regresiones API para esos límites. En Svelte, `ManagedUserMapper.test.ts` (6 casos) y `userPermissionGroups.test.ts` (2 casos) cubren serialización de revocación, flags de cuenta y paridad del catálogo.
 
+
+
+### Settings — contrato verificado en Flask
+
+- `GET /api/admin/settings`: requiere sesión y `settings` page grant (ADMIN bypass). Devuelve `{ settings: [{ id, key, value, updated_at }] }` ordenado por clave. Devuelve únicamente filas persistidas en `app_settings`; los valores por defecto no se insertan ni se devuelven automáticamente.
+- `GET /api/admin/settings/{key}`: misma autorización; devuelve `{ key, value }` o `404 { error: "Setting not found" }` si no existe.
+- `PUT /api/admin/settings`: misma autorización, `UpdateSettingsRequest` (`schemas/settings.py`) exige `settings` como diccionario no vacío de valores string. Cada par se persiste con UPSERT en `app_settings` y `updated_at=NOW()`; por tanto, la actualización es parcial y conserva claves omitidas. Responde `{ message: "Settings updated" }`.
+- El backend no aplica lista blanca de claves ni validación semántica general en este handler: Pydantic valida el tipo string, y existe una regla específica que impide desactivar `require_packing_before_shipping` si quedan pedidos PACKED (400). El cliente valida sus claves conocidas y valores, pero Flask sigue siendo autoridad de permisos.
+- Defaults de compatibilidad de la UI React: `count_show_expected=true`, `require_packing_before_shipping=true`, `allow_over_receiving=true`, `default_receiving_bin=""`, `require_count_approval_separation=false`, `picking_ticket_company_name=""`, `picking_ticket_company_address=""`, `picking_ticket_logo_url=""`, `picking_ticket_returns_text=""`, `pos_activity_enabled=false`, `fraud_review_billing_shipping=false` y `dashboard_bubble_origins=[]`. Estos defaults son de frontend/consumidores; no son defaults SQL demostrados.
+
 ## 4. DTO backend → frontend
 
 Los request DTO Pydantic y los response DTO JSON son contratos diferentes. La forma de respuesta se define en cada `jsonify`; no asumir que coincide con el esquema de entrada.
