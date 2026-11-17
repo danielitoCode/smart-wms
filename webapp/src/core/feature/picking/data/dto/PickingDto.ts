@@ -25,6 +25,8 @@ export type PickTaskDto = {
 	quantity_picked?: number;
 	qty_to_pick?: number;
 	bin_id?: number | null;
+	inventory_id?: number | null;
+	lot_number?: string | null;
 	bin_code?: string | null;
 	status?: string;
 	message?: string;
