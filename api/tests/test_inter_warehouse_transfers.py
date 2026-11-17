@@ -225,7 +225,7 @@ def test_idempotency_migration_is_repeatable():
             "WHERE table_name = 'inter_warehouse_transfer_requests'"
         )
         columns = {row[0] for row in cur.fetchall()}
-        assert {"username", "idempotency_key", "request_payload", "response_payload", "created_at"} <= columns
+        assert {"user_id", "idempotency_key", "request_payload", "response_payload", "created_at"} <= columns
     finally:
         conn.close()
 
