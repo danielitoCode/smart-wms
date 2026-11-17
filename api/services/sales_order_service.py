@@ -240,7 +240,8 @@ def receive_rma(
     rma = db.execute(
         text(
             "SELECT so_number, external_id, parent_so_id "
-            "FROM sales_orders WHERE so_id = :sid AND order_type = :ot"
+            "FROM sales_orders WHERE so_id = :sid AND order_type = :ot "
+            "FOR UPDATE"
         ),
         {"sid": rma_so_id, "ot": ORDER_TYPE_RETURN},
     ).fetchone()
@@ -249,7 +250,8 @@ def receive_rma(
     line = db.execute(
         text(
             "SELECT so_line_id, quantity_ordered, quantity_received "
-            "FROM sales_order_lines WHERE so_id = :sid AND item_id = :iid"
+            "FROM sales_order_lines WHERE so_id = :sid AND item_id = :iid "
+            "FOR UPDATE"
         ),
         {"sid": rma_so_id, "iid": item_id},
     ).fetchone()
@@ -261,10 +263,24 @@ def receive_rma(
     # of double-restocking. Return the prior result without re-writing anything.
     if idempotency_key:
         prior = db.execute(
-            text("SELECT receipt_id FROM item_receipts WHERE external_id = :ext"),
+            text("SELECT receipt_id, so_id, so_line_id, item_id, quantity_received, "
+                "bin_id, warehouse_id FROM item_receipts WHERE external_id = :ext"),
             {"ext": idempotency_key},
         ).fetchone()
         if prior:
+            # A key may only replay the exact operation that originally
+            # created it. Reusing a key for another RMA/item/quantity/bin
+            # must not silently acknowledge a different receipt.
+            same_operation = (
+                int(prior.so_id) == int(rma_so_id)
+                and int(prior.so_line_id) == int(line.so_line_id)
+                and int(prior.item_id) == int(item_id)
+                and int(prior.quantity_received) == int(quantity)
+                and int(prior.bin_id) == int(bin_id)
+                and int(prior.warehouse_id) == int(warehouse_id)
+            )
+            if not same_operation:
+                raise ValueError("idempotency_key was already used for a different return receipt")
             status_row = db.execute(
                 text("SELECT status FROM sales_orders WHERE so_id = :sid"),
                 {"sid": rma_so_id},
