@@ -16,7 +16,7 @@ export class RefundsRepositoryImpl implements RefundsRepository {
       this.remote.related(id)
     ]);
     const related: RefundRelatedRecord[] = family.records
-      .filter(record => record.order_type === 'return')
+      .filter(record => record.order_type === 'return' || record.order_type === 'refund')
       .map(record => ({
         salesOrderId: record.so_id,
         salesOrderNumber: record.so_number,
@@ -24,7 +24,9 @@ export class RefundsRepositoryImpl implements RefundsRepository {
         status: record.status,
         parentSalesOrderId: record.parent_so_id,
         isVoided: record.is_voided,
-        createdAt: record.created_at
+        createdAt: record.created_at,
+        signedAmount: record.order_total == null || !Number.isFinite(Number(record.order_total))
+          ? null : Number(record.order_total)
       }));
     return RefundMapper.header(detail.sales_order, detail.lines, related);
   }
