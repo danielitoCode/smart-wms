@@ -1,13 +1,12 @@
 import {createManagedUsersDependencies} from '../../di/managedUsers.dependencies';
-import type {ManagedUser,CreateManagedUser,UpdateManagedUser,UserPagePermissions} from '../../domain/entity/UserManagement';
-import type {ManagedWarehouseDto} from '../../data/dto/ManagedUserDto';
+import type {ManagedUser,ManagedWarehouse,CreateManagedUser,UpdateManagedUser,UserPagePermissions} from '../../domain/entity/UserManagement';
 import {toUserMessage} from '../../../../infrastructure/errors/ApiError';
 const deps=createManagedUsersDependencies();
 export function createManagedUsersState(){
- let users=$state<ManagedUser[]>([]),warehouses=$state<ManagedWarehouseDto[]>([]);
+ let users=$state<ManagedUser[]>([]),warehouses=$state<ManagedWarehouse[]>([]);
  let loading=$state(false),warehouseLoading=$state(false),saving=$state(false),error=$state<string|null>(null),permissions=$state<UserPagePermissions|null>(null);
  async function load(){loading=true;error=null;try{users=await deps.list.execute();}catch(e){error=toUserMessage(e,'No se pudieron cargar los usuarios');}finally{loading=false;}}
- async function loadWarehouses(){warehouseLoading=true;try{warehouses=await deps.remote.listWarehouses();}catch(e){error=toUserMessage(e,'No se pudieron cargar los almacenes');}finally{warehouseLoading=false;}}
+ async function loadWarehouses(){warehouseLoading=true;try{warehouses=await deps.listWarehouses.execute();}catch(e){error=toUserMessage(e,'No se pudieron cargar los almacenes');}finally{warehouseLoading=false;}}
  async function create(v:CreateManagedUser){saving=true;error=null;try{await deps.create.execute(v);await load();return true;}catch(e){error=toUserMessage(e,'No se pudo crear el usuario');return false;}finally{saving=false;}}
  async function update(v:UpdateManagedUser){saving=true;error=null;try{await deps.update.execute(v);await load();return true;}catch(e){error=toUserMessage(e,'No se pudo actualizar el usuario');return false;}finally{saving=false;}}
  async function remove(id:number){saving=true;error=null;try{await deps.remove.execute(id);await load();return true;}catch(e){error=toUserMessage(e,'No se pudo eliminar el usuario');return false;}finally{saving=false;}}
