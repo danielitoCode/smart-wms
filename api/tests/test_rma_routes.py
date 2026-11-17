@@ -346,3 +346,41 @@ def test_return_receipts_endpoint_rejects_non_return_sales_order(client, auth_he
         f"/api/admin/sales-orders/{sales_order_id}/return-receipts", headers=auth_headers
     )
     assert response.status_code == 404
+
+def test_receive_return_missing_rma_returns_404_without_inventory_change(
+    client, auth_headers, _db_transaction
+):
+    db = _db_transaction
+    item = _insert_item()
+    bin_id = db.execute(
+        sa_text("SELECT bin_id FROM bins WHERE warehouse_id = 1 ORDER BY bin_id LIMIT 1")
+    ).scalar()
+    before_inventory = db.execute(
+        sa_text("SELECT COALESCE(SUM(quantity_on_hand), 0) FROM inventory WHERE item_id = :i"),
+        {"i": item},
+    ).scalar()
+    before_receipts = db.execute(
+        sa_text("SELECT COUNT(*) FROM item_receipts WHERE item_id = :i"),
+        {"i": item},
+    ).scalar()
+
+    response = client.post(
+        "/api/admin/sales-orders/999999999/receive-return",
+        json={
+            "item_id": item, "quantity": 1, "warehouse_id": 1, "bin_id": bin_id,
+            "idempotency_key": str(uuid.uuid4()),
+        },
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 404, response.get_data(as_text=True)
+    assert "RMA" in response.get_json()["error"]
+    assert db.execute(
+        sa_text("SELECT COALESCE(SUM(quantity_on_hand), 0) FROM inventory WHERE item_id = :i"),
+        {"i": item},
+    ).scalar() == before_inventory
+    assert db.execute(
+        sa_text("SELECT COUNT(*) FROM item_receipts WHERE item_id = :i"),
+        {"i": item},
+    ).scalar() == before_receipts
+
