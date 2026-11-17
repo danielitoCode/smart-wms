@@ -234,7 +234,7 @@ class TestExactBinPickingPlan:
         if len(inventory_rows) < 3:
             pytest.skip("seed warehouse needs three inventory rows for reservation-isolation coverage")
         first, unreserved, second = inventory_rows
-        assert first[2] >= 3 and second[2] >= 2
+        assert first[2] >= 3 and unreserved[2] >= 2 and second[2] >= 2
 
         conn = db_test_context.get_raw_connection()
         cur = conn.cursor()
@@ -246,7 +246,7 @@ class TestExactBinPickingPlan:
         # Simulate another workflow's allocation in an intervening bin.
         # A TO task must not steal this shared aggregate allocation.
         cur.execute(
-            "UPDATE inventory SET quantity_allocated = quantity_allocated + 5 "
+            "UPDATE inventory SET quantity_allocated = quantity_allocated + 2 "
             " WHERE inventory_id = %s",
             (unreserved[0],),
         )
