@@ -112,7 +112,7 @@ Salvo excepción anotada, cada grupo usa `require_auth` + `require_admin_or_page
 
 **Límites persistidos:** `users.username` admite 50 caracteres y `users.full_name` 100; los schemas Pydantic y límites del formulario Svelte respetan esos máximos.
 
-**Pruebas F4.1.5:** `api/tests/test_admin.py` cubre usuarios sin almacenes, asignación múltiple, revocación de grants, reasignación durante sesión, desactivación inmediata, ADMIN full-access, overrides, compatibilidad con `warehouse_id` legado, IDs inexistentes y cambios de rol con token existente. En Svelte, `ManagedUserMapper.test.ts` y `userPermissionGroups.test.ts` cubren serialización de revocación y paridad del catálogo.
+**Pruebas F4.1.5:** `api/tests/test_admin.py` cubre usuarios sin almacenes, asignación múltiple, revocación de grants, reasignación durante sesión, desactivación inmediata, ADMIN full-access, overrides, compatibilidad con `warehouse_id` legado, IDs inexistentes, cambios de rol con token existente, catálogo de almacenes bajo permiso `users` y cambio obligatorio de contraseña. Se añadieron nueve regresiones API para esos límites. En Svelte, `ManagedUserMapper.test.ts` (6 casos) y `userPermissionGroups.test.ts` (2 casos) cubren serialización de revocación, flags de cuenta y paridad del catálogo.
 
 ## 4. DTO backend → frontend
 
