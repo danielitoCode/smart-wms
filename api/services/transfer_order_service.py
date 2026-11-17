@@ -179,6 +179,24 @@ def update_transfer_order_line_picked(db, to_line_id: int, delta: int) -> dict:
         raise ValueError(f"delta must be > 0, got {delta!r}")
     from sqlalchemy import text  # local import to keep top of file lib-free
 
+    pending_approval = db.execute(
+        text(
+            """
+            SELECT a.to_approval_id
+              FROM transfer_order_approvals a
+              JOIN transfer_order_lines tol ON tol.to_id = a.to_id
+             WHERE tol.to_line_id = :lid AND a.status = 'PENDING'
+             LIMIT 1
+            """
+        ),
+        {"lid": to_line_id},
+    ).fetchone()
+    if pending_approval:
+        raise OverPickAttempt(
+            f"transfer_order_lines.to_line_id={to_line_id}: a picker submission "
+            f"is awaiting approval (approval_id={pending_approval.to_approval_id})"
+        )
+
     row = db.execute(
         text(
             """
@@ -332,6 +350,21 @@ def submit_picks(db, to_id: int, username: str) -> dict:
             "ok": False,
             "reason": "invalid_status",
             "current_status": header.status,
+        }
+
+    pending_approval = db.execute(
+        text(
+            "SELECT to_approval_id FROM transfer_order_approvals "
+            " WHERE to_id = :tid AND status = 'PENDING' "
+            " ORDER BY to_approval_id LIMIT 1"
+        ),
+        {"tid": to_id},
+    ).fetchone()
+    if pending_approval:
+        return {
+            "ok": False,
+            "reason": "pending_approval_exists",
+            "to_approval_id": pending_approval.to_approval_id,
         }
 
     # Lines with new picks since the last submit: picked_qty exceeds
