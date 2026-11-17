@@ -4,6 +4,8 @@
  */
 export type ManagedUserRole = 'ADMIN' | 'USER';
 
+export type ManagedWarehouse = { warehouseId:number; warehouseCode:string; warehouseName:string; isActive?:boolean };
+
 export type ManagedUser = {
 	userId: number;
 	username: string;
