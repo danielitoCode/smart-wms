@@ -30,6 +30,18 @@ describe('ReturnMapper', () => {
     expect(result.receipts[0]).toMatchObject({ receiptId:50, quantityReceived:1, binCode:'RET-A1', notes:'Box damaged' });
   });
 
+  it('normalizes omitted optional shipping fields to null', () => {
+    const result = ReturnMapper.header({
+      ...header,
+      ship_method: undefined,
+      ship_address: undefined,
+      ship_by_date: undefined
+    });
+    expect(result.shipMethod).toBeNull();
+    expect(result.shipAddress).toBeNull();
+    expect(result.shipByDate).toBeNull();
+  });
+
   it('rejects statuses that the RMA service does not produce', () => {
     expect(() => ReturnMapper.header({ ...header, status:'CLOSED' as ReturnHeaderDto['status'] })).toThrow(/Estado de RMA/);
   });
