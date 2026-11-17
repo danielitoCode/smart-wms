@@ -13,6 +13,7 @@ export type ActiveBatch = {
 	completedPicks: number;
 	totalOrders: number;
 	createdAt: string | null;
+	warehouseId?: number | null;
 	kind?: 'SO' | 'TO' | null;
 	transferOrderId?: number | null;
 	transferOrderNumber?: string | null;
