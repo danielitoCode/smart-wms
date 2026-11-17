@@ -60,6 +60,7 @@ export type WaveValidateDto = {
 	error?: string;
 	batch_id?: number;
 	message?: string;
+	status_code?: number;
 };
 
 export type WaveCreateDto = {
