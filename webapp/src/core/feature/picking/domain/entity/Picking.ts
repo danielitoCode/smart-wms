@@ -91,9 +91,13 @@ export type WaveValidateResult = {
 
 export type WaveCreateResult = {
 	batchId: number;
-	batchStatus: string;
+	batchNumber: string;
 	totalOrders: number;
 	totalPicks: number;
+	totalUnits: number;
+	orders: Array<{ soId: number; soNumber: string; lineCount: number }>;
+	firstPick?: PickTask | null;
+	warnings?: string[];
 };
 
 export type CreateBatchResult = {
