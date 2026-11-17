@@ -14,7 +14,7 @@ export class GetSettingsUseCase {
 
 export class GetSettingUseCase {
 	constructor(private readonly repository: SettingsRepository) {}
-	execute(key: string) {
+	async execute(key: string) {
 		if (!isKnownSettingKey(key)) throw new Error(`Clave de configuración desconocida: ${key}`);
 		return this.repository.get(key);
 	}
