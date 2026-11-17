@@ -1366,7 +1366,7 @@ def get_sales_order_related(so_id):
             )
             SELECT so.so_id, so.so_number, so.order_type, so.status,
                    so.warehouse_id, so.customer_name, so.parent_so_id,
-                   so.created_at, so.voided_at, so.cancellation_reason,
+                   so.order_total, so.created_at, so.voided_at, so.cancellation_reason,
                    f.depth
               FROM family f
               JOIN sales_orders so ON so.so_id = f.so_id
@@ -1420,6 +1420,7 @@ def get_sales_order_related(so_id):
                 "warehouse_id":   r.warehouse_id,
                 "customer_name":  r.customer_name,
                 "parent_so_id":   r.parent_so_id,
+                "order_total":    str(r.order_total) if r.order_total is not None else None,
                 "depth":          r.depth,
                 # The record the operator is looking at. Flagged server-
                 # side so the UI marks "you are here" without comparing
