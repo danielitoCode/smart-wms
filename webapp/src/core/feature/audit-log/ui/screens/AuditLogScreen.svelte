@@ -56,7 +56,7 @@
 	<div class="table-meta">
 		<span>{vm.total} {i18n.t('eventos')}</span>
 		<label>{i18n.t('Filas por página')}
-			<select value={String(vm.perPage)} onchange={(event) => { const value = Number(event.currentTarget.value); if (value) { vm.setPerPage?.(value); } }}>
+			<select value={String(vm.perPage)} onchange={(event) => { const value = Number(event.currentTarget.value); if (value) { void vm.changePerPage(value); } }}>
 				<option value="25">25</option><option value="50">50</option><option value="100">100</option>
 			</select>
 		</label>
