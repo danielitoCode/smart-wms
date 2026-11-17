@@ -1,20 +1,36 @@
 import type { SettingsRepository } from '../repository/SettingsRepository';
-import type { SettingsMap } from '../entity/Setting';
-import { KNOWN_SETTING_KEYS } from '../entity/Setting';
+import {
+	isKnownSettingKey,
+	validateSettings,
+	type SettingsMap
+} from '../entity/Setting';
 
-export class ListKnownSettingsUseCase {
+export class GetSettingsUseCase {
 	constructor(private readonly repository: SettingsRepository) {}
-	execute(keys: readonly string[] = KNOWN_SETTING_KEYS) {
-		if (keys.length === 0) throw new Error('Se requiere al menos una clave de configuración');
-		return this.repository.listKnown(keys);
+	execute() {
+		return this.repository.list();
+	}
+}
+
+export class GetSettingUseCase {
+	constructor(private readonly repository: SettingsRepository) {}
+	execute(key: string) {
+		if (!isKnownSettingKey(key)) throw new Error(`Clave de configuración desconocida: ${key}`);
+		return this.repository.get(key);
 	}
 }
 
 export class UpdateSettingsUseCase {
 	constructor(private readonly repository: SettingsRepository) {}
-	execute(settings: SettingsMap) {
-		const entries = Object.entries(settings).filter(([, v]) => v !== undefined);
+	async execute(settings: SettingsMap) {
+		if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
+			throw new Error('Los ajustes deben ser un objeto');
+		}
+		const entries = Object.entries(settings);
 		if (entries.length === 0) throw new Error('No hay cambios para guardar');
-		return this.repository.update(Object.fromEntries(entries));
+		const normalized = Object.fromEntries(entries);
+		const errors = validateSettings(normalized);
+		if (errors.length > 0) throw new Error(errors.join('. '));
+		await this.repository.update(normalized);
 	}
 }
