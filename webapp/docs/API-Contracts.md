@@ -74,6 +74,16 @@ Salvo excepción anotada, cada grupo usa `require_auth` + `require_admin_or_page
 - `/api/v1/pos/*`: scope aislado `pos.dispatch`.
 - `/api/inbound/mapping-schema`: endpoint de descubrimiento sin decorador de sesión en el archivo inspeccionado.
 
+### 3.2 Autorización efectiva de Users (F4.1.3–F4.1.5)
+
+- El selector de almacenes consume `GET /api/admin/warehouses` y guarda IDs reales; la lista vacía es una revocación explícita, no un campo omitido.
+- Los módulos móviles usan `allowed_functions`; el acceso web usa `page_keys`. Los overrides (por ahora `so-full-edit`) viajan en el mismo conjunto de permisos que las páginas y se reemplazan de forma atómica.
+- Al promover un usuario a `ADMIN`, se eliminan grants USER antiguos de `user_page_permissions`. Si posteriormente se degrada a `USER`, no recupera privilegios obsoletos automáticamente.
+- `require_auth` consulta la fila actual del usuario y sus permisos en cada petición. Cambios de rol, almacenes, grants y estado se aplican a la siguiente petición con el mismo JWT; una cuenta inactiva recibe 401, una petición a almacén revocado recibe 403 y una página revocada recibe 403.
+- La interfaz no guarda permisos vacíos si falla la lectura inicial de permisos al editar, para evitar una revocación accidental por fallo de red/autorización.
+
+**Cobertura añadida en `api/tests/test_admin.py`:** usuario sin almacenes; asignación múltiple; cambio de almacenes con JWT ya emitido; revocación de páginas; revocación de override; cuenta ADMIN con acceso completo; desactivación inmediata de sesión. La existencia del test no equivale a ejecución satisfactoria: el resultado de pytest y el chequeo Svelte deben registrarse tras ejecutarlos contra el entorno de pruebas aislado.
+
 ### 3.1 Contrato detallado de Users (F4.1)
 
 | Método | Endpoint | Request | Response / semántica |
