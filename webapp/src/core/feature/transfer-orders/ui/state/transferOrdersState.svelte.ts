@@ -1,6 +1,6 @@
 import { createTransferOrdersDependencies } from '../../di/transferOrders.dependencies';
 import type { CreateTransferOrder, TransferOrder, TransferOrderImportResult, TransferOrderQuery, TransferOrderWarehouse } from '../../domain/entity/TransferOrder';
-import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
+import { ApiError, toUserMessage } from '../../../../infrastructure/errors/ApiError';
 
 const dependencies = createTransferOrdersDependencies();
 
@@ -10,6 +10,7 @@ export function createTransferOrdersState() {
   let pickerSnapshot = $state<TransferOrder | null>(null);
   let warehouses = $state<TransferOrderWarehouse[]>([]);
   let created = $state<TransferOrderImportResult | null>(null);
+  let importErrors = $state<Array<{ rowIndex: number; errorKind: string; sku?: string }>>([]);
   let loading = $state(false);
   let saving = $state(false);
   let error = $state<string | null>(null);
@@ -110,6 +111,7 @@ export function createTransferOrdersState() {
     error = null;
     notice = null;
     created = null;
+    importErrors = [];
     try {
       created = await dependencies.create.execute(input);
       notice = `Transferencia ${created.toNumber} creada`;
@@ -117,6 +119,15 @@ export function createTransferOrdersState() {
       return true;
     } catch (cause) {
       error = toUserMessage(cause, 'No se pudo crear la transferencia');
+      if (cause instanceof ApiError && cause.details && typeof cause.details === 'object') {
+        const rows = (cause.details as { rows?: unknown }).rows;
+        if (Array.isArray(rows)) {
+          importErrors = rows.map(value => {
+            const row = value as { row_index?: number; error_kind?: string; sku?: string };
+            return { rowIndex: Number(row.row_index ?? 0), errorKind: row.error_kind ?? 'validation_error', sku: row.sku };
+          });
+        }
+      }
       return false;
     } finally {
       saving = false;
@@ -129,6 +140,7 @@ export function createTransferOrdersState() {
     get pickerSnapshot() { return pickerSnapshot; },
     get warehouses() { return warehouses; },
     get created() { return created; },
+    get importErrors() { return importErrors; },
     get loading() { return loading; },
     get saving() { return saving; },
     get error() { return error; },
