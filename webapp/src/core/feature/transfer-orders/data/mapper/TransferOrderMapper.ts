@@ -15,7 +15,7 @@ export const TransferOrderMapper = {
     return { orders: dto.transfer_orders.map(row => TransferOrderMapper.header(row)), total: dto.total, page: dto.page, pages: dto.pages, perPage: dto.per_page };
   },
   warehouse(dto: TransferOrderWarehouseDto): TransferOrderWarehouse {
-    return { warehouseId: dto.warehouse_id, warehouseCode: dto.warehouse_code, warehouseName: dto.warehouse_name, active: dto.is_active };
+    return { warehouseId: dto.id, warehouseCode: dto.code, warehouseName: dto.name, active: true };
   },
   create(input: CreateTransferOrder) {
     return { source_warehouse_code: input.sourceWarehouseCode.trim(), destination_warehouse_code: input.destinationWarehouseCode.trim(), notes: input.notes?.trim() || null, records: input.records.map(row => ({ sku: row.sku.trim(), quantity: row.quantity })) };
