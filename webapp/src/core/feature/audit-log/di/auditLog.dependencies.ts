@@ -1,11 +1,13 @@
 import { apiClient } from '../../../infrastructure/api/ApiClient';
 import { AuditLogRemoteDataSource } from '../data/datasource/AuditLogRemoteDataSource';
 import { AuditLogRepositoryImpl } from '../data/repository/AuditLogRepositoryImpl';
-import { ListAuditLogUseCase } from '../domain/usecase/AuditLogUseCases';
+import { FilterAuditLogUseCase, ListAuditLogUseCase } from '../domain/usecase/AuditLogUseCases';
 
 export function createAuditLogDependencies() {
 	const repository = new AuditLogRepositoryImpl(new AuditLogRemoteDataSource(apiClient));
+	const list = new ListAuditLogUseCase(repository);
 	return {
-		list: new ListAuditLogUseCase(repository)
+		list,
+		filter: new FilterAuditLogUseCase(list)
 	};
 }
