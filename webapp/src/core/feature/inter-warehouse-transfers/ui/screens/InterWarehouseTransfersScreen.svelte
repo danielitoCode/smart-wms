@@ -26,7 +26,7 @@
   let toBinOpen = $state(false);
   let quantity = $state('1');
   let reason = $state('');
-  let idempotencyKey = '';
+  const pendingKeys = new Map<string, string>();
   let sourceTimer: ReturnType<typeof setTimeout> | undefined;
   let destinationTimer: ReturnType<typeof setTimeout> | undefined;
   let itemTimer: ReturnType<typeof setTimeout> | undefined;
@@ -38,60 +38,69 @@
     if (itemTimer) clearTimeout(itemTimer);
   });
 
-  function invalidateKey() { idempotencyKey = ''; }
   function setSourceWarehouse(value: string) {
-    fromWarehouseId = Number(value) || 0; fromBinId = 0; fromBinLabel = ''; fromBinQuery = ''; invalidateKey();
+    fromWarehouseId = Number(value) || 0; fromBinId = 0; fromBinLabel = ''; fromBinQuery = ''; 
     vm.searchBins('source', '', 0);
   }
   function setDestinationWarehouse(value: string) {
-    toWarehouseId = Number(value) || 0; toBinId = 0; toBinLabel = ''; toBinQuery = ''; invalidateKey();
+    toWarehouseId = Number(value) || 0; toBinId = 0; toBinLabel = ''; toBinQuery = ''; 
     vm.searchBins('destination', '', 0);
   }
   function searchSourceBins(value: string) {
-    fromBinQuery = value; fromBinId = 0; fromBinLabel = ''; fromBinOpen = true; invalidateKey(); void vm.searchBins('source', '', 0);
+    fromBinQuery = value; fromBinId = 0; fromBinLabel = ''; fromBinOpen = true; void vm.searchBins('source', '', 0);
     if (sourceTimer) clearTimeout(sourceTimer);
     sourceTimer = setTimeout(() => void vm.searchBins('source', value, fromWarehouseId), 220);
   }
   function searchDestinationBins(value: string) {
-    toBinQuery = value; toBinId = 0; toBinLabel = ''; toBinOpen = true; invalidateKey(); void vm.searchBins('destination', '', 0);
+    toBinQuery = value; toBinId = 0; toBinLabel = ''; toBinOpen = true; void vm.searchBins('destination', '', 0);
     if (destinationTimer) clearTimeout(destinationTimer);
     destinationTimer = setTimeout(() => void vm.searchBins('destination', value, toWarehouseId), 220);
   }
   function searchItemOptions(value: string) {
-    itemQuery = value; itemId = 0; itemLabel = ''; itemOpen = true; invalidateKey(); void vm.searchItems('');
+    itemQuery = value; itemId = 0; itemLabel = ''; itemOpen = true; void vm.searchItems('');
     if (itemTimer) clearTimeout(itemTimer);
     itemTimer = setTimeout(() => void vm.searchItems(value), 220);
   }
   function chooseSourceBin(bin: OperationalBinSearchResult) {
     if (bin.warehouseId !== fromWarehouseId) return;
     fromBinId = bin.id; fromBinLabel = bin.code + (bin.zoneName ? ' · ' + bin.zoneName : '');
-    fromBinQuery = fromBinLabel; fromBinOpen = false; invalidateKey();
+    fromBinQuery = fromBinLabel; fromBinOpen = false; 
   }
   function chooseDestinationBin(bin: OperationalBinSearchResult) {
     if (bin.warehouseId !== toWarehouseId) return;
     toBinId = bin.id; toBinLabel = bin.code + (bin.zoneName ? ' · ' + bin.zoneName : '');
-    toBinQuery = toBinLabel; toBinOpen = false; invalidateKey();
+    toBinQuery = toBinLabel; toBinOpen = false; 
   }
   function chooseItem(item: Item) {
     itemId = item.id; itemLabel = item.sku + ' · ' + item.name;
-    itemQuery = itemLabel; itemOpen = false; invalidateKey();
+    itemQuery = itemLabel; itemOpen = false; 
   }
   function resetForm() {
     itemId = 0; itemLabel = ''; itemQuery = ''; fromWarehouseId = 0; fromBinId = 0; fromBinLabel = ''; fromBinQuery = '';
-    toWarehouseId = 0; toBinId = 0; toBinLabel = ''; toBinQuery = ''; quantity = '1'; reason = ''; idempotencyKey = '';
+    toWarehouseId = 0; toBinId = 0; toBinLabel = ''; toBinQuery = ''; quantity = '1'; reason = '';
     vm.searchBins('source', '', 0); vm.searchBins('destination', '', 0); vm.searchItems('');
   }
   async function create() {
     const qty = Number(quantity);
     if (!itemId || !fromWarehouseId || !fromBinId || !toWarehouseId || !toBinId) return;
     if (!Number.isSafeInteger(qty) || qty < 1 || qty > 100000) return;
-    if (!idempotencyKey) idempotencyKey = crypto.randomUUID();
-    const value: RecordInterWarehouseTransfer = {
+    const payload = {
       itemId, sourceWarehouseId: fromWarehouseId, sourceBinId: fromBinId,
       destinationWarehouseId: toWarehouseId, destinationBinId: toBinId,
-      quantity: qty, reason, idempotencyKey
+      quantity: qty, reason: reason.trim()
     };
-    if (await vm.create(value)) { open = false; resetForm(); }
+    const fingerprint = JSON.stringify(payload);
+    let key = pendingKeys.get(fingerprint);
+    if (!key) {
+      key = crypto.randomUUID();
+      pendingKeys.set(fingerprint, key);
+    }
+    const value: RecordInterWarehouseTransfer = { ...payload, idempotencyKey: key };
+    if (await vm.create(value)) {
+      pendingKeys.delete(fingerprint);
+      open = false;
+      resetForm();
+    }
   }
 </script>
 
@@ -152,10 +161,10 @@
         {:else if itemOpen && itemQuery.trim().length >= 2}<div class="hint">{i18n.t('No se encontraron productos.')}</div>{/if}
       </label>
       <label>{i18n.t('Cantidad')}
-        <input type="number" min="1" max="100000" step="1" required value={quantity} oninput={event => { quantity = event.currentTarget.value; invalidateKey(); }}/>
+        <input type="number" min="1" max="100000" step="1" required value={quantity} oninput={event => { quantity = event.currentTarget.value; }}/>
       </label>
       <label class="wide">{i18n.t('Motivo')}
-        <input maxlength="200" value={reason} oninput={event => { reason = event.currentTarget.value; invalidateKey(); }}/>
+        <input maxlength="200" value={reason} oninput={event => { reason = event.currentTarget.value; }}/>
       </label>
       <div class="actions"><button type="button" onclick={() => { open = false; resetForm(); }}>{i18n.t('Cancelar')}</button>
         <button class="primary" disabled={vm.saving || !itemId || !fromBinId || !toBinId || !fromWarehouseId || !toWarehouseId || fromWarehouseId === toWarehouseId || !Number.isSafeInteger(Number(quantity)) || Number(quantity) < 1 || Number(quantity) > 100000}>
