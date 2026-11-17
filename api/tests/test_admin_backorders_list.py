@@ -67,6 +67,7 @@ class TestListBackorders:
         # Card payload shape.
         target = next(b for b in data["backorders"] if b["so_id"] == bo_so_id)
         assert target["status"] == "WAITING_STOCK"
+        assert target["order_type"] == "backorder"
         assert target["parent_so_number"] == "SO-2026-001"
         assert target["so_number"] == "SO-2026-001-BO"
         assert target["customer_name"] == "Test Customer 1"
