@@ -125,6 +125,7 @@ def verify_item(validated):
     so_id = validated.so_id
     scanned_barcode = validated.scanned_barcode
     quantity = validated.quantity
+    context_warehouse_id = validated.warehouse_id
 
     # Validate SO with warehouse scope at SELECT time (V-026).
     scope_clause, scope_params = warehouse_scope_clause("warehouse_id")
@@ -133,10 +134,11 @@ def verify_item(validated):
             f"""
             SELECT so_id, status, warehouse_id FROM sales_orders
             WHERE so_id = :so_id {scope_clause}
+              AND (:context_warehouse_id IS NULL OR warehouse_id = :context_warehouse_id)
             FOR UPDATE
             """
         ),
-        {"so_id": so_id, **scope_params},
+        {"so_id": so_id, "context_warehouse_id": context_warehouse_id, **scope_params},
     ).fetchone()
 
     if not so:
@@ -229,6 +231,7 @@ def verify_item(validated):
 @with_db
 def complete_packing(validated):
     so_id = validated.so_id
+    context_warehouse_id = validated.warehouse_id
     # V-026: scoped SELECT.
     # v1.5.0 #119: FOR UPDATE locks the sales_orders row so a concurrent
     # complete_packing / fulfill on the same SO serialises and emits
