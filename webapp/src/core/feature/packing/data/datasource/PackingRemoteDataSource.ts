@@ -1,6 +1,6 @@
 import type { ApiClient } from '#core/infrastructure/api/ApiClient.ts';
 import type { VerifyPackInput } from '../../domain/entity/Packing';
-import type { MessageDto, PackingOrderResponseDto } from '../dto/PackingDto';
+import type { CompletePackingResponseDto, PackingOrderResponseDto, VerifyPackResponseDto } from '../dto/PackingDto';
 
 export class PackingRemoteDataSource {
 	constructor(private readonly api: ApiClient) {}
@@ -11,15 +11,15 @@ export class PackingRemoteDataSource {
 		);
 	}
 
-	verify(input: VerifyPackInput): Promise<MessageDto> {
-		return this.api.post<MessageDto>('/api/packing/verify', {
+	verify(input: VerifyPackInput): Promise<VerifyPackResponseDto> {
+		return this.api.post<VerifyPackResponseDto>('/api/packing/verify', {
 			so_id: input.soId,
 			scanned_barcode: input.scannedBarcode,
 			quantity: input.quantity ?? 1
 		});
 	}
 
-	complete(soId: number): Promise<MessageDto> {
-		return this.api.post<MessageDto>('/api/packing/complete', { so_id: soId });
+	complete(soId: number): Promise<CompletePackingResponseDto> {
+		return this.api.post<CompletePackingResponseDto>('/api/packing/complete', { so_id: soId });
 	}
 }
