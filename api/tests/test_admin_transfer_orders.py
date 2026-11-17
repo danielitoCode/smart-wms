@@ -254,6 +254,92 @@ class TestListAndDetail:
 # ----------------------------------------------------------------------
 
 
+class TestApprovalConsumesPickedInventoryRowNotFirstSkuBin:
+    def test_approval_decrements_only_the_bin_recorded_on_the_picked_task(
+        self, client, auth_headers,
+    ):
+        to_id = _seed_to(source_wh=1, dest_wh=2, status="AWAITING_APPROVAL")
+        line_id = _seed_to_line(
+            to_id, item_id=1, committed=5, picked=3, status="PARTIALLY_PICKED",
+        )
+        rows = _query(
+            """
+            SELECT inventory_id, bin_id, quantity_on_hand, quantity_allocated
+              FROM inventory
+             WHERE item_id = 1 AND warehouse_id = 1
+             ORDER BY inventory_id LIMIT 2
+            """
+        )
+        if len(rows) < 2:
+            pytest.skip("seed warehouse needs two inventory rows for bin-specific approval")
+        first, picked_row = rows
+        assert first[2] - first[3] >= 2
+        assert picked_row[2] - picked_row[3] >= 3
+
+        conn = db_test_context.get_raw_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE inventory SET quantity_allocated = quantity_allocated + 2 "
+            " WHERE inventory_id = %s",
+            (first[0],),
+        )
+        cur.execute(
+            "UPDATE inventory SET quantity_allocated = quantity_allocated + 3 "
+            " WHERE inventory_id = %s",
+            (picked_row[0],),
+        )
+        cur.execute(
+            "INSERT INTO transfer_order_reservations "
+            "(to_line_id, inventory_id, reserved_qty) VALUES (%s, %s, 2), (%s, %s, 3)",
+            (line_id, first[0], line_id, picked_row[0]),
+        )
+        cur.close()
+        task_id, bin_id = _seed_to_pick_task(
+            to_id, line_id, picked_row[0], quantity_to_pick=3, quantity_picked=3,
+        )
+        approval_id = _seed_to_approval(
+            to_id,
+            lines_snapshot={
+                "lines": [{
+                    "to_line_id": line_id,
+                    "item_id": 1,
+                    "picked_in_snapshot": 3,
+                    "tasks": [{
+                        "pick_task_id": task_id,
+                        "inventory_id": picked_row[0],
+                        "bin_id": bin_id,
+                        "picked_in_snapshot": 3,
+                    }],
+                    "inventory_allocations": [{
+                        "inventory_id": picked_row[0],
+                        "bin_id": bin_id,
+                        "quantity": 3,
+                    }],
+                }],
+            },
+        )
+
+        response = client.post(
+            f"/api/admin/transfer-orders/{to_id}/approvals/{approval_id}/approve",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200, response.get_json()
+        after = _query(
+            "SELECT inventory_id, quantity_on_hand, quantity_allocated "
+            " FROM inventory WHERE inventory_id IN (%s, %s) ORDER BY inventory_id",
+            (first[0], picked_row[0]),
+        )
+        after_by_id = {row[0]: row[1:] for row in after}
+        assert after_by_id[first[0]] == (first[2], first[3] + 2)
+        assert after_by_id[picked_row[0]] == (picked_row[2] - 3, picked_row[3])
+        reservation_rows = _query(
+            "SELECT inventory_id, consumed_qty FROM transfer_order_reservations "
+            " WHERE to_line_id = %s ORDER BY inventory_id",
+            (line_id,),
+        )
+        assert reservation_rows == [(first[0], 0), (picked_row[0], 3)]
+
+
 class TestExactTaskApprovalSnapshots:
     def test_submit_snapshots_exact_inventory_rows_and_blocks_next_batch_until_approval(
         self, client, auth_headers,
