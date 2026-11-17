@@ -1,19 +1,11 @@
 import { createPickingDependencies } from '../../di/picking.dependencies';
-import type {
-	ActiveBatch,
-	CreateBatchResult,
-	PickTask,
-	WaveCreateResult,
-	WaveValidateResult
-} from '../../domain/entity/Picking';
-import { authSession } from '../../../../infrastructure/auth/AuthSession';
+import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
+import type { ActiveBatch, CreateBatchResult, PickTask, WaveCreateResult, WaveValidateResult } from '../../domain/entity/Picking';
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 
 const deps = createPickingDependencies();
 
-export function createPickingState() {
-	const defaultWh = authSession.getUser()?.warehouseIds?.[0] ?? 1;
-
+export function createPickingState(warehouseSelection: WarehouseSelectionState) {
 	let batch = $state<ActiveBatch | null>(null);
 	let task = $state<PickTask | null>(null);
 	let scannedBarcode = $state('');
@@ -22,45 +14,48 @@ export function createPickingState() {
 	let busy = $state(false);
 	let error = $state<string | null>(null);
 	let info = $state<string | null>(null);
-
-	let warehouseId = $state(defaultWh);
-
-	// Wave validate — accumulate validated SO ids for wave-create
 	let validateBarcode = $state('');
 	let validateResult = $state<WaveValidateResult | null>(null);
 	let validatedSoIds = $state<number[]>([]);
-
-	// Wave create
 	let soIdsInput = $state('');
 	let waveResult = $state<WaveCreateResult | null>(null);
-
-	// Create-batch (SO identifiers / barcodes)
 	let batchIdentifiersInput = $state('');
 	let createBatchResult = $state<CreateBatchResult | null>(null);
 
+	function activeWarehouseId() {
+		return warehouseSelection.requireWarehouseId();
+	}
+
 	async function refresh() {
-		if (loading) return false;
+		if (loading || busy) return false;
 		loading = true;
 		error = null;
 		info = null;
 		try {
-			batch = await deps.getActiveBatch.execute();
+			const warehouseId = activeWarehouseId();
+			batch = await deps.getActiveBatch.execute(warehouseId);
 			if (batch.active && batch.batchId) {
+				if (batch.warehouseId !== warehouseId) {
+					throw new Error('El lote activo no pertenece al almacén seleccionado');
+				}
 				task = await deps.getNextTask.execute(batch.batchId);
 				if (task) {
 					quantityPicked = task.quantityToPick;
 					scannedBarcode = task.upc ?? '';
 				} else {
-					info = 'Todas las tareas del batch estan completas';
+					info = 'Todas las tareas del batch están completas';
 				}
 			} else {
+				batch = null;
 				task = null;
-				info = 'No hay batch activo de picking';
+				info = 'No hay batch activo de picking en este almacén';
 			}
+			return true;
 		} catch (err) {
 			error = toUserMessage(err, 'No se pudo cargar el batch');
 			batch = null;
 			task = null;
+			return false;
 		} finally {
 			loading = false;
 		}
@@ -68,235 +63,104 @@ export function createPickingState() {
 
 	async function validateWaveSo() {
 		if (busy || loading) return false;
-		if (!validateBarcode.trim()) {
-			error = 'Indica un SO barcode';
-			return false;
-		}
-		busy = true;
-		error = null;
-		validateResult = null;
+		if (!validateBarcode.trim()) { error = 'Indica un SO barcode'; return false; }
+		busy = true; error = null; validateResult = null;
 		try {
-			const result = await deps.waveValidate.execute(validateBarcode, warehouseId);
+			const result = await deps.waveValidate.execute(validateBarcode.trim(), activeWarehouseId());
 			validateResult = result;
 			if (result.valid && result.soId != null && !validatedSoIds.includes(result.soId)) {
 				validatedSoIds = [...validatedSoIds, result.soId];
 				soIdsInput = validatedSoIds.join(', ');
 			}
-			if (!result.valid) {
-				error = result.error ?? result.message ?? 'SO no valida para wave';
-			} else {
-				info = `SO ${result.soNumber} valida · lineas ${result.lineCount ?? 0} · unidades ${result.totalUnits ?? 0}`;
-			}
+			if (!result.valid) error = result.error ?? result.message ?? 'SO no válida para wave';
+			else info = `SO ${result.soNumber} válida · líneas ${result.lineCount ?? 0} · unidades ${result.totalUnits ?? 0}`;
 			return result.valid;
-		} catch (err) {
-			error = toUserMessage(err, 'No se pudo validar el SO');
-			return false;
-		} finally {
-			busy = false;
-		}
+		} catch (err) { error = toUserMessage(err, 'No se pudo validar el SO'); return false; }
+		finally { busy = false; }
 	}
 
 	function clearValidated() {
-		validatedSoIds = [];
-		soIdsInput = '';
-		validateResult = null;
-		validateBarcode = '';
+		validatedSoIds = []; soIdsInput = ''; validateResult = null; validateBarcode = '';
 	}
 
 	async function createWave() {
 		if (busy || loading) return false;
-		const soIds = soIdsInput
-			.split(/[\s,;]+/)
-			.map((s) => s.trim())
-			.filter(Boolean)
-			.map((s) => Number(s))
-			.filter((n) => Number.isInteger(n) && n > 0);
-
-		busy = true;
-		error = null;
-		waveResult = null;
-		info = null;
+		const soIds = soIdsInput.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean)
+			.map(Number).filter(n => Number.isInteger(n) && n > 0);
+		if (!soIds.length) { error = 'Selecciona al menos un pedido validado'; return false; }
+		busy = true; error = null; waveResult = null; info = null;
 		try {
-			waveResult = await deps.waveCreate.execute(soIds, warehouseId);
+			waveResult = await deps.waveCreate.execute(soIds, activeWarehouseId());
 			info = `Wave batch #${waveResult.batchId} (${waveResult.batchStatus})`;
 			clearValidated();
-			await refresh();
 			return true;
-		} catch (err) {
-			error = toUserMessage(err, 'No se pudo crear el wave');
-			return false;
-		} finally {
-			busy = false;
-		}
+		} catch (err) { error = toUserMessage(err, 'No se pudo crear el wave'); return false; }
+		finally { busy = false; await refresh(); }
 	}
 
 	async function createBatch() {
 		if (busy || loading) return false;
-		const identifiers = batchIdentifiersInput
-			.split(/[\s,;]+/)
-			.map((s) => s.trim())
-			.filter(Boolean);
-
-		busy = true;
-		error = null;
-		createBatchResult = null;
-		info = null;
+		const identifiers = batchIdentifiersInput.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
+		if (!identifiers.length) { error = 'Indica al menos un pedido'; return false; }
+		busy = true; error = null; createBatchResult = null; info = null;
 		try {
-			createBatchResult = await deps.createBatch.execute(identifiers, warehouseId);
-			info = `Batch ${createBatchResult.batchNumber} (#${createBatchResult.batchId}) · orders ${createBatchResult.totalOrders}`;
+			createBatchResult = await deps.createBatch.execute(identifiers, activeWarehouseId());
+			info = `Batch ${createBatchResult.batchNumber} (#${createBatchResult.batchId}) · pedidos ${createBatchResult.totalOrders}`;
 			batchIdentifiersInput = '';
-			await refresh();
 			return true;
-		} catch (err) {
-			error = toUserMessage(err, 'No se pudo crear el batch');
-			return false;
-		} finally {
-			busy = false;
-		}
+		} catch (err) { error = toUserMessage(err, 'No se pudo crear el batch'); return false; }
+		finally { busy = false; await refresh(); }
 	}
 
 	async function confirm() {
 		if (!task || busy || loading) return false;
-		if (!scannedBarcode.trim()) {
-			error = 'Indica el barcode escaneado';
-			return false;
-		}
-		if (!Number.isInteger(quantityPicked) || quantityPicked <= 0) {
-			error = 'quantity_picked debe ser un entero > 0';
-			return false;
-		}
-		busy = true;
-		error = null;
-		info = null;
+		if (!scannedBarcode.trim()) { error = 'Indica el barcode escaneado'; return false; }
+		if (!Number.isInteger(quantityPicked) || quantityPicked <= 0) { error = 'quantity_picked debe ser un entero > 0'; return false; }
+		busy = true; error = null; info = null;
 		try {
-			const result = await deps.confirmPick.execute({
-				pickTaskId: task.pickTaskId,
-				scannedBarcode,
-				quantityPicked
-			});
+			const result = await deps.confirmPick.execute({ pickTaskId: task.pickTaskId, scannedBarcode: scannedBarcode.trim(), quantityPicked });
 			info = result.message;
-			await refresh();
 			return true;
-		} catch (err) {
-			error = toUserMessage(err, 'No se pudo confirmar el pick');
-			return false;
-		} finally {
-			busy = false;
-		}
+		} catch (err) { error = toUserMessage(err, 'No se pudo confirmar el pick'); return false; }
+		finally { busy = false; await refresh(); }
 	}
 
 	async function shortPick() {
 		if (!task || busy || loading) return false;
-		busy = true;
-		error = null;
-		info = null;
+		busy = true; error = null; info = null;
 		try {
-			const result = await deps.shortPick.execute({
-				pickTaskId: task.pickTaskId,
-				quantityAvailable: 0
-			});
-			info = result.message;
-			await refresh();
-			return true;
-		} catch (err) {
-			error = toUserMessage(err, 'No se pudo reportar short');
-			return false;
-		} finally {
-			busy = false;
-		}
+			const result = await deps.shortPick.execute({ pickTaskId: task.pickTaskId, quantityAvailable: 0 });
+			info = result.message; return true;
+		} catch (err) { error = toUserMessage(err, 'No se pudo reportar short'); return false; }
+		finally { busy = false; await refresh(); }
 	}
 
 	async function completeBatch() {
 		if (!batch?.batchId || busy || loading) return false;
-		busy = true;
-		error = null;
+		busy = true; error = null;
 		try {
 			const result = await deps.completeBatch(batch.batchId);
-			info = result.message;
-			await refresh();
-			return true;
-		} catch (err) {
-			error = toUserMessage(err, 'No se pudo completar el batch');
-			return false;
-		} finally {
-			busy = false;
-		}
+			info = result.message; return true;
+		} catch (err) { error = toUserMessage(err, 'No se pudo completar el batch'); return false; }
+		finally { busy = false; await refresh(); }
 	}
 
 	return {
-		get batch() {
-			return batch;
-		},
-		get task() {
-			return task;
-		},
-		get scannedBarcode() {
-			return scannedBarcode;
-		},
-		get quantityPicked() {
-			return quantityPicked;
-		},
-		get loading() {
-			return loading;
-		},
-		get busy() {
-			return busy;
-		},
-		get error() {
-			return error;
-		},
-		get info() {
-			return info;
-		},
-		get warehouseId() {
-			return warehouseId;
-		},
-		get soIdsInput() {
-			return soIdsInput;
-		},
-		get waveResult() {
-			return waveResult;
-		},
-		get validateBarcode() {
-			return validateBarcode;
-		},
-		get validateResult() {
-			return validateResult;
-		},
-		get validatedSoIds() {
-			return validatedSoIds;
-		},
-		get batchIdentifiersInput() {
-			return batchIdentifiersInput;
-		},
-		get createBatchResult() {
-			return createBatchResult;
-		},
-		setScannedBarcode: (v: string) => {
-			scannedBarcode = v;
-		},
-		setQuantityPicked: (v: number) => {
-			quantityPicked = v;
-		},
-		setWarehouseId: (v: number) => {
-			warehouseId = v;
-		},
-		setSoIdsInput: (v: string) => {
-			soIdsInput = v;
-		},
-		setValidateBarcode: (v: string) => {
-			validateBarcode = v;
-		},
-		setBatchIdentifiersInput: (v: string) => {
-			batchIdentifiersInput = v;
-		},
-		refresh,
-		validateWaveSo,
-		clearValidated,
-		createWave,
-		createBatch,
-		confirm,
-		shortPick,
-		completeBatch
+		get batch() { return batch; }, get task() { return task; },
+		get scannedBarcode() { return scannedBarcode; }, get quantityPicked() { return quantityPicked; },
+		get loading() { return loading; }, get busy() { return busy; },
+		get error() { return error; }, get info() { return info; },
+		get warehouseId() { return warehouseSelection.warehouseId; },
+		get soIdsInput() { return soIdsInput; }, get waveResult() { return waveResult; },
+		get validateBarcode() { return validateBarcode; }, get validateResult() { return validateResult; },
+		get validatedSoIds() { return validatedSoIds; },
+		get batchIdentifiersInput() { return batchIdentifiersInput; },
+		get createBatchResult() { return createBatchResult; },
+		setScannedBarcode: (v: string) => scannedBarcode = v,
+		setQuantityPicked: (v: number) => quantityPicked = v,
+		setSoIdsInput: (v: string) => soIdsInput = v,
+		setValidateBarcode: (v: string) => validateBarcode = v,
+		setBatchIdentifiersInput: (v: string) => batchIdentifiersInput = v,
+		refresh, validateWaveSo, clearValidated, createWave, createBatch, confirm, shortPick, completeBatch
 	};
 }
