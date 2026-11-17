@@ -40,10 +40,12 @@ describe('Settings domain definitions and validation', () => {
 		expect(validateSettingValue('default_receiving_bin', '-1')).not.toBeNull();
 	});
 
-	it('accepts only HTTP(S) logo URLs', () => {
+	it('accepts HTTP(S) URLs and safe relative logo paths only', () => {
 		expect(validateSettingValue('picking_ticket_logo_url', '')).toBeNull();
 		expect(validateSettingValue('picking_ticket_logo_url', 'https://cdn.example.com/logo.png')).toBeNull();
+		expect(validateSettingValue('picking_ticket_logo_url', '/picking-tickets/logo.png')).toBeNull();
 		expect(validateSettingValue('picking_ticket_logo_url', 'javascript:alert(1)')).not.toBeNull();
+		expect(validateSettingValue('picking_ticket_logo_url', '//evil.example/logo.png')).not.toBeNull();
 	});
 
 	it('validates dashboard origin JSON shape and uniqueness', () => {
