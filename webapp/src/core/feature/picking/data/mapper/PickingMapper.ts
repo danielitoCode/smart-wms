@@ -45,6 +45,8 @@ export const PickingMapper = {
 			itemName: dto.item_name ?? dto.name ?? '',
 			upc: dto.upc ?? null,
 			quantityToPick: dto.quantity_to_pick ?? dto.qty_to_pick ?? 0,
+			quantityPicked: dto.quantity_picked,
+			contributingOrders: dto.contributing_orders?.map((order) => ({ soNumber: order.so_number, quantity: order.quantity })),
 			binId: dto.bin_id ?? null,
 			binCode: dto.bin_code ?? null,
 			binBarcode: dto.bin_barcode ?? null,
