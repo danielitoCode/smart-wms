@@ -17,6 +17,7 @@ export type ManagedUser = {
 	warehouseIds: number[];
 	allowedFunctions: string[];
 	isActive: boolean;
+	mustChangePassword: boolean;
 	createdAt?: string | null;
 	lastLogin?: string | null;
 };
@@ -29,6 +30,7 @@ export type CreateManagedUser = {
 	warehouseId?: number | null;
 	warehouseIds?: number[];
 	allowedFunctions?: string[];
+	mustChangePassword?: boolean;
 };
 
 export type UpdateManagedUser = {
@@ -39,6 +41,7 @@ export type UpdateManagedUser = {
 	warehouseIds?: number[];
 	allowedFunctions?: string[];
 	isActive?: boolean;
+	mustChangePassword?: boolean;
 	password?: string;
 };
 
