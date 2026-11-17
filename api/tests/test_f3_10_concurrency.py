@@ -177,6 +177,97 @@ def _seed_shipping_order():
         conn.close()
 
 
+def _seed_sales_short_pick():
+    conn = _connect()
+    cur = conn.cursor()
+    suffix = uuid.uuid4().hex[:12]
+    try:
+        cur.execute(
+            "SELECT inventory_id, quantity_allocated, quantity_on_hand "
+            "FROM inventory WHERE item_id = 1 AND warehouse_id = 1 AND bin_id = 3 "
+            "ORDER BY inventory_id LIMIT 1"
+        )
+        inventory_id, allocated_before, on_hand_before = cur.fetchone()
+        cur.execute(
+            """
+            INSERT INTO sales_orders
+                (so_number, so_barcode, customer_name, status, warehouse_id,
+                 ship_method, created_by, external_id)
+            VALUES (%s, %s, 'Short Pick Concurrency', 'OPEN', 1,
+                    'UPS Ground', 'concurrency-test', %s)
+            RETURNING so_id
+            """,
+            (f"SO-SHORT-{suffix}", f"SO-SHORT-{suffix}", str(uuid.uuid4())),
+        )
+        so_id = cur.fetchone()[0]
+        cur.execute(
+            """
+            INSERT INTO sales_order_lines
+                (so_id, item_id, quantity_ordered, quantity_allocated,
+                 quantity_picked, line_number, status)
+            VALUES (%s, 1, 1, 1, 0, 1, 'ALLOCATED')
+            RETURNING so_line_id
+            """,
+            (so_id,),
+        )
+        line_id = cur.fetchone()[0]
+        cur.execute(
+            """
+            INSERT INTO pick_batches (batch_number, warehouse_id, status, assigned_to)
+            VALUES (%s, 1, 'OPEN', 'concurrency-test')
+            RETURNING batch_id
+            """,
+            (f"BATCH-SHORT-{suffix}",),
+        )
+        batch_id = cur.fetchone()[0]
+        cur.execute(
+            "UPDATE inventory SET quantity_allocated = quantity_allocated + 1 "
+            " WHERE inventory_id = %s",
+            (inventory_id,),
+        )
+        cur.execute(
+            """
+            INSERT INTO pick_tasks
+                (batch_id, so_id, so_line_id, item_id, bin_id,
+                 quantity_to_pick, quantity_picked, pick_sequence, status)
+            VALUES (%s, %s, %s, 1, 3, 1, 0, 1, 'PENDING')
+            RETURNING pick_task_id
+            """,
+            (batch_id, so_id, line_id),
+        )
+        task_id = cur.fetchone()[0]
+        conn.commit()
+        return {
+            "so_id": so_id, "line_id": line_id, "batch_id": batch_id,
+            "task_id": task_id, "inventory_id": inventory_id,
+            "allocated_before": allocated_before, "on_hand_before": on_hand_before,
+        }
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        cur.close()
+        conn.close()
+
+
+def _cleanup_sales_short_pick(seed):
+    conn = _connect()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM pick_tasks WHERE pick_task_id = %s", (seed["task_id"],))
+        cur.execute("DELETE FROM pick_batches WHERE batch_id = %s", (seed["batch_id"],))
+        cur.execute("DELETE FROM sales_order_lines WHERE so_id = %s", (seed["so_id"],))
+        cur.execute("DELETE FROM sales_orders WHERE so_id = %s", (seed["so_id"],))
+        cur.execute(
+            "UPDATE inventory SET quantity_allocated = %s WHERE inventory_id = %s",
+            (seed["allocated_before"], seed["inventory_id"]),
+        )
+        conn.commit()
+    finally:
+        cur.close()
+        conn.close()
+
+
 def _cleanup_shipping_order(seed):
     conn = _connect()
     cur = conn.cursor()
@@ -253,6 +344,61 @@ def test_duplicate_pick_confirmations_serialize_on_independent_postgres_connecti
         conn.close()
     finally:
         _cleanup_transfer_pick(seed)
+
+
+def test_duplicate_short_picks_serialize_on_independent_postgres_connections(monkeypatch):
+    seed = _seed_sales_short_pick()
+    monkeypatch.setattr(picking_service, "write_audit_log", lambda *args, **kwargs: None)
+    independent_sessions = sessionmaker(bind=db.engine, expire_on_commit=False)
+    barrier = threading.Barrier(2)
+
+    def short():
+        session = independent_sessions()
+        try:
+            session.execute(text("SET LOCAL lock_timeout = '5s'"))
+            barrier.wait(timeout=10)
+            result = picking_service.short_pick(
+                session,
+                seed["task_id"],
+                0,
+                "concurrency-picker",
+            )
+            return ("ok", result)
+        except Exception as exc:
+            session.rollback()
+            return ("error", str(exc))
+        finally:
+            session.close()
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(lambda _: short(), range(2), timeout=15))
+        assert [result[0] for result in results].count("ok") == 1
+        assert [result[0] for result in results].count("error") == 1
+        assert any("already SHORT" in result[1] for result in results if result[0] == "error")
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT status, quantity_picked FROM pick_tasks WHERE pick_task_id = %s",
+            (seed["task_id"],),
+        )
+        assert cur.fetchone() == ("SHORT", 0)
+        cur.execute(
+            "SELECT quantity_allocated, quantity_on_hand FROM inventory WHERE inventory_id = %s",
+            (seed["inventory_id"],),
+        )
+        allocated, on_hand = cur.fetchone()
+        assert allocated == seed["allocated_before"]
+        assert on_hand == seed["on_hand_before"]
+        cur.execute(
+            "SELECT quantity_picked FROM sales_order_lines WHERE so_line_id = %s",
+            (seed["line_id"],),
+        )
+        assert cur.fetchone()[0] == 0
+        cur.close()
+        conn.close()
+    finally:
+        _cleanup_sales_short_pick(seed)
 
 
 def test_duplicate_shipping_fulfillments_serialize_on_independent_postgres_connections(monkeypatch):
