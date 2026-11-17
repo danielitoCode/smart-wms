@@ -1,6 +1,10 @@
 export type ActiveBatchDto = {
 	active?: boolean;
 	batch_id?: number | null;
+	warehouse_id?: number | null;
+	kind?: 'SO' | 'TO' | null;
+	to_id?: number | null;
+	to_number?: string | null;
 	total_picks?: number;
 	completed_picks?: number;
 	total_orders?: number;
