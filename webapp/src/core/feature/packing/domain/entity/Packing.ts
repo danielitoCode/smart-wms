@@ -39,6 +39,7 @@ export type PackingOrderDetail = {
 
 export type VerifyPackInput = {
 	soId: number;
+	warehouseId: number;
 	scannedBarcode: string;
 	quantity?: number;
 };
