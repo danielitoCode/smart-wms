@@ -153,7 +153,7 @@ export function createTransferOrdersState() {
     approve: (id: number, approvalId: number) => act(() => dependencies.approve.execute(id, approvalId), () => 'Aprobación completada; inventario movido al almacén destino'),
     reject: (id: number, approvalId: number, reason: string) => act(() => dependencies.reject.execute(id, approvalId, reason), () => 'Envío rechazado; el inventario permanece en origen'),
     cancel: (id: number) => act(() => dependencies.cancel.execute(id), () => 'Transferencia cancelada'),
-    remove: (id: number) => act(() => dependencies.remove.execute(id), () => 'Transferencia eliminada'),
+    remove(id: number) { selected = null; pickerSnapshot = null; return act(() => dependencies.remove.execute(id), () => 'Transferencia eliminada'); },
     shortClose: (id: number, lineId: number) => act(() => dependencies.shortClose.execute(id, lineId), () => 'Línea cerrada por faltante'),
     clearSelected() { selected = null; pickerSnapshot = null; },
     clearCreated() { created = null; }
