@@ -140,7 +140,7 @@ def list_users():
     pages = max(1, math.ceil(total / per_page))
 
     rows = g.db.execute(
-        text("SELECT user_id, username, full_name, role, warehouse_id, warehouse_ids, allowed_functions, is_active, created_at, last_login FROM users ORDER BY user_id LIMIT :limit OFFSET :offset"),
+        text("SELECT user_id, username, full_name, role, warehouse_id, warehouse_ids, allowed_functions, is_active, must_change_password, created_at, last_login FROM users ORDER BY user_id LIMIT :limit OFFSET :offset"),
         {"limit": per_page, "offset": (page - 1) * per_page},
     ).fetchall()
     return jsonify({
@@ -149,7 +149,7 @@ def list_users():
              "role": r.role, "warehouse_id": r.warehouse_id,
              "warehouse_ids": list(r.warehouse_ids) if r.warehouse_ids else [],
              "allowed_functions": list(r.allowed_functions) if r.allowed_functions else [],
-             "is_active": r.is_active,
+             "is_active": r.is_active, "must_change_password": bool(r.must_change_password),
              "created_at": r.created_at.isoformat() if r.created_at else None,
              "last_login": r.last_login.isoformat() if r.last_login else None}
             for r in rows
@@ -188,13 +188,14 @@ def create_user(validated):
     pw_hash = bcrypt.hashpw(data["password"].encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
     result = g.db.execute(
         text("""
-            INSERT INTO users (username, password_hash, full_name, role, warehouse_id, warehouse_ids, allowed_functions, external_id)
-            VALUES (:u, :pw, :name, :role, :wid, :wids, :funcs, :ext_id)
-            RETURNING user_id, username, full_name, role, warehouse_id, warehouse_ids, allowed_functions, is_active, created_at
+            INSERT INTO users (username, password_hash, full_name, role, warehouse_id, warehouse_ids, allowed_functions, must_change_password, external_id)
+            VALUES (:u, :pw, :name, :role, :wid, :wids, :funcs, :must_change_password, :ext_id)
+            RETURNING user_id, username, full_name, role, warehouse_id, warehouse_ids, allowed_functions, is_active, must_change_password, created_at
         """),
         {"u": data["username"], "pw": pw_hash, "name": data["full_name"],
          "role": data["role"], "wid": warehouse_id, "wids": warehouse_ids,
-         "funcs": allowed_functions, "ext_id": str(uuid.uuid4())},
+         "funcs": allowed_functions, "must_change_password": data["must_change_password"],
+         "ext_id": str(uuid.uuid4())},
     )
     row = result.fetchone()
     g.db.commit()
@@ -204,6 +205,7 @@ def create_user(validated):
         "warehouse_ids": list(row.warehouse_ids) if row.warehouse_ids else [],
         "allowed_functions": list(row.allowed_functions) if row.allowed_functions else [],
         "is_active": row.is_active,
+        "must_change_password": bool(row.must_change_password),
         "created_at": row.created_at.isoformat() if row.created_at else None,
     }), 201
 
@@ -248,7 +250,7 @@ def update_user(user_id, validated):
             if len(admins) <= 1:
                 return jsonify({"error": "Cannot remove the last active admin"}), 400
 
-    ALLOWED_FIELDS = {"full_name", "role", "is_active"}
+    ALLOWED_FIELDS = {"full_name", "role", "is_active", "must_change_password"}
     fields, params = [], {"uid": user_id}
     for col in ALLOWED_FIELDS:
         if col in data:
@@ -307,7 +309,7 @@ def update_user(user_id, validated):
     g.db.commit()
 
     row = g.db.execute(
-        text("SELECT user_id, username, full_name, role, warehouse_id, warehouse_ids, allowed_functions, is_active, created_at, last_login FROM users WHERE user_id = :uid"),
+        text("SELECT user_id, username, full_name, role, warehouse_id, warehouse_ids, allowed_functions, is_active, must_change_password, created_at, last_login FROM users WHERE user_id = :uid"),
         {"uid": user_id},
     ).fetchone()
     return jsonify({
@@ -316,6 +318,7 @@ def update_user(user_id, validated):
         "warehouse_ids": list(row.warehouse_ids) if row.warehouse_ids else [],
         "allowed_functions": list(row.allowed_functions) if row.allowed_functions else [],
         "is_active": row.is_active,
+        "must_change_password": bool(row.must_change_password),
         "created_at": row.created_at.isoformat() if row.created_at else None,
         "last_login": row.last_login.isoformat() if row.last_login else None,
     })
