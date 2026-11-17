@@ -790,11 +790,15 @@ def confirm_pick(db, pick_task_id, scanned_barcode, quantity_picked, username):
                   JOIN inventory inv ON inv.inventory_id = r.inventory_id
                  WHERE r.to_line_id = :lid
                    AND inv.inventory_id = :iid
+                   AND inv.item_id = :item_id
                    AND inv.bin_id = :bid
                    AND r.reserved_qty > r.consumed_qty + r.released_qty
                 """
             ),
-            {"lid": task.to_line_id, "iid": task.inventory_id, "bid": task.bin_id},
+            {
+                "lid": task.to_line_id, "iid": task.inventory_id,
+                "item_id": task.item_id, "bid": task.bin_id,
+            },
         ).fetchone()
         if not reservation:
             raise ValueError("Transfer Order pick task does not match an open bin reservation")
