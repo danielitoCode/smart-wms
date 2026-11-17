@@ -342,6 +342,43 @@ class TestStartPicking:
         assert resp.get_json()["error"] == "no_lines_to_pick"
 
 
+class TestTransferOrderShortPick:
+    def test_short_pick_is_rejected_without_mutating_transfer_inventory(
+        self, client, auth_headers,
+    ):
+        to_id = _seed_to()
+        _seed_to_line(to_id, item_id=1, committed=5)
+        _seed_inventory(1, 1, on_hand=10, allocated=5, bin_id=1)
+        started = client.post(
+            f"/api/admin/transfer-orders/{to_id}/start-picking",
+            headers=auth_headers,
+        )
+        assert started.status_code == 201, started.get_json()
+        task_id = _query(
+            "SELECT pick_task_id FROM pick_tasks WHERE to_id = %s",
+            (to_id,),
+        )[0][0]
+
+        response = client.post(
+            "/api/picking/short",
+            json={"pick_task_id": task_id, "quantity_available": 0},
+            headers=auth_headers,
+        )
+        assert response.status_code == 409
+        assert response.get_json()["error"] == "transfer_order_short_pick_not_supported"
+
+        inventory = _query(
+            "SELECT quantity_on_hand, quantity_allocated FROM inventory "
+            " WHERE item_id = 1 AND warehouse_id = 1",
+        )[0]
+        task_status = _query(
+            "SELECT status FROM pick_tasks WHERE pick_task_id = %s",
+            (task_id,),
+        )[0][0]
+        assert inventory == (10, 5)
+        assert task_status == "PENDING"
+
+
 # ----------------------------------------------------------------------
 # Picker GET endpoint
 # ----------------------------------------------------------------------
