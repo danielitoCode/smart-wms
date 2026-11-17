@@ -11,4 +11,5 @@ export class DashboardRepositoryImpl implements DashboardRepository {
  async updatePreferences(p:Partial<DashboardPreferences>){return M.preferences(await this.remote.updatePreferences(p));}
  async localPickup(w:number,q:string,s:string){return M.localPickup(await this.remote.localPickup(w,q,s));}
  async markPickedUp(id:number){await this.remote.markPickedUp(id);}
+ async updateLocalPickup(id:number,p:{customer_name:string|null;customer_phone:string|null;ship_method:string|null;ship_address:string|null;priority:number;memo:string|null}){await this.remote.updateLocalPickup(id,p);}
 }
