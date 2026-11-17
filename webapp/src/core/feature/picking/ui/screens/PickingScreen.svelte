@@ -10,9 +10,10 @@
 	let lastWarehouseGeneration = -1;
 	$effect(() => {
 		const generation = warehouseSelection.generation;
-		if (!warehouseSelection.initialized || warehouseSelection.warehouseId == null || generation === lastWarehouseGeneration) return;
-		lastWarehouseGeneration = generation;
-		void state.refresh();
+		const busy = state.busy;
+		if (!warehouseSelection.initialized || warehouseSelection.warehouseId == null) return;
+		if (generation !== lastWarehouseGeneration) lastWarehouseGeneration = generation;
+		if (!busy) void state.refresh();
 	});
 
 	function onConfirm(event: Event) {
