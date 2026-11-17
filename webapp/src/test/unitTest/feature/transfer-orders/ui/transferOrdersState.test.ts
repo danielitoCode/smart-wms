@@ -94,8 +94,11 @@ describe('transfer orders UI state', () => {
 
   it('rejects a repeated mutation while the first request is still pending', async () => {
     const deps = dependencies();
-    let finish!: (value: { batchNumber: string; tasksCreated: number }) => void;
-    deps.startPicking.execute.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    let release!: () => void;
+    const pending = new Promise<{ batchNumber: string; tasksCreated: number }>(resolve => {
+      release = () => resolve({ batchNumber: 'B-3', tasksCreated: 1 });
+    });
+    deps.startPicking.execute.mockImplementationOnce(() => pending);
     const state = createTransferOrdersState(deps as never);
 
     const first = state.startPicking(12);
@@ -103,7 +106,7 @@ describe('transfer orders UI state', () => {
     await expect(state.startPicking(12)).resolves.toBe(false);
     expect(deps.startPicking.execute).toHaveBeenCalledTimes(1);
 
-    finish({ batchNumber: 'B-3', tasksCreated: 1 });
+    release();
     await expect(first).resolves.toBe(true);
     expect(state.saving).toBe(false);
   });
