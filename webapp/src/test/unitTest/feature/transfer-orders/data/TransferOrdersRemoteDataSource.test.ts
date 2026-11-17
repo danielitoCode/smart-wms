@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ApiClient } from '../../../../../core/infrastructure/api/ApiClient';
+import { ApiError } from '../../../../../core/infrastructure/errors/ApiError';
 import { TransferOrdersRemoteDataSource } from '../../../../../core/feature/transfer-orders/data/datasource/TransferOrdersRemoteDataSource';
 
 function apiMock() {
@@ -57,4 +58,19 @@ describe('TransferOrdersRemoteDataSource', () => {
     ]);
     expect(api.delete).toHaveBeenCalledWith('/api/admin/transfer-orders/12');
   });
+
+  it('preserves normalized HTTP conflict and validation errors from the API client', async () => {
+    const api = apiMock();
+    const remote = new TransferOrdersRemoteDataSource(api);
+    const conflict = new ApiError(409, 'Pending approval blocks this action', 'conflict');
+    api.post.mockRejectedValueOnce(conflict);
+    await expect(remote.cancel(12)).rejects.toBe(conflict);
+
+    const validation = new ApiError(422, 'Invalid transfer lines', 'unprocessable', {
+      rows: [{ row_index: 1, error_kind: 'quantity_exceeds_limit' }]
+    });
+    api.post.mockRejectedValueOnce(validation);
+    await expect(remote.create({ records: [] })).rejects.toBe(validation);
+  });
+
 });
