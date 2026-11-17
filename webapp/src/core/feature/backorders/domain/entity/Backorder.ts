@@ -38,6 +38,8 @@ export type Backorder = {
   warehouseId: number;
   customerName: string | null;
   status: BackorderStatus;
+  /** Sales-order type; only child order_type=backorder can use cancel-backorder. */
+  orderType: string;
   openedAt: string | null;
   fulfillableSince: string | null;
   daysWaiting: number;
