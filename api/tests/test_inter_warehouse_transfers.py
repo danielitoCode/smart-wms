@@ -417,3 +417,60 @@ def test_concurrent_transfer_reservations_cannot_overdraw_locked_source_rows():
             restore.commit()
         finally:
             restore.close()
+
+
+def test_concurrent_api_transfers_cannot_overdraw_source_inventory(client):
+    item_id, from_bin, from_wh, to_bin, to_wh = _source_destination()
+    headers = _headers(client, [from_wh, to_wh])
+    rows = _query(
+        """SELECT inventory_id, quantity_on_hand, quantity_allocated
+             FROM inventory WHERE item_id = %s AND bin_id = %s AND warehouse_id = %s
+            ORDER BY inventory_id""",
+        (item_id, from_bin, from_wh),
+    )
+    assert rows
+    setup = psycopg2.connect(os.environ["DATABASE_URL"])
+    try:
+        cur = setup.cursor()
+        cur.execute(
+            "UPDATE inventory SET quantity_on_hand = 0, quantity_allocated = 0 "
+            "WHERE item_id = %s AND bin_id = %s AND warehouse_id = %s",
+            (item_id, from_bin, from_wh),
+        )
+        cur.execute(
+            "UPDATE inventory SET quantity_on_hand = 5, quantity_allocated = 0 WHERE inventory_id = %s",
+            (rows[0][0],),
+        )
+        setup.commit()
+    finally:
+        setup.close()
+
+    barrier = threading.Barrier(2)
+    results, errors = [], []
+
+    def worker():
+        try:
+            with client.application.test_client() as thread_client:
+                payload = _body(
+                    item_id, from_bin, from_wh, to_bin, to_wh,
+                    key=str(uuid.uuid4()), quantity=4,
+                )
+                barrier.wait(timeout=5)
+                response = thread_client.post(
+                    "/api/admin/inter-warehouse-transfer", json=payload, headers=headers,
+                )
+                results.append((response.status_code, response.get_json()))
+        except Exception as exc:
+            errors.append(str(exc))
+
+    threads = [threading.Thread(target=worker) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=15)
+
+    assert all(not thread.is_alive() for thread in threads)
+    assert not errors, errors
+    assert sorted(status for status, _ in results) == [201, 400], results
+    assert _quantity(item_id, from_bin) == 1
+    assert _quantity(item_id, to_bin) == 4
