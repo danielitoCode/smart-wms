@@ -405,7 +405,7 @@ def _release_line_reservations(db, to_line_id: int, quantity: Optional[int] = No
     return target
 
 
-def _consume_line_reservations(db, to_line_id: int, quantity: int) -> None:
+def _consume_line_reservations(db, to_line_id: int, quantity: int, inventory_id: int) -> None:
     """Consume the exact source inventory rows reserved by this TO line."""
     ledger = _assert_line_reservation_ledger(db, to_line_id)
     if quantity <= 0:
@@ -419,16 +419,19 @@ def _consume_line_reservations(db, to_line_id: int, quantity: int) -> None:
               FROM transfer_order_reservations r
               JOIN inventory inv ON inv.inventory_id = r.inventory_id
              WHERE r.to_line_id = :lid
+               AND inv.inventory_id = :iid
                AND r.reserved_qty > r.consumed_qty + r.released_qty
              ORDER BY inv.inventory_id ASC
              FOR UPDATE OF r, inv
             """
         ),
-        {"lid": to_line_id},
+        {"lid": to_line_id, "iid": inventory_id},
     ).fetchall()
     outstanding = sum(row.reserved_qty - row.consumed_qty - row.released_qty for row in rows)
-    if outstanding != ledger.committed_qty - ledger.approved_qty - ledger.released_qty:
-        raise ValueError(f"reservation balance changed for transfer_order_line={to_line_id}")
+    if not rows:
+        raise ValueError(
+            f"reservation row missing for transfer_order_line={to_line_id}, inventory_id={inventory_id}"
+        )
     if quantity > outstanding:
         raise ValueError(
             f"reservation mismatch for transfer_order_line={to_line_id}: "
