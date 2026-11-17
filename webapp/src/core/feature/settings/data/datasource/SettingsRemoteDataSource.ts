@@ -1,6 +1,6 @@
 import type { ApiClient } from '#core/infrastructure/api/ApiClient';
 import type {
-	SettingDto,
+	SettingDetailDto,
 	SettingsListDto,
 	UpdateSettingsRequestDto,
 	UpdateSettingsResponseDto
@@ -9,15 +9,15 @@ import type {
 export class SettingsRemoteDataSource {
 	constructor(private readonly api: ApiClient) {}
 
-	list() {
+	list(): Promise<SettingsListDto> {
 		return this.api.get<SettingsListDto>('/api/admin/settings');
 	}
 
-	get(key: string) {
-		return this.api.get<SettingDto>(`/api/admin/settings/${encodeURIComponent(key)}`);
+	get(key: string): Promise<SettingDetailDto> {
+		return this.api.get<SettingDetailDto>(`/api/admin/settings/${encodeURIComponent(key)}`);
 	}
 
-	update(body: UpdateSettingsRequestDto) {
+	update(body: UpdateSettingsRequestDto): Promise<UpdateSettingsResponseDto> {
 		return this.api.put<UpdateSettingsResponseDto>('/api/admin/settings', body);
 	}
 }
