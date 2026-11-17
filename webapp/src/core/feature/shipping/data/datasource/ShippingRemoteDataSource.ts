@@ -14,6 +14,7 @@ export class ShippingRemoteDataSource {
 	fulfill(input: FulfillShipmentInput): Promise<FulfillResponseDto> {
 		return this.api.post<FulfillResponseDto>('/api/shipping/fulfill', {
 			so_id: input.soId,
+			warehouse_id: input.warehouseId,
 			tracking_number: input.trackingNumber,
 			carrier: input.carrier,
 			...(input.shipMethod ? { ship_method: input.shipMethod } : {})
