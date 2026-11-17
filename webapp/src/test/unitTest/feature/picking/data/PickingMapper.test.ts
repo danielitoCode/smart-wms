@@ -13,4 +13,15 @@ describe('PickingMapper Flask response contracts', () => {
  it('maps the next-task scanner fields', () => {
   expect(PickingMapper.toPickTask({ pick_task_id: 8, batch_id: 4, item_id: 3, sku: 'SKU-3', item_name: 'Item 3', upc: 'UPC-3', quantity_to_pick: 2, bin_id: 9, bin_code: 'A-09', status: 'PENDING', pick_sequence: 4, bin_barcode: 'BIN-9', zone: 'PICK', aisle: 'A', tote_number: 'TOTE-1', so_number: 'SO-1' })).toMatchObject({ pickTaskId: 8, quantityToPick: 2, binCode: 'A-09', status: 'PENDING' });
  });
+ it('maps the actual wave-create response contract', () => {
+  expect(PickingMapper.toWaveCreate({
+   batch_id: 5, batch_number: 'WAVE-5', total_orders: 2, total_picks: 4, total_units: 9,
+   orders: [{ so_id: 3, so_number: 'SO-3', line_count: 2 }, { so_id: 4, so_number: 'SO-4', line_count: 1 }],
+   warnings: ['partial coverage warning']
+  })).toMatchObject({
+   batchId: 5, batchNumber: 'WAVE-5', totalOrders: 2, totalPicks: 4, totalUnits: 9,
+   orders: [{ soId: 3, soNumber: 'SO-3', lineCount: 2 }], warnings: ['partial coverage warning']
+  });
+ });
+
 });
