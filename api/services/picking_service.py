@@ -1273,7 +1273,10 @@ def complete_batch(db, batch_id, username):
     # unlike a sales order, an under-picked TO line ships nothing, so a
     # partial completion is legitimate and the operator short-closes any
     # remainder downstream.
-    from services.transfer_order_service import submit_picks
+    from services.transfer_order_service import (
+        TransferOrderSubmissionConflict,
+        submit_picks,
+    )
 
     to_id_rows = db.execute(
         text(
@@ -1285,7 +1288,7 @@ def complete_batch(db, batch_id, username):
     for to_row in to_id_rows:
         submission = submit_picks(db, to_row.to_id, username)
         if not submission.get("ok") and submission.get("reason") != "nothing_picked":
-            raise ValueError(
+            raise TransferOrderSubmissionConflict(
                 f"Transfer Order {to_row.to_id} could not submit its picked tasks: "
                 f"{submission.get('reason')}"
             )
