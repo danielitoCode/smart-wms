@@ -124,6 +124,7 @@ def fulfill(validated):
     carrier = validated.carrier
     tracking_number = validated.tracking_number
     ship_method = validated.ship_method
+    context_warehouse_id = validated.warehouse_id
     username = g.current_user["username"]
 
     # Validate SO with warehouse scope at SELECT time (V-026).
@@ -137,10 +138,11 @@ def fulfill(validated):
             f"""
             SELECT so_id, so_number, status, warehouse_id, external_id FROM sales_orders
             WHERE so_id = :so_id {scope_clause}
+              AND (:context_warehouse_id IS NULL OR warehouse_id = :context_warehouse_id)
             FOR UPDATE
             """
         ),
-        {"so_id": so_id, **scope_params},
+        {"so_id": so_id, "context_warehouse_id": context_warehouse_id, **scope_params},
     ).fetchone()
 
     if not so:
