@@ -648,15 +648,17 @@ def get_next_task(db, batch_id):
         text(
             """
             SELECT pt.pick_task_id, pt.batch_id, pt.item_id, pt.bin_id,
-                   pt.pick_sequence, pt.quantity_to_pick, pt.quantity_picked,
-                   pt.tote_number, pt.status,
+                   pt.inventory_id, pt.pick_sequence, pt.quantity_to_pick,
+                   pt.quantity_picked, pt.tote_number, pt.status,
                    b.bin_code, b.bin_barcode, b.aisle, b.row_num, b.level_num,
+                   inv.lot_number,
                    i.sku, i.item_name, i.upc,
                    so.so_number,
                    tro.to_number,
                    z.zone_name
             FROM pick_tasks pt
             JOIN bins b ON b.bin_id = pt.bin_id
+            LEFT JOIN inventory inv ON inv.inventory_id = pt.inventory_id
             LEFT JOIN zones z ON z.zone_id = b.zone_id
             JOIN items i ON i.item_id = pt.item_id
             LEFT JOIN sales_orders so ON so.so_id = pt.so_id
@@ -2056,15 +2058,18 @@ def _get_tasks_for_batch(db, batch_id):
     rows = db.execute(
         text(
             """
-            SELECT pt.pick_task_id, pt.pick_sequence, pt.quantity_to_pick, pt.quantity_picked,
-                   pt.tote_number, pt.status,
+            SELECT pt.pick_task_id, pt.batch_id, pt.item_id, pt.bin_id,
+                   pt.inventory_id, pt.pick_sequence, pt.quantity_to_pick,
+                   pt.quantity_picked, pt.tote_number, pt.status,
                    b.bin_code, b.bin_barcode, b.aisle, b.row_num, b.level_num,
+                   inv.lot_number,
                    i.sku, i.item_name, i.upc,
                    so.so_number,
                    tro.to_number,
                    z.zone_name
             FROM pick_tasks pt
             JOIN bins b ON b.bin_id = pt.bin_id
+            LEFT JOIN inventory inv ON inv.inventory_id = pt.inventory_id
             LEFT JOIN zones z ON z.zone_id = b.zone_id
             JOIN items i ON i.item_id = pt.item_id
             LEFT JOIN sales_orders so ON so.so_id = pt.so_id
@@ -2085,6 +2090,8 @@ def _task_row_to_dict(row):
         "batch_id": row.batch_id,
         "item_id": row.item_id,
         "bin_id": row.bin_id,
+        "inventory_id": getattr(row, "inventory_id", None),
+        "lot_number": getattr(row, "lot_number", None),
         "pick_sequence": row.pick_sequence,
         "bin_code": row.bin_code,
         "bin_barcode": row.bin_barcode,
