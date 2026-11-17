@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	MANAGED_USER_PERMISSION_GROUPS,
 	MANAGED_USER_PERMISSION_KEYS,
-} from '../../../../core/feature/users/ui/config/userPermissionGroups';
+} from '../../../../../core/feature/users/ui/config/userPermissionGroups';
 
 describe('managed user permission catalog', () => {
 	it('matches the Flask ALL_PAGE_KEYS and ALL_OVERRIDE_KEYS catalog', () => {
