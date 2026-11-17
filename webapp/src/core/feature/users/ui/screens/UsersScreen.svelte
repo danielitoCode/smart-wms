@@ -2,16 +2,17 @@
  import {onMount,getContext} from 'svelte';
  import type {I18nState} from '../../../../../lib/i18n/i18n.svelte';
  import {createManagedUsersState} from '../state/managedUsersState.svelte';
- import type {ManagedUser,CreateManagedUser,UpdateManagedUser} from '../../domain/entity/UserManagement';
+ import type {ManagedUser} from '../../domain/entity/UserManagement';
  const i18n=getContext<I18nState>('i18n'),vm=createManagedUsersState();
  const FUNCTIONS=[['pick','Pick'],['pack','Pack'],['ship','Ship'],['receive','Receive'],['putaway','Put-Away'],['count','Count'],['transfer','Transfer'],['sell','Sell (POS)']] as const;
  type PermissionGroup={label:string;isOverride?:boolean;pages:[string,string][]};
  const GROUPS:PermissionGroup[]=[
+  {label:'General',pages:[['dashboard','Dashboard']]},
   {label:'Floor',pages:[['inventory','Inventory'],['cycle-counts','Cycle Counts'],['count-approvals','Count Approvals']]},
   {label:'Inbound',pages:[['purchase-orders','Purchase Orders'],['receiving','Receiving'],['putaway','Put-away']]},
-  {label:'Outbound',pages:[['sales-orders','Sales Orders'],['fraud','Fraud']]},
+  {label:'Outbound',pages:[['sales-orders','Sales Orders'],['backorders','Backorders'],['fraud','Fraud'],['picking-tickets','Picking Tickets'],['picking-batches','Picking Batches']]},
   {label:'Warehouse',pages:[['items','Items'],['vendors','Vendors'],['adjustments','Inventory Adjustments'],['inter-warehouse-transfers','Inventory Transfers'],['transfer-orders','Transfer Orders'],['warehouses','Warehouses'],['bins','Bins'],['zones','Zones'],['preferred-bins','Preferred Bins']]},
-  {label:'System',pages:[['users','Users'],['api-tokens','API Tokens'],['inbound','Inbound Activity'],['consumer-groups','Consumer Groups'],['webhooks','Webhooks'],['audit-log','Audit Log'],['imports','Imports'],['integrations','Integrations'],['settings','Settings']]},
+  {label:'System',pages:[['users','Users'],['api-tokens','API Tokens'],['inbound','Inbound Activity'],['consumer-groups','Consumer Groups'],['channels','Channels'],['webhooks','Webhooks'],['notifications','Notifications'],['audit-log','Audit Log'],['imports','Imports'],['integrations','Integrations'],['settings','Settings']]},
   {label:'Overrides',isOverride:true,pages:[['so-full-edit','Full SO edit (past OPEN, incl. source_system + line CRUD)']]}
  ];
  const ALL_KEYS=GROUPS.flatMap(g=>g.pages.map(p=>p[0]));
@@ -22,21 +23,25 @@
  const filtered=$derived(vm.users.filter(u=>[u.username,u.fullName,u.role].join(' ').toLowerCase().includes(search.trim().toLowerCase())));
  onMount(()=>{void vm.load();void vm.loadWarehouses();});
  function toggle<T>(a:T[],v:T):T[]{return a.includes(v)?a.filter(x=>x!==v):[...a,v];}
- function reset(){formOpen=false;editing=null;username='';password='';fullName='';role='USER';warehouseIds=[];functions=[];active=true;pageKeys=[];permissionsReady=true;localError=null;}
+ function reset(){formOpen=false;editing=null;username='';password='';fullName='';role='USER';warehouseIds=[];functions=[];active=true;pageKeys=[];permissionLoading=false;permissionsReady=true;localError=null;}
  function openCreate(){reset();formOpen=true;}
- async function openEdit(u:ManagedUser){reset();editing=u;username=u.username;fullName=u.fullName;role=u.role;warehouseIds=[...u.warehouseIds];functions=[...u.allowedFunctions];active=u.isActive;formOpen=true;permissionLoading=true;const p=await vm.loadPermissions(u.userId);permissionsReady=!!p;pageKeys=p?[...p.pageKeys]:[];permissionLoading=false;}
+ async function openEdit(u:ManagedUser){reset();editing=u;username=u.username;fullName=u.fullName;role=u.role;warehouseIds=[...u.warehouseIds];functions=[...u.allowedFunctions];active=u.isActive;formOpen=true;permissionsReady=false;permissionLoading=true;const p=await vm.loadPermissions(u.userId);permissionsReady=!!p;pageKeys=p?[...p.pageKeys]:[];permissionLoading=false;}
  async function save(){
-  localError=null;if(editing&&!permissionsReady){localError='No se pudieron cargar los permisos; vuelve a abrir el usuario antes de guardar.';return;}if(!fullName.trim()){localError='El nombre completo es obligatorio';return;}
+  localError=null;if(editing&&(!permissionsReady||permissionLoading)){localError='No se pudieron cargar los permisos; vuelve a abrir el usuario antes de guardar.';return;}if(!fullName.trim()){localError='El nombre completo es obligatorio';return;}
   if(!editing&&(!username.trim()||!password)){localError='Usuario y contraseña son obligatorios';return;}
   let ok=false;
   let savedUserId=editing?.userId;
   if(editing){ok=await vm.update({userId:editing.userId,fullName:fullName.trim(),role,warehouseIds:[...warehouseIds],allowedFunctions:[...functions],isActive:active,password:password||undefined});}
-  else {ok=await vm.create({username:username.trim(),password,fullName:fullName.trim(),role,warehouseIds:[...warehouseIds],allowedFunctions:[...functions]});if(ok)savedUserId=vm.users.find(u=>u.username===username.trim())?.userId;}
+  else {
+   const created=await vm.create({username:username.trim(),password,fullName:fullName.trim(),role,warehouseIds:[...warehouseIds],allowedFunctions:[...functions]});
+   ok=!!created;
+   if(created){savedUserId=created.userId;editing=created;}
+  }
   if(ok&&savedUserId&&role==='USER'){const savedPermissions=await vm.savePermissions(savedUserId,pageKeys);if(!savedPermissions)return;}
   if(ok)reset();
  }
  function toggleGroup(g:PermissionGroup,on:boolean){const keys=g.pages.map(p=>p[0]);pageKeys=on?[...new Set([...pageKeys,...keys])]:pageKeys.filter(k=>!keys.includes(k));}
- async function editPermissions(u:ManagedUser){permissionsUser=u;permissionLoading=true;const p=await vm.loadPermissions(u.userId);permissionsReady=!!p;pageKeys=p?[...p.pageKeys]:[];permissionLoading=false;}
+ async function editPermissions(u:ManagedUser){permissionsUser=u;permissionsReady=false;permissionLoading=true;const p=await vm.loadPermissions(u.userId);permissionsReady=!!p;pageKeys=p?[...p.pageKeys]:[];permissionLoading=false;}
  async function savePerms(){if(permissionsUser&&permissionsReady&&await vm.savePermissions(permissionsUser.userId,pageKeys))permissionsUser=null;}
  async function confirmDelete(){if(deleteTarget&&await vm.remove(deleteTarget.userId))deleteTarget=null;}
  function whName(id:number){const w=vm.warehouses.find(x=>x.warehouse_id===id);return w?w.warehouse_code+' · '+w.warehouse_name:String(id);}
@@ -61,7 +66,7 @@
    {#if role==='ADMIN'}<p class="admin-note"><span aria-hidden="true">✓</span>{i18n.t('ADMIN tiene acceso completo; los permisos individuales no se aplican.')}</p>{:else if permissionLoading}<p>{i18n.t('Cargando permisos…')}</p>{:else}<div class="groups">{#each GROUPS as g}<section class:override={g.isOverride} class="group"><div class="group-head"><b>{g.label}</b><span><button type="button" onclick={()=>toggleGroup(g,true)}>{i18n.t('Todos')}</button><button type="button" onclick={()=>toggleGroup(g,false)}>{i18n.t('Ninguno')}</button></span></div>{#each g.pages as p}<label class="check"><input type="checkbox" checked={pageKeys.includes(p[0])} onchange={()=>pageKeys=toggle(pageKeys,p[0])}/>{p[1]}</label>{/each}<small class="muted">{g.pages.filter(p=>pageKeys.includes(p[0])).length}/{g.pages.length}</small></section>{/each}</div>{/if}
   </section>
   {#if editing}<label class="active"><input type="checkbox" bind:checked={active}/><span><b>{i18n.t('Cuenta activa')}</b><small>{i18n.t('Las cuentas inactivas no pueden iniciar sesión.')}</small></span></label>{/if}
-  <div class="actions"><button type="button" onclick={reset}>{i18n.t('Cancelar')}</button><button class="primary" type="submit" disabled={vm.saving||vm.warehouseLoading}>{vm.saving?i18n.t('Guardando…'):i18n.t('Guardar usuario')}</button></div>
+  <div class="actions"><button type="button" onclick={reset}>{i18n.t('Cancelar')}</button><button class="primary" type="submit" disabled={vm.saving||vm.warehouseLoading||(!!editing&&(!permissionsReady||permissionLoading))}>{vm.saving?i18n.t('Guardando…'):i18n.t('Guardar usuario')}</button></div>
  </form>{/if}
  {#if permissionsUser}<section class="editor"><div class="editor-head"><div><p class="eyebrow">{i18n.t('AUTORIZACIÓN')}</p><h2>{i18n.t('Permisos de')} {permissionsUser.username}</h2></div><button type="button" onclick={()=>permissionsUser=null}><span aria-hidden="true">×</span></button></div>
   {#if vm.permissions?.isFullAccess}<p class="admin-note">{i18n.t('ADMIN tiene acceso total.')}</p>{:else if permissionLoading}<p>{i18n.t('Cargando permisos…')}</p>{:else}<div class="quick"><button type="button" onclick={()=>pageKeys=[...ALL_KEYS]}>{i18n.t('Todos')}</button><button type="button" onclick={()=>pageKeys=[]}>{i18n.t('Revocar todos')}</button></div><div class="groups">{#each GROUPS as g}<section class:override={g.isOverride} class="group"><div class="group-head"><b>{g.label}</b><span><button type="button" onclick={()=>toggleGroup(g,true)}>{i18n.t('Todos')}</button><button type="button" onclick={()=>toggleGroup(g,false)}>{i18n.t('Ninguno')}</button></span></div>{#each g.pages as p}<label class="check"><input type="checkbox" checked={pageKeys.includes(p[0])} onchange={()=>pageKeys=toggle(pageKeys,p[0])}/>{p[1]}</label>{/each}</section>{/each}</div>{/if}
