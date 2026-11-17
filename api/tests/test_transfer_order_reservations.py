@@ -126,6 +126,37 @@ def _one(sql, params=()):
         cur.close()
 
 
+def _ensure_destination_staging_bin():
+    existing = _one(
+        "SELECT bin_id FROM bins WHERE warehouse_id = 2 AND bin_type = 'Staging' "
+        "ORDER BY bin_id LIMIT 1"
+    )
+    if existing:
+        return existing[0]
+    cur = _cursor()
+    try:
+        cur.execute(
+            """
+            INSERT INTO zones (warehouse_id, zone_code, zone_name, zone_type)
+            VALUES (2, 'TO-RES-STAGE', 'Transfer Reservation Staging', 'STAGING')
+            RETURNING zone_id
+            """
+        )
+        zone_id = cur.fetchone()[0]
+        cur.execute(
+            """
+            INSERT INTO bins
+                (zone_id, warehouse_id, bin_code, bin_barcode, bin_type, external_id)
+            VALUES (2, 2, 'TO-RES-STAGE', 'TO-RES-STAGE', 'Staging', %s)
+            RETURNING bin_id
+            """,
+            (str(uuid.uuid4()),),
+        )
+        return cur.fetchone()[0]
+    finally:
+        cur.close()
+
+
 def test_reservation_table_tracks_line_inventory_and_balances():
     row = _one(
         """
@@ -234,6 +265,7 @@ def test_approval_consumes_exact_owned_inventory_and_preserves_other_reservation
     _reserve(to_a, line_a, inventory_id, 4)
     _reserve(to_b, line_b, inventory_id, 6)
     approval_id = _seed_approval(to_a, line_a, 4)
+    _ensure_destination_staging_bin()
     before = _one(
         "SELECT quantity_on_hand, quantity_allocated FROM inventory WHERE inventory_id = %s",
         (inventory_id,),
