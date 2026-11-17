@@ -67,6 +67,36 @@ def _inventory_rows(minimum=1):
         cur.close()
 
 
+def _ensure_second_source_inventory_row():
+    if len(_inventory_rows(5)) >= 2:
+        return
+    cur = _cursor()
+    try:
+        cur.execute(
+            """
+            SELECT bin_id FROM bins
+             WHERE warehouse_id = 1 AND bin_type = 'Pickable'
+               AND bin_id NOT IN (
+                   SELECT bin_id FROM inventory
+                    WHERE item_id = 1 AND warehouse_id = 1
+               )
+             ORDER BY bin_id LIMIT 1
+            """
+        )
+        candidate = cur.fetchone()
+        assert candidate, "seed requires a second pickable source bin"
+        cur.execute(
+            """
+            INSERT INTO inventory
+                (item_id, bin_id, warehouse_id, quantity_on_hand, quantity_allocated)
+            VALUES (1, %s, 1, 10, 0)
+            """,
+            (candidate[0],),
+        )
+    finally:
+        cur.close()
+
+
 def _reserve(to_id, line_id, inventory_id, quantity, consumed=0, released=0, picked=0):
     cur = _cursor()
     try:
@@ -208,6 +238,7 @@ def _all(sql, params=()):
 def test_start_picking_uses_only_line_owned_bin_slices_and_blocks_duplicate_batch(
     client, auth_headers
 ):
+    _ensure_second_source_inventory_row()
     rows = _inventory_rows(5)
     assert len(rows) >= 2, "seed requires two source inventory bins"
     first, second = rows[0], rows[1]
