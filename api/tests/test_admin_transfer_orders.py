@@ -216,6 +216,105 @@ class TestListAndDetail:
 # ----------------------------------------------------------------------
 
 
+class TestExactBinPickingPlan:
+    def test_start_picking_uses_only_owned_bins_and_resumes_after_prior_picks(
+        self, client, auth_headers,
+    ):
+        to_id = _seed_to(source_wh=1, dest_wh=2, status="OPEN")
+        line_id = _seed_to_line(to_id, item_id=1, committed=5)
+        inventory_rows = _query(
+            """
+            SELECT inventory_id, bin_id, quantity_on_hand
+              FROM inventory
+             WHERE item_id = 1 AND warehouse_id = 1
+             ORDER BY inventory_id
+             LIMIT 2
+            """
+        )
+        if len(inventory_rows) < 2:
+            pytest.skip("seed warehouse needs two inventory rows for exact-bin coverage")
+        first, second = inventory_rows
+        assert first[2] >= 3 and second[2] >= 2
+
+        conn = db_test_context.get_raw_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE inventory SET quantity_allocated = quantity_allocated + 3 "
+            " WHERE inventory_id = %s",
+            (first[0],),
+        )
+        cur.execute(
+            "UPDATE inventory SET quantity_allocated = quantity_allocated + 2 "
+            " WHERE inventory_id = %s",
+            (second[0],),
+        )
+        cur.execute(
+            "INSERT INTO transfer_order_reservations "
+            "(to_line_id, inventory_id, reserved_qty) VALUES (%s, %s, 3), (%s, %s, 2)",
+            (line_id, first[0], line_id, second[0]),
+        )
+        cur.close()
+
+        started = client.post(
+            f"/api/admin/transfer-orders/{to_id}/start-picking",
+            headers=auth_headers,
+        )
+        assert started.status_code == 201, started.get_json()
+        tasks = _query(
+            "SELECT bin_id, quantity_to_pick FROM pick_tasks "
+            " WHERE to_id = %s ORDER BY pick_sequence",
+            (to_id,),
+        )
+        assert tasks == [(first[1], 3), (second[1], 2)]
+
+        duplicate_start = client.post(
+            f"/api/admin/transfer-orders/{to_id}/start-picking",
+            headers=auth_headers,
+        )
+        assert duplicate_start.status_code == 409
+        assert duplicate_start.get_json()["error"] == "pending_pick_tasks_exist"
+        assert _query(
+            "SELECT COUNT(*) FROM pick_tasks WHERE to_id = %s", (to_id,),
+        )[0][0] == 2
+
+        # Simulate the first reserved bin being picked and the untouched
+        # pending task being removed with its abandoned batch.
+        conn = db_test_context.get_raw_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE pick_tasks SET status = 'PICKED', quantity_picked = 3, "
+            "picked_by = 'picker', picked_at = NOW() "
+            " WHERE to_id = %s AND bin_id = %s",
+            (to_id, first[1]),
+        )
+        cur.execute(
+            "DELETE FROM pick_tasks WHERE to_id = %s AND bin_id = %s AND status = 'PENDING'",
+            (to_id, second[1]),
+        )
+        cur.execute(
+            "UPDATE transfer_order_lines SET picked_qty = 3, status = 'PARTIALLY_PICKED' "
+            " WHERE to_line_id = %s",
+            (line_id,),
+        )
+        cur.execute(
+            "UPDATE transfer_orders SET status = 'PARTIALLY_PICKED' WHERE to_id = %s",
+            (to_id,),
+        )
+        cur.close()
+
+        resumed = client.post(
+            f"/api/admin/transfer-orders/{to_id}/start-picking",
+            headers=auth_headers,
+        )
+        assert resumed.status_code == 201, resumed.get_json()
+        remaining_tasks = _query(
+            "SELECT bin_id, quantity_to_pick FROM pick_tasks "
+            " WHERE to_id = %s AND status = 'PENDING' ORDER BY pick_sequence",
+            (to_id,),
+        )
+        assert remaining_tasks == [(second[1], 2)]
+
+
 class TestExactReservationApproval:
     def test_approval_consumes_only_the_line_owned_bin_allocations(
         self, client, auth_headers,
