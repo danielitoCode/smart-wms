@@ -21,6 +21,7 @@ export interface BackorderDto {
   parent_so_number: string | null;
   warehouse_id: number;
   status: BackorderStatusDto;
+  order_type: string;
   customer_name: string | null;
   items: BackorderItemDto[];
   days_waiting: number;
