@@ -127,6 +127,7 @@ ALL_TABLES = [
     "transfer_order_approvals",
     "transfer_order_lines",
     "transfer_orders",
+    "inter_warehouse_transfer_requests",
     "bin_transfers",
     "item_receipts",
     "sales_order_lines",
