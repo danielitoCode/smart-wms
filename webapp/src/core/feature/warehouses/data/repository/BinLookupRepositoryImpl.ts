@@ -6,8 +6,8 @@ import { WarehouseMapper } from '../mapper/WarehouseMapper';
 export class BinLookupRepositoryImpl implements BinLookupRepository {
 	constructor(private readonly datasource: BinLookupRemoteDataSource) {}
 
-	async searchOperationalBins(query: string): Promise<OperationalBinSearchResult[]> {
-		return (await this.datasource.search(query)).map(WarehouseMapper.toOperationalBinSearchResult);
+	async searchOperationalBins(query: string, warehouseId?: number): Promise<OperationalBinSearchResult[]> {
+		return (await this.datasource.search(query, warehouseId)).map(WarehouseMapper.toOperationalBinSearchResult);
 	}
 
 	async lookupOperationalBin(barcode: string): Promise<OperationalBinLookup> {
