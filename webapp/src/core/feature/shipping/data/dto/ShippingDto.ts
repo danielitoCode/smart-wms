@@ -18,7 +18,6 @@ export type ShippingLineDto = {
 	item_name: string;
 	quantity_ordered: number;
 	quantity_picked: number;
-	quantity_packed: number;
 };
 
 export type ShippingOrderResponseDto = {
