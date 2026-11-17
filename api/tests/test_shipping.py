@@ -1,4 +1,6 @@
 from db_test_context import get_raw_connection
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 
 def _query_val(sql, params=None):
@@ -443,3 +445,40 @@ def test_shipping_order_lookup_is_scoped_to_selected_warehouse(client, auth_head
         headers=auth_headers,
     )
     assert response.status_code == 404
+
+def test_concurrent_duplicate_fulfillments_create_one_shipment(client, auth_headers):
+    """Concurrent ship requests for one SO must serialize to one fulfillment."""
+    so_id = _advance_so_to_packed(client, auth_headers, "SO-2026-001")
+    barrier = threading.Barrier(2)
+
+    def fulfill_once(tracking_number):
+        with client.application.test_client() as worker:
+            barrier.wait(timeout=5)
+            return worker.post(
+                "/api/shipping/fulfill",
+                json={
+                    "so_id": so_id,
+                    "tracking_number": tracking_number,
+                    "carrier": "UPS",
+                    "ship_method": "GROUND",
+                },
+                headers=auth_headers,
+            )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(
+            pool.map(fulfill_once, ("CONCURRENT-SHIP-A", "CONCURRENT-SHIP-B"))
+        )
+
+    assert sorted(response.status_code for response in responses) == [200, 400]
+    successful = [response.get_json() for response in responses if response.status_code == 200]
+    assert len(successful) == 1
+    assert _query_val(
+        "SELECT COUNT(*) FROM item_fulfillments WHERE so_id = %s", (so_id,)
+    ) == 1
+    assert _query_val(
+        "SELECT status FROM sales_orders WHERE so_id = %s", (so_id,)
+    ) == "SHIPPED"
+    assert _query_val(
+        "SELECT COUNT(*) FROM audit_log WHERE action_type = 'SHIP'"
+    ) == 1
