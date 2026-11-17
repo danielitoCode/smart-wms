@@ -1,5 +1,4 @@
-import type { InterWarehouseTransfer, RecordInterWarehouseTransfer } from '../../domain/entity/InterWarehouseTransfer';
-import type { InterWarehouseTransferListFilters } from '../../domain/usecase/InterWarehouseTransferUseCases';
+import type { InterWarehouseTransfer, RecordInterWarehouseTransfer, InterWarehouseTransferListFilters } from '../../domain/entity/InterWarehouseTransfer';
 import type { InterWarehouseTransfersRepository } from '../../domain/repository/InterWarehouseTransfersRepository';
 import type { InterWarehouseTransfersRemoteDataSource } from '../datasource/InterWarehouseTransfersRemoteDataSource';
 import { InterWarehouseTransferMapper as M } from '../mapper/InterWarehouseTransferMapper';
