@@ -79,11 +79,11 @@ def _seed_transfer_pick():
             """
             INSERT INTO pick_tasks
                 (batch_id, so_id, so_line_id, to_id, to_line_id, item_id,
-                 bin_id, quantity_to_pick, pick_sequence, status)
-            VALUES (%s, NULL, NULL, %s, %s, 1, %s, 1, 1, 'PENDING')
+                 bin_id, inventory_id, quantity_to_pick, pick_sequence, status)
+            VALUES (%s, NULL, NULL, %s, %s, 1, %s, %s, 1, 1, 'PENDING')
             RETURNING pick_task_id
             """,
-            (batch_id, to_id, line_id, bin_id),
+            (batch_id, to_id, line_id, bin_id, inventory_id),
         )
         task_id = cur.fetchone()[0]
         conn.commit()
