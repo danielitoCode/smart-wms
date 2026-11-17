@@ -43,6 +43,12 @@ describe('TransferOrdersScreen', () => {
     expect(body).toContain('Faltante inicial');
     expect(body).toContain('Aprobado / transferido');
     expect(body).toContain('SKU-7');
+    expect(body).toContain('Reserva pendiente de liberar o aprobar');
+    expect(body).toContain('Faltante inicial');
+    expect(body).toContain('10');
+    expect(body).toContain('8');
+    expect(body).toContain('5');
+    expect(body).toContain('2');
   });
 
   it('renders approval snapshot and rejection history without reconstructing missing data', () => {
@@ -54,4 +60,15 @@ describe('TransferOrdersScreen', () => {
     expect(body).toContain('Damaged');
     expect(body).toContain('Rechazado el');
   });
+
+  it('renders normalized HTTP errors as an accessible alert', () => {
+    vm.error = 'Conflicto: existe una aprobación pendiente (409)';
+    const { body } = render(TransferOrdersScreen, {
+      context: new Map([['i18n', { t: (value: string) => value }]])
+    });
+    expect(body).toContain('role="alert"');
+    expect(body).toContain('Conflicto: existe una aprobación pendiente (409)');
+    vm.error = null;
+  });
+
 });
