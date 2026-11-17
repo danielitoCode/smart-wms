@@ -1115,6 +1115,13 @@ def submit_transfer_order_picks(to_id):
                 "error": "pending_approval_exists",
                 "to_approval_id": result["to_approval_id"],
             }), 409
+        if reason == "reservation_snapshot_mismatch":
+            return jsonify({
+                "error": "reservation_integrity_error",
+                "to_line_id": result["to_line_id"],
+                "expected_picked": result["expected_picked"],
+                "reserved_picked": result["reserved_picked"],
+            }), 409
         # nothing_picked
         return jsonify({
             "error": "nothing_picked",
