@@ -73,7 +73,7 @@ export function validateSettingValue(key: string, value: unknown): string | null
 		case 'boolean':
 			return value === 'true' || value === 'false' ? null : `Valor booleano inválido para ${key}`;
 		case 'bin-id':
-			return value === '' || /^[1-9]\\d*$/.test(value) ? null : 'La ubicación de recepción debe ser un ID positivo o estar vacía';
+			return value === '' || /^[1-9][0-9]*$/.test(value) ? null : 'La ubicación de recepción debe ser un ID positivo o estar vacía';
 		case 'url':
 			if (value === '') return null;
 			try {
