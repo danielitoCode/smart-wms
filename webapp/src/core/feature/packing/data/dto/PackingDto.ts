@@ -32,4 +32,18 @@ export type PackingOrderResponseDto = {
 	items_verified: number;
 };
 
+export type VerifyPackResponseDto = {
+	message: string;
+	item: { sku: string; item_name: string; quantity_verified: number; line_complete: boolean };
+	order_progress: { total_lines: number; lines_verified: number; all_verified: boolean };
+};
+
+export type CompletePackingResponseDto = {
+	message: string;
+	so_number: string;
+	status: 'PACKED' | string;
+	total_items: number;
+	calculated_weight_lbs: number;
+};
+
 export type MessageDto = { message: string };
