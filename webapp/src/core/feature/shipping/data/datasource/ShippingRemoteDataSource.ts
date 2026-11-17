@@ -5,9 +5,9 @@ import type { FulfillResponseDto, ShippingOrderResponseDto } from '../dto/Shippi
 export class ShippingRemoteDataSource {
 	constructor(private readonly api: ApiClient) {}
 
-	loadOrder(barcode: string): Promise<ShippingOrderResponseDto> {
+	loadOrder(barcode: string, warehouseId: number): Promise<ShippingOrderResponseDto> {
 		return this.api.get<ShippingOrderResponseDto>(
-			`/api/shipping/order/${encodeURIComponent(barcode)}`
+			`/api/shipping/order/${encodeURIComponent(barcode)}?warehouse_id=${warehouseId}`
 		);
 	}
 
