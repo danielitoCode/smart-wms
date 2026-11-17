@@ -57,6 +57,7 @@ export type RefundRelatedRecordDto = {
   order_type: string | null;
   status: string;
   parent_so_id: number | null;
+  order_total: string | number | null;
   is_voided: boolean;
   created_at: string | null;
   is_current: boolean;
