@@ -204,7 +204,7 @@
 										<button class="secondary add" type="button" onclick={addBubble}>{i18n.t('Añadir canal')}</button>
 									</div>
 								{:else}
-									<input id={'setting-' + key} type={key === 'picking_ticket_logo_url' ? 'url' : 'text'}
+									<input id={'setting-' + key} type="text" inputmode={key === 'picking_ticket_logo_url' ? 'url' : undefined}
 										value={vm.draft[key] ?? ''} oninput={(event) => vm.setDraft(key, event.currentTarget.value)} />
 								{/if}
 							</div>
