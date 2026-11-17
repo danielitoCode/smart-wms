@@ -1,7 +1,6 @@
 """Inter-warehouse transfer authorization, transactional integrity and idempotency."""
 import os
 import sys
-import threading
 import uuid
 
 import pytest
