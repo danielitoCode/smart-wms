@@ -6,7 +6,7 @@ import type {
 
 export interface PackingRepository {
 	/** GET /api/packing/order/{barcode} */
-	loadOrder(barcode: string): Promise<PackingOrderDetail>;
+	loadOrder(barcode: string, warehouseId: number): Promise<PackingOrderDetail>;
 	/** POST /api/packing/verify */
 	verify(input: VerifyPackInput): Promise<SimpleMessageResult>;
 	/** POST /api/packing/complete */
