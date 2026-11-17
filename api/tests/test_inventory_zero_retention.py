@@ -81,7 +81,6 @@ class TestDirectAdjustmentRetainsZeroRow:
                 "adjustment_type": "REMOVE",
                 "quantity": 10,
                 "reason": "Zero-retention regression",
-                "idempotency_key": str(uuid.uuid4()),
             },
             headers=auth_headers,
         )
