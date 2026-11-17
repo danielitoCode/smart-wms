@@ -126,6 +126,14 @@ describe('CancelBackorderUseCase', () => {
     expect(repo.cancel).not.toHaveBeenCalled();
   });
 
+  it('rejects replacement/exchange child rows because the endpoint only cancels order_type=backorder', async () => {
+    for (const orderType of ['replacement', 'exchange']) {
+      const repo = repository(makeOrder({ orderType, parentSoId: 10 }));
+      await expect(new CancelBackorderUseCase(repo).execute(41, 'other')).rejects.toThrow(/no es un backorder/);
+      expect(repo.cancel).not.toHaveBeenCalled();
+    }
+  });
+
   it('rejects a missing or mismatched parent before posting cancellation', async () => {
     const repo = repository(makeOrder(), null);
     await expect(new CancelBackorderUseCase(repo).execute(41, 'other')).rejects.toThrow(/pedido original/);
