@@ -45,6 +45,7 @@
 	type NavItem = { href: string; label: string; icon: IconName; pageKey?: string };
 	const navGroups: { label: string; items: NavItem[] }[] = $derived([
 		{ label: i18n.t('Operaciones'), items: [
+			{ href: '/dashboard', label: i18n.t('Dashboard'), icon: 'database', pageKey: 'dashboard' },
 			{ href: '/receiving', label: i18n.t('Recepción'), icon: 'inbox', pageKey: 'receiving' },
 			{ href: '/putaway', label: i18n.t('Ubicación'), icon: 'map-pin', pageKey: 'putaway' },
 			{ href: '/picking', label: i18n.t('Preparación'), icon: 'clipboard-list' },
