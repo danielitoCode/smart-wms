@@ -13,7 +13,10 @@ export class ListInterWarehouseTransfersUseCase {
     for (const [label, value] of [['origen', filters.fromWarehouseId], ['destino', filters.toWarehouseId]] as const) {
       if (value !== undefined && (!Number.isSafeInteger(value) || value <= 0)) throw new Error('El almacén de ' + label + ' no es válido');
     }
-    return this.repository.list(limit, filters);
+    return this.repository.list(limit, filters).then(rows => rows.filter(row =>
+      (filters.fromWarehouseId === undefined || row.sourceWarehouseId === filters.fromWarehouseId) &&
+      (filters.toWarehouseId === undefined || row.destinationWarehouseId === filters.toWarehouseId)
+    ));
   }
 }
 
