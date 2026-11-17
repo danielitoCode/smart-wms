@@ -23,7 +23,11 @@ export const PickingMapper = {
 			totalPicks: dto.total_picks ?? 0,
 			completedPicks: dto.completed_picks ?? 0,
 			totalOrders: dto.total_orders ?? 0,
-			createdAt: dto.created_at ?? null
+			createdAt: dto.created_at ?? null,
+			warehouseId: dto.warehouse_id ?? null,
+			kind: dto.kind ?? null,
+			transferOrderId: dto.to_id ?? null,
+			transferOrderNumber: dto.to_number ?? null
 		};
 	},
 
