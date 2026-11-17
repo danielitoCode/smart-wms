@@ -28,7 +28,7 @@ export class CreateTransferOrderUseCase {
     if (!Array.isArray(input.records) || input.records.length === 0) throw new Error('Debe incluir al menos una línea');
     for (const [index, row] of input.records.entries()) {
       if (!row.sku.trim()) throw new Error(`SKU obligatorio en la línea ${index + 1}`);
-      if (!Number.isInteger(row.quantity) || row.quantity <= 0 || row.quantity > 100000) throw new Error(`Cantidad inválida en la línea ${index + 1}`);
+      if (!Number.isInteger(row.quantity) || row.quantity <= 0 || row.quantity > 1000000) throw new Error(`Cantidad inválida en la línea ${index + 1}`);
     }
     return this.repository.create(input);
   }
