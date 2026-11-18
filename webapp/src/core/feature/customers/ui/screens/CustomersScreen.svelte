@@ -24,7 +24,7 @@
 	{:else if state.customers.length === 0}<p class="status">No hay clientes para estos criterios.</p>
 	{:else}
 		<div class="table-wrap"><table>
-			<thead><tr><th>Cliente</th><th>Teléfono</th><th>Pedidos</th><th>Almacenes</th><th></th></tr></thead>
+			<thead><tr><th>Cliente</th><th>Teléfono</th><th>Pedidos en página</th><th>Almacenes</th><th></th></tr></thead>
 			<tbody>{#each state.customers as customer (customer.id)}
 				<tr><td><strong>{customer.name}</strong></td><td>{customer.phone ?? '—'}</td><td>{customer.orderCount ?? '—'}</td><td>{customer.warehouseIds.join(', ') || '—'}</td>
 					<td><button type="button" class="link" onclick={() => state.selectCustomer(customer)}>Ver detalle</button></td></tr>
@@ -54,7 +54,7 @@
 			<h3>Historial de pedidos</h3>
 			{#if state.customerOrders?.orders.length}
 				<div class="table-wrap"><table><thead><tr><th>Pedido</th><th>Fecha</th><th>Estado</th><th>Total</th><th>Almacén</th></tr></thead>
-				<tbody>{#each state.customerOrders.orders as order (order.id)}<tr><td><a href={'/management/sales-orders/' + order.id}>{order.number}</a></td><td>{order.orderDate ?? '—'}</td><td>{order.status ?? '—'}</td><td>{order.orderTotal ?? '—'}</td><td>{order.warehouseId ?? '—'}</td></tr>{/each}</tbody></table></div>
+				<tbody>{#each state.customerOrders.orders as order (order.id)}<tr><td><a href={'/sales-orders/' + order.id}>{order.number}</a></td><td>{order.orderDate ?? '—'}</td><td>{order.status ?? '—'}</td><td>{order.orderTotal ?? '—'}</td><td>{order.warehouseId ?? '—'}</td></tr>{/each}</tbody></table></div>
 				<div class="pagination"><span>Página {state.customerOrders.page} de {state.customerOrders.totalPages} · {state.customerOrders.matchingSalesOrders} coincidencias backend</span>
 				<div><button type="button" disabled={state.ordersPage <= 1} onclick={() => state.loadOrders(state.ordersPage - 1)}>Anterior</button><button type="button" disabled={state.ordersPage >= state.customerOrders.totalPages} onclick={() => state.loadOrders(state.ordersPage + 1)}>Siguiente</button></div></div>
 			{:else if !state.detailLoading}<p class="hint">No se encontraron pedidos para este cliente.</p>{/if}
