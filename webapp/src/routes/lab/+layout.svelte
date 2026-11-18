@@ -18,6 +18,7 @@
 			<a href="/lab/onboarding">Onboarding</a>
 			<a href="/lab/blob-card">BlobCard</a>
 			<a href="/lab/testimonial">Testimonial</a>
+			<a href="/lab/byobu">Byobu</a>
 		</nav>
 	</header>
 	<main class="lab-main">
