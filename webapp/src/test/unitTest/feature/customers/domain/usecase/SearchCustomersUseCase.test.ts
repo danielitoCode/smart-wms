@@ -3,17 +3,17 @@ import { SearchCustomersUseCase } from '../../../../../../core/feature/customers
 import type { CustomerRepository } from '../../../../../../core/feature/customers/domain/repository/CustomerRepository';
 
 describe('SearchCustomersUseCase', () => {
-  it('trims the query before calling the repository', async () => {
-    const list = vi.fn().mockResolvedValue([]);
-    const repository = { list } as unknown as CustomerRepository;
-    await new SearchCustomersUseCase(repository).execute({ search: '  Acme  ' });
-    expect(list).toHaveBeenCalledWith({ q: 'Acme' });
-  });
-
-  it('rejects queries shorter than two characters without a request', () => {
-    const list = vi.fn();
-    const repository = { list } as unknown as CustomerRepository;
-    expect(() => new SearchCustomersUseCase(repository).execute({ search: ' A ' })).toThrow(/dos caracteres/);
-    expect(list).not.toHaveBeenCalled();
-  });
+	it('trims query and forwards warehouse scope', async () => {
+		const search = vi.fn().mockResolvedValue([]);
+		const repository = { search } as unknown as CustomerRepository;
+		await new SearchCustomersUseCase(repository).execute({ search: '  Acme  ', warehouseId: 3 });
+		expect(search).toHaveBeenCalledWith({ q: 'Acme', warehouseId: 3 });
+	});
+	it('rejects short queries and invalid warehouse IDs', () => {
+		const repository = { search: vi.fn() } as unknown as CustomerRepository;
+		const useCase = new SearchCustomersUseCase(repository);
+		expect(() => useCase.execute({ search: ' A ' })).toThrow(/dos caracteres/);
+		expect(() => useCase.execute({ search: 'Acme', warehouseId: 0 })).toThrow(/warehouseId/);
+		expect(repository.search).not.toHaveBeenCalled();
+	});
 });
