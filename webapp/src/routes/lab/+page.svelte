@@ -66,6 +66,13 @@
 			description: 'Formulario de contacto marketing a dos columnas (copy + card).'
 		},
 		{
+			id: 'product-detail',
+			name: 'ProductDetail',
+			status: 'ready',
+			href: '/lab/product-detail',
+			description: 'PDP: galería, info sticky, opciones glaze/finish, cantidad y acordeones.'
+		},
+		{
 			id: 'blob-card',
 			name: 'BlobCard',
 			status: 'ready',
