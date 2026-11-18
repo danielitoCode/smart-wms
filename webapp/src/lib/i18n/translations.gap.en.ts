@@ -124,5 +124,6 @@ export const gapEn: Record<string, string> = {
   "Purgar suscripción": "Purge subscription",
   "El borrado permanente elimina también el historial de entregas y los secretos. Solo se permite si no hay entregas pendientes o en vuelo.": "Permanent deletion also removes delivery history and secrets. It is allowed only when no deliveries are pending or in flight.",
   "Confirmar purga": "Confirm purge",
-  "Cerrar": "Close"
+  "Cerrar": "Close",
+  "No se pudo consultar el registro de conectores con el permiso actual. Introduce un connector_id existente.": "Could not read the connector registry with the current permission. Enter an existing connector_id."
 };

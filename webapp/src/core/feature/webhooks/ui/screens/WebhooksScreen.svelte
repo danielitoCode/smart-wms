@@ -36,7 +36,7 @@
 </script>
 
 <section class="page">
- <header><div><p class="eyebrow">SMART WMS · ADMIN</p><h1>{i18n.t('Webhooks')}</h1><p>{i18n.t('Suscripciones, entregas y recuperación de eventos externos.')}</p></div><div class="actions"><button type="button" onclick={() => void openErrorLog()}>{i18n.t('Registro de errores')}</button><button class="primary" type="button" onclick={openCreate} disabled={vm.connectors.length===0}>{i18n.t('Nueva suscripción')}</button></div></header>
+ <header><div><p class="eyebrow">SMART WMS · ADMIN</p><h1>{i18n.t('Webhooks')}</h1><p>{i18n.t('Suscripciones, entregas y recuperación de eventos externos.')}</p></div><div class="actions"><button type="button" onclick={() => void openErrorLog()}>{i18n.t('Registro de errores')}</button><button class="primary" type="button" onclick={openCreate} >{i18n.t('Nueva suscripción')}</button></div></header>
  {#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
  {#if vm.secret}<section class="secret" role="status"><strong>{i18n.t('Secreto nuevo · generación')} {vm.secret.secretGeneration}</strong><p>{i18n.t('Este valor solo se muestra ahora. Cópialo y guárdalo en el sistema consumidor; no se puede recuperar después.')}</p><code>{vm.secret.secret}</code><div class="actions"><button type="button" onclick={() => void copySecret()}>{i18n.t('Copiar secreto')}</button><button type="button" onclick={() => vm.clearSecret()}>{i18n.t('Ocultar')}</button></div></section>{/if}
  {#if vm.loading}<p>{i18n.t('Cargando…')}</p>{:else if vm.rows.length===0}<p class="empty">{i18n.t('No hay suscripciones webhook.')}</p>{:else}
@@ -56,7 +56,7 @@
 
  {#if showCreate}<div class="overlay"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="form-title"><h2 id="form-title">{editing?i18n.t('Editar webhook'):i18n.t('Nueva suscripción webhook')}</h2>{#if formError}<p class="error" role="alert">{formError}</p>{/if}
  <label>{i18n.t('Nombre visible')}<input bind:value={name} maxlength="128" required /></label>
- {#if !editing}<label>{i18n.t('Conector')}<select bind:value={connectorId}>{#each vm.connectors as c}<option value={c.connectorId}>{c.displayName} ({c.connectorId})</option>{/each}</select></label>{/if}
+ {#if !editing}<label>{i18n.t('Conector')}{#if vm.connectors.length>0}<select bind:value={connectorId}>{#each vm.connectors as c}<option value={c.connectorId}>{c.displayName} ({c.connectorId})</option>{/each}</select>{:else}<input bind:value={connectorId} maxlength="64" placeholder="connector_id" required /><small>{i18n.t('No se pudo consultar el registro de conectores con el permiso actual. Introduce un connector_id existente.')}</small>{/if}</label>{/if}
  <label>{i18n.t('URL destino')}<input type="url" bind:value={url} maxlength="2048" placeholder="https://…" required /></label>
  {#if editing}<label>{i18n.t('Filtro de suscripción (JSON)')}<textarea bind:value={filterJson} rows="6"></textarea></label><p class="hint">event_types · warehouse_ids · aggregate_external_id_allowlist. No envíes arrays vacíos.</p>
  {:else}<label>event_types <input bind:value={eventTypes} placeholder="order.created, inventory.updated" /></label><label>warehouse_ids <input bind:value={warehouseIds} placeholder="1, 2" /></label><label>aggregate_external_id_allowlist <input bind:value={externalIds} placeholder="UUID, UUID" /></label>{/if}

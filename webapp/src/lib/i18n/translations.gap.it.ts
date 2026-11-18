@@ -124,5 +124,6 @@ export const gapIt: Record<string, string> = {
   "Purgar suscripción": "Elimina definitivamente la sottoscrizione",
   "El borrado permanente elimina también el historial de entregas y los secretos. Solo se permite si no hay entregas pendientes o en vuelo.": "L’eliminazione definitiva rimuove anche lo storico delle consegne e i segreti. È consentita solo senza consegne pending o in corso.",
   "Confirmar purga": "Conferma eliminazione definitiva",
-  "Cerrar": "Chiudi"
+  "Cerrar": "Chiudi",
+  "No se pudo consultar el registro de conectores con el permiso actual. Introduce un connector_id existente.": "Impossibile consultare il registro dei connettori con il permesso corrente. Inserisci un connector_id esistente."
 };
