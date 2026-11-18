@@ -2175,7 +2175,9 @@ def get_sales_order_audit_history(so_id):
         "per_page": per_page,
         "pages": pages,
     })
-\n\n@admin_bp.route(
+
+
+@admin_bp.route(
     "/sales-orders/<int:so_id>/lines/<int:so_line_id>/allocation", methods=["PATCH"]
 )
 @require_auth
