@@ -9,6 +9,11 @@
 	const vm = createImportsState();
 	let fileInput: HTMLInputElement | null = $state(null);
 
+	function onImportTypeChange(event: Event) {
+		vm.setImportType((event.currentTarget as HTMLSelectElement).value as CsvImportType);
+		if (fileInput) fileInput.value = '';
+	}
+
 	async function onFileChange(event: Event) {
 		const file = (event.currentTarget as HTMLInputElement).files?.[0];
 		if (file) await vm.prepareFile(file);
@@ -57,7 +62,7 @@
 
 	<section class="panel">
 		<label>{i18n.t('Tipo de importación')}
-			<select value={vm.importType} onchange={(event) => vm.setImportType(event.currentTarget.value as CsvImportType)}>
+			<select value={vm.importType} onchange={onImportTypeChange}>
 				{#each vm.types as type}
 					<option value={type.value}>{i18n.t(type.label)} — {i18n.t(type.description)}</option>
 				{/each}

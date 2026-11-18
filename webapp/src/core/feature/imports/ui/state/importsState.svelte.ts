@@ -38,6 +38,7 @@ export function createImportsState(dependencies: ReturnType<typeof createImports
 	async function runRows(rows: ImportRecord[], originalRows: ImportRecord[]) {
 		if (importing || !rows.length || !source) return false;
 		importing = true; error = null;
+		job = { source, importType, status: 'running', result: null };
 		try {
 			const response = await deps.executeImport.execute(importType, rows);
 			const normalizedErrors = response.errors.map((item) => {
