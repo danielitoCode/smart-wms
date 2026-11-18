@@ -30,8 +30,12 @@ function mergeCustomer(target: Customer, row: SalesOrderCustomerDto): void {
 	for (const kind of ['customer', 'billing', 'shipping'] as const) {
 		const candidate = address(kind, row, wid);
 		if (!candidate) continue;
-		const key = JSON.stringify(candidate);
-		if (!target.addresses.some((item) => JSON.stringify(item) === key)) target.addresses.push(candidate);
+		const key = JSON.stringify([candidate.kind, candidate.lines, candidate.city, candidate.state, candidate.postalCode, candidate.country]);
+		const existing = target.addresses.find((item) =>
+			JSON.stringify([item.kind, item.lines, item.city, item.state, item.postalCode, item.country]) === key
+		);
+		if (!existing) target.addresses.push(candidate);
+		else if (!existing.phone && candidate.phone) existing.phone = candidate.phone;
 	}
 }
 
