@@ -1,18 +1,24 @@
 import { createFraudReviewDependencies } from '../../di/fraudReview.dependencies';
-import type { FraudReview } from '../../domain/entity/FraudReview';
+import type { FraudReview, FraudReviewDetail } from '../../domain/entity/FraudReview';
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 
 const dependencies = createFraudReviewDependencies();
 
 export function createFraudReviewState() {
   let rows = $state<FraudReview[]>([]);
+  let selectedDetail = $state<FraudReviewDetail | null>(null);
   let loading = $state(false);
+  let detailLoading = $state(false);
   let saving = $state(false);
   let error = $state<string | null>(null);
   let listEpoch = 0;
+  let detailEpoch = 0;
+  let currentQuery = '';
 
   async function load(warehouseId: number, query = '') {
     const epoch = ++listEpoch;
+    currentQuery = query;
+    selectedDetail = null;
     if (!Number.isSafeInteger(warehouseId) || warehouseId <= 0) {
       rows = [];
       error = 'Selecciona un almacén para consultar la bandeja';
@@ -33,9 +39,45 @@ export function createFraudReviewState() {
 
   function clear() {
     listEpoch += 1;
+    detailEpoch += 1;
     rows = [];
+    selectedDetail = null;
     loading = false;
+    detailLoading = false;
     error = null;
+  }
+
+  async function openDetail(id: number, warehouseId: number) {
+    const row = rows.find((candidate) => candidate.salesOrderId === id);
+    if (!row || row.warehouseId !== warehouseId) {
+      error = 'El pedido ya no pertenece al almacén seleccionado. Actualiza la bandeja.';
+      return false;
+    }
+    const epoch = ++detailEpoch;
+    detailLoading = true;
+    selectedDetail = null;
+    error = null;
+    try {
+      const detail = await dependencies.detail.execute(id);
+      if (epoch !== detailEpoch) return false;
+      if (detail.order.warehouseId !== warehouseId) {
+        error = 'El detalle recibido no coincide con el almacén seleccionado.';
+        return false;
+      }
+      selectedDetail = detail;
+      return true;
+    } catch (cause) {
+      if (epoch === detailEpoch) error = toUserMessage(cause, 'No se pudo cargar el detalle del pedido');
+      return false;
+    } finally {
+      if (epoch === detailEpoch) detailLoading = false;
+    }
+  }
+
+  function closeDetail() {
+    detailEpoch += 1;
+    selectedDetail = null;
+    detailLoading = false;
   }
 
   async function updateMemo(id: number, memo: string, warehouseId: number) {
@@ -50,6 +92,9 @@ export function createFraudReviewState() {
     try {
       await dependencies.updateMemo.execute(id, memo);
       rows = rows.map((candidate) => candidate.salesOrderId === id ? { ...candidate, memo } : candidate);
+      if (selectedDetail?.order.salesOrderId === id) {
+        selectedDetail = { ...selectedDetail, order: { ...selectedDetail.order, memo } };
+      }
       return true;
     } catch (cause) {
       error = toUserMessage(cause, 'No se pudo guardar la observación');
@@ -70,7 +115,7 @@ export function createFraudReviewState() {
     error = null;
     try {
       await dependencies.push.execute(id);
-      await load(warehouseId);
+      await load(warehouseId, currentQuery);
       return true;
     } catch (cause) {
       error = toUserMessage(cause, 'No se pudo liberar el pedido a preparación');
@@ -82,12 +127,11 @@ export function createFraudReviewState() {
 
   return {
     get rows() { return rows; },
+    get selectedDetail() { return selectedDetail; },
     get loading() { return loading; },
+    get detailLoading() { return detailLoading; },
     get saving() { return saving; },
     get error() { return error; },
-    load,
-    clear,
-    updateMemo,
-    push
+    load, clear, openDetail, closeDetail, updateMemo, push
   };
 }
