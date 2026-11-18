@@ -59,6 +59,13 @@
 			description: 'Card multi-paso de alta de negocio/workspace con progress y preview panel.'
 		},
 		{
+			id: 'form-two-column',
+			name: 'FormTwoColumn',
+			status: 'ready',
+			href: '/lab/form-two-column',
+			description: 'Formulario de contacto marketing a dos columnas (copy + card).'
+		},
+		{
 			id: 'blob-card',
 			name: 'BlobCard',
 			status: 'ready',
