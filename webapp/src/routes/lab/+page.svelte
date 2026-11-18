@@ -85,6 +85,13 @@
 			status: 'ready',
 			href: '/lab/disperse',
 			description: 'Carrusel con salida en fragmentos (WAAPI) y entrada suave (sin GSAP).'
+		},
+		{
+			id: 'sticky-cards',
+			name: 'StickyCardStack',
+			status: 'ready',
+			href: '/lab/sticky-cards',
+			description: 'Stack sticky de cards que escalan con el scroll (sin Framer/Lenis).'
 		}
 	] as const;
 </script>
