@@ -5,7 +5,7 @@ import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 const deps = createCustomersDependencies();
 const PER_PAGE = 50;
 
-export function createCustomersState() {
+export function createCustomersState(t: (source: string) => string = (source) => source) {
 	let customers = $state<Customer[]>([]);
 	let customerPage = $state<CustomerPage | null>(null);
 	let selectedCustomer = $state<Customer | null>(null);
@@ -40,7 +40,7 @@ export function createCustomersState() {
 			}
 		} catch (err) {
 			if (version === requestVersion) {
-				error = toUserMessage(err, 'No se pudieron cargar los clientes');
+				error = toUserMessage(err, t('No se pudieron cargar los clientes'));
 				customers = [];
 				customerPage = null;
 			}
@@ -64,7 +64,7 @@ export function createCustomersState() {
 			selectedCustomer = detail ?? customer;
 			customerOrders = orders;
 		} catch (err) {
-			if (version === detailRequestVersion) detailError = toUserMessage(err, 'No se pudo cargar el detalle del cliente');
+			if (version === detailRequestVersion) detailError = toUserMessage(err, t('No se pudo cargar el detalle del cliente'));
 		} finally {
 			if (version === detailRequestVersion) detailLoading = false;
 		}
@@ -84,7 +84,7 @@ export function createCustomersState() {
 			});
 			if (version === detailRequestVersion && selectedCustomer?.name === customerName) customerOrders = result;
 		} catch (err) {
-			if (version === detailRequestVersion) detailError = toUserMessage(err, 'No se pudo cargar el historial de pedidos');
+			if (version === detailRequestVersion) detailError = toUserMessage(err, t('No se pudo cargar el historial de pedidos'));
 		} finally {
 			if (version === detailRequestVersion) detailLoading = false;
 		}
