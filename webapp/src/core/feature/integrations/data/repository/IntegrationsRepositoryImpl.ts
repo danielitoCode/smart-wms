@@ -13,5 +13,4 @@ export class IntegrationsRepositoryImpl implements IntegrationsRepository {
   async resetSync(name: string, wid: number, type?: SyncType|null): Promise<SyncResetResult> { const r = await this.remote.resetSync(name, wid, type); return { rowsReset: r.rows_reset ?? 0, connectorName: r.connector, warehouseId: r.warehouse_id, syncType: (r.sync_type as SyncType|null) ?? null }; }
   async executeSync(name: string, wid: number, type: SyncType): Promise<SyncQueueResult> { const r = await this.remote.executeSync(name, wid, type); if (!r.task_id) throw new Error('El servidor no devolvió el identificador de la tarea'); return { taskId: r.task_id, connectorName: r.connector, warehouseId: r.warehouse_id, syncType: type }; }
   async deleteCredentials(name: string, wid: number) { await this.remote.deleteCredentials(name, wid); }
-  async test(name: string) { const r = await this.remote.test(name); return { ok: Boolean(r.connected), message: r.message ?? null }; }
 }

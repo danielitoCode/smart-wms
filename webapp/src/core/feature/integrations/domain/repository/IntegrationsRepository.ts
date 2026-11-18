@@ -9,6 +9,4 @@ export interface IntegrationsRepository {
   resetSync(name: string, warehouseId: number, syncType?: SyncType | null): Promise<SyncResetResult>;
   executeSync(name: string, warehouseId: number, syncType: SyncType): Promise<SyncQueueResult>;
   deleteCredentials(name: string, warehouseId: number): Promise<void>;
-  /** Legacy compatibility until the screen is migrated to warehouse-scoped actions. */
-  test(name: string): Promise<{ ok: boolean; message: string | null }>;
 }
