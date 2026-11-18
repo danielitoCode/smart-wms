@@ -34,7 +34,7 @@ export const FraudReviewMapper = {
       throw new Error('El pedido ya no está en revisión de fraude');
     }
     return {
-      order: this.toDomain({
+      order: FraudReviewMapper.toDomain({
         so_id: order.so_id,
         so_number: order.so_number,
         status: order.status,
