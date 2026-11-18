@@ -60,6 +60,6 @@ export class ApiTokensRepositoryImpl implements ApiTokensRepository {
 
 	async warehouses() {
 		const response = await this.remote.warehouses();
-		return response.warehouses;
+		return response.warehouses.map((w) => ({ id: w.warehouse_id, code: w.warehouse_code, name: w.warehouse_name ?? null }));
 	}
 }
