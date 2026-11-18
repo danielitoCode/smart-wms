@@ -35,6 +35,17 @@ describe('CustomerRepositoryImpl', () => {
 		const page = await new CustomerRepositoryImpl(remote).getOrders({ customerName: 'Acme' });
 		expect(page.orders.map((order) => order.id)).toEqual([1, 3]);
 	});
+	it('combines the aggregate search count with contact data from a real order detail', async () => {
+		const remote = source({
+			searchSalesOrders: vi.fn().mockResolvedValue({ sales_orders: [{ so_id: 22, so_number: 'SO-22', customer_name: 'Acme', customer_phone: '555', customer_address: 'Main St', warehouse_id: 4 }], total: 1, page: 1, per_page: 50, pages: 1 }),
+			search: vi.fn().mockResolvedValue([{ type: 'customer', label: 'Acme', id: 'Acme', sublabel: '120 orders' }]),
+			getSalesOrderDetail: vi.fn().mockResolvedValue({ sales_order: { customer_email: 'acme@example.test', customer_phone: '555' } })
+		});
+		const detail = await new CustomerRepositoryImpl(remote).getDetail('Acme', 4);
+		expect(detail).toMatchObject({ name: 'Acme', email: 'acme@example.test', orderCount: 120, phone: '555' });
+		expect(remote.getSalesOrderDetail).toHaveBeenCalledWith(22);
+	});
+
 	it('returns null detail for customers with no matching orders', async () => {
 		const remote = source();
 		await expect(new CustomerRepositoryImpl(remote).getDetail('Missing')).resolves.toBeNull();
