@@ -18,7 +18,7 @@ describe('Fraud review use cases', () => {
   it('delegates the fraud queue query with the selected warehouse', async () => {
     const repo = repository();
     await new ListFraudReviewsUseCase(repo).execute(7);
-    expect(repo.list).toHaveBeenCalledWith(7);
+    expect(repo.list).toHaveBeenCalledWith(7, '');
   });
 
   it('accepts the backend memo limit and forwards an empty string to clear it', async () => {
