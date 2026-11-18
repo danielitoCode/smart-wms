@@ -158,5 +158,13 @@ export const gapEn: Record<string, string> = {
   "Ajustes de inventario": "Inventory adjustments",
   "Correcciones aprobadas de existencias por SKU, almacén y bin": "Approved stock corrections by SKU, warehouse and bin"
 ,
-  "Límite del servidor: 5.000 registros y 10 MiB por petición.": "Server limit: 5,000 records and 10 MiB per request."
+  "Límite del servidor: 5.000 registros y 10 MiB por petición.": "Server limit: 5,000 records and 10 MiB per request.",
+
+  'Aplicado': 'Applied',
+  'Alcance de esta bandeja': 'Feed scope',
+  'Consulta los registros inbound aplicados, su sistema de origen y la entidad canónica asociada.': 'Review applied inbound records, their source system, and the associated canonical entity.',
+  'Solo aparecen filas que llegaron a staging después de aplicar correctamente el mapeo y actualizar la entidad canónica. Aplicado confirma ese resultado; sustituido identifica una versión aplicada que fue reemplazada por otra más reciente.': 'Only rows persisted to staging after successful mapping and canonical entity update appear here. Applied confirms that outcome; superseded identifies an applied version later replaced by a newer one.',
+  'Las solicitudes rechazadas, los errores de validación y los reintentos sin éxito no se guardan en estas tablas y no aparecen aquí. Los reenvíos idempotentes devuelven la fila existente; esta vista no ofrece replay ni reintento.': 'Rejected requests, validation errors, and unsuccessful retries are not stored in these tables and do not appear here. Idempotent resubmissions return the existing row; this view does not offer replay or retry.',
+  'Los campos sensibles reconocidos se ocultan en el servidor antes de devolver el payload. El token se identifica solo por su ID; nunca se expone su valor secreto. Esta vista es de solo lectura.': 'Recognized sensitive fields are redacted by the server before returning the payload. The token is identified only by its ID; its secret value is never exposed. This view is read-only.'
+
 };

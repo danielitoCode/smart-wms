@@ -28,7 +28,7 @@
 	}
 </script>
 <section class="page">
-	<PageHeader title={i18n.t('Actividad entrante')} subtitle={i18n.t('Consulta los eventos inbound aceptados, su origen, estado y registro canónico asociado.')} />
+	<PageHeader title={i18n.t('Actividad entrante')} subtitle={i18n.t('Consulta los registros inbound aplicados, su sistema de origen y la entidad canónica asociada.')} />
 	{#if vm.error}<UiBanner tone="error" message={vm.error} /><button class="secondary retry" type="button" onclick={() => void vm.load()} disabled={vm.loading}>{i18n.t('Reintentar')}</button>{/if}
 	<form class="filters" onsubmit={(event) => { event.preventDefault(); void vm.applyFilters(); }}>
 		<label>{i18n.t('Sistema origen')}<input value={vm.sourceSystem} oninput={(event) => vm.setSourceSystem(event.currentTarget.value)} placeholder="fabric" /></label>
@@ -36,13 +36,18 @@
 			<option value="">{i18n.t('Todos')}</option>{#each INBOUND_RESOURCES as item}<option value={item}>{resourceLabels[item]}</option>{/each}
 		</select></label>
 		<label>{i18n.t('Estado')}<select value={vm.status} onchange={(event) => vm.setStatus(event.currentTarget.value as InboundActivityStatus | '')}>
-			<option value="">{i18n.t('Todos')}</option><option value="applied">{i18n.t('Procesado')}</option><option value="superseded">{i18n.t('Sustituido')}</option>
+			<option value="">{i18n.t('Todos')}</option><option value="applied">{i18n.t('Aplicado')}</option><option value="superseded">{i18n.t('Sustituido')}</option>
 		</select></label>
 		<label>{i18n.t('Recibido desde')}<input type="datetime-local" value={vm.since} oninput={(event) => vm.setSince(event.currentTarget.value)} /></label>
 		<label>{i18n.t('Recibido hasta')}<input type="datetime-local" value={vm.until} oninput={(event) => vm.setUntil(event.currentTarget.value)} /></label>
 		<div class="actions"><button type="submit" disabled={vm.loading}>{i18n.t('Aplicar filtros')}</button>
 			<button type="button" class="secondary" onclick={() => void vm.load()} disabled={vm.loading}>{i18n.t('Actualizar')}</button></div>
 	</form>
+	<aside class="scope-notice" role="note">
+		<strong>{i18n.t('Alcance de esta bandeja')}</strong>
+		<p>{i18n.t('Solo aparecen filas que llegaron a staging después de aplicar correctamente el mapeo y actualizar la entidad canónica. Aplicado confirma ese resultado; sustituido identifica una versión aplicada que fue reemplazada por otra más reciente.')}</p>
+		<p>{i18n.t('Las solicitudes rechazadas, los errores de validación y los reintentos sin éxito no se guardan en estas tablas y no aparecen aquí. Los reenvíos idempotentes devuelven la fila existente; esta vista no ofrece replay ni reintento.')}</p>
+	</aside>
 	{#if vm.loading && vm.rows.length === 0}<p class="muted" role="status">{i18n.t('Cargando actividad entrante…')}</p>
 	{:else if vm.rows.length === 0 && vm.error}<p class="empty">{i18n.t('No se pudo recuperar la actividad. Revisa el error anterior e inténtalo de nuevo.')}</p>
 	{:else if vm.rows.length === 0}<p class="empty">{vm.loading ? i18n.t('Cargando actividad entrante…') : i18n.t('No hay actividad entrante para estos filtros.')}</p>
@@ -50,12 +55,12 @@
 		{#if vm.loading}<p class="muted" role="status">{i18n.t('Actualizando actividad…')}</p>{/if}
 		<div class="table-wrap"><table><thead><tr>
 			<th>{i18n.t('Recibido')}</th><th>{i18n.t('Recurso')}</th><th>{i18n.t('Sistema origen')}</th>
-			<th>{i18n.t('ID externo')}</th><th>{i18n.t('Versión')}</th><th>{i18n.t('Estado')}</th><th>{i18n.t('Acciones')}</th>
+			<th>{i18n.t('ID externo')}</th><th>{i18n.t('Versión')}</th><th>{i18n.t('Token de ingesta')}</th><th>{i18n.t('Estado')}</th><th>{i18n.t('Acciones')}</th>
 		</tr></thead><tbody>
 			{#each vm.rows as row (row.resource + '-' + String(row.inboundId))}
 				<tr><td>{formatDate(row.receivedAt)}</td><td>{resourceLabels[row.resource]}</td><td class="mono">{row.sourceSystem}</td>
-					<td class="mono">{row.externalId}</td><td class="mono">{row.externalVersion}</td>
-					<td><span class:processed={row.status === 'applied'} class="status">{row.status === 'applied' ? i18n.t('Procesado') : i18n.t('Sustituido')}</span></td>
+					<td class="mono">{row.externalId}</td><td class="mono">{row.externalVersion}</td><td>{row.ingestedViaTokenId ?? '—'}</td>
+					<td><span class:processed={row.status === 'applied'} class="status">{row.status === 'applied' ? i18n.t('Aplicado') : i18n.t('Sustituido')}</span></td>
 					<td><button type="button" class="link-button" onclick={() => void vm.openDetail(row)}>{i18n.t('Ver detalle')}</button></td></tr>
 			{/each}
 		</tbody></table></div>
@@ -74,7 +79,7 @@
 				<dt>{i18n.t('ID externo')}</dt><dd class="mono">{vm.detail.row.externalId}</dd>
 				<dt>{i18n.t('Versión')}</dt><dd>{vm.detail.row.externalVersion}</dd>
 				<dt>{i18n.t('Recibido')}</dt><dd>{formatDate(vm.detail.row.receivedAt)}</dd>
-				<dt>{i18n.t('Estado')}</dt><dd>{vm.detail.row.status}</dd>
+				<dt>{i18n.t('Estado')}</dt><dd>{vm.detail.row.status === 'applied' ? i18n.t('Aplicado') : i18n.t('Sustituido')}</dd>
 				<dt>{i18n.t('Sustituido')}</dt><dd>{formatDate(vm.detail.row.supersededAt)}</dd>
 				<dt>{i18n.t('ID canónico')}</dt><dd class="mono">{vm.detail.row.canonicalId ?? '—'}</dd>
 				<dt>{i18n.t('Token de ingesta')}</dt><dd>{vm.detail.row.ingestedViaTokenId ?? '—'}</dd>
@@ -83,12 +88,13 @@
 			{#if !vm.detail.sourcePayloadRetained}<p class="notice">{i18n.t('El payload de origen fue eliminado por la política de retención.')}</p>{/if}
 			<div class="payloads"><section><h3>{i18n.t('Payload de origen')}</h3><pre>{prettyPayload(vm.detail.sourcePayload)}</pre></section>
 				<section><h3>{i18n.t('Payload canónico')}</h3><pre>{prettyPayload(vm.detail.canonicalPayload)}</pre></section></div>
-			<p class="hint">{i18n.t('Los campos sensibles se ocultan en el servidor. Esta vista es de solo lectura; los intentos rechazados no generan filas de staging.')}</p>
+			<p class="hint">{i18n.t('Los campos sensibles reconocidos se ocultan en el servidor antes de devolver el payload. El token se identifica solo por su ID; nunca se expone su valor secreto. Esta vista es de solo lectura.')}</p>
 		</section>
 	{/if}
 </section>
 <style>
 	.page{max-width:76rem;margin:0 auto;padding:1.5rem 1.25rem}
+	.scope-notice{margin:1rem 0;padding:.85rem 1rem;border:1px solid var(--line);border-left:3px solid var(--slate);border-radius:var(--radius-card);background:var(--surface);font-size:.83rem;color:var(--slate)}.scope-notice p{margin:.45rem 0 0}.scope-notice strong{color:var(--ink)}
 	.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(10rem,1fr));gap:.8rem;align-items:end;margin:1rem 0;padding:1rem;border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface)}
 	label{display:grid;gap:.35rem;font-size:.8rem;font-weight:600;color:var(--slate)}
 	input,select{min-width:0;width:100%;padding:.55rem .65rem;border:1px solid var(--line);border-radius:var(--radius-field);background:var(--bg);color:var(--ink)}

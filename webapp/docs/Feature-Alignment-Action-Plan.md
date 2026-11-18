@@ -478,15 +478,25 @@ Referencia: [React Dashboard.jsx](https://github.com/danielitoCode/smart-wms/blo
 ## F5.7 Inbound Activity — cierre de integración
 
 1. Relacionar eventos con source systems.
-2. Filtrar por origen, tipo, estado y fecha.
+2. Filtrar por origen, tipo/recurso, estado y fecha.
 3. Verificar detalle y payload.
-4. Mostrar errores y correlación con entidades creadas.
-5. Proteger información sensible.
-6. Probar duplicados, fallidos y reintentos.
+4. Mostrar correlación con entidades creadas y documentar el límite de errores no persistidos.
+5. Proteger información sensible y no exponer secretos.
+6. Probar duplicados, fallidos e idempotencia/reintentos en los contratos disponibles.
 7. No presentar como procesado un evento solamente recibido.
 
 **Gate de Fase 5:** contratos verificables, secretos protegidos y estados de integración inequívocos.
 
+### F5.7 — estado de implementación (cierre frontend condicionado)
+
+- Domain/Application/Data/DI y UI Svelte existentes contrastados con los dos GET reales de `api/routes/admin/admin_inbound.py`; la UI filtra por `source_system`, recurso, estado y rango de fechas, pagina hasta 500 y carga detalle.
+- La correlación se presenta con `source_system`, `ingested_via_token_id`, `resource` y `canonical_id`; la navegación al registro canónico solo se considera directa cuando el resolver puede construir una ruta verificable.
+- El estado visible se expresa como **Aplicado** o **Sustituido**. `applied` se inserta después del mapeo y upsert canónico transaccional; no equivale a solo recibido.
+- El detalle usa los payloads ya redactados por Flask y señala cuando el payload fuente fue eliminado por retención. El token solo se identifica por ID; nunca se muestra su valor.
+- **Limitaciones backend confirmadas:** el feed no registra solicitudes rechazadas ni errores de POST; no hay endpoint admin de errores, DLQ, replay o retry. La UI lo declara y no simula estados fallidos ni botones de reintento.
+- **Bloqueo de seguridad para el Gate:** Flask no aplica aislamiento por almacén a esta bandeja; el grant `inbound` da acceso al feed global. El permiso debe considerarse privilegiado. Resolver el aislamiento requiere cambio backend y queda fuera del alcance frontend.
+- Pruebas Svelte cubren filtros, fechas, paginación, DTO/mappers, detalle, payload retenido, correlación y respuestas obsoletas. La idempotencia/fallos del POST tienen pruebas backend existentes, pero su ejecución no se atribuye al trabajo frontend.
+- **Pendiente para cierre:** ejecutar typecheck, build y suites Webapp sobre el HEAD final. Fase 5 no debe declararse Gate completo mientras no se acepte explícitamente el alcance global del permiso `inbound` o se implemente aislamiento en Flask.
 ---
 
 # 8. Fase 6 — Complementarios y cierre

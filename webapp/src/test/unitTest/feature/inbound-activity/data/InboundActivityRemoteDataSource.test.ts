@@ -14,6 +14,7 @@ describe('InboundActivityRemoteDataSource', () => {
 		expect(url.searchParams.get('source_system')).toBe('erp');
 		expect(url.searchParams.get('status')).toBe('applied');
 		expect(url.searchParams.get('since')).toBe('2026-01-01T00:00:00Z');
+		expect(url.searchParams.get('until')).toBe('2026-01-31T23:59:59Z');
 	});
 	it('calls the existing detail endpoint', async () => {
 		const api = { get: vi.fn().mockResolvedValue({}) } as unknown as ApiClient;

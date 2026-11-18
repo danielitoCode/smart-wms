@@ -53,4 +53,9 @@ describe('InboundActivityMapper', () => {
 			sourcePayloadRetained: false
 		});
 	});
+
+	it('rejects statuses that Flask does not expose instead of inventing lifecycle states', () => {
+		expect(() => InboundActivityMapper.toDomain({ ...dto, status: 'received' } as never))
+			.toThrow('Estado inbound desconocido: received');
+	});
 });

@@ -158,5 +158,13 @@ export const gapIt: Record<string, string> = {
   "Ajustes de inventario": "Rettifiche inventario",
   "Correcciones aprobadas de existencias por SKU, almacén y bin": "Correzioni approvate delle giacenze per SKU, magazzino e ubicazione"
 ,
-  "Límite del servidor: 5.000 registros y 10 MiB por petición.": "Limite server: 5.000 record e 10 MiB per richiesta."
+  "Límite del servidor: 5.000 registros y 10 MiB por petición.": "Limite server: 5.000 record e 10 MiB per richiesta.",
+
+  'Aplicado': 'Applicato',
+  'Alcance de esta bandeja': 'Ambito di questa schermata',
+  'Consulta los registros inbound aplicados, su sistema de origen y la entidad canónica asociada.': 'Consulta i record inbound applicati, il sistema di origine e l’entità canonica associata.',
+  'Solo aparecen filas que llegaron a staging después de aplicar correctamente el mapeo y actualizar la entidad canónica. Aplicado confirma ese resultado; sustituido identifica una versión aplicada que fue reemplazada por otra más reciente.': 'Sono mostrate solo le righe salvate nello staging dopo l’applicazione corretta della mappatura e l’aggiornamento dell’entità canonica. Applicato conferma il risultato; sostituito indica una versione applicata poi rimpiazzata da una più recente.',
+  'Las solicitudes rechazadas, los errores de validación y los reintentos sin éxito no se guardan en estas tablas y no aparecen aquí. Los reenvíos idempotentes devuelven la fila existente; esta vista no ofrece replay ni reintento.': 'Le richieste rifiutate, gli errori di convalida e i tentativi non riusciti non vengono salvati in queste tabelle. I reinvii idempotenti restituiscono la riga esistente; questa schermata non offre replay o retry.',
+  'Los campos sensibles reconocidos se ocultan en el servidor antes de devolver el payload. El token se identifica solo por su ID; nunca se expone su valor secreto. Esta vista es de solo lectura.': 'I campi sensibili riconosciuti vengono oscurati dal server prima di restituire il payload. Il token è identificato solo dal suo ID; il valore segreto non viene mai esposto. Questa schermata è di sola lettura.'
+
 };
