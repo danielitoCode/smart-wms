@@ -797,3 +797,39 @@ Cualquier desarrollador debe poder identificar qué existía en React, qué ofre
 - Svelte: lista paginada (50 por página), navegación, detalle con timeline de auditoría paginado (20 por página) y envío de `expected_memo`.
 - Pruebas backend añadidas: memo obsoleto, historial con grant/warehouse, permiso denegado, retorno duplicado y bloqueo real PostgreSQL con dos conexiones. Pruebas Svelte de datasource y mapper para paginación/historial.
 - **Pendiente:** ejecutar y corregir suites F6.1; completar typecheck/build/UI e integración; resolver los fallos generales preexistentes del CI si siguen presentes; comprobar todos los workflows sobre el HEAD definitivo. No declarar F6.1 cerrado antes de esa evidencia.
+
+### F6.2 — Customers / Clientes (ampliación Svelte de solo lectura)
+
+**Clasificación:** feature nueva; no suma paridad React porque el frontend React no tenía un módulo de administración independiente de clientes.
+
+**Decisión contractual:** Flask no ofrece CRUD ni endpoint maestro de clientes. El campo de cliente está desnormalizado en `sales_orders`; mantener esta pantalla como proyección de solo lectura. No añadir Create/Update/Delete ni simular persistencia de un Customer canónico.
+
+1. **Domain**
+   - Modelar Customer como proyección: identidad visible por nombre normalizado, contacto, direcciones observadas, almacenes y pedidos.
+   - No tratar el nombre como identificador global canónico: dos personas/empresas distintas pueden compartir nombre y Flask no devuelve un customer_id estable en estos endpoints.
+   - Diferenciar conteos globales confirmados por búsqueda agregada de conteos parciales de la página de pedidos.
+2. **Application**
+   - `SearchCustomers`: mínimo 2 caracteres; consume global search y respeta warehouse scope.
+   - `ListCustomers`: página de pedidos subyacentes con page/per_page; proyecta clientes distintos dentro de esa página.
+   - `GetCustomerDetail`: combina agregación global de búsqueda, datos del primer pedido coincidente y direcciones visibles.
+   - `GetCustomerOrders`: historial paginado a través de Sales Orders.
+3. **Data / Infrastructure**
+   - No solicitar `per_page=1000` por defecto. Usar GET `/admin/sales-orders?page=&per_page=50&warehouse_id=` y conservar `total/page/per_page/pages`.
+   - Búsqueda: GET `/admin/search?q=&warehouse_id=`; respuesta `{ query, warehouse_id, results[] }`, hits customer con `type, id, label, sublabel`; máximo 10 clientes por query y mínimo 2 caracteres.
+   - Historial: GET `/admin/sales-orders?q=&page=&per_page=&warehouse_id=`; el backend busca por número O nombre de cliente. Filtrar el nombre exacto en Svelte, pero documentar que `total/pages` pueden incluir coincidencias por número de pedido.
+   - Lista de Sales Orders no devuelve customer_email ni customer_id; detalle individual sí devuelve customer_email, customer_phone y customer_address. No inventar esos campos en el DTO de listado.
+   - Direcciones billing/shipping y customer_address son snapshots observados en pedidos, no un registro maestro de direcciones.
+4. **UI**
+   - Listado de clientes proyectados desde la página actual de Sales Orders, búsqueda, detalle de solo lectura, historial y direcciones observadas.
+   - Etiquetar explícitamente que la paginación de la lista corresponde a pedidos de origen y que la búsqueda global devuelve como máximo 10 coincidencias.
+   - Requerir el grant `sales-orders` en la ruta, ya que el endpoint fuente exige `sales-orders` o `fraud`; Flask sigue siendo la autoridad.
+5. **Pruebas**
+   - Muchos pedidos y páginas sucesivas sin dump de 1.000 filas.
+   - Cero pedidos/clientes y páginas vacías.
+   - Paginación y warehouse scope.
+   - Campos incompletos, direcciones ausentes y respuesta de detalle sin email.
+   - Nombres duplicados/case-insensitive y falsos positivos del q por número de SO.
+
+**Limitaciones abiertas:** la lista paginada representa clientes distintos dentro de una página de pedidos; un cliente puede reaparecer en otra página. El endpoint q no permite filtrar por nombre exacto en SQL, por lo que el total de páginas del historial no es un total exacto por cliente. Para una lista global de clientes correctamente paginada y una identidad inequívoca se necesitaría un contrato read-only dedicado en Flask (DISTINCT/GROUP BY con customer_id y filtros), no un CRUD inventado en frontend.
+
+**Cierre:** mantener como ampliación read-only; no contar como paridad React. Cerrar solo cuando pasen typecheck, pruebas de proyección/paginación/duplicados y revisión de permisos/warehouse.
