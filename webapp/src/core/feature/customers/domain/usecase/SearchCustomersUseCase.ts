@@ -2,14 +2,14 @@ import type { Customer, CustomerSearchQuery } from '../entity/Customer';
 import type { CustomerRepository } from '../repository/CustomerRepository';
 
 export class SearchCustomersUseCase {
-  constructor(private readonly repository: CustomerRepository) {}
+	constructor(private readonly repository: CustomerRepository) {}
 
-  execute(query: CustomerSearchQuery): Promise<Customer[]> {
-    const search = query.search.trim();
-    if (search.length < 2) {
-      throw new Error('Escribe al menos dos caracteres para buscar clientes');
-    }
-
-    return this.repository.list({ q: search });
-  }
+	execute(query: CustomerSearchQuery): Promise<Customer[]> {
+		const search = query.search.trim();
+		if (search.length < 2) throw new Error('Escribe al menos dos caracteres para buscar clientes');
+		if (query.warehouseId != null && (!Number.isInteger(query.warehouseId) || query.warehouseId < 1)) {
+			throw new Error('warehouseId must be an integer >= 1 when provided');
+		}
+		return this.repository.search({ q: search, warehouseId: query.warehouseId });
+	}
 }
