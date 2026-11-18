@@ -60,11 +60,17 @@
 				<small>Almacén {address.warehouseId ?? '—'} · Tel. {address.phone ?? '—'}</small></article>
 			{/each}</div>{/if}
 			<h3>Historial de pedidos</h3>
-			{#if state.customerOrders?.orders.length}
-				<div class="table-wrap"><table><thead><tr><th>Pedido</th><th>Fecha</th><th>Estado</th><th>Total</th><th>Almacén</th></tr></thead>
-				<tbody>{#each state.customerOrders.orders as order (order.id)}<tr><td><a href={'/sales-orders/' + order.id}>{order.number}</a></td><td>{order.orderDate ?? '—'}</td><td>{order.status ?? '—'}</td><td>{order.orderTotal ?? '—'}</td><td>{order.warehouseId ?? '—'}</td></tr>{/each}</tbody></table></div>
-				<div class="pagination"><span>Página {state.customerOrders.page} de {state.customerOrders.totalPages} · {state.customerOrders.matchingSalesOrders} coincidencias backend</span>
-				<div><button type="button" disabled={state.ordersPage <= 1} onclick={() => state.loadOrders(state.ordersPage - 1)}>Anterior</button><button type="button" disabled={state.ordersPage >= state.customerOrders.totalPages} onclick={() => state.loadOrders(state.ordersPage + 1)}>Siguiente</button></div></div>
+			{#if state.customerOrders}
+				{#if state.customerOrders.orders.length}
+					<div class="table-wrap"><table><thead><tr><th>Pedido</th><th>Fecha</th><th>Estado</th><th>Total</th><th>Almacén</th></tr></thead>
+					<tbody>{#each state.customerOrders.orders as order (order.id)}<tr><td><a href={'/sales-orders/' + order.id}>{order.number}</a></td><td>{order.orderDate ?? '—'}</td><td>{order.status ?? '—'}</td><td>{order.orderTotal ?? '—'}</td><td>{order.warehouseId ?? '—'}</td></tr>{/each}</tbody></table></div>
+				{:else}
+					<p class="hint">Esta página de resultados no contiene pedidos con nombre exacto; puede haber coincidencias por número de pedido.</p>
+				{/if}
+				{#if state.customerOrders.totalPages > 1}
+					<div class="pagination"><span>Página {state.customerOrders.page} de {state.customerOrders.totalPages} · {state.customerOrders.matchingSalesOrders} coincidencias backend</span>
+					<div><button type="button" disabled={state.ordersPage <= 1} onclick={() => state.loadOrders(state.ordersPage - 1)}>Anterior</button><button type="button" disabled={state.ordersPage >= state.customerOrders.totalPages} onclick={() => state.loadOrders(state.ordersPage + 1)}>Siguiente</button></div></div>
+				{/if}
 			{:else if !state.detailLoading}<p class="hint">No se encontraron pedidos para este cliente.</p>{/if}
 			<p class="hint">El endpoint q busca por número o nombre de pedido. El historial filtra por nombre exacto; el total de páginas puede incluir coincidencias por número de pedido.</p>
 		</section>
