@@ -1,1 +1,0 @@
-<script lang="ts">import PickingBatchesScreen from '#core/feature/picking-batches/ui/screens/PickingBatchesScreen.svelte';</script><PickingBatchesScreen/>

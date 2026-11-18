@@ -1,2 +1,0 @@
-import type {FraudReviewDto} from '../dto/FraudReviewDto';import type {FraudReview} from '../../domain/entity/FraudReview';
-export const FraudReviewMapper={toDomain(d:FraudReviewDto):FraudReview{return {salesOrderId:d.so_id,salesOrderNumber:d.so_number,status:d.status,orderType:d.order_type,orderSource:d.order_source,orderOrigin:d.order_origin,warehouseId:d.warehouse_id,customerName:d.customer_name,customerPhone:d.customer_phone,memo:d.memo,createdAt:d.created_at};}};

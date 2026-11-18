@@ -1,2 +1,0 @@
-export type FraudReviewDto={so_id:number;so_number:string;status:'FRAUD_REVIEW';order_type:string;order_source:string|null;order_origin:string|null;warehouse_id:number;customer_name:string|null;customer_phone:string|null;memo:string|null;created_at:string|null};
-export type FraudReviewListDto={sales_orders:FraudReviewDto[];total:number;page:number;pages:number};
