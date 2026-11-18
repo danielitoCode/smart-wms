@@ -46,6 +46,16 @@ describe('CustomerRepositoryImpl', () => {
 		expect(remote.getSalesOrderDetail).toHaveBeenCalledWith(22);
 	});
 
+	it('keeps an aggregate customer summary when the first order page has only q false positives', async () => {
+		const remote = source({
+			searchSalesOrders: vi.fn().mockResolvedValue({ sales_orders: [{ so_id: 2, so_number: 'Acme-2026', customer_name: 'Other' }], total: 1, page: 1, per_page: 50, pages: 1 }),
+			search: vi.fn().mockResolvedValue([{ type: 'customer', label: 'Acme', id: 'Acme', sublabel: '12 orders' }])
+		});
+		const detail = await new CustomerRepositoryImpl(remote).getDetail('Acme');
+		expect(detail).toMatchObject({ name: 'Acme', orderCount: 12, email: null, addresses: [] });
+		expect(remote.getSalesOrderDetail).not.toHaveBeenCalled();
+	});
+
 	it('returns null detail for customers with no matching orders', async () => {
 		const remote = source();
 		await expect(new CustomerRepositoryImpl(remote).getDetail('Missing')).resolves.toBeNull();
