@@ -1,5 +1,6 @@
 import type { Customer, CustomerAddress, CustomerOrder } from '../../domain/entity/Customer';
-import type { SalesOrderCustomerDto, SearchCustomerHitDto } from '../dto/CustomerDto';
+import type { SalesOrderCustomerDto } from '../dto/CustomerDto';
+import type { GlobalSearchResultDto } from '../dto/CustomerSearchDto';
 
 export function customerKey(name: string): string {
 	return name.trim().toLocaleLowerCase();
@@ -39,8 +40,8 @@ function mergeCustomer(target: Customer, row: SalesOrderCustomerDto): void {
 }
 
 export const CustomerMapper = {
-	fromSearchHit(hit: SearchCustomerHitDto): Customer | null {
-		const name = (hit.label ?? '').trim();
+	fromSearchHit(hit: GlobalSearchResultDto): Customer | null {
+		const name = hit.label.trim();
 		if (!name) return null;
 		const match = (hit.sublabel ?? '').match(/(\d+)\s+orders?/i);
 		return {
