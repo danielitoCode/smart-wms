@@ -224,3 +224,14 @@ Todas las rutas están bajo `/api/admin` y requieren sesión de navegador más `
 **Almacenes:** `GET /api/admin/warehouses` requiere además el page grant `warehouses`. La pantalla de tokens puede funcionar sin ese permiso; si el catálogo de almacenes responde 403, se muestra el selector vacío sin bloquear listado, catálogo ni operaciones de tokens.
 
 **Secreto y auditoría:** el servidor guarda solo `SHA256(pepper || plaintext)`; creación y rotación son las únicas respuestas que incluyen plaintext. Listado, mapper de dominio y audit log no deben retenerlo. Los eventos `TOKEN_ISSUE`, `TOKEN_ROTATE`, `TOKEN_REVOKE` y `TOKEN_DELETE` registran metadatos/snapshots de scopes, no el plaintext ni el hash. La invalidación de caché se ejecuta tras rotación, revocación y eliminación. La revocación se propaga entre workers mediante invalidación Redis y TTL de respaldo.
+
+
+### 3.4 POS Activity — F4.6
+
+- **Permiso:** ambas rutas requieren autenticación y `require_admin_or_page_permission("pos-activity")`.
+- **Listado:** GET `/api/admin/pos/sales-orders`; parámetros admitidos `page`, `per_page` (máximo 200), `order_type` (`sale`, `refund`, `all`), `date` (YYYY-MM-DD, calendario `America/Denver`), `channel` (`counter`/`phone`), `status`, `terminal_id` y `cashier_id`. Respuesta `sales_orders,total,page,per_page,pages`.
+- **Fila:** `so_id,so_number,status,order_type,channel,created_at,customer_name,customer_phone,external_txn_ref,warehouse_id,total_cents,cashier_id,terminal_id,payment_method`. `total_cents` es entero firmado; los refunds pueden ser negativos. El cajero/terminal/tender se deriva del audit log asociado a POS_CHECKOUT/POS_REFUND; puede ser null.
+- **Resumen:** GET `/api/admin/pos/summary?date=YYYY-MM-DD`. Responde `tz,date,is_today,current_hour,today,yesterday,vs_yesterday_cents,pace,week,tenders,active_terminals`. KPI usa centavos; pace tiene 24 puntos; week incluye arrays `this` y `last` de 7 días y sus totales; tender incluye `method,cents,count`.
+- **Fecha:** el backend ancla y limita fechas futuras en zona `America/Denver`. El cliente debe construir la fecha del calendario en esa zona, no usar `toISOString().slice(0,10)`.
+- **Detalle:** no existe endpoint de detalle POS; se construye a partir de la fila del listado. La acción “Abrir Sales Order” navega al detalle administrativo por `so_id`.
+- **Schemas:** `api/schemas/pos.py` valida POS checkout/refund y cart requests, no el DTO de estos GET administrativos. Para F4.6 el contrato principal está en `api/routes/admin/admin_pos.py`.
