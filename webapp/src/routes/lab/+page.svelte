@@ -120,6 +120,13 @@
 			status: 'ready',
 			href: '/lab/shared-tooltip',
 			description: 'Stack de avatares con tooltip flotante compartido (CSS, sin Framer).'
+		},
+		{
+			id: 'tags',
+			name: 'Tags',
+			status: 'ready',
+			href: '/lab/tags',
+			description: 'Multi-select de chips pool → seleccionados (CSS, sin Motion).'
 		}
 	] as const;
 </script>
