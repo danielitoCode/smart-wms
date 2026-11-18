@@ -33,11 +33,7 @@ export function createApiTokensState() {
 			]);
 			rows = tokens;
 			catalog = scopeCatalog;
-			warehouses = warehouseOptions.map((w) => ({
-				id: w.warehouse_id,
-				code: w.warehouse_code,
-				name: w.warehouse_name ?? null
-			}));
+			warehouses = warehouseOptions;
 		} catch (e) {
 			error = toUserMessage(e, 'No se pudieron cargar los tokens');
 		} finally {
