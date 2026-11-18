@@ -23,7 +23,7 @@ export function createIntegrationsState() {
   async function selectConnector(connector: Connector, warehouseId: number|null) {
     selected = connector; credentials = []; syncStates = []; storedKeys = []; testResult = null; message = null; error = null;
     const current = ++epoch;
-    if (!warehouseId) { error = 'Selecciona un almacén para administrar esta integración'; return; }
+    if (!warehouseId) { loading = false; error = 'Selecciona un almacén para administrar esta integración'; return; }
     loading = true;
     try {
       const [keys, states] = await Promise.all([deps.credentials.execute(connector.name, warehouseId), deps.syncStatus.execute(connector.name, warehouseId)]);
