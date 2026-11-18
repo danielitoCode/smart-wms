@@ -446,7 +446,7 @@ Referencia: [React Dashboard.jsx](https://github.com/danielitoCode/smart-wms/blo
 - UI incorpora listado, detalle, formularios de alta/edición, estado/pausa, rotación con secreto de una sola lectura, estadísticas, DLQ paginada, errores globales, replay individual y por lotes, revocación y purga confirmadas.
 - Pruebas Svelte añadidas para reglas Domain, contratos HTTP/mappers y estado de UI; incluyen secret de una sola vez, conflicto de URL tombstone, replay y DLQ vacía.
 - Limitaciones del backend documentadas en `API-Contracts.md` y señaladas en la vista: no hay payload de evento completo ni detalle individual de delivery; replay individual no tiene protección idempotente/concurrente equivalente al replay batch.
-- **Pendiente de cierre:** ejecutar y corregir únicamente `svelte-check`, build y suites frontend. Los fallos de tests Python/Flask quedan fuera del alcance de esta migración frontend y no se modificarán.
+- **CERRADA en frontend Svelte:** Webapp CI `44218936897` (commit `3b9bebd`) completó con éxito svelte-check, build, Domain, Application, Infrastructure, UI, i18n, Integration, regresión completa y cobertura por feature. Gitleaks, Dependency Audit y Lockfile Version Check también finalizaron correctamente en ese commit. El workflow independiente `Tests` de Flask/Python permanece fuera del alcance de esta migración; no se modificó backend ni se condiciona el cierre frontend a ese workflow.
 
 ## F5.4 Channels
 
