@@ -428,4 +428,5 @@ Flask sí tiene tabla canónica `customers` (mig 041 / v1.7.0) y endpoint de ing
 - Direcciones son snapshots asociados a pedidos. No hay entidad de dirección maestra del cliente.
 - La paginación de la lista corresponde a pedidos fuente; los clientes se deduplican únicamente dentro de la página recibida, por lo que pueden repetirse entre páginas.
 - La búsqueda global devuelve máximo 10 hits customer por consulta; no es un endpoint de listado paginado.
+- En `admin_search.py`, el filtro de warehouse se añade solo cuando llega `warehouse_id`; `require_auth` valida un ID explícito, pero no aplica por sí solo un almacén predeterminado. Para usuarios no ADMIN, Svelte debe enviar siempre el almacén activo autorizado y no llamar a global search si no existe. El listado Sales Orders sí aplica `warehouse_scope_clause` en SQL.
 - No añadir mutaciones de Customer. Una administración independiente exige primero un contrato Flask y persistencia canónica.
