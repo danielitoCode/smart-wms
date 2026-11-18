@@ -1,4 +1,4 @@
-import type { FraudReview } from '../../domain/entity/FraudReview';
+import type { FraudReview, FraudReviewDetail } from '../../domain/entity/FraudReview';
 import type { FraudReviewRepository } from '../../domain/repository/FraudReviewRepository';
 import type { FraudReviewRemoteDataSource } from '../datasource/FraudReviewRemoteDataSource';
 import { FraudReviewMapper } from '../mapper/FraudReviewMapper';
@@ -9,6 +9,10 @@ export class FraudReviewRepositoryImpl implements FraudReviewRepository {
   async list(warehouseId: number, query = ''): Promise<FraudReview[]> {
     const rows = await this.remote.list(warehouseId, query);
     return rows.map(FraudReviewMapper.toDomain);
+  }
+
+  async getDetail(id: number): Promise<FraudReviewDetail> {
+    return FraudReviewMapper.toDetail(await this.remote.getDetail(id));
   }
 
   updateMemo(id: number, memo: string): Promise<void> {
