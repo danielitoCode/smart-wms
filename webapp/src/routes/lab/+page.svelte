@@ -113,6 +113,13 @@
 			status: 'ready',
 			href: '/lab/option-picker',
 			description: 'Selector Private/Public compacto con menú emergente (CSS, sin Motion).'
+		},
+		{
+			id: 'shared-tooltip',
+			name: 'SharedTooltipAvatars',
+			status: 'ready',
+			href: '/lab/shared-tooltip',
+			description: 'Stack de avatares con tooltip flotante compartido (CSS, sin Framer).'
 		}
 	] as const;
 </script>
