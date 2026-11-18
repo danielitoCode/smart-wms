@@ -248,4 +248,7 @@ export const gapEn: Record<string, string> = {
   'No se pudieron cargar los clientes': 'Could not load customers',
   'Total': 'Total',
   'Tel.': 'Tel.',
+
+  'Reintentar': 'Retry',
+  'de': 'of',
 };
