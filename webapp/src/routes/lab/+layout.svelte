@@ -1,7 +1,6 @@
 <script lang="ts">
 	/**
 	 * Lab layout — sin auth, sin shell de app.
-	 * Solo para previsualizar componentes UI durante la migración.
 	 */
 	let { children } = $props();
 </script>
@@ -17,6 +16,7 @@
 			<a href="/lab/task-widget">TaskWidget</a>
 			<a href="/lab/hover-expand">HoverExpand</a>
 			<a href="/lab/onboarding">Onboarding</a>
+			<a href="/lab/blob-card">BlobCard</a>
 		</nav>
 	</header>
 	<main class="lab-main">
