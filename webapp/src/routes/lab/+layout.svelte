@@ -34,6 +34,13 @@
 			]
 		},
 		{
+			id: 'commerce',
+			label: 'Commerce',
+			items: [
+				{ href: '/lab/product-detail', label: 'ProductDetail', hint: 'PDP gallery + buy' }
+			]
+		},
+		{
 			id: 'forms',
 			label: 'Forms & inputs',
 			items: [
