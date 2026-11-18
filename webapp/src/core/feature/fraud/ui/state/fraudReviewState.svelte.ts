@@ -61,7 +61,7 @@ export function createFraudReviewState() {
     try {
       const detail = await dependencies.detail.execute(id);
       if (epoch !== detailEpoch) return false;
-      if (detail.order.warehouseId !== warehouseId) {
+      if (!isFraudReviewInWarehouse(detail.order, warehouseId)) {
         error = 'El detalle recibido no coincide con el almacén seleccionado.';
         return false;
       }
@@ -84,7 +84,7 @@ export function createFraudReviewState() {
   async function updateMemo(id: number, memo: string, warehouseId: number) {
     if (saving) return false;
     const row = rows.find((candidate) => candidate.salesOrderId === id);
-    if (!row || row.warehouseId !== warehouseId) {
+    if (!row || !isFraudReviewInWarehouse(row, warehouseId)) {
       error = 'El pedido ya no pertenece al almacén seleccionado. Actualiza la bandeja.';
       return false;
     }
@@ -108,7 +108,7 @@ export function createFraudReviewState() {
   async function push(id: number, warehouseId: number) {
     if (saving) return false;
     const row = rows.find((candidate) => candidate.salesOrderId === id);
-    if (!row || row.warehouseId !== warehouseId) {
+    if (!row || !isFraudReviewInWarehouse(row, warehouseId)) {
       error = 'El pedido ya no pertenece al almacén seleccionado. Actualiza la bandeja.';
       return false;
     }
