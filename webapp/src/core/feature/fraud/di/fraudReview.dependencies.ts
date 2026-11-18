@@ -2,6 +2,7 @@ import { apiClient } from '../../../infrastructure/api/ApiClient';
 import { FraudReviewRemoteDataSource } from '../data/datasource/FraudReviewRemoteDataSource';
 import { FraudReviewRepositoryImpl } from '../data/repository/FraudReviewRepositoryImpl';
 import {
+  GetFraudAuditHistoryUseCase,
   GetFraudReviewDetailUseCase,
   ListFraudReviewsUseCase,
   PushFraudOrderToQueueUseCase,
@@ -13,6 +14,7 @@ export function createFraudReviewDependencies() {
   return {
     list: new ListFraudReviewsUseCase(repository),
     detail: new GetFraudReviewDetailUseCase(repository),
+    auditHistory: new GetFraudAuditHistoryUseCase(repository),
     updateMemo: new UpdateFraudMemoUseCase(repository),
     push: new PushFraudOrderToQueueUseCase(repository)
   };

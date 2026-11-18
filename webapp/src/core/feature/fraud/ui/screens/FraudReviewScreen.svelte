@@ -68,12 +68,6 @@
     </button>
   </header>
 
-  <aside class="security-notice" role="note">
-    <strong>{i18n.t('Alcance de seguridad pendiente')}</strong>
-    <p>{i18n.t('La consulta se filtra por el almacén seleccionado en esta pantalla. Flask todavía no valida el almacén del pedido en el detalle ni en las acciones de memo y retorno a cola; este filtro de interfaz no sustituye el control del servidor.')}</p>
-    <p>{i18n.t('Los cambios se registran en auditoría, pero el backend no ofrece un endpoint para consultar aquí el historial.')}</p>
-  </aside>
-
   <div class="filters">
     <label for="fraud-search">{i18n.t('Buscar pedido o cliente')}</label>
     <input id="fraud-search" bind:value={searchInput} onkeydown={(event) => event.key === 'Enter' && search()} placeholder="SO-…"/>
@@ -147,6 +141,11 @@
         </tbody>
       </table>
     </div>
+    <nav class="pagination" aria-label={i18n.t('Paginación de pedidos')}>
+      <button type="button" onclick={() => { const id = warehouseSelection.warehouseId; if (id !== null) void vm.load(id, activeQuery, vm.page - 1); }} disabled={vm.loading || vm.page <= 1}>{i18n.t('Anterior')}</button>
+      <span>{i18n.t('Página')} {vm.page} / {vm.pages} · {vm.total} {i18n.t('pedidos')}</span>
+      <button type="button" onclick={() => { const id = warehouseSelection.warehouseId; if (id !== null) void vm.load(id, activeQuery, vm.page + 1); }} disabled={vm.loading || vm.page >= vm.pages}>{i18n.t('Siguiente')}</button>
+    </nav>
   {/if}
 
   {#if vm.detailLoading}
@@ -169,7 +168,30 @@
           <tr><td>{line.sku ?? line.itemId}</td><td>{line.itemName}</td><td>{line.quantityOrdered}</td><td>{line.quantityAllocated}</td><td>{line.quantityPicked}</td><td>{line.quantityPacked}</td><td>{line.quantityShipped}</td><td>{line.status}</td></tr>
         {/each}
       </tbody></table></div>
-      <p class="history-note">{i18n.t('El backend registra los cambios de memo y la liberación en audit_log, pero no ofrece un endpoint para consultar el historial desde esta pantalla.')}</p>
+      <section class="audit-history" aria-label={i18n.t('Historial de auditoría')}>
+        <header><h3>{i18n.t('Historial de auditoría')}</h3><span>{vm.auditTotal} {i18n.t('eventos')}</span></header>
+        {#if vm.auditLoading}
+          <UiLoader label={i18n.t('Cargando historial…')} />
+        {:else if vm.auditEntries.length === 0}
+          <p class="empty">{i18n.t('No hay eventos de auditoría para este pedido.')}</p>
+        {:else}
+          <ol>
+            {#each vm.auditEntries as entry (entry.logId)}
+              <li>
+                <div><strong>{entry.actionType}</strong><small>{entry.username ?? '—'} · {entry.createdAt ?? '—'}</small></div>
+                {#if entry.details}
+                  <pre>{JSON.stringify(entry.details, null, 2)}</pre>
+                {/if}
+              </li>
+            {/each}
+          </ol>
+          <nav class="pagination" aria-label={i18n.t('Paginación del historial')}>
+            <button type="button" onclick={() => { const id = vm.selectedDetail?.order.salesOrderId; const wh = warehouseSelection.warehouseId; if (id !== undefined && wh !== null) void vm.loadAuditHistory(id, wh, vm.auditPage - 1); }} disabled={vm.auditLoading || vm.auditPage <= 1}>{i18n.t('Anterior')}</button>
+            <span>{i18n.t('Página')} {vm.auditPage} / {vm.auditPages}</span>
+            <button type="button" onclick={() => { const id = vm.selectedDetail?.order.salesOrderId; const wh = warehouseSelection.warehouseId; if (id !== undefined && wh !== null) void vm.loadAuditHistory(id, wh, vm.auditPage + 1); }} disabled={vm.auditLoading || vm.auditPage >= vm.auditPages}>{i18n.t('Siguiente')}</button>
+          </nav>
+        {/if}
+      </section>
     </section>
   {/if}
 </section>
