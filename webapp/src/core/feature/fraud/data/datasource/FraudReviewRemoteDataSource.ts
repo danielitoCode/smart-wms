@@ -1,5 +1,5 @@
 import type { ApiClient } from '../../../../infrastructure/api/ApiClient';
-import type { FraudReviewDto, FraudReviewListDto } from '../dto/FraudReviewDto';
+import type { FraudReviewDetailDto, FraudReviewDto, FraudReviewListDto } from '../dto/FraudReviewDto';
 
 export class FraudReviewRemoteDataSource {
   constructor(private readonly api: ApiClient) {}
@@ -15,6 +15,10 @@ export class FraudReviewRemoteDataSource {
       '/api/admin/sales-orders?' + params.toString()
     );
     return response.sales_orders ?? [];
+  }
+
+  getDetail(id: number): Promise<FraudReviewDetailDto> {
+    return this.api.get<FraudReviewDetailDto>('/api/admin/sales-orders/' + id);
   }
 
   async updateMemo(id: number, memo: string): Promise<void> {
