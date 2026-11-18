@@ -750,3 +750,11 @@ Cada feature debe registrar:
 Cualquier desarrollador debe poder identificar qué existía en React, qué ofrece Flask, qué debe implementar SvelteKit y qué pruebas necesita superar para cerrar un feature.
 
 **Regla final:** no declarar una feature completa por apariencia visual o por compilar. Debe existir evidencia de paridad funcional, contrato correcto, autorización, aislamiento por almacén, pruebas y documentación.
+
+### F5.1 — estado de implementación (en curso)
+
+- Contrato Flask documentado en `API-Contracts.md`, incluidas rutas, permisos, esquemas Pydantic, respuestas, alcance por almacén, cifrado, redacción, sync states, concurrencia y límites de polling/timeout.
+- Domain/Application/Data/DI ampliados para schema dinámico, metadatos de credenciales, test de conexión, estados, reset, ejecución y borrado con warehouse scope explícito.
+- UI Svelte sustituye la tarjeta de prueba aislada por catálogo, formulario dinámico de secretos, test, estado y acciones de sync; las credenciales guardadas solo se representan como configuradas, nunca se reutiliza la máscara `****` como valor.
+- Pruebas iniciales de contratos y validación de casos de uso añadidas.
+- **Pendiente para cierre:** validar compilación y suites; ampliar pruebas de concurrencia/respuestas 409, timeout/desconexión y respuestas obsoletas al cambiar almacén; revisar la UX de sync-reset y refresco de estado; comprobar permisos y traducciones completas.
