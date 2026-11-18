@@ -124,7 +124,8 @@ import os
 import sys
 import uuid
 
-import pytest\nimport psycopg2
+import pytest
+import psycopg2
 
 os.environ.setdefault("DATABASE_URL", "postgresql://sentry:sentry@localhost:5432/sentry")
 os.environ.setdefault("JWT_SECRET", "NEVER_USE_THIS_IN_PRODUCTION_32!")
