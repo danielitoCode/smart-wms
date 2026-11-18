@@ -60,7 +60,7 @@ export class CustomerRepositoryImpl implements CustomerRepository {
 	async getDetail(customerName: string, warehouseId?: number): Promise<Customer | null> {
 		const [ordersResponse, searchHits] = await Promise.all([
 			this.datasource.searchSalesOrders(customerName, 1, DEFAULT_PER_PAGE, warehouseId),
-			this.datasource.search(customerName, warehouseId)
+			customerName.trim().length >= 2 ? this.datasource.search(customerName, warehouseId) : Promise.resolve([])
 		]);
 		const rows = exactCustomerRows(ordersResponse.sales_orders ?? [], customerName);
 		const aggregate = searchHits.find((hit) => customerKey(hit.label ?? '') === customerKey(customerName));
