@@ -789,15 +789,11 @@ Cualquier desarrollador debe poder identificar qué existía en React, qué ofre
 - **Pendiente para cierre:** validar compilación y suites; ampliar pruebas de concurrencia/respuestas 409, timeout/desconexión y respuestas obsoletas al cambiar almacén; revisar la UX de sync-reset y refresco de estado; comprobar permisos y traducciones completas.
 
 
-### F6.1 — Fraud / Control de fraude (implementación parcial)
+### F6.1 — Fraud / Control de fraude (cierre en verificación)
 
-- Feature React original y feature Svelte preexistente contrastadas. Domain mantiene FraudReview como proyección de Sales Orders; se añadieron direcciones de facturación/envío y el detalle con líneas, sin inventar un agregado FraudCase que Flask no persiste.
-- Data/Application/DI: listado filtrado por almacén activo y búsqueda `q`; detalle mediante GET de Sales Order; PATCH memo y POST push-to-queue conservan rutas y payloads reales. El mapper rechaza un detalle cuyo estado ya no sea `FRAUD_REVIEW`.
-- UI: usa el contexto autorizado de almacén de la aplicación, evita cargar una bandeja global si no hay almacén activo, permite buscar por pedido/cliente, comparar direcciones, abrir detalle, editar memo y enviar de vuelta a preparación. Los cambios de almacén invalidan respuestas anteriores; las acciones verifican también la pertenencia de la fila al almacén activo en cliente.
-- Memo alineado al límite Flask de 4000 caracteres; cadena vacía se conserva como operación válida de limpieza. Se evita doble envío mientras hay una mutación en curso.
-- Pruebas Svelte añadidas para límite memo, delegación de casos de uso, filtros/query de almacén, endpoints PATCH/POST/GET y mapeo de direcciones/detalle/estado obsoleto. **CI aún pendiente** para typecheck, build y suites.
-- Límites backend documentados: no hay filtro de fecha ni endpoint de lectura del historial audit_log. La pantalla explica que las mutaciones se auditan, pero el historial no se puede consultar desde esta feature.
-- **Corrección backend aplicada en esta iteración:** listado y detalle usan el grant compuesto `sales-orders` OR `fraud` (cada grant por separado conserva acceso de lectura); para usuarios no ADMIN, el listado siempre se restringe a `current_user.warehouse_ids`, y detalle/memo/push-to-queue incorporan el mismo scope directamente en la consulta SQL bloqueada. Un pedido de otro almacén devuelve 404 sin revelar su existencia. ADMIN mantiene acceso global. Se mantiene la auditoría y el `FOR UPDATE` de las mutaciones.
-- **Cobertura añadida:** usuarios con solo grant `fraud` o solo `sales-orders` pueden consultar bandeja/detalle; `sales-orders` por sí solo no permite mutar memo; pedidos de otro almacén quedan excluidos de lista y detalle y no pueden recibir PATCH memo ni push-to-queue. La ejecución de estas pruebas backend queda pendiente de CI.
-- Concurrencia backend: push-to-queue bloquea la fila y solo transiciona desde `FRAUD_REVIEW`; el segundo intento responde 409. Memo también bloquea y audita, pero carece de versión/ETag y permite last-write-wins entre ediciones serializadas.
-- **Estado:** corrección de autorización/aislamiento implementada en Flask y pruebas de regresión añadidas; cierre condicionado a ejecutar la suite Flask afectada y completar la verificación CI/frontend. La limitación del historial de auditoría permanece documentada.
+- Backend: aislamiento por almacén en listado, detalle, memo, retorno a cola e historial. El grant de lectura del historial es `fraud` OR `audit-log`; `sales-orders` por sí solo no expone auditoría.
+- Concurrencia: `expected_memo` opcional más `FOR UPDATE` evita sobrescritura silenciosa y responde 409 ante una edición obsoleta. El retorno a cola mantiene transición única y auditoría sin duplicados.
+- Auditoría: endpoint dedicado y paginado `GET /api/admin/sales-orders/{so_id}/audit-history`; verifica la autorización del pedido y filtra por su almacén. No abre el feed global.
+- Svelte: lista paginada (50 por página), navegación, detalle con timeline de auditoría paginado (20 por página) y envío de `expected_memo`.
+- Pruebas backend añadidas: memo obsoleto, historial con grant/warehouse, permiso denegado, retorno duplicado y bloqueo real PostgreSQL con dos conexiones. Pruebas Svelte de datasource y mapper para paginación/historial.
+- **Pendiente:** ejecutar y corregir suites F6.1; completar typecheck/build/UI e integración; resolver los fallos generales preexistentes del CI si siguen presentes; comprobar todos los workflows sobre el HEAD definitivo. No declarar F6.1 cerrado antes de esa evidencia.
