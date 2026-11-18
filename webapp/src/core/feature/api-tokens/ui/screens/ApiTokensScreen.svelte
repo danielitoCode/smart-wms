@@ -86,7 +86,7 @@
 			<code>{vm.plaintext}</code>
 			<div class="actions">
 				<button type="button" onclick={() => void copySecret()}>{i18n.t('Copiar secreto')}</button>
-				<button class="primary" type="button" onclick={() => { vm.clearPlaintext(); revealAcknowledged = true; }}>
+				<button class="primary" type="button" onclick={() => { vm.clearPlaintext(); }}>
 					{i18n.t('Ya lo he guardado · Ocultar')}
 				</button>
 			</div>
