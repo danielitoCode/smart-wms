@@ -21,6 +21,8 @@
 
   function search() {
     activeQuery = searchInput.trim();
+    const warehouseId = warehouseSelection.warehouseId;
+    if (warehouseId !== null) void vm.load(warehouseId, activeQuery);
   }
 
   async function openDetail(id: number) {
