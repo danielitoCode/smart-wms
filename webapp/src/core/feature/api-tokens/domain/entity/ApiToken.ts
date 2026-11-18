@@ -1,12 +1,19 @@
+export type ApiTokenStatus = 'active' | 'revoked' | 'expired' | string;
+export type RotationStatus = 'none' | 'recommended' | 'overdue' | string;
+
 export type ApiToken = {
 	tokenId: number;
 	name: string;
-	scopes: string[];
+	warehouseIds: number[];
 	eventTypes: string[];
+	endpoints: string[];
+	connectorId: string | null;
+	status: ApiTokenStatus;
 	sourceSystem: string | null;
 	inboundResources: string[];
 	mappingOverride: boolean;
-	rotationStatus: string;
+	mappingOverridesKeys: string[];
+	rotationStatus: RotationStatus;
 	createdAt: string | null;
 	rotatedAt: string | null;
 	expiresAt: string | null;
@@ -14,15 +21,28 @@ export type ApiToken = {
 	lastUsedAt: string | null;
 };
 
+export type SourceSystemOption = { sourceSystem: string; kind: string };
+
+export type ApiTokenScopeCatalog = {
+	eventTypes: string[];
+	endpoints: string[];
+	inboundResources: string[];
+	sourceSystems: SourceSystemOption[];
+};
+
 export type ApiTokenCreateInput = {
 	name: string;
-	scopes: string[];
-	eventTypes?: string[];
+	warehouseIds: number[];
+	eventTypes: string[];
+	endpoints: string[];
+	expiresAt?: string | null;
 	sourceSystem?: string | null;
-	inboundResources?: string[];
+	inboundResources: string[];
+	mappingOverride: boolean;
 };
 
 export type ApiTokenIssueResult = {
 	token: ApiToken;
-	plaintext: string | null;
+	/** Plaintext is returned by Flask only on create/rotate. Never persist it. */
+	plaintext: string;
 };
