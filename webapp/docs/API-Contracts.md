@@ -414,7 +414,7 @@ POST /api/admin/transfer-orders/import requiere page grant transfer-orders, no i
 
 ## 6.2 Customers — proyección read-only (F6.2)
 
-No existe en Flask un recurso administrativo independiente de clientes ni rutas CRUD. La pantalla Svelte se alimenta exclusivamente de información derivada de Sales Orders.
+Flask sí tiene tabla canónica `customers` (mig 041 / v1.7.0) y endpoint de ingestión `POST /api/v1/inbound/customers`, autenticado con WMS token y recursos inbound permitidos. No existe una API administrativa web para listar, consultar o modificar esa tabla. La pantalla Svelte se alimenta de la proyección sobre Sales Orders y global search; el endpoint inbound no debe reutilizarse como CRUD de navegador.
 
 | Método | Endpoint | Respuesta relevante | Seguridad / límites |
 |---|---|---|---|
