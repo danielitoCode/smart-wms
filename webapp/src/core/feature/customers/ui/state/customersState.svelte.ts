@@ -19,9 +19,11 @@ export function createCustomersState() {
 	let page = $state(1);
 	let ordersPage = $state(1);
 	let requestVersion = 0;
+	let detailRequestVersion = 0;
 
 	async function load(nextPage = 1) {
 		const version = ++requestVersion;
+		++detailRequestVersion;
 		loading = true;
 		error = null;
 		selectedCustomer = null;
@@ -47,6 +49,7 @@ export function createCustomersState() {
 	}
 
 	async function selectCustomer(customer: Customer) {
+		const version = ++detailRequestVersion;
 		selectedCustomer = customer;
 		detailLoading = true;
 		detailError = null;
@@ -56,36 +59,39 @@ export function createCustomersState() {
 				deps.getCustomerDetail.execute({ customerName: customer.name, warehouseId: warehouseId ?? undefined }),
 				deps.getCustomerOrders.execute({ customerName: customer.name, page: 1, perPage: PER_PAGE, warehouseId: warehouseId ?? undefined })
 			]);
-			if (selectedCustomer?.id !== customer.id) return;
+			if (version !== detailRequestVersion || selectedCustomer?.id !== customer.id) return;
 			selectedCustomer = detail ?? customer;
 			customerOrders = orders;
 		} catch (err) {
 			detailError = toUserMessage(err, 'No se pudo cargar el detalle del cliente');
 		} finally {
-			detailLoading = false;
+			if (version === detailRequestVersion) detailLoading = false;
 		}
 	}
 
 	async function loadOrders(nextPage: number) {
 		if (!selectedCustomer) return;
+		const version = ++detailRequestVersion;
+		const customerName = selectedCustomer.name;
 		ordersPage = nextPage;
 		detailLoading = true;
 		detailError = null;
 		try {
-			customerOrders = await deps.getCustomerOrders.execute({
-				customerName: selectedCustomer.name, page: nextPage, perPage: PER_PAGE,
+			const result = await deps.getCustomerOrders.execute({
+				customerName, page: nextPage, perPage: PER_PAGE,
 				warehouseId: warehouseId ?? undefined
 			});
+			if (version === detailRequestVersion && selectedCustomer?.name === customerName) customerOrders = result;
 		} catch (err) {
-			detailError = toUserMessage(err, 'No se pudo cargar el historial de pedidos');
+			if (version === detailRequestVersion) detailError = toUserMessage(err, 'No se pudo cargar el historial de pedidos');
 		} finally {
-			detailLoading = false;
+			if (version === detailRequestVersion) detailLoading = false;
 		}
 	}
 
 	function setQuery(value: string) { query = value; }
 	function setWarehouseId(value: number | null) { warehouseId = value; }
-	function closeDetail() { selectedCustomer = null; customerOrders = null; }
+	function closeDetail() { ++detailRequestVersion; selectedCustomer = null; customerOrders = null; detailLoading = false; }
 
 	return {
 		get customers() { return customers; }, get customerPage() { return customerPage; },
