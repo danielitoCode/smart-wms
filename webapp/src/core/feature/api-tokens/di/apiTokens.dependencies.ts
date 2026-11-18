@@ -7,7 +7,8 @@ import {
 	RotateApiTokenUseCase,
 	RevokeApiTokenUseCase,
 	DeleteApiTokenUseCase,
-	GetScopeCatalogUseCase
+	GetScopeCatalogUseCase,
+	GetTokenWarehousesUseCase
 } from '../domain/usecase/ApiTokensUseCases';
 
 export function createApiTokensDependencies() {
@@ -18,6 +19,7 @@ export function createApiTokensDependencies() {
 		rotate: new RotateApiTokenUseCase(repository),
 		revoke: new RevokeApiTokenUseCase(repository),
 		remove: new DeleteApiTokenUseCase(repository),
-		scopeCatalog: new GetScopeCatalogUseCase(repository)
+		scopeCatalog: new GetScopeCatalogUseCase(repository),
+		warehouses: new GetTokenWarehousesUseCase(repository)
 	};
 }
