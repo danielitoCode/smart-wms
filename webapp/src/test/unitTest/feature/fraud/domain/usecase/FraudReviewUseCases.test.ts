@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { FraudReviewRepository } from '../../../../../core/feature/fraud/domain/repository/FraudReviewRepository';
 import {
   ListFraudReviewsUseCase,
+  GetFraudReviewDetailUseCase,
   PushFraudOrderToQueueUseCase,
   UpdateFraudMemoUseCase
 } from '../../../../../core/feature/fraud/domain/usecase/FraudReviewUseCases';
@@ -9,6 +10,7 @@ import {
 function repository() {
   return {
     list: vi.fn().mockResolvedValue([]),
+    getDetail: vi.fn().mockResolvedValue({ order: {}, lines: [] }),
     updateMemo: vi.fn().mockResolvedValue(undefined),
     pushToQueue: vi.fn().mockResolvedValue(undefined)
   } as unknown as FraudReviewRepository;
@@ -19,6 +21,12 @@ describe('Fraud review use cases', () => {
     const repo = repository();
     await new ListFraudReviewsUseCase(repo).execute(7);
     expect(repo.list).toHaveBeenCalledWith(7, '');
+  });
+
+  it('delegates detail retrieval by sales-order ID', async () => {
+    const repo = repository();
+    await new GetFraudReviewDetailUseCase(repo).execute(12);
+    expect(repo.getDetail).toHaveBeenCalledWith(12);
   });
 
   it('accepts the backend memo limit and forwards an empty string to clear it', async () => {
