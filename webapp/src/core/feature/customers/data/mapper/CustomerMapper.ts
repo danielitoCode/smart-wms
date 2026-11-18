@@ -11,7 +11,7 @@ function address(
 	warehouseId: number | null
 ): CustomerAddress | null {
 	const prefix = kind === 'billing' ? 'billing' : kind === 'shipping' ? 'shipping' : 'customer';
-	const line1 = kind === 'customer' ? row.customer_address : row[`${prefix}_address_line1` as keyof SalesOrderCustomerDto] as string | null | undefined;
+	const line1 = kind === 'customer' ? row.customer_address : kind === 'shipping' ? (row.shipping_address_line1 ?? row.ship_address) : row.billing_address_line1;
 	const line2 = kind === 'customer' ? null : row[`${prefix}_address_line2` as keyof SalesOrderCustomerDto] as string | null | undefined;
 	const city = kind === 'customer' ? null : row[`${prefix}_address_city` as keyof SalesOrderCustomerDto] as string | null | undefined;
 	const state = kind === 'customer' ? null : row[`${prefix}_address_state` as keyof SalesOrderCustomerDto] as string | null | undefined;
