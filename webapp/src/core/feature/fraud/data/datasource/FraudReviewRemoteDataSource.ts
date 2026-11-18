@@ -1,30 +1,39 @@
 import type { ApiClient } from '../../../../infrastructure/api/ApiClient';
-import type { FraudReviewDetailDto, FraudReviewDto, FraudReviewListDto } from '../dto/FraudReviewDto';
+import type {
+  FraudAuditHistoryDto,
+  FraudReviewDetailDto,
+  FraudReviewListDto
+} from '../dto/FraudReviewDto';
 
 export class FraudReviewRemoteDataSource {
   constructor(private readonly api: ApiClient) {}
 
-  async list(warehouseId: number, query = ''): Promise<FraudReviewDto[]> {
+  list(warehouseId: number, query = '', page = 1): Promise<FraudReviewListDto> {
     const params = new URLSearchParams({
       status: 'FRAUD_REVIEW',
       warehouse_id: String(warehouseId),
-      per_page: '100'
+      page: String(page),
+      per_page: '50'
     });
     if (query.trim()) params.set('q', query.trim());
-    const response = await this.api.get<FraudReviewListDto>(
-      '/api/admin/sales-orders?' + params.toString()
-    );
-    return response.sales_orders ?? [];
+    return this.api.get<FraudReviewListDto>('/api/admin/sales-orders?' + params.toString());
   }
 
   getDetail(id: number): Promise<FraudReviewDetailDto> {
     return this.api.get<FraudReviewDetailDto>('/api/admin/sales-orders/' + id);
   }
 
-  async updateMemo(id: number, memo: string): Promise<void> {
+  getAuditHistory(id: number, page = 1): Promise<FraudAuditHistoryDto> {
+    const params = new URLSearchParams({ page: String(page), per_page: '20' });
+    return this.api.get<FraudAuditHistoryDto>(
+      '/api/admin/sales-orders/' + id + '/audit-history?' + params.toString()
+    );
+  }
+
+  async updateMemo(id: number, memo: string, expectedMemo: string | null): Promise<void> {
     await this.api.request('/api/admin/sales-orders/' + id + '/memo', {
       method: 'PATCH',
-      body: { memo }
+      body: { memo, expected_memo: expectedMemo }
     });
   }
 

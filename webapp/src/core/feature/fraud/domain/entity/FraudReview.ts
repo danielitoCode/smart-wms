@@ -1,6 +1,5 @@
 /**
  * Fraud queue projection over SalesOrder rows with status='FRAUD_REVIEW'.
- * Flask does not persist a separate FraudCase aggregate or expose audit history.
  */
 export type FraudReview = {
   salesOrderId: number;
@@ -26,6 +25,31 @@ export type FraudReview = {
   shippingAddressPostalCode: string | null;
 };
 
+export type FraudReviewPage = {
+  items: FraudReview[];
+  page: number;
+  perPage: number;
+  total: number;
+  pages: number;
+};
+
+export type FraudAuditEntry = {
+  logId: number;
+  actionType: string;
+  username: string | null;
+  warehouseId: number | null;
+  details: Record<string, unknown> | null;
+  createdAt: string | null;
+};
+
+export type FraudAuditHistoryPage = {
+  entries: FraudAuditEntry[];
+  page: number;
+  perPage: number;
+  total: number;
+  pages: number;
+};
+
 export type FraudReviewDetail = {
   order: FraudReview;
   sourceSystem: string | null;
@@ -46,7 +70,6 @@ export type FraudReviewDetail = {
 export type UpdateFraudMemo = { salesOrderId: number; memo: string };
 export type PushFraudOrderToQueue = { salesOrderId: number };
 
-/** Client-side consistency guard only; Flask must enforce warehouse authorization independently. */
 export function isFraudReviewInWarehouse(order: Pick<FraudReview, 'warehouseId'>, warehouseId: number): boolean {
   return Number.isSafeInteger(warehouseId) && warehouseId > 0 && order.warehouseId === warehouseId;
 }

@@ -30,6 +30,23 @@ export type FraudReviewListDto = {
   pages: number;
 };
 
+export type FraudAuditEntryDto = {
+  log_id: number;
+  action_type: string;
+  username: string | null;
+  warehouse_id: number | null;
+  details: Record<string, unknown> | null;
+  created_at: string | null;
+};
+
+export type FraudAuditHistoryDto = {
+  entries: FraudAuditEntryDto[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
+};
+
 export type FraudReviewDetailDto = {
   sales_order: {
     so_id: number;

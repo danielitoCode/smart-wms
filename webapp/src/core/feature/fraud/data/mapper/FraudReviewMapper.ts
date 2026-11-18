@@ -1,7 +1,34 @@
-import type { FraudReview, FraudReviewDetail } from '../../domain/entity/FraudReview';
-import type { FraudReviewDetailDto, FraudReviewDto } from '../dto/FraudReviewDto';
+import type { FraudAuditHistoryPage, FraudReview, FraudReviewDetail, FraudReviewPage } from '../../domain/entity/FraudReview';
+import type { FraudAuditHistoryDto, FraudReviewDetailDto, FraudReviewDto, FraudReviewListDto } from '../dto/FraudReviewDto';
 
 export const FraudReviewMapper = {
+  toPage(dto: FraudReviewListDto): FraudReviewPage {
+    return {
+      items: (dto.sales_orders ?? []).map(FraudReviewMapper.toDomain),
+      page: dto.page,
+      perPage: dto.per_page,
+      total: dto.total,
+      pages: dto.pages
+    };
+  },
+
+  toAuditHistory(dto: FraudAuditHistoryDto): FraudAuditHistoryPage {
+    return {
+      entries: (dto.entries ?? []).map((entry) => ({
+        logId: entry.log_id,
+        actionType: entry.action_type,
+        username: entry.username,
+        warehouseId: entry.warehouse_id,
+        details: entry.details,
+        createdAt: entry.created_at
+      })),
+      page: dto.page,
+      perPage: dto.per_page,
+      total: dto.total,
+      pages: dto.pages
+    };
+  },
+
   toDomain(dto: FraudReviewDto): FraudReview {
     return {
       salesOrderId: dto.so_id,
