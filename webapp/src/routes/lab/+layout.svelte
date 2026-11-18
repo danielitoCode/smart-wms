@@ -19,6 +19,7 @@
 			<a href="/lab/blob-card">BlobCard</a>
 			<a href="/lab/testimonial">Testimonial</a>
 			<a href="/lab/byobu">Byobu</a>
+			<a href="/lab/disperse">Disperse</a>
 		</nav>
 	</header>
 	<main class="lab-main">
