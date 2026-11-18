@@ -2,8 +2,10 @@
 	import { getContext } from 'svelte';
 	import { createAuthGuardState } from '../../../auth/ui/state/authGuardState.svelte';
 	import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
+	import type { I18nState } from '$lib/i18n/i18n.svelte';
 	import { createCustomersState } from '../state/customersState.svelte';
 
+	const i18n = getContext<I18nState>('i18n');
 	const state = createCustomersState();
 	const authGuard = getContext<ReturnType<typeof createAuthGuardState>>('authGuard');
 	const warehouseSelection = getContext<WarehouseSelectionState>('warehouseSelection');
@@ -22,7 +24,7 @@
 		// Flask global search is only warehouse-filtered when warehouse_id is supplied.
 		// Do not issue an unscoped search for a USER without an active authorized warehouse.
 		if (authGuard.user?.role !== 'ADMIN' && warehouseSelection.warehouseId == null) {
-			searchScopeError = 'No hay un almacén autorizado activo para buscar clientes.';
+			searchScopeError = i18n.t('No hay un almacén autorizado activo para buscar clientes.');
 			return;
 		}
 		searchScopeError = null;
@@ -36,7 +38,7 @@
 		<label class="field grow"><span>Buscar cliente (mínimo 2 caracteres)</span>
 			<input type="search" placeholder="Nombre del cliente" value={state.query} oninput={(e) => state.setQuery(e.currentTarget.value)} />
 		</label>
-		<span class="warehouse-context">Almacén activo: {warehouseSelection.warehouseId ?? 'Todos los autorizados'}</span>
+		<span class="warehouse-context">Almacén activo: {warehouseSelection.warehouseId ?? i18n.t('Todos los autorizados')}</span>
 		<button type="submit" disabled={state.loading}>Buscar</button>
 	</form>
 	{#if searchScopeError}<p class="status error" role="alert">{searchScopeError}</p>{/if}
@@ -65,11 +67,11 @@
 			<div class="detail-heading"><div><h2 id="customer-detail-title">{state.selectedCustomer.name}</h2><p class="subtitle">Detalle derivado de pedidos; no es un registro maestro editable.</p></div><button type="button" onclick={state.closeDetail}>Cerrar</button></div>
 			{#if state.detailLoading}<p class="status">Cargando detalle e historial…</p>{/if}
 			{#if state.detailError}<p class="status error" role="alert">{state.detailError}</p>{/if}
-			<div class="facts"><div><span>Email</span><strong>{state.selectedCustomer.email ?? 'No disponible'}</strong></div><div><span>Teléfono</span><strong>{state.selectedCustomer.phone ?? '—'}</strong></div><div><span>Pedidos</span><strong>{state.selectedCustomer.orderCount ?? 'No calculado'}</strong></div></div>
+			<div class="facts"><div><span>Email</span><strong>{state.selectedCustomer.email ?? i18n.t('No disponible')}</strong></div><div><span>Teléfono</span><strong>{state.selectedCustomer.phone ?? '—'}</strong></div><div><span>Pedidos</span><strong>{state.selectedCustomer.orderCount ?? i18n.t('No calculado')}</strong></div></div>
 			<h3>Direcciones observadas en pedidos</h3>
 			{#if state.selectedCustomer.addresses.length === 0}<p class="hint">No hay direcciones disponibles en los pedidos consultados.</p>
 			{:else}<div class="addresses">{#each state.selectedCustomer.addresses as address, i (address.kind + '-' + i)}
-				<article><strong>{address.kind === 'billing' ? 'Facturación' : address.kind === 'shipping' ? 'Envío' : 'Dirección de cliente'}</strong>
+				<article><strong>{address.kind === 'billing' ? i18n.t('Facturación') : address.kind === 'shipping' ? i18n.t('Envío') : i18n.t('Dirección de cliente')}</strong>
 				<p>{[...address.lines, address.city, address.state, address.postalCode, address.country].filter(Boolean).join(', ')}</p>
 				<small>Almacén {address.warehouseId ?? '—'} · Tel. {address.phone ?? '—'}</small></article>
 			{/each}</div>{/if}
