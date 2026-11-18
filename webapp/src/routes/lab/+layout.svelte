@@ -20,6 +20,7 @@
 			<a href="/lab/testimonial">Testimonial</a>
 			<a href="/lab/byobu">Byobu</a>
 			<a href="/lab/disperse">Disperse</a>
+			<a href="/lab/sticky-cards">StickyCards</a>
 		</nav>
 	</header>
 	<main class="lab-main">
