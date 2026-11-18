@@ -1,5 +1,10 @@
 import type { ApiClient } from '#core/infrastructure/api/ApiClient';
-import type { ApiTokenDto, ApiTokenListResponseDto, ScopeCatalogDto } from '../dto/ApiTokenDto';
+import type {
+	ApiTokenDto,
+	ApiTokenListResponseDto,
+	ScopeCatalogDto,
+	WarehousesResponseDto
+} from '../dto/ApiTokenDto';
 
 export class ApiTokensRemoteDataSource {
 	constructor(private readonly api: ApiClient) {}
@@ -26,5 +31,9 @@ export class ApiTokensRemoteDataSource {
 
 	scopeCatalog() {
 		return this.api.get<ScopeCatalogDto>('/api/admin/scope-catalog');
+	}
+
+	warehouses() {
+		return this.api.get<WarehousesResponseDto>('/api/admin/warehouses');
 	}
 }
