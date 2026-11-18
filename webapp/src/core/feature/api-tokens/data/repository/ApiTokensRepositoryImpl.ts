@@ -1,5 +1,10 @@
 import type { ApiTokensRepository } from '../../domain/repository/ApiTokensRepository';
-import type { ApiToken, ApiTokenCreateInput, ApiTokenIssueResult } from '../../domain/entity/ApiToken';
+import type {
+	ApiToken,
+	ApiTokenCreateInput,
+	ApiTokenIssueResult,
+	ApiTokenScopeCatalog
+} from '../../domain/entity/ApiToken';
 import { ApiTokensRemoteDataSource } from '../datasource/ApiTokensRemoteDataSource';
 import { ApiTokenMapper } from '../mapper/ApiTokenMapper';
 
@@ -8,29 +13,28 @@ export class ApiTokensRepositoryImpl implements ApiTokensRepository {
 
 	async list(): Promise<ApiToken[]> {
 		const response = await this.remote.list();
-		return (response.tokens ?? []).map(ApiTokenMapper.toDomain);
+		return response.tokens.map(ApiTokenMapper.toDomain);
 	}
 
 	async create(input: ApiTokenCreateInput): Promise<ApiTokenIssueResult> {
 		const dto = await this.remote.create({
-			name: input.name,
-			scopes: input.scopes,
-			event_types: input.eventTypes ?? [],
+			token_name: input.name,
+			warehouse_ids: input.warehouseIds,
+			event_types: input.eventTypes,
+			endpoints: input.endpoints,
+			expires_at: input.expiresAt ?? null,
 			source_system: input.sourceSystem ?? null,
-			inbound_resources: input.inboundResources ?? []
+			inbound_resources: input.inboundResources,
+			mapping_override: input.mappingOverride
 		});
-		return {
-			token: ApiTokenMapper.toDomain(dto),
-			plaintext: dto.plaintext ?? dto.token ?? null
-		};
+		if (!dto.token) throw new Error('El servidor no devolvió el secreto del token recién creado');
+		return { token: ApiTokenMapper.toDomain(dto), plaintext: dto.token };
 	}
 
 	async rotate(tokenId: number): Promise<ApiTokenIssueResult> {
 		const dto = await this.remote.rotate(tokenId);
-		return {
-			token: ApiTokenMapper.toDomain(dto),
-			plaintext: dto.plaintext ?? dto.token ?? null
-		};
+		if (!dto.token) throw new Error('El servidor no devolvió el nuevo secreto del token');
+		return { token: ApiTokenMapper.toDomain(dto), plaintext: dto.token };
 	}
 
 	async revoke(tokenId: number): Promise<void> {
@@ -41,8 +45,21 @@ export class ApiTokensRepositoryImpl implements ApiTokensRepository {
 		await this.remote.remove(tokenId);
 	}
 
-	async scopeCatalog(): Promise<string[]> {
+	async scopeCatalog(): Promise<ApiTokenScopeCatalog> {
 		const dto = await this.remote.scopeCatalog();
-		return dto.scopes ?? [];
+		return {
+			eventTypes: dto.event_types,
+			endpoints: dto.endpoints,
+			inboundResources: dto.inbound_resources,
+			sourceSystems: dto.source_systems.map((item) => ({
+				sourceSystem: item.source_system,
+				kind: item.kind
+			}))
+		};
+	}
+
+	async warehouses() {
+		const response = await this.remote.warehouses();
+		return response.warehouses;
 	}
 }
