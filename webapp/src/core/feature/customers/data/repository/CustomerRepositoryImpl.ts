@@ -63,18 +63,19 @@ export class CustomerRepositoryImpl implements CustomerRepository {
 			this.datasource.search(customerName, warehouseId)
 		]);
 		const rows = exactCustomerRows(ordersResponse.sales_orders ?? [], customerName);
-		if (!rows.length) return null;
-		const customer = CustomerMapper.fromSalesOrderProjection(rows)[0] ?? null;
+		const aggregate = searchHits.find((hit) => customerKey(hit.label ?? '') === customerKey(customerName));
+		const customer = rows.length
+			? CustomerMapper.fromSalesOrderProjection(rows)[0] ?? null
+			: aggregate ? CustomerMapper.fromSearchHit(aggregate) : null;
 		if (!customer) return null;
 
-		// Global search performs a DISTINCT/GROUP BY customer_name and returns the full
-		// count for this name (within the requested warehouse), unlike the current page.
-		const aggregate = searchHits.find((hit) => customerKey(hit.label ?? '') === customerKey(customerName));
+		// Global search performs a GROUP BY customer_name and returns the full
+		// count within the selected warehouse, unlike the current source page.
 		if (aggregate) customer.orderCount = CustomerMapper.fromSearchHit(aggregate)?.orderCount ?? customer.orderCount;
+		if (!rows.length) return customer;
 
 		const firstOrderId = rows.find((row) => Number.isInteger(row.so_id) && row.so_id! > 0)?.so_id;
 		if (!firstOrderId) return customer;
 		const detail = await this.datasource.getSalesOrderDetail(firstOrderId);
 		return CustomerMapper.mergeDetail(customer, detail.sales_order ?? {});
-	}
-}
+	}}
