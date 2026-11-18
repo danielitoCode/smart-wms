@@ -106,6 +106,13 @@
 			status: 'ready',
 			href: '/lab/view-on-map',
 			description: 'Pill que se expande a mapa embebido (CSS, sin Motion).'
+		},
+		{
+			id: 'option-picker',
+			name: 'OptionPicker',
+			status: 'ready',
+			href: '/lab/option-picker',
+			description: 'Selector Private/Public compacto con menú emergente (CSS, sin Motion).'
 		}
 	] as const;
 </script>
