@@ -47,6 +47,7 @@
 		<strong>{i18n.t('Alcance de esta bandeja')}</strong>
 		<p>{i18n.t('Solo aparecen filas que llegaron a staging después de aplicar correctamente el mapeo y actualizar la entidad canónica. Aplicado confirma ese resultado; sustituido identifica una versión aplicada que fue reemplazada por otra más reciente.')}</p>
 		<p>{i18n.t('Las solicitudes rechazadas, los errores de validación y los reintentos sin éxito no se guardan en estas tablas y no aparecen aquí. Los reenvíos idempotentes devuelven la fila existente; esta vista no ofrece replay ni reintento.')}</p>
+		<p>{i18n.t('El permiso inbound permite consultar registros de integración de todos los almacenes; esta bandeja no tiene aislamiento por almacén.')}</p>
 	</aside>
 	{#if vm.loading && vm.rows.length === 0}<p class="muted" role="status">{i18n.t('Cargando actividad entrante…')}</p>
 	{:else if vm.rows.length === 0 && vm.error}<p class="empty">{i18n.t('No se pudo recuperar la actividad. Revisa el error anterior e inténtalo de nuevo.')}</p>
