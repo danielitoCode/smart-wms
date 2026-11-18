@@ -16,6 +16,7 @@
 			<a href="/lab">Overview</a>
 			<a href="/lab/task-widget">TaskWidget</a>
 			<a href="/lab/hover-expand">HoverExpand</a>
+			<a href="/lab/onboarding">Onboarding</a>
 		</nav>
 	</header>
 	<main class="lab-main">
