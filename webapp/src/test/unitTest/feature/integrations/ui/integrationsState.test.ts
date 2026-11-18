@@ -55,7 +55,7 @@ describe('Integrations UI state', () => {
     await oldRequest;
     expect(state.selected?.name).toBe('crm');
     expect(state.credentials.map(item => item.key)).toEqual(['crm_token']);
-    expect(state.syncStates).toEqual([status('idle')]);
+    expect(state.syncStates).toEqual([status('idle', null, 'crm', 2)]);
     state.destroy();
   });
 

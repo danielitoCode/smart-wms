@@ -410,6 +410,14 @@ Referencia: [React Dashboard.jsx](https://github.com/danielitoCode/smart-wms/blo
 
 ## F5.1 Integrations
 
+**Avance de implementación en `svelte-webapp`:**
+- Contratos Flask contrastados en `api/routes/admin/admin_connectors.py` y `api/schemas/connectors.py`; detalle documentado en `API-Contracts.md`.
+- Domain/Application/Data/DI implementados para catálogo, schema, credenciales, test, estado, reset, sync y borrado.
+- UI incluye formulario schema-driven, secretos enmascarados, validación de campos obligatorios, test, estado y sincronización por almacén.
+- Pruebas Data/Application/UI cubren payloads, secretos, desconexión, credenciales inválidas, timeout, 409, cambios de almacén durante operaciones pendientes, limpieza de selección y polling hasta completar una sincronización.
+- Se corrigió el bloqueo previo de `svelte-check` en las rutas de Component Lab. La ejecución posterior validó typecheck y build; una expectativa inicial de polling se ajustó en las pruebas. **El cierre queda condicionado a la ejecución completa de CI del último commit y a revisar los resultados de las suites.**
+
+
 1. **Domain:** Connector, Credential, SyncStatus y configuración.
 2. **Application:** ListConnectors, GetConfigSchema, GetCredentials, SaveCredentials, TestConnection, GetSyncStatus, ResetSync, ExecuteSync y DeleteCredentials.
 3. **Data:** contrastar GET connectors/config-schema/credentials/sync-status; POST credentials/test/sync-reset/sync; DELETE credentials; revisar `schemas/connectors.py`.
