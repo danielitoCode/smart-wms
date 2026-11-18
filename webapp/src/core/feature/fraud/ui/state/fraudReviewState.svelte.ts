@@ -19,6 +19,8 @@ export function createFraudReviewState() {
     const epoch = ++listEpoch;
     currentQuery = query;
     rows = [];
+    detailEpoch += 1;
+    detailLoading = false;
     selectedDetail = null;
     if (!Number.isSafeInteger(warehouseId) || warehouseId <= 0) {
       rows = [];
