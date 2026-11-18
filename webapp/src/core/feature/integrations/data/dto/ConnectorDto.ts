@@ -1,9 +1,10 @@
-export type ConnectorDto = {
-	name: string;
-	display_name?: string | null;
-	description?: string | null;
-	supports_sync?: boolean | null;
-};
-
-export type ConnectorsResponseDto = { connectors?: ConnectorDto[] };
-export type TestConnectorResponseDto = { ok?: boolean; success?: boolean; message?: string | null };
+export type ConnectorFieldSchemaDto = { type?: string; required?: boolean; label?: string; description?: string; secret?: boolean; [key: string]: unknown };
+export type ConnectorDto = { name: string; config_schema: Record<string, ConnectorFieldSchemaDto>; capabilities: string[] };
+export type ConnectorsResponseDto = { connectors: ConnectorDto[] };
+export type CredentialsResponseDto = { connector: string; warehouse_id: number; credentials: { key: string; value: string; created_at: string | null; updated_at: string | null }[] };
+export type SaveCredentialsResponseDto = { message: string; connector: string; warehouse_id: number; keys: string[] };
+export type TestConnectionRequestDto = { warehouse_id: number };
+export type TestConnectionResponseDto = { connector: string; warehouse_id: number; connected: boolean; message: string };
+export type SyncStatusDto = { connector_name: string; warehouse_id: number; sync_type: 'orders'|'items'|'inventory'|'fulfillment'; sync_status: string; last_synced_at: string|null; last_success_at: string|null; last_error_at: string|null; last_error_message: string|null; consecutive_errors: number };
+export type SyncStatusResponseDto = { connector: string; warehouse_id: number; sync_states: SyncStatusDto[] };
+export type SyncActionResponseDto = { message: string; connector: string; warehouse_id: number; sync_type: string|null; task_id?: string; rows_reset?: number };

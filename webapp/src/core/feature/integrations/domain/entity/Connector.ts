@@ -1,6 +1,11 @@
-export type Connector = {
-	name: string;
-	displayName: string;
-	description: string | null;
-	supportsSync: boolean;
-};
+export type ConnectorCapability = 'sync_orders' | 'sync_items' | 'sync_inventory' | 'push_fulfillment' | string;
+export type ConnectorFieldSchema = { type?: string; required?: boolean; label?: string; description?: string; secret?: boolean; [key: string]: unknown };
+export type ConnectorConfigSchema = Record<string, ConnectorFieldSchema>;
+export type Connector = { name: string; configSchema: ConnectorConfigSchema; capabilities: ConnectorCapability[]; };
+export type CredentialMetadata = { key: string; configured: boolean; createdAt: string | null; updatedAt: string | null };
+export type SyncType = 'orders' | 'items' | 'inventory' | 'fulfillment';
+export type SyncStatusValue = 'idle' | 'running' | 'error' | string;
+export type SyncStatus = { connectorName: string; warehouseId: number; syncType: SyncType; status: SyncStatusValue; lastSyncedAt: string | null; lastSuccessAt: string | null; lastErrorAt: string | null; lastErrorMessage: string | null; consecutiveErrors: number };
+export type ConnectionTestResult = { connected: boolean; message: string };
+export type SyncQueueResult = { taskId: string; connectorName: string; warehouseId: number; syncType: SyncType };
+export type SyncResetResult = { rowsReset: number; connectorName: string; warehouseId: number; syncType: SyncType | null };
