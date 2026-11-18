@@ -6,7 +6,7 @@
 	import { createCustomersState } from '../state/customersState.svelte';
 
 	const i18n = getContext<I18nState>('i18n');
-	const state = createCustomersState();
+	const state = createCustomersState((source) => i18n.t(source));
 	const authGuard = getContext<ReturnType<typeof createAuthGuardState>>('authGuard');
 	const warehouseSelection = getContext<WarehouseSelectionState>('warehouseSelection');
 	let searchScopeError = $state<string | null>(null);
