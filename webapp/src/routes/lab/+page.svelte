@@ -78,6 +78,13 @@
 			status: 'ready',
 			href: '/lab/byobu',
 			description: 'Carrusel 3D tipo biombo: paneles plegados, drag e inercia (RAF).'
+		},
+		{
+			id: 'disperse',
+			name: 'DisperseCarousel',
+			status: 'ready',
+			href: '/lab/disperse',
+			description: 'Carrusel con salida en fragmentos (WAAPI) y entrada suave (sin GSAP).'
 		}
 	] as const;
 </script>
