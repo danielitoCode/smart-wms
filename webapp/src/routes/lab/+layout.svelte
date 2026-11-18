@@ -15,6 +15,7 @@
 		<nav class="lab-nav">
 			<a href="/lab">Overview</a>
 			<a href="/lab/task-widget">TaskWidget</a>
+			<a href="/lab/hover-expand">HoverExpand</a>
 		</nav>
 	</header>
 	<main class="lab-main">
@@ -95,7 +96,7 @@
 
 	.lab-main {
 		padding: 1.5rem 1.25rem 3rem;
-		max-width: 960px;
+		max-width: 1100px;
 		margin: 0 auto;
 	}
 
