@@ -2089,6 +2089,14 @@ def update_sales_order_memo(so_id, validated):
         return jsonify({"error": "Sales order not found"}), 404
 
     new_memo = validated.memo if validated.memo != "" else None
+    # Optional optimistic concurrency token. The row lock serializes writers;
+    # expected_memo prevents a stale editor from silently overwriting a newer note.
+    if "expected_memo" in validated.model_fields_set and so.memo != validated.expected_memo:
+        return jsonify({
+            "error": "memo_conflict",
+            "message": "The memo changed after it was loaded. Reload before saving.",
+            "current_memo": so.memo,
+        }), 409
     if so.memo == new_memo:
         return jsonify({"unchanged": True, "memo": so.memo}), 200
 
@@ -2109,7 +2117,65 @@ def update_sales_order_memo(so_id, validated):
     return jsonify({"so_id": so_id, "memo": new_memo})
 
 
-@admin_bp.route(
+
+
+@admin_bp.route("/sales-orders/<int:so_id>/audit-history", methods=["GET"])
+@require_auth
+@require_admin_or_any_page_permission("fraud", "audit-log")
+@with_db
+def get_sales_order_audit_history(so_id):
+    """Return paginated audit events for one SO, after verifying warehouse access."""
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 50, type=int)
+    if page < 1 or not 1 <= per_page <= 100:
+        return jsonify({"error": "page must be positive and per_page between 1 and 100"}), 400
+
+    warehouse_scope, warehouse_scope_params = warehouse_scope_clause("so.warehouse_id")
+    order = g.db.execute(
+        text(
+            "SELECT so.so_id, so.warehouse_id FROM sales_orders so "
+            "WHERE so.so_id = :sid {warehouse_scope}".format(warehouse_scope=warehouse_scope)
+        ),
+        {"sid": so_id, **warehouse_scope_params},
+    ).fetchone()
+    if not order:
+        return jsonify({"error": "Sales order not found"}), 404
+
+    params = {"so_id": so_id, "warehouse_id": order.warehouse_id}
+    where_sql = "WHERE al.entity_type = 'SO' AND al.entity_id = :so_id AND al.warehouse_id = :warehouse_id"
+    total = g.db.execute(text(f"SELECT COUNT(*) FROM audit_log al {where_sql}"), params).scalar()
+    pages = max(1, math.ceil(total / per_page))
+    rows = g.db.execute(
+        text(
+            f"""
+            SELECT al.log_id, al.action_type, al.user_id, al.warehouse_id,
+                   al.details, al.created_at
+              FROM audit_log al
+              {where_sql}
+             ORDER BY al.created_at DESC, al.log_id DESC
+             LIMIT :limit OFFSET :offset
+            """
+        ),
+        {**params, "limit": per_page, "offset": (page - 1) * per_page},
+    ).fetchall()
+    return jsonify({
+        "entries": [
+            {
+                "log_id": row.log_id,
+                "action_type": row.action_type,
+                "username": row.user_id,
+                "warehouse_id": row.warehouse_id,
+                "details": row.details,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+            }
+            for row in rows
+        ],
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "pages": pages,
+    })
+\n\n@admin_bp.route(
     "/sales-orders/<int:so_id>/lines/<int:so_line_id>/allocation", methods=["PATCH"]
 )
 @require_auth

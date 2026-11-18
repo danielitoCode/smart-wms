@@ -273,3 +273,5 @@ class UpdateSalesOrderMemoRequest(BaseModel):
     are CSR notes, not log dumps."""
 
     memo: Optional[str] = Field(..., max_length=4000)
+    # Optional optimistic concurrency token for stale memo edits.
+    expected_memo: Optional[str] = Field(default=None, max_length=4000)
