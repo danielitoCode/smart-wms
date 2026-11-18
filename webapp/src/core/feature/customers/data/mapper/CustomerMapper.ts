@@ -1,59 +1,86 @@
-import type { Customer } from '../../domain/entity/Customer';
+import type { Customer, CustomerAddress, CustomerOrder } from '../../domain/entity/Customer';
 import type { SalesOrderCustomerDto, SearchCustomerHitDto } from '../dto/CustomerDto';
 
-function keyFrom(name: string, customerId: string | null | undefined): string {
-	if (customerId && String(customerId).trim()) return String(customerId).trim();
-	return `name:${name.trim().toLowerCase()}`;
+export function customerKey(name: string): string {
+	return name.trim().toLocaleLowerCase();
+}
+
+function address(
+	kind: CustomerAddress['kind'],
+	row: SalesOrderCustomerDto,
+	warehouseId: number | null
+): CustomerAddress | null {
+	const prefix = kind === 'billing' ? 'billing' : kind === 'shipping' ? 'shipping' : 'customer';
+	const line1 = kind === 'customer' ? row.customer_address : row[`${prefix}_address_line1` as keyof SalesOrderCustomerDto] as string | null | undefined;
+	const line2 = kind === 'customer' ? null : row[`${prefix}_address_line2` as keyof SalesOrderCustomerDto] as string | null | undefined;
+	const city = kind === 'customer' ? null : row[`${prefix}_address_city` as keyof SalesOrderCustomerDto] as string | null | undefined;
+	const state = kind === 'customer' ? null : row[`${prefix}_address_state` as keyof SalesOrderCustomerDto] as string | null | undefined;
+	const postalCode = kind === 'customer' ? null : row[`${prefix}_address_postal_code` as keyof SalesOrderCustomerDto] as string | null | undefined;
+	const country = kind === 'customer' ? null : row[`${prefix}_address_country` as keyof SalesOrderCustomerDto] as string | null | undefined;
+	const phone = kind === 'customer' ? row.customer_phone : row[`${prefix}_address_phone` as keyof SalesOrderCustomerDto] as string | null | undefined;
+	const lines = [line1, line2].map((v) => (v ?? '').trim()).filter(Boolean);
+	if (!lines.length && !city && !state && !postalCode && !country && !phone) return null;
+	return { kind, lines, city: city ?? null, state: state ?? null, postalCode: postalCode ?? null, country: country ?? null, phone: phone ?? null, warehouseId };
+}
+
+function mergeCustomer(target: Customer, row: SalesOrderCustomerDto): void {
+	const wid = row.warehouse_id ?? null;
+	if (wid != null && !target.warehouseIds.includes(wid)) target.warehouseIds.push(wid);
+	if (!target.phone && row.customer_phone) target.phone = row.customer_phone;
+	for (const kind of ['customer', 'billing', 'shipping'] as const) {
+		const candidate = address(kind, row, wid);
+		if (!candidate) continue;
+		const key = JSON.stringify(candidate);
+		if (!target.addresses.some((item) => JSON.stringify(item) === key)) target.addresses.push(candidate);
+	}
 }
 
 export const CustomerMapper = {
 	fromSearchHit(hit: SearchCustomerHitDto): Customer | null {
-		const name = (hit.label ?? hit.customer_name ?? '').trim();
+		const name = (hit.label ?? '').trim();
 		if (!name) return null;
-		const id = hit.customer_id ?? (hit.id != null ? String(hit.id) : null);
-		const orderCount = (() => {
-			const sub = hit.sublabel ?? '';
-			const m = sub.match(/(\d+)\s*order/i);
-			return m ? Number(m[1]) : null;
-		})();
+		const match = (hit.sublabel ?? '').match(/(\d+)\s+orders?/i);
 		return {
-			id: keyFrom(name, id),
-			name,
-			email: null,
-			phone: null,
-			orderCount,
-			warehouseId: null
+			id: customerKey(name), name, email: null, phone: null,
+			orderCount: match ? Number(match[1]) : null,
+			warehouseIds: [], addresses: []
 		};
 	},
 
-	fromSalesOrderProjection(
-		rows: SalesOrderCustomerDto[],
-		warehouseId?: number
-	): Customer[] {
+	fromSalesOrderProjection(rows: SalesOrderCustomerDto[]): Customer[] {
 		const map = new Map<string, Customer>();
 		for (const row of rows) {
 			const name = (row.customer_name ?? '').trim();
 			if (!name) continue;
-			if (warehouseId != null && row.warehouse_id != null && row.warehouse_id !== warehouseId) {
-				continue;
+			const key = customerKey(name);
+			let customer = map.get(key);
+			if (!customer) {
+				customer = { id: key, name, email: null, phone: null, orderCount: 0, warehouseIds: [], addresses: [] };
+				map.set(key, customer);
 			}
-			const id = keyFrom(name, row.customer_id);
-			const existing = map.get(id);
-			if (existing) {
-				existing.orderCount = (existing.orderCount ?? 0) + 1;
-				if (!existing.email && row.customer_email) existing.email = row.customer_email;
-				if (!existing.phone && row.customer_phone) existing.phone = row.customer_phone;
-			} else {
-				map.set(id, {
-					id,
-					name,
-					email: row.customer_email ?? null,
-					phone: row.customer_phone ?? null,
-					orderCount: 1,
-					warehouseId: row.warehouse_id ?? warehouseId ?? null
-				});
-			}
+			customer.orderCount = (customer.orderCount ?? 0) + 1;
+			mergeCustomer(customer, row);
 		}
-		return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+		return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+	},
+
+	fromOrder(row: SalesOrderCustomerDto): CustomerOrder | null {
+		if (!Number.isInteger(row.so_id) || !row.so_id || !row.so_number) return null;
+		return {
+			id: row.so_id,
+			number: row.so_number,
+			status: row.status ?? null,
+			orderDate: row.order_date ?? null,
+			orderTotal: row.order_total ?? null,
+			warehouseId: row.warehouse_id ?? null
+		};
+	},
+
+	mergeDetail(customer: Customer, detail: { customer_email?: string | null; customer_phone?: string | null }): Customer {
+		return {
+			...customer,
+			email: detail.customer_email ?? null,
+			phone: customer.phone ?? detail.customer_phone ?? null
+		};
 	}
 };
