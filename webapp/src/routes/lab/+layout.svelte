@@ -25,6 +25,7 @@
 			<a href="/lab/view-on-map">ViewOnMap</a>
 			<a href="/lab/option-picker">OptionPicker</a>
 			<a href="/lab/shared-tooltip">SharedTooltip</a>
+			<a href="/lab/tags">Tags</a>
 		</nav>
 	</header>
 	<main class="lab-main">
