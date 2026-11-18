@@ -39,6 +39,7 @@ from constants import (
 from middleware.auth_middleware import (
     has_override,
     require_admin_or_page_permission,
+    require_admin_or_any_page_permission,
     require_auth,
     require_role,
     warehouse_scope_clause,
@@ -909,7 +910,7 @@ def list_source_systems():
 
 @admin_bp.route("/sales-orders", methods=["GET"])
 @require_auth
-@require_admin_or_page_permission("fraud")
+@require_admin_or_any_page_permission("sales-orders", "fraud")
 @with_db
 def list_sales_orders():
     page = request.args.get("page", 1, type=int)
@@ -1118,7 +1119,7 @@ def list_sales_orders():
 
 @admin_bp.route("/sales-orders/<int:so_id>", methods=["GET"])
 @require_auth
-@require_admin_or_page_permission("fraud")
+@require_admin_or_any_page_permission("sales-orders", "fraud")
 @with_db
 def get_sales_order(so_id):
     warehouse_scope, warehouse_scope_params = warehouse_scope_clause("so.warehouse_id")

@@ -421,8 +421,8 @@ class TestMemoPatch:
 
 
 class TestFraudWarehouseScopeAndPermission:
-    def _fraud_user(self, client, username):
-        """Create a non-admin assigned only to warehouse 1 with Fraud page grant."""
+    def _user_with_page_grant(self, client, username, page_key):
+        """Create a non-admin assigned only to warehouse 1 with one page grant."""
         conn = db_test_context.get_raw_connection()
         cur = conn.cursor()
         cur.execute(
@@ -435,8 +435,8 @@ class TestFraudWarehouseScopeAndPermission:
         )
         user_id = cur.fetchone()[0]
         cur.execute(
-            "INSERT INTO user_page_permissions (user_id, page_key) VALUES (%s, 'fraud')",
-            (user_id,),
+            "INSERT INTO user_page_permissions (user_id, page_key) VALUES (%s, %s)",
+            (user_id, page_key),
         )
         cur.close()
         resp = client.post("/api/auth/login", json={"username": username, "password": "admin"})
@@ -444,7 +444,7 @@ class TestFraudWarehouseScopeAndPermission:
         return {"Authorization": f"Bearer {resp.get_json()['token']}"}
 
     def test_fraud_grant_is_sufficient_for_list_and_detail(self, client):
-        headers = self._fraud_user(client, f"fraud_read_{uuid.uuid4().hex[:8]}")
+        headers = self._user_with_page_grant(client, f"fraud_read_{uuid.uuid4().hex[:8]}", "fraud")
         so_id = _seed_so("FRAUD_REVIEW", warehouse_id=1)
         listed = client.get(
             "/api/admin/sales-orders?status=FRAUD_REVIEW&warehouse_id=1",
@@ -457,7 +457,7 @@ class TestFraudWarehouseScopeAndPermission:
         assert detail.get_json()["sales_order"]["warehouse_id"] == 1
 
     def test_list_and_detail_do_not_expose_other_warehouses(self, client):
-        headers = self._fraud_user(client, f"fraud_scope_{uuid.uuid4().hex[:8]}")
+        headers = self._user_with_page_grant(client, f"fraud_scope_{uuid.uuid4().hex[:8]}", "fraud")
         own_id = _seed_so("FRAUD_REVIEW", warehouse_id=1)
         foreign_id = _seed_so("FRAUD_REVIEW", warehouse_id=2)
         listed = client.get(
@@ -472,7 +472,7 @@ class TestFraudWarehouseScopeAndPermission:
         assert detail.status_code == 404
 
     def test_memo_and_push_reject_orders_from_other_warehouses(self, client):
-        headers = self._fraud_user(client, f"fraud_write_scope_{uuid.uuid4().hex[:8]}")
+        headers = self._user_with_page_grant(client, f"fraud_write_scope_{uuid.uuid4().hex[:8]}", "fraud")
         foreign_id = _seed_so("FRAUD_REVIEW", memo="keep", warehouse_id=2)
         memo = client.patch(
             f"/api/admin/sales-orders/{foreign_id}/memo",
@@ -487,3 +487,26 @@ class TestFraudWarehouseScopeAndPermission:
         )
         assert pushed.status_code == 404
         assert _query("SELECT status FROM sales_orders WHERE so_id = %s", (foreign_id,))[0][0] == "FRAUD_REVIEW"
+
+
+    def test_sales_orders_grant_remains_valid_for_shared_read_endpoints(self, client):
+        headers = self._user_with_page_grant(
+            client, f"sales_orders_read_{uuid.uuid4().hex[:8]}", "sales-orders"
+        )
+        so_id = _seed_so("FRAUD_REVIEW", warehouse_id=1)
+        listed = client.get(
+            "/api/admin/sales-orders?status=FRAUD_REVIEW&warehouse_id=1",
+            headers=headers,
+        )
+        assert listed.status_code == 200
+        assert any(row["so_id"] == so_id for row in listed.get_json()["sales_orders"])
+        detail = client.get(f"/api/admin/sales-orders/{so_id}", headers=headers)
+        assert detail.status_code == 200
+
+        # The composite read grant does not widen the fraud-only write actions.
+        memo = client.patch(
+            f"/api/admin/sales-orders/{so_id}/memo",
+            headers=headers,
+            json={"memo": "must be denied"},
+        )
+        assert memo.status_code == 403

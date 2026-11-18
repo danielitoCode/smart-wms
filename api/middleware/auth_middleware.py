@@ -257,6 +257,29 @@ def has_override(override_key: str) -> bool:
     return override_key in allowed
 
 
+def require_admin_or_any_page_permission(*page_keys):
+    """Allow ADMIN or a user holding at least one of the listed page grants.
+
+    Use for shared read endpoints that back multiple admin pages. Mutations
+    should keep their narrower, single-page permission.
+    """
+    if not page_keys or any(not isinstance(key, str) or not key for key in page_keys):
+        raise ValueError("at least one non-empty page permission is required")
+
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            allowed = g.current_user.get("allowed_pages")
+            if allowed is None or any(key in allowed for key in page_keys):
+                return f(*args, **kwargs)
+            return jsonify({
+                "error": "Permission denied",
+                "page_keys": list(page_keys),
+            }), 403
+        return decorated
+    return decorator
+
+
 def require_admin_or_page_permission(page_key):
     """Web-admin permission gate (mig 061).
 
