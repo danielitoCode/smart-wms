@@ -78,4 +78,5 @@ export class CustomerRepositoryImpl implements CustomerRepository {
 		if (!firstOrderId) return customer;
 		const detail = await this.datasource.getSalesOrderDetail(firstOrderId);
 		return CustomerMapper.mergeDetail(customer, detail.sales_order ?? {});
-	}}
+	}
+}
