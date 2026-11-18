@@ -243,4 +243,9 @@ export const gapEn: Record<string, string> = {
   'No se pudo cargar el detalle del cliente': 'Could not load customer details',
   'No se pudo cargar el historial de pedidos': 'Could not load order history',
   'coincidencias backend': 'backend matches',
+
+  'Todos los autorizados': 'All authorized warehouses',
+  'No se pudieron cargar los clientes': 'Could not load customers',
+  'Total': 'Total',
+  'Tel.': 'Tel.',
 };
