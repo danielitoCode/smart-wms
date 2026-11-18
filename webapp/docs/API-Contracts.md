@@ -412,3 +412,20 @@ POST /api/admin/transfer-orders/import requiere page grant transfer-orders, no i
 
 **Gate F6.1:** implementación backend y UI ampliada; cierre condicionado a ejecución satisfactoria de pruebas específicas y regresión global, más typecheck/build de Webapp.
 
+## 6.2 Customers — proyección read-only (F6.2)
+
+No existe en Flask un recurso administrativo independiente de clientes ni rutas CRUD. La pantalla Svelte se alimenta exclusivamente de información derivada de Sales Orders.
+
+| Método | Endpoint | Respuesta relevante | Seguridad / límites |
+|---|---|---|---|
+| GET | `/api/admin/search?q={q}&warehouse_id={id?}` | `{ query, warehouse_id, results: [{ type, id, label, sublabel }] }`; hit customer: `type=customer`, `id=customer_name`, `label=customer_name`, `sublabel="{n} orders"` | Auth; sin page grant para el typeahead; mínimo 2 caracteres; hasta 10 hits por tipo y 50 resultados totales. Customer se calcula con DISTINCT/GROUP BY sobre `sales_orders.customer_name`; el ID de hit es el nombre, no un customer_id. |
+| GET | `/api/admin/sales-orders?page={page}&per_page={per_page}&warehouse_id={id?}` | `{ sales_orders: [...], total, page, per_page, pages }`; listado incluye `so_id, so_number, customer_name, customer_phone, customer_address, warehouse_id`, fechas/estado/total y campos estructurados billing/shipping | Auth + `sales-orders` o `fraud`; warehouse_scope_clause; page >= 1; per_page 1..1000. Svelte usa 50 por página. La lista NO incluye customer_id ni customer_email. |
+| GET | `/api/admin/sales-orders?q={customerName}&page={page}&per_page={perPage}&warehouse_id={id?}` | Mismo envelope paginado de Sales Orders | `q` busca `so_number ILIKE q OR customer_name ILIKE q`, no es filtro exacto de cliente. Svelte filtra por nombre normalizado; `total/pages` pueden incluir falsos positivos por número de pedido. |
+| GET | `/api/admin/sales-orders/{so_id}` | `{ sales_order: { customer_name, customer_phone, customer_email, customer_address, warehouse_id, billing_address_*, shipping_address_* ... } }` | Auth + `sales-orders` o `fraud`; verifica warehouse scope del pedido. El email solo se obtiene del detalle individual, no del listado. |
+
+**Reglas de proyección:**
+- Identidad de frontend por nombre normalizado, no canónica. Nombres iguales pueden representar clientes distintos; el contrato actual no permite resolverlo con certeza.
+- Direcciones son snapshots asociados a pedidos. No hay entidad de dirección maestra del cliente.
+- La paginación de la lista corresponde a pedidos fuente; los clientes se deduplican únicamente dentro de la página recibida, por lo que pueden repetirse entre páginas.
+- La búsqueda global devuelve máximo 10 hits customer por consulta; no es un endpoint de listado paginado.
+- No añadir mutaciones de Customer. Una administración independiente exige primero un contrato Flask y persistencia canónica.
