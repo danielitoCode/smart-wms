@@ -390,20 +390,25 @@ POST /api/admin/transfer-orders/import requiere page grant transfer-orders, no i
 
 | Método | Endpoint | Permiso | Contrato / comportamiento |
 |---|---|---|---|
-| GET | `/api/admin/sales-orders` | `sales-orders` OR `fraud` | Bandeja consultada con `status=FRAUD_REVIEW`; admite `warehouse_id`, `q`, `page`, `per_page` (máximo 1000). Respuesta `sales_orders, total, page, per_page, pages`. Para usuarios no ADMIN, la consulta se restringe siempre a `current_user.warehouse_ids`; un `warehouse_id` solicitado fuera del scope se rechaza por middleware. |
-| GET | `/api/admin/sales-orders/{so_id}` | `sales-orders` OR `fraud` | Detalle en `sales_order`, más `lines` y `pick_tasks`; la búsqueda incorpora el scope de almacenes autorizados en SQL y devuelve 404 si no existe o pertenece a otro almacén. No devuelve historial de auditoría. |
-| PATCH | `/api/admin/sales-orders/{so_id}/memo` | `fraud` | Body `{memo}`; máximo 4000 caracteres. Cadena vacía limpia a NULL; valor sin cambios responde `{unchanged:true,memo}`. Bloquea y selecciona la fila con scope de almacenes autorizados en SQL; pedido inexistente o de otro almacén devuelve 404. Audita diferencias con `SO_MEMO_EDITED`. |
-| POST | `/api/admin/sales-orders/{so_id}/push-to-queue` | `fraud` | Solo permite estado actual `FRAUD_REVIEW`; transiciona a `OPEN`. Bloquea y selecciona la fila con scope de almacenes autorizados en SQL; audita `SO_FRAUD_CLEARED`; inexistente o de otro almacén 404, estado distinto/acción repetida 409. |
+| GET | `/api/admin/sales-orders` | `sales-orders` OR `fraud` | Bandeja con `status=FRAUD_REVIEW`; admite `warehouse_id`, `q`, `page`, `per_page` (1–1000). Respuesta `sales_orders, total, page, per_page, pages`. El servidor restringe siempre por almacenes autorizados. |
+| GET | `/api/admin/sales-orders/{so_id}` | `sales-orders` OR `fraud` | Devuelve `sales_order`, `lines` y `pick_tasks`; aplica scope SQL y devuelve 404 para pedido inexistente o de otro almacén. |
+| PATCH | `/api/admin/sales-orders/{so_id}/memo` | `fraud` | Body `{memo, expected_memo?}`; máximo 4000. Cadena vacía limpia a NULL. Si se envía `expected_memo` y el valor actual difiere, responde 409 `memo_conflict` sin sobrescribir. Bloqueo `FOR UPDATE` y auditoría `SO_MEMO_EDITED`. |
+| POST | `/api/admin/sales-orders/{so_id}/push-to-queue` | `fraud` | Solo desde `FRAUD_REVIEW`; cambia a `OPEN`. Bloqueo `FOR UPDATE`, auditoría `SO_FRAUD_CLEARED`; otro estado o repetición devuelve 409. |
+| GET | `/api/admin/sales-orders/{so_id}/audit-history` | `fraud` OR `audit-log` | Historial paginado por pedido; `page`, `per_page` (1–100). Verifica primero el scope del pedido y filtra también por `entity_type=SO`, `entity_id` y almacén real. No concede acceso al feed global de auditoría. |
 
-**Límites y riesgos de seguridad confirmados:**
-- **Grant compuesto de lectura:** el listado y detalle compartidos aceptan `sales-orders` OR `fraud`. Así el módulo Fraud funciona con su grant propio y el módulo general de pedidos conserva compatibilidad. Las mutaciones PATCH memo y POST push-to-queue siguen requiriendo exclusivamente `fraud`.
-- Para usuarios no ADMIN, el listado siempre añade `warehouse_id = ANY(current_user.warehouse_ids)` en SQL, incluso si no se envía filtro. Un filtro explícito fuera del scope es rechazado por el middleware con 403. Detalle, memo y retorno a cola incluyen el mismo predicado de scope en la consulta de fila bloqueada; un pedido de otro almacén y uno inexistente producen el mismo 404 para evitar un oráculo de existencia. ADMIN conserva acceso global.
-- Los handlers de memo y push-to-queue siguen bloqueando la fila con `FOR UPDATE`; el aislamiento se verifica dentro de la misma consulta/bloqueo y la auditoría conserva el `warehouse_id` real del pedido.
-- El memo usa bloqueo de fila y auditoría, pero no lleva versión/ETag: dos ediciones concurrentes se serializan y la última puede sobrescribir la anterior. El cliente debe refrescar ante conflictos/respuestas fallidas; no puede garantizar control optimista que Flask no ofrece.
-- La auditoría se escribe para los cambios de memo y para liberar el pedido, pero no existe un endpoint de lectura del historial/audit log para esta pantalla. El detalle de Sales Order no incluye eventos de auditoría.
-- La bandeja puede filtrar por texto, estado (fijado a `FRAUD_REVIEW`) y almacén; Flask no implementa filtros de fecha para este listado. No inventar parámetros de fecha.
-- `UpdateSalesOrderMemoRequest.memo` es requerido por el schema, opcional/null en tipo y limitado a 4000. La cadena vacía es válida y significa borrar la nota; no debe rechazarse como memo vacío.
+**Seguridad y concurrencia:**
+- El listado y detalle compartidos aceptan `sales-orders` OR `fraud`; las mutaciones de fraude requieren exclusivamente `fraud`.
+- Para usuarios no ADMIN, el listado, detalle, memo, retorno a cola e historial se limitan a `current_user.warehouse_ids`. Un pedido ajeno y uno inexistente producen 404 en endpoints por pedido.
+- El memo combina `FOR UPDATE` con control optimista opcional mediante `expected_memo`; dos operadores que partan de la misma versión no se pisan silenciosamente: el segundo recibe 409.
+- El retorno a cola es una transición única; la repetición no genera una segunda auditoría.
+- La lectura del historial usa una ruta específica de Sales Order. El grant `audit-log` también puede leerlo, pero el grant `sales-orders` por sí solo no.
 
-**Pruebas backend en `api/tests/test_fraud_review.py`:** además de detección de fraude, transiciones, memo y auditoría, se añadieron regresiones que crean usuarios no ADMIN con grants independientes `fraud` y `sales-orders`: verifican que cualquiera de los dos basta para listado/detalle y que `sales-orders` por sí solo no autoriza PATCH memo; que la bandeja excluye pedidos del almacén 2 para un usuario limitado al almacén 1; que el detalle devuelve 404 para el pedido ajeno; y que PATCH memo y push-to-queue devuelven 404 sin modificarlo. La ejecución de la suite aún está pendiente.
+**Svelte:**
+- La bandeja consume la respuesta paginada real y ofrece navegación de páginas.
+- El detalle carga el historial de auditoría paginado, mostrando acción, usuario, fecha y detalles.
+- El cliente envía `expected_memo` con el valor leído al cargar la fila; Flask sigue siendo la autoridad para scope y concurrencia.
 
-**Gate F6.1:** los handlers Flask ya aplican el scope de almacén y el grant compuesto está definido. La seguridad queda pendiente de evidencia de ejecución satisfactoria de las pruebas cross-warehouse añadidas. El frontend reduce exposición por selección de almacén, pero nunca sustituye la validación server-side.
+**Pruebas backend en `api/tests/test_fraud_review.py`:** además de las regresiones existentes de grants y almacenes, se añadieron casos para memo obsoleto/409 sin overwrite, historial con permiso Fraud, historial cross-warehouse, denegación a `sales-orders` sin grant de auditoría, retorno duplicado y serialización real del bloqueo de fila con dos conexiones PostgreSQL. La evidencia de CI debe comprobarse sobre el HEAD definitivo.
+
+**Gate F6.1:** implementación backend y UI ampliada; cierre condicionado a ejecución satisfactoria de pruebas específicas y regresión global, más typecheck/build de Webapp.
+
