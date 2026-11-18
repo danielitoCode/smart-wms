@@ -3,8 +3,8 @@
 	 * Lab detail — TaskWidget
 	 * Estados: colapsado / expandido + datos de ejemplo.
 	 */
-	import TaskWidget from '$lib/components/TaskWidget.svelte';
-	import type { TaskData } from '$lib/components/TaskWidget.svelte';
+	import TaskWidget from '../../../lib/components/TaskWidget.svelte';
+	import type { Subtask, TaskData } from '../../../lib/components/taskWidget.types';
 
 	const MOCK_TASK: TaskData = {
 		title: 'Design System',
@@ -50,7 +50,7 @@
 		totalCount: 4,
 		priority: 'Low',
 		status: 'Done',
-		subtasks: MOCK_TASK.subtasks.map((s) => ({ ...s, completed: true })),
+		subtasks: MOCK_TASK.subtasks.map((s: Subtask) => ({ ...s, completed: true })),
 		assignees: [
 			{ name: 'Anna', avatar: 'https://i.pravatar.cc/150?u=anna' },
 			{ name: 'Ramesh', avatar: 'https://i.pravatar.cc/150?u=ramesh' }
