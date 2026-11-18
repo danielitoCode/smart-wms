@@ -19,6 +19,13 @@ describe('FraudReviewRemoteDataSource', () => {
     });
   });
 
+  it('loads the sales-order detail from the existing detail endpoint', async () => {
+    const api = { get: vi.fn().mockResolvedValue({ sales_order: {}, lines: [] }) } as unknown as ApiClient;
+    const source = new FraudReviewRemoteDataSource(api);
+    await source.getDetail(19);
+    expect(api.get).toHaveBeenCalledWith('/api/admin/sales-orders/19');
+  });
+
   it('uses the dedicated memo PATCH and push-to-queue POST contracts', async () => {
     const api = {
       request: vi.fn().mockResolvedValue(undefined),
