@@ -30,11 +30,14 @@ export const FraudReviewMapper = {
 
   toDetail(dto: FraudReviewDetailDto): FraudReviewDetail {
     const order = dto.sales_order;
+    if (order.status !== 'FRAUD_REVIEW') {
+      throw new Error('El pedido ya no está en revisión de fraude');
+    }
     return {
       order: this.toDomain({
         so_id: order.so_id,
         so_number: order.so_number,
-        status: order.status === 'FRAUD_REVIEW' ? 'FRAUD_REVIEW' : 'FRAUD_REVIEW',
+        status: order.status,
         order_type: order.order_type,
         order_source: null,
         order_origin: order.order_origin,
