@@ -29,15 +29,11 @@ export type SalesOrderCustomerDto = {
 	billing_address_city?: string | null;
 	billing_address_state?: string | null;
 	billing_address_postal_code?: string | null;
-	billing_address_country?: string | null;
-	billing_address_phone?: string | null;
 	shipping_address_line1?: string | null;
 	shipping_address_line2?: string | null;
 	shipping_address_city?: string | null;
 	shipping_address_state?: string | null;
 	shipping_address_postal_code?: string | null;
-	shipping_address_country?: string | null;
-	shipping_address_phone?: string | null;
 };
 
 export type SalesOrderListForCustomersDto = {
