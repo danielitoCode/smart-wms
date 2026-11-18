@@ -64,6 +64,13 @@
 			status: 'ready',
 			href: '/lab/blob-card',
 			description: 'Card con blob orgánico que sigue el cursor (lerp + rAF, sin GSAP).'
+		},
+		{
+			id: 'testimonial',
+			name: 'PremiumTestimonial',
+			status: 'ready',
+			href: '/lab/testimonial',
+			description: 'Carrusel de testimonios con autoplay, dots y stats (CSS, sin Framer).'
 		}
 	] as const;
 </script>
