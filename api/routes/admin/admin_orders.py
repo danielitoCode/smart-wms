@@ -915,6 +915,8 @@ def list_source_systems():
 def list_sales_orders():
     page = request.args.get("page", 1, type=int)
     per_page = min(request.args.get("per_page", 50, type=int), 1000)
+    if page < 1 or per_page < 1:
+        return jsonify({"error": "page must be positive and per_page between 1 and 1000"}), 400
 
     where_clauses, params = [], {}
     # mig 076: voided returns (RMAs an operator soft-deleted) are hidden from
