@@ -18,7 +18,7 @@
 </script>
 
 <section class="page">
-	<header><div><h1>Clientes</h1><p class="subtitle">Vista de solo lectura proyectada desde pedidos de venta. Flask no ofrece CRUD de clientes.</p></div></header>
+	<header><div><h1>Clientes</h1><p class="subtitle">Vista de solo lectura proyectada desde pedidos de venta. Flask no ofrece API administrativa de clientes.</p></div></header>
 	<form class="filters" onsubmit={onSearch}>
 		<label class="field grow"><span>Buscar cliente (mínimo 2 caracteres)</span>
 			<input type="search" placeholder="Nombre del cliente" value={state.query} oninput={(e) => state.setQuery(e.currentTarget.value)} />
