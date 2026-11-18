@@ -16,6 +16,10 @@ describe('CustomerMapper', () => {
 		expect(acme?.warehouseIds).toEqual([1, 2]);
 		expect(acme?.addresses).toHaveLength(2);
 	});
+	it('uses the legacy ship_address when structured shipping fields are absent', () => {
+		const [customer] = CustomerMapper.fromSalesOrderProjection([{ customer_name: 'Legacy', ship_address: 'Warehouse Gate 2' }]);
+		expect(customer.addresses).toContainEqual(expect.objectContaining({ kind: 'shipping', lines: ['Warehouse Gate 2'] }));
+	});
 	it('returns an empty projection when no orders exist', () => { expect(CustomerMapper.fromSalesOrderProjection([])).toEqual([]); });
 	it('ignores rows without customer identity and tolerates incomplete contact data', () => {
 		const result = CustomerMapper.fromSalesOrderProjection([{ customer_name: null, customer_phone: '555' }, { customer_name: '   ', warehouse_id: 1 }, { customer_name: 'No Contact', so_id: 1 }]);
