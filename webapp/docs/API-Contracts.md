@@ -200,3 +200,27 @@ Dashboard date presets use local calendar dates (not UTC ISO conversion): Today,
 - **DTO de cada entrada:** `log_id`, `action_type`, `entity_type`, `entity_id`, `entity_name`, `username`, `device_id`, `warehouse_id`, `warehouse_code`, `details`, `created_at`. Actor se entrega como `username` (puede ser nulo); no se devuelve `user_id` separado. `details` puede contener objetos heterogéneos, valores resueltos o nulos.
 - **Detalle individual:** no existe GET por `log_id`; el detalle de UI se construye desde la entrada del listado. El historial por artículo usa `item_id` sobre el mismo endpoint.
 - **Datos sensibles:** `api/services/audit_service.py` persiste el diccionario `details` tal como lo reciben los escritores; este endpoint no aplica una redacción general al serializarlo. El cliente Svelte redacta claves de credenciales y datos personales reconocibles antes de presentarlas. Esto protege la presentación UI, no sustituye la minimización/redacción en los escritores o en el servidor.
+
+
+### 3.3 Contrato detallado de API Tokens (F4.5)
+
+Todas las rutas están bajo `/api/admin` y requieren sesión de navegador más `require_admin_or_page_permission("api-tokens")`. No se debe usar el cliente de WMS token para estas operaciones.
+
+| Método | Endpoint | Request / response |
+|---|---|---|
+| GET | `/scope-catalog` | `{ event_types: string[], endpoints: string[], inbound_resources: string[], source_systems: [{ source_system, kind }] }`; catálogos dinámicos desde `V150_CATALOG`, endpoints Flask registrados, recursos canónicos y allowlist de orígenes. |
+| GET | `/tokens` | `{ tokens: [...] }`; lista ordenada por `created_at DESC`, sin plaintext ni hash. |
+| POST | `/tokens` | `CreateTokenRequest`; devuelve 201 con `token_id, token_name, token, status, created_at, rotated_at, expires_at`. El campo `token` es secreto plaintext de un solo uso. |
+| POST | `/tokens/{token_id}/rotate` | Sin body; reemplaza el hash y devuelve el nuevo `token` una sola vez. 404 si no existe; 400 si está revocado. |
+| POST | `/tokens/{token_id}/revoke` | Sin body; devuelve `token_id, status, revoked_at`. 404 si no existe. |
+| DELETE | `/tokens/{token_id}` | Eliminación física; 204 sin body; 404 si no existe. La auditoría conserva snapshot de scopes. |
+
+**CreateTokenRequest — campos exactos:** `token_name` (1–128), `warehouse_ids: int[]`, `event_types: string[]` (máx. 64), `endpoints: string[]` (máx. 64), `connector_id?: string`, `expires_at?: datetime`, `source_system?: string`, `inbound_resources: string[]`, `mapping_override: boolean`, `mapping_overrides: Record<string, any>`. Los campos adicionales se prohíben (`extra="forbid"`).
+
+**Reglas de scopes:** debe existir al menos un endpoint saliente o la pareja `source_system + inbound_resources`; ambos campos de entrada deben estar presentes juntos. `endpoints` e `inbound_resources` se validan contra allowlists. El handler comprueba existencia de warehouse IDs, event types y source system; las claves de `mapping_overrides` deben ser columnas canónicas de las tablas seleccionadas. `mapping_overrides` exige `mapping_override=true`. La UI debe usar catálogos; la validación Flask sigue siendo autoridad.
+
+**Listado:** cada token devuelve `token_id, token_name, warehouse_ids, event_types, endpoints, connector_id, status, created_at, rotated_at, expires_at, revoked_at, last_used_at, rotation_status, source_system, inbound_resources, mapping_override, mapping_overrides_keys`. Nunca devuelve `token` ni `token_hash`. El DTO frontend usa `token_name`, no `name`; los arrays de scopes no se consolidan en un campo genérico.
+
+**Almacenes:** `GET /api/admin/warehouses` requiere además el page grant `warehouses`. La pantalla de tokens puede funcionar sin ese permiso; si el catálogo de almacenes responde 403, se muestra el selector vacío sin bloquear listado, catálogo ni operaciones de tokens.
+
+**Secreto y auditoría:** el servidor guarda solo `SHA256(pepper || plaintext)`; creación y rotación son las únicas respuestas que incluyen plaintext. Listado, mapper de dominio y audit log no deben retenerlo. Los eventos `TOKEN_ISSUE`, `TOKEN_ROTATE`, `TOKEN_REVOKE` y `TOKEN_DELETE` registran metadatos/snapshots de scopes, no el plaintext ni el hash. La invalidación de caché se ejecuta tras rotación, revocación y eliminación. La revocación se propaga entre workers mediante invalidación Redis y TTL de respaldo.
