@@ -73,6 +73,13 @@
 			description: 'PDP: galería, info sticky, opciones glaze/finish, cantidad y acordeones.'
 		},
 		{
+			id: 'order-detail',
+			name: 'OrderDetail',
+			status: 'ready',
+			href: '/lab/order-detail',
+			description: 'Detalle de pedido: items, invoice, timeline y panel lateral.'
+		},
+		{
 			id: 'blob-card',
 			name: 'BlobCard',
 			status: 'ready',

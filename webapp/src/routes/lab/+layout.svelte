@@ -20,6 +20,7 @@
 		spark: 'M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8',
 		mapPin: 'M12 21s-7-5.5-7-11a7 7 0 1 1 14 0c0 5.5-7 11-7 11zM12 10.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z',
 		bag: 'M6 7h12l1 13H5L6 7zM9 7V5a3 3 0 0 1 6 0v2',
+		order: 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 12h6M9 16h4',
 		steps: 'M4 19h4V5H4zM10 19h4v-8h-4zM16 19h4V9h-4z',
 		mail: 'M4 6h16v12H4zM4 6l8 7 8-7',
 		table: 'M3 5h18v14H3zM3 10h18M9 10v9M15 10v9',
@@ -58,7 +59,8 @@
 			id: 'commerce',
 			label: 'Commerce',
 			items: [
-				{ href: '/lab/product-detail', label: 'ProductDetail', hint: 'PDP gallery + buy', icon: 'bag' }
+				{ href: '/lab/product-detail', label: 'ProductDetail', hint: 'PDP gallery + buy', icon: 'bag' },
+				{ href: '/lab/order-detail', label: 'OrderDetail', hint: 'Pedido admin', icon: 'order' }
 			]
 		},
 		{
@@ -196,7 +198,6 @@
 		grid-template-rows: auto 1fr;
 	}
 
-	/* —— Mobile top —— */
 	.lab-top {
 		display: flex;
 		align-items: center;
@@ -284,7 +285,6 @@
 		cursor: pointer;
 	}
 
-	/* —— Sidebar —— */
 	.lab-sidebar {
 		position: fixed;
 		top: 0;
@@ -376,11 +376,7 @@
 		text-decoration: none;
 		color: inherit;
 		border: 1px solid transparent;
-		transition:
-			background 150ms ease,
-			border-color 150ms ease,
-			box-shadow 150ms ease,
-			transform 120ms ease;
+		transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 120ms ease;
 	}
 
 	.lab-link:hover {
@@ -391,9 +387,7 @@
 	.lab-link--active {
 		background: color-mix(in srgb, var(--navy, #004c8b) 8%, #fff);
 		border-color: color-mix(in srgb, var(--navy, #004c8b) 22%, var(--line, #d9e2ec));
-		box-shadow:
-			inset 3px 0 0 var(--navy, #004c8b),
-			0 1px 2px rgba(15, 23, 42, 0.04);
+		box-shadow: inset 3px 0 0 var(--navy, #004c8b), 0 1px 2px rgba(15, 23, 42, 0.04);
 	}
 
 	.lab-link__icon {
@@ -406,10 +400,7 @@
 		background: var(--surface-2, #f5f8fc);
 		color: var(--slate, #5c6b7d);
 		border: 1px solid color-mix(in srgb, var(--line, #d9e2ec) 70%, transparent);
-		transition:
-			background 150ms ease,
-			color 150ms ease,
-			border-color 150ms ease;
+		transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
 	}
 
 	.lab-link:hover .lab-link__icon {
