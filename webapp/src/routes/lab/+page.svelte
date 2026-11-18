@@ -99,6 +99,13 @@
 			status: 'ready',
 			href: '/lab/inline-table',
 			description: 'Tabla de gastos con edición inline por fila (CSS, sin Motion).'
+		},
+		{
+			id: 'view-on-map',
+			name: 'ViewOnMap',
+			status: 'ready',
+			href: '/lab/view-on-map',
+			description: 'Pill que se expande a mapa embebido (CSS, sin Motion).'
 		}
 	] as const;
 </script>
