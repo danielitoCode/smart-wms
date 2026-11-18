@@ -24,7 +24,7 @@ export type Customer = {
 	name: string;
 	email: string | null;
 	phone: string | null;
-	/** Count from the global-search aggregate, or null when unavailable. */
+	/** Global aggregate when available; otherwise count of rows in the current source page. */
 	orderCount: number | null;
 	warehouseIds: number[];
 	addresses: CustomerAddress[];
