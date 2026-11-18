@@ -1,5 +1,164 @@
-<script lang="ts">import UiLoader from '../../../../../lib/components/UiLoader.svelte';import {getContext} from 'svelte';import type {I18nState} from '../../../../../lib/i18n/i18n.svelte';import { createFraudReviewState } from '../state/fraudReviewState.svelte';const i18n=getContext<I18nState>('i18n');const vm=createFraudReviewState();const drafts=$state<Record<number,string>>({});$effect(()=>{void vm.load(null);});async function save(id:number){await vm.updateMemo(id,drafts[id]??'');}async function push(id:number){if(confirm('¿Liberar este pedido para que vuelva a la cola de preparación?'))await vm.push(id,null);}</script>
-<section class="page"><header><div><p class="eyebrow">ABELLIS · SMART WMS</p><h1>{i18n.t('Revisión de pedidos')}</h1><p>{i18n.t('Pedidos retenidos por revisión manual antes de preparación.')}</p></div><button onclick={()=>void vm.load(null)}>{i18n.t('Actualizar')}</button></header>
-{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
-{#if vm.loading}<UiLoader label={i18n.t('Cargando…')} />{:else if vm.rows.length===0}<p class="empty">{i18n.t('No hay pedidos retenidos para revisión.')}</p>{:else}<div class="table-wrap"><table><thead><tr><th>{i18n.t('Pedido')}</th><th>{i18n.t('Cliente')}</th><th>{i18n.t('Teléfono')}</th><th>{i18n.t('Origen')}</th><th>{i18n.t('Fecha')}</th><th>{i18n.t('Observaciones')}</th><th>{i18n.t('Acciones')}</th></tr></thead><tbody>{#each vm.rows as r (r.salesOrderId)}<tr><td>{r.salesOrderNumber}</td><td>{r.customerName??'—'}</td><td>{r.customerPhone??'—'}</td><td>{r.orderOrigin??r.orderSource??'—'}</td><td>{r.createdAt??'—'}</td><td><textarea rows="2" value={drafts[r.salesOrderId]??r.memo??''} oninput={e=>drafts[r.salesOrderId]=e.currentTarget.value}></textarea><button onclick={()=>void save(r.salesOrderId)} disabled={vm.saving}>{i18n.t('Guardar nota')}</button></td><td><button class="primary" onclick={()=>void push(r.salesOrderId)} disabled={vm.saving}>{i18n.t('Enviar a preparación')}</button></td></tr>{/each}</tbody></table></div>{/if}</section>
-<style>.page{max-width:78rem;margin:1.4rem auto;padding:0 1.1rem;color:var(--ink)}header{display:flex;justify-content:space-between;gap:1rem;margin-bottom:1rem}h1{margin:0;font:700 1.6rem var(--disp)}header p{color:var(--slate);font-size:.9rem}.eyebrow{font:600 .65rem var(--disp);letter-spacing:.14em}button{border:1px solid var(--line);border-radius:8px;padding:.5rem .7rem;background:var(--card);color:var(--ink);cursor:pointer}.primary{background:var(--navy);color:#fff;border-color:var(--navy)}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:var(--card)}table{width:100%;border-collapse:collapse;font-size:.82rem}th,td{text-align:left;padding:.65rem;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--slate);font-size:.7rem;text-transform:uppercase}textarea{width:100%;min-width:12rem;border:1px solid var(--line);border-radius:8px;padding:.4rem;background:var(--card);color:var(--ink)}.error{color:var(--danger)}.empty{color:var(--slate)}</style>
+<script lang="ts">
+  import { getContext } from 'svelte';
+  import UiLoader from '../../../../../lib/components/UiLoader.svelte';
+  import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
+  import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
+  import { createFraudReviewState } from '../state/fraudReviewState.svelte';
+
+  const i18n = getContext<I18nState>('i18n');
+  const warehouseSelection = getContext<WarehouseSelectionState>('warehouseSelection');
+  const vm = createFraudReviewState();
+  let memoDrafts = $state<Record<number, string>>({});
+  let searchInput = $state('');
+  let activeQuery = $state('');
+
+  $effect(() => {
+    const warehouseId = warehouseSelection.warehouseId;
+    const initialized = warehouseSelection.initialized;
+    if (initialized && warehouseId !== null) void vm.load(warehouseId, activeQuery);
+    else vm.clear();
+  });
+
+  function search() {
+    activeQuery = searchInput.trim();
+  }
+
+  async function saveMemo(id: number) {
+    const warehouseId = warehouseSelection.warehouseId;
+    if (warehouseId === null) return;
+    const draft = memoDrafts[id] ?? vm.rows.find((row) => row.salesOrderId === id)?.memo ?? '';
+    const saved = await vm.updateMemo(id, draft, warehouseId);
+    if (saved) delete memoDrafts[id];
+  }
+
+  async function pushToQueue(id: number) {
+    const warehouseId = warehouseSelection.warehouseId;
+    if (warehouseId === null) return;
+    if (confirm(i18n.t('¿Liberar este pedido para que vuelva a la cola de preparación?'))) {
+      await vm.push(id, warehouseId);
+    }
+  }
+
+  function address(parts: Array<string | null>) {
+    return parts.filter((part) => Boolean(part?.trim())).join(', ') || '—';
+  }
+</script>
+
+<section class="page">
+  <header>
+    <div>
+      <p class="eyebrow">ABELLIS · SMART WMS</p>
+      <h1>{i18n.t('Revisión de pedidos')}</h1>
+      <p>{i18n.t('Pedidos retenidos por revisión manual antes de preparación.')}</p>
+    </div>
+    <button type="button" onclick={() => search()} disabled={vm.loading || warehouseSelection.warehouseId === null}>
+      {i18n.t('Actualizar')}
+    </button>
+  </header>
+
+  <aside class="security-notice" role="note">
+    <strong>{i18n.t('Alcance de seguridad pendiente')}</strong>
+    <p>{i18n.t('La consulta se filtra por el almacén seleccionado en esta pantalla. Flask todavía no valida el almacén del pedido en el detalle ni en las acciones de memo y retorno a cola; este filtro de interfaz no sustituye el control del servidor.')}</p>
+    <p>{i18n.t('Los cambios se registran en auditoría, pero el backend no ofrece un endpoint para consultar aquí el historial.')}</p>
+  </aside>
+
+  <div class="filters">
+    <label for="fraud-search">{i18n.t('Buscar pedido o cliente')}</label>
+    <input id="fraud-search" bind:value={searchInput} onkeydown={(event) => event.key === 'Enter' && search()} placeholder="SO-…"/>
+    <button type="button" onclick={search} disabled={vm.loading || warehouseSelection.warehouseId === null}>{i18n.t('Buscar')}</button>
+    <span class="warehouse">
+      {i18n.t('Almacén')}: {warehouseSelection.warehouses.find((item) => item.id === warehouseSelection.warehouseId)?.name ?? warehouseSelection.warehouseId ?? '—'}
+    </span>
+  </div>
+
+  {#if vm.error}
+    <p class="error" role="alert">{vm.error}</p>
+  {/if}
+
+  {#if warehouseSelection.loading || !warehouseSelection.initialized}
+    <UiLoader label={i18n.t('Cargando almacenes…')} />
+  {:else if warehouseSelection.warehouseId === null}
+    <p class="empty">{i18n.t('No hay un almacén autorizado seleccionado. Selecciona un almacén para consultar la bandeja.')}</p>
+  {:else if vm.loading}
+    <UiLoader label={i18n.t('Cargando pedidos retenidos…')} />
+  {:else if vm.rows.length === 0}
+    <p class="empty">{i18n.t('No hay pedidos retenidos para este almacén.')}</p>
+  {:else}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>{i18n.t('Pedido')}</th>
+            <th>{i18n.t('Cliente')}</th>
+            <th>{i18n.t('Facturación')}</th>
+            <th>{i18n.t('Envío')}</th>
+            <th>{i18n.t('Origen')}</th>
+            <th>{i18n.t('Fecha')}</th>
+            <th>{i18n.t('Observaciones')}</th>
+            <th>{i18n.t('Acciones')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each vm.rows as row (row.salesOrderId)}
+            <tr>
+              <td>
+                <strong>{row.salesOrderNumber}</strong>
+                <small>#{row.salesOrderId} · {row.status}</small>
+              </td>
+              <td>{row.customerName ?? '—'}<small>{row.customerPhone ?? ''}</small></td>
+              <td>{address([row.billingAddressLine1, row.billingAddressLine2, row.billingAddressCity, row.billingAddressState, row.billingAddressPostalCode])}</td>
+              <td>{address([row.shippingAddressLine1, row.shippingAddressLine2, row.shippingAddressCity, row.shippingAddressState, row.shippingAddressPostalCode])}</td>
+              <td>{row.orderOrigin ?? row.orderSource ?? '—'}</td>
+              <td>{row.createdAt ?? '—'}</td>
+              <td>
+                <textarea
+                  rows="2"
+                  maxlength="4000"
+                  value={memoDrafts[row.salesOrderId] ?? row.memo ?? ''}
+                  oninput={(event) => memoDrafts[row.salesOrderId] = event.currentTarget.value}
+                  aria-label={i18n.t('Observaciones del pedido') + ' ' + row.salesOrderNumber}
+                  disabled={vm.saving}
+                ></textarea>
+                <small>{(memoDrafts[row.salesOrderId] ?? row.memo ?? '').length}/4000</small>
+                <button type="button" onclick={() => void saveMemo(row.salesOrderId)} disabled={vm.saving || (memoDrafts[row.salesOrderId] ?? row.memo ?? '') === (row.memo ?? '')}>
+                  {i18n.t('Guardar nota')}
+                </button>
+              </td>
+              <td>
+                <button class="primary" type="button" onclick={() => void pushToQueue(row.salesOrderId)} disabled={vm.saving}>
+                  {i18n.t('Enviar a preparación')}
+                </button>
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
+  {/if}
+</section>
+
+<style>
+  .page{max-width:90rem;margin:1.4rem auto;padding:0 1.1rem;color:var(--ink)}
+  header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem}
+  h1{margin:0;font:700 1.6rem var(--disp)}
+  header p{color:var(--slate);font-size:.9rem}
+  .eyebrow{font:600 .65rem var(--disp);letter-spacing:.14em}
+  button{border:1px solid var(--line);border-radius:8px;padding:.5rem .7rem;background:var(--card);color:var(--ink);cursor:pointer}
+  button:disabled{opacity:.55;cursor:not-allowed}
+  .primary{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .security-notice{border:1px solid var(--warning,var(--line));border-radius:10px;padding:.75rem 1rem;margin:1rem 0;background:var(--surface)}
+  .security-notice p{margin:.35rem 0;color:var(--slate);font-size:.82rem;line-height:1.45}
+  .filters{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;margin:1rem 0}
+  .filters label{font-size:.82rem;font-weight:600}
+  .filters input{min-width:14rem;max-width:24rem;border:1px solid var(--line);border-radius:8px;padding:.5rem .65rem;background:var(--card);color:var(--ink)}
+  .warehouse{margin-left:auto;color:var(--slate);font-size:.82rem}
+  .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+  table{width:100%;min-width:76rem;border-collapse:collapse;font-size:.82rem}
+  th,td{text-align:left;padding:.65rem;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--slate);font-size:.7rem;text-transform:uppercase;white-space:nowrap}
+  td small{display:block;color:var(--slate);font-size:.72rem;margin-top:.2rem}
+  textarea{width:100%;min-width:12rem;max-width:18rem;border:1px solid var(--line);border-radius:8px;padding:.4rem;background:var(--card);color:var(--ink);resize:vertical}
+  .error{color:var(--danger)}
+  .empty{color:var(--slate);padding:1rem}
+  @media(max-width:720px){header{flex-direction:column}.warehouse{margin-left:0}.filters input{flex:1;min-width:10rem}}
+</style>
