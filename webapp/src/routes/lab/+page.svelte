@@ -57,6 +57,13 @@
 			status: 'ready',
 			href: '/lab/onboarding',
 			description: 'Card multi-paso de alta de negocio/workspace con progress y preview panel.'
+		},
+		{
+			id: 'blob-card',
+			name: 'BlobCard',
+			status: 'ready',
+			href: '/lab/blob-card',
+			description: 'Card con blob orgánico que sigue el cursor (lerp + rAF, sin GSAP).'
 		}
 	] as const;
 </script>
