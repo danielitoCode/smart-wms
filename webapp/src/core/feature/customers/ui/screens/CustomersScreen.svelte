@@ -1,9 +1,19 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { getContext } from 'svelte';
+	import type { WarehouseSelectionState } from '../../../../warehouses/ui/state/warehouseSelectionState.svelte';
 	import { createCustomersState } from '../state/customersState.svelte';
 
 	const state = createCustomersState();
-	onMount(() => { void state.load(); });
+	const warehouseSelection = getContext<WarehouseSelectionState>('warehouseSelection');
+	let lastWarehouseId: number | null | undefined = undefined;
+	$effect(() => {
+		if (!warehouseSelection.initialized) return;
+		const activeWarehouseId = warehouseSelection.warehouseId;
+		if (lastWarehouseId === activeWarehouseId) return;
+		lastWarehouseId = activeWarehouseId;
+		state.setWarehouseId(activeWarehouseId);
+		void state.load(1);
+	});
 	function onSearch(event: Event) { event.preventDefault(); void state.load(1); }
 </script>
 
@@ -13,9 +23,7 @@
 		<label class="field grow"><span>Buscar cliente (mínimo 2 caracteres)</span>
 			<input type="search" placeholder="Nombre del cliente" value={state.query} oninput={(e) => state.setQuery(e.currentTarget.value)} />
 		</label>
-		<label class="field"><span>Almacén ID (opcional)</span>
-			<input type="number" min="1" placeholder="Todos los autorizados" value={state.warehouseId ?? ''} oninput={(e) => { const v = e.currentTarget.value.trim(); state.setWarehouseId(v ? Number(v) : null); }} />
-		</label>
+		<span class="warehouse-context">Almacén activo: {warehouseSelection.warehouseId ?? 'Todos los autorizados'}</span>
 		<button type="submit" disabled={state.loading}>Buscar</button>
 	</form>
 
