@@ -17,6 +17,7 @@
 			<a href="/lab/hover-expand">HoverExpand</a>
 			<a href="/lab/onboarding">Onboarding</a>
 			<a href="/lab/blob-card">BlobCard</a>
+			<a href="/lab/testimonial">Testimonial</a>
 		</nav>
 	</header>
 	<main class="lab-main">
