@@ -1137,7 +1137,7 @@ def get_sales_order(so_id):
                    carrier, tracking_number,
                    order_type, parent_so_id,
                    (SELECT p.so_number FROM sales_orders p
-                     WHERE p.so_id = sales_orders.parent_so_id) AS parent_so_number,
+                     WHERE p.so_id = so.parent_so_id) AS parent_so_number,
                    backorder_opened_at, backorder_fulfillable_at,
                    cancellation_reason,
                    billing_address_name, billing_address_line1, billing_address_line2,
