@@ -205,4 +205,11 @@ export const gapIt: Record<string, string> = {
   'Guardar nota': 'Salva nota',
   'Enviar a preparación': 'Invia alla preparazione',
   'Sistema origen': 'Sistema di origine',
+  'Paginación de pedidos': 'Paginazione ordini',
+  'Historial de auditoría': 'Cronologia di audit',
+  'Cargando historial…': 'Caricamento cronologia…',
+  'No hay eventos de auditoría para este pedido.': 'Nessun evento di audit per questo ordine.',
+  'eventos': 'eventi',
+  'Paginación del historial': 'Paginazione cronologia',
+  'pedidos': 'ordini',
 };
