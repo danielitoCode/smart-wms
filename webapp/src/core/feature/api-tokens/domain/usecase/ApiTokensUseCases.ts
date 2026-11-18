@@ -57,3 +57,8 @@ export class GetScopeCatalogUseCase {
 	constructor(private readonly repository: ApiTokensRepository) {}
 	execute() { return this.repository.scopeCatalog(); }
 }
+
+export class GetTokenWarehousesUseCase {
+	constructor(private readonly repository: ApiTokensRepository) {}
+	execute() { return this.repository.warehouses(); }
+}
