@@ -43,6 +43,11 @@
     if (warehouseId === null) return;
     if (confirm(i18n.t('¿Liberar este pedido para que vuelva a la cola de preparación?'))) {
       await vm.push(id, warehouseId);
+      const currentWarehouseId = warehouseSelection.warehouseId;
+      if (currentWarehouseId !== warehouseId) {
+        if (currentWarehouseId === null) vm.clear();
+        else await vm.load(currentWarehouseId, activeQuery);
+      }
     }
   }
 
