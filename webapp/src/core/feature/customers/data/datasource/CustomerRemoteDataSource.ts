@@ -1,19 +1,14 @@
 import type { ApiClient } from '../../../../infrastructure/api/ApiClient';
-import type {
-	SalesOrderCustomerDto,
-	SalesOrderDetailForCustomerDto,
-	SalesOrderListForCustomersDto,
-	SearchCustomerHitDto,
-	SearchResponseDto
-} from '../dto/CustomerDto';
+import type { SalesOrderCustomerDto, SalesOrderDetailForCustomerDto, SalesOrderListForCustomersDto } from '../dto/CustomerDto';
+import type { GlobalSearchResponseDto, GlobalSearchResultDto } from '../dto/CustomerSearchDto';
 
 export class CustomerRemoteDataSource {
 	constructor(private readonly api: ApiClient) {}
 
-	async search(q: string, warehouseId?: number): Promise<SearchCustomerHitDto[]> {
+	async search(q: string, warehouseId?: number): Promise<GlobalSearchResultDto[]> {
 		const query = new URLSearchParams({ q });
 		if (warehouseId != null) query.set('warehouse_id', String(warehouseId));
-		const body = await this.api.get<SearchResponseDto>(`/api/admin/search?${query.toString()}`);
+		const body = await this.api.get<GlobalSearchResponseDto>(`/api/admin/search?${query.toString()}`);
 		return (body?.results ?? []).filter((result) => result.type?.toLowerCase() === 'customer');
 	}
 
