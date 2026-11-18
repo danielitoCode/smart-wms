@@ -34,6 +34,6 @@ export class ApiTokensRemoteDataSource {
 	}
 
 	warehouses() {
-		return this.api.get<WarehousesResponseDto>('/api/admin/warehouses');
+		return this.api.get<WarehousesResponseDto>('/api/admin/warehouses?per_page=1000');
 	}
 }
