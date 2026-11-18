@@ -1,15 +1,26 @@
-import type { Customer } from '../entity/Customer';
+import type { Customer, CustomerOrdersPage, CustomerPage } from '../entity/Customer';
 
 export type ListCustomersParams = {
-	q?: string;
+	page?: number;
+	perPage?: number;
+	warehouseId?: number;
+};
+
+export type SearchCustomersParams = {
+	q: string;
+	warehouseId?: number;
+};
+
+export type GetCustomerOrdersParams = {
+	customerName: string;
+	page?: number;
+	perPage?: number;
 	warehouseId?: number;
 };
 
 export interface CustomerRepository {
-	/**
-	 * List customers.
-	 * - With `q`: uses GET /api/admin/search (type=customer hits).
-	 * - Without `q`: projects unique customers from GET /api/admin/sales-orders.
-	 */
-	list(params?: ListCustomersParams): Promise<Customer[]>;
+	list(params?: ListCustomersParams): Promise<CustomerPage>;
+	search(params: SearchCustomersParams): Promise<Customer[]>;
+	getOrders(params: GetCustomerOrdersParams): Promise<CustomerOrdersPage>;
+	getDetail(customerName: string, warehouseId?: number): Promise<Customer | null>;
 }
