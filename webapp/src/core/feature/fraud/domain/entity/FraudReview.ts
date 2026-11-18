@@ -45,3 +45,8 @@ export type FraudReviewDetail = {
 
 export type UpdateFraudMemo = { salesOrderId: number; memo: string };
 export type PushFraudOrderToQueue = { salesOrderId: number };
+
+/** Client-side consistency guard only; Flask must enforce warehouse authorization independently. */
+export function isFraudReviewInWarehouse(order: Pick<FraudReview, 'warehouseId'>, warehouseId: number): boolean {
+  return Number.isSafeInteger(warehouseId) && warehouseId > 0 && order.warehouseId === warehouseId;
+}
