@@ -382,3 +382,28 @@ POST /api/admin/transfer-orders/import requiere page grant transfer-orders, no i
 **Integración:** la correlación a la entidad canónica se hace mediante `canonical_id` y el tipo se deriva de `resource`. La ruta de detalle directa depende del módulo canónico; si no hay una ruta verificable, la UI abre el módulo y lo identifica explícitamente como navegación general, no como enlace al registro exacto.
 
 **Pruebas backend existentes (no ejecutadas por el alcance frontend):** `api/tests/test_admin_inbound.py` cubre paginación, filtros, permiso, detalle, redacción recursiva y payload eliminado por retención; `api/tests/test_inbound_*_endpoint.py` y `api/tests/test_inbound_*.py` cubren procesamiento, idempotencia y fallos del POST inbound. No se declara aquí su resultado de ejecución.
+
+
+## F6.1 — Fraud / Control de fraude
+
+**Contratos Flask verificados en `api/routes/admin/admin_orders.py` y `api/schemas/sales_orders.py`:**
+
+| Método | Endpoint | Permiso | Contrato / comportamiento |
+|---|---|---|---|
+| GET | `/api/admin/sales-orders` | `sales-orders` | Bandeja consultada con `status=FRAUD_REVIEW`; admite `warehouse_id`, `q`, `page`, `per_page` (máximo 1000). Respuesta `sales_orders, total, page, per_page, pages`. |
+| GET | `/api/admin/sales-orders/{so_id}` | `sales-orders` | Detalle en `sales_order`, más `lines` y `pick_tasks`; 404 si no existe. No devuelve historial de auditoría. |
+| PATCH | `/api/admin/sales-orders/{so_id}/memo` | `fraud` | Body `{memo}`; máximo 4000 caracteres. Cadena vacía limpia a NULL; valor sin cambios responde `{unchanged:true,memo}`. Bloquea la fila con `FOR UPDATE` y audita diferencias con `SO_MEMO_EDITED`. |
+| POST | `/api/admin/sales-orders/{so_id}/push-to-queue` | `fraud` | Solo permite estado actual `FRAUD_REVIEW`; transiciona a `OPEN`. Bloquea fila con `FOR UPDATE`, audita `SO_FRAUD_CLEARED`; inexistente 404, estado distinto/acción repetida 409. |
+
+**Límites y riesgos de seguridad confirmados:**
+- El listado y el detalle solo exigen `sales-orders`; las mutaciones exigen `fraud`. La pantalla debe tratar estos grants como capacidades separadas y no inferir que tener permiso de bandeja habilita acciones.
+- El listado acepta `warehouse_id` como filtro SQL, pero omitirlo devuelve pedidos de todos los almacenes. El detalle obtiene por `so_id` sin predicado de almacén.
+- Los endpoints PATCH memo y POST push-to-queue leen la fila por `so_id` con `FOR UPDATE`, pero no comparan `warehouse_id` con el almacén activo ni con el scope autorizado del usuario. El bloqueo de fila evita carreras en la transición, pero **no constituye autorización por almacén**. Es un bloqueo P0 para el Gate de seguridad y requiere cambio backend.
+- El memo usa bloqueo de fila y auditoría, pero no lleva versión/ETag: dos ediciones concurrentes se serializan y la última puede sobrescribir la anterior. El cliente debe refrescar ante conflictos/respuestas fallidas; no puede garantizar control optimista que Flask no ofrece.
+- La auditoría se escribe para los cambios de memo y para liberar el pedido, pero no existe un endpoint de lectura del historial/audit log para esta pantalla. El detalle de Sales Order no incluye eventos de auditoría.
+- La bandeja puede filtrar por texto, estado (fijado a `FRAUD_REVIEW`) y almacén; Flask no implementa filtros de fecha para este listado. No inventar parámetros de fecha.
+- `UpdateSalesOrderMemoRequest.memo` es requerido por el schema, opcional/null en tipo y limitado a 4000. La cadena vacía es válida y significa borrar la nota; no debe rechazarse como memo vacío.
+
+**Pruebas backend existentes (inspeccionadas, no ejecutadas en el alcance frontend):** `api/tests/test_fraud_review.py` verifica detección de fraude por discrepancia de direcciones, retorno a OPEN, 409 si el estado ya no es FRAUD_REVIEW, 404 para pedido inexistente, auditoría, persistencia/limpieza de memo y auditoría de diferencias. No se encontraron pruebas en ese archivo que acrediten aislamiento por almacén ni control de concurrencia de dos ediciones memo.
+
+**Gate F6.1:** no declarar seguridad cerrada hasta que Flask valide el almacén en listado, detalle y ambas mutaciones, y exista evidencia de pruebas cross-warehouse. El frontend puede reducir exposición por selección de almacén, pero nunca sustituir esa validación.
