@@ -3,8 +3,8 @@
 	 * Component Lab — overview de componentes migrados React → Svelte.
 	 * Ruta pública (sin auth) para revisión rápida durante la migración.
 	 */
-	import TaskWidget from '$lib/components/TaskWidget.svelte';
-	import type { TaskData } from '$lib/components/TaskWidget.svelte';
+	import TaskWidget from '../../lib/components/TaskWidget.svelte';
+	import type { TaskData } from '../../lib/components/taskWidget.types';
 
 	const MOCK_TASK: TaskData = {
 		title: 'Design System',
