@@ -235,3 +235,29 @@ Todas las rutas están bajo `/api/admin` y requieren sesión de navegador más `
 - **Fecha:** el backend ancla y limita fechas futuras en zona `America/Denver`. El cliente debe construir la fecha del calendario en esa zona, no usar `toISOString().slice(0,10)`.
 - **Detalle:** no existe endpoint de detalle POS; se construye a partir de la fila del listado. La acción “Abrir Sales Order” navega al detalle administrativo por `so_id`.
 - **Schemas:** `api/schemas/pos.py` valida POS checkout/refund y cart requests, no el DTO de estos GET administrativos. Para F4.6 el contrato principal está en `api/routes/admin/admin_pos.py`.
+
+### Integrations — F5.1 contrato Flask verificado
+
+Todas las rutas usan el prefijo `/api/admin` y requieren sesión autenticada más `require_admin_or_page_permission("integrations")`. Las credenciales se almacenan por conector + almacén; no existe endpoint para recuperar valores plaintext.
+
+| Método | Endpoint | Query / body | Respuesta / semántica |
+|---|---|---|---|
+| GET | `/api/admin/connectors` | — | `{ connectors: [{ name, config_schema, capabilities }] }`; cada conector se instancia con configuración vacía para exponer schema/capacidades. |
+| GET | `/api/admin/connectors/{connector_name}/config-schema` | — | `{ name, config_schema, capabilities }`; 404 si el conector no está registrado. |
+| GET | `/api/admin/connectors/{connector_name}/credentials?warehouse_id={id}` | `warehouse_id` obligatorio, entero positivo | `{ connector, warehouse_id, credentials: [{ key, value: "****", created_at, updated_at }] }`. Nunca devuelve el secreto. Sin almacén: 400; conector inexistente: 404. |
+| POST | `/api/admin/connectors/{connector_name}/credentials` | `{ warehouse_id, credentials: Record<string,string> }`; al menos una clave; almacén > 0 | Guarda/upsert de cada secreto cifrado; devuelve `{ message, connector, warehouse_id, keys }`, nunca valores. Limitado a 10/min. |
+| POST | `/api/admin/connectors/{connector_name}/test` | `{ warehouse_id }` | Usa credenciales persistidas; devuelve `{ connector, warehouse_id, connected, message }`. Destino privado bloqueado: 400 `blocked_destination`. Limitado a 10/min. |
+| DELETE | `/api/admin/connectors/{connector_name}/credentials` | Body obligatorio: `{ warehouse_id }` | Elimina todas las credenciales del conector para ese almacén; devuelve `{ message, connector, warehouse_id }`. |
+| GET | `/api/admin/connectors/{connector_name}/sync-status?warehouse_id={id}` | `warehouse_id` obligatorio | `{ connector, warehouse_id, sync_states: SyncState[] }`; puede ser array vacío si nunca se ha registrado actividad. |
+| POST | `/api/admin/connectors/{connector_name}/sync-reset` | `{ warehouse_id, sync_type? }`; sync_type: orders/items/inventory/fulfillment o null | Pasa filas `running` a `idle`, devuelve `{ message, connector, warehouse_id, sync_type, rows_reset }`; registra auditoría y limita a 10/min. |
+| POST | `/api/admin/connectors/{connector_name}/sync/{sync_type}` | `{ warehouse_id }`; sync_type: orders/items/inventory/fulfillment | Encola Celery y responde HTTP 202 `{ message, task_id, connector, warehouse_id, sync_type }`; si ya hay ejecución activa devuelve 409. Limitado a 20/min. |
+
+**Schema dinámico:** `config_schema` es un objeto indexado por clave; cada descriptor declara metadatos como `type`, `required`, `label` y `description`. Las capacidades válidas del contrato BaseConnector son `sync_orders`, `sync_items`, `sync_inventory` y `push_fulfillment`. No asumir que todos los conectores soportan todas las operaciones.
+
+**SyncState:** `connector_name, warehouse_id, sync_type, sync_status, last_synced_at, last_success_at, last_error_at, last_error_message, consecutive_errors`. Estados observados: `idle`, `running`, `error`. El servicio mantiene una máquina de estados por conector/almacén/tipo; una ejecución duplicada se rechaza. Un `running` de más de una hora se considera obsoleto y puede ser retomado; los cierres de una ejecución antigua no pueden sobrescribir el `run_id` de una ejecución nueva. Tras tres errores consecutivos el estado pasa a `error` (sticky).
+
+**Concurrencia y timeout:** Flask devuelve 409 cuando detecta una ejecución no obsoleta en curso. El worker Celery también aplica `DuplicateRunError` al adquirir estado, por lo que la comprobación del endpoint no es la única barrera. Los tasks reintentan excepciones hasta 3 veces con espera predeterminada de 30 segundos; el wrapper HTTP de BaseConnector aplica reintentos/backoff para 429/503 y circuit breaker. No hay un timeout HTTP uniforme declarado en estos handlers; los timeouts de red dependen de cada conector/llamada.
+
+**Credenciales y seguridad:** `schemas/connectors.py` declara `SaveCredentialsRequest(warehouse_id > 0, credentials: Dict[str,str] no vacío)`, `TestConnectionRequest(warehouse_id > 0)` y `DeleteCredentialsRequest(warehouse_id > 0)`. El vault cifra cada valor con Fernet y requiere `SENTRY_ENCRYPTION_KEY`; los valores plaintext solo se descifran dentro del servicio para test/sync. El GET devuelve nombres de claves y máscara fija `****`; la UI no debe tratar esa máscara como valor editable ni volver a enviarla. Al guardar, solo se envían claves con nuevos valores. Los mensajes de conexión se sanitizan, limitan a 500 caracteres y eliminan patrones de secretos antes de llegar a la UI/estado.
+
+**Límite funcional:** no existe un endpoint para borrar una credencial individual ni para leer el valor secreto; DELETE elimina todas las credenciales del conector en el almacén indicado. No existe endpoint para consultar el estado de una tarea Celery por `task_id`; la UI debe refrescar `sync-status` y no presentar el 202 como sincronización completada. El reset solo limpia estados `running`; no es una cancelación del worker.
