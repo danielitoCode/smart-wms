@@ -35,6 +35,20 @@ describe('Integrations Flask contracts', () => {
     expect(post.mock.calls[0][1]).toEqual({ warehouse_id: 4 });
     expect(result.task_id).toBe('task-1');
   });
+  it('sends a reset request with explicit warehouse and optional sync type', async () => {
+    const post = vi.fn().mockResolvedValue({ rows_reset: 1, connector: 'erp', warehouse_id: 4, sync_type: 'orders' });
+    const source = new IntegrationsRemoteDataSource({ post } as unknown as ApiClient);
+    await source.resetSync('erp', 4, 'orders');
+    expect(post.mock.calls[0][1]).toEqual({ warehouse_id: 4, sync_type: 'orders' });
+  });
+  it('preserves 409 duplicate-run and timeout failures for presentation handling', async () => {
+    const conflict = Object.assign(new Error('Sync already running'), { status: 409 });
+    const timeout = Object.assign(new Error('Request timed out'), { code: 'timeout' });
+    const post = vi.fn().mockRejectedValueOnce(conflict).mockRejectedValueOnce(timeout);
+    const source = new IntegrationsRemoteDataSource({ post } as unknown as ApiClient);
+    await expect(source.executeSync('erp', 4, 'orders')).rejects.toThrow('Sync already running');
+    await expect(source.testConnection('erp', 4)).rejects.toThrow('Request timed out');
+  });
   it('sends the DELETE body because Flask requires warehouse_id', async () => {
     const request = vi.fn().mockResolvedValue({ message: 'Credentials deleted' });
     const source = new IntegrationsRemoteDataSource({ request } as unknown as ApiClient);
