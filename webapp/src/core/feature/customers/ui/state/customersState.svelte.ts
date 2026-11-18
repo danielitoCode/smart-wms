@@ -25,6 +25,7 @@ export function createCustomersState() {
 		const version = ++requestVersion;
 		++detailRequestVersion;
 		loading = true;
+		detailLoading = false;
 		error = null;
 		selectedCustomer = null;
 		customerOrders = null;
@@ -63,7 +64,7 @@ export function createCustomersState() {
 			selectedCustomer = detail ?? customer;
 			customerOrders = orders;
 		} catch (err) {
-			detailError = toUserMessage(err, 'No se pudo cargar el detalle del cliente');
+			if (version === detailRequestVersion) detailError = toUserMessage(err, 'No se pudo cargar el detalle del cliente');
 		} finally {
 			if (version === detailRequestVersion) detailLoading = false;
 		}
