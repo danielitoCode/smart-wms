@@ -35,6 +35,6 @@ Restricciones delete: inventario > 0, historial SO/PO → error Flask (mostrado 
 | Permisos/almacén | Grant sales-orders; hereda almacén activo global |
 | Pruebas | Mapper, casos de uso, repositorio y datasource; falta ejecución CI satisfactoria |
 
-**Contrato:** Flask no ofrece CRUD de clientes. No añadir mutaciones. La lista deduplica dentro de cada página de pedidos, por lo que el mismo cliente puede aparecer en páginas distintas. El endpoint de historial busca por número O nombre de pedido, de modo que total/pages puede incluir falsos positivos aunque las filas se filtren por nombre exacto.
+**Contrato:** Flask dispone de tabla canónica customers e ingestión inbound con WMS token, pero no de API administrativa web para clientes. No añadir mutaciones al frontend. La lista deduplica dentro de cada página de pedidos, por lo que el mismo cliente puede aparecer en páginas distintas. El endpoint de historial busca por número O nombre de pedido, de modo que total/pages puede incluir falsos positivos aunque las filas se filtren por nombre exacto.
 
 **Pendiente para cierre:** comprobar svelte-check, build y suites; verificar resultados sobre el HEAD definitivo. Para una lista global de clientes con paginación propia e identidad inequívoca se necesitaría un endpoint read-only agregado en Flask; queda fuera del alcance frontend actual.
