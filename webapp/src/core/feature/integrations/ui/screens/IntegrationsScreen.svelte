@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, getContext } from 'svelte';
+  import { onMount, onDestroy, getContext } from 'svelte';
   import UiLoader from '../../../../../lib/components/UiLoader.svelte';
   import type { I18nState } from '#lib/i18n/i18n.svelte';
   import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
@@ -20,6 +20,7 @@
     ] as [SyncType,string][]).filter(([,cap]) => caps.includes(cap)).map(([type]) => type);
   });
   onMount(() => { void vm.load(); });
+  onDestroy(() => vm.destroy());
   $effect(() => {
     const wid = warehouse.warehouseId;
     const name = selectedName;

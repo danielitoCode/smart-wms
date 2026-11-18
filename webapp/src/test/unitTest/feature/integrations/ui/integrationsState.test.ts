@@ -17,8 +17,8 @@ const deps = vi.hoisted(() => ({
 const createDeps = () => deps as unknown as ReturnType<typeof createIntegrationsDependencies>;
 const connector = (name: string): Connector => ({ name, capabilities: ['sync_orders'], configSchema: {} });
 const credential = (key: string): CredentialMetadata => ({ key, configured: true, createdAt: null, updatedAt: null });
-const status = (state: string, lastSyncedAt: string | null = null): SyncStatus => ({
-  connectorName: 'erp', warehouseId: 1, syncType: 'orders', status: state,
+const status = (state: string, lastSyncedAt: string | null = null, connectorName = 'erp', warehouseId = 1): SyncStatus => ({
+  connectorName, warehouseId, syncType: 'orders', status: state,
   lastSyncedAt, lastSuccessAt: lastSyncedAt, lastErrorAt: null, lastErrorMessage: null, consecutiveErrors: 0
 });
 function deferred<T>() {
@@ -46,7 +46,7 @@ describe('Integrations UI state', () => {
     const firstCredentials = deferred<CredentialMetadata[]>();
     const firstStatus = deferred<SyncStatus[]>();
     deps.credentials.execute.mockImplementation((name: string) => name === 'erp' ? firstCredentials.promise : Promise.resolve([credential('crm_token')]));
-    deps.syncStatus.execute.mockImplementation((name: string) => name === 'erp' ? firstStatus.promise : Promise.resolve([status('idle')]));
+    deps.syncStatus.execute.mockImplementation((name: string) => name === 'erp' ? firstStatus.promise : Promise.resolve([status('idle', null, 'crm', 2)]));
     const state = createIntegrationsState(createDeps());
     const oldRequest = state.selectConnector(connector('erp'), 1);
     await state.selectConnector(connector('crm'), 2);
@@ -99,6 +99,7 @@ describe('Integrations UI state', () => {
   it('polls after enqueue until a running sync transitions to completed', async () => {
     vi.useFakeTimers();
     deps.syncStatus.execute
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([status('running')])
       .mockResolvedValueOnce([status('idle', '2026-11-18T01:00:00Z')]);
