@@ -1,116 +1,3 @@
-
-
-    def test_stale_memo_update_returns_conflict_and_preserves_newer_value(self, client, auth_headers):
-        so_id = _seed_so("FRAUD_REVIEW", memo="initial")
-        first = client.patch(
-            f"/api/admin/sales-orders/{so_id}/memo",
-            headers=auth_headers,
-            json={"memo": "first operator", "expected_memo": "initial"},
-        )
-        assert first.status_code == 200
-        stale = client.patch(
-            f"/api/admin/sales-orders/{so_id}/memo",
-            headers=auth_headers,
-            json={"memo": "stale overwrite", "expected_memo": "initial"},
-        )
-        assert stale.status_code == 409
-        assert stale.get_json()["current_memo"] == "first operator"
-        assert _query("SELECT memo FROM sales_orders WHERE so_id = %s", (so_id,))[0][0] == "first operator"
-        audit_count = _query(
-            "SELECT COUNT(*) FROM audit_log WHERE entity_type='SO' AND entity_id=%s AND action_type='SO_MEMO_EDITED'",
-            (so_id,),
-        )[0][0]
-        assert audit_count == 1
-
-    def test_audit_history_is_available_to_fraud_grant_and_paginated(self, client):
-        headers = self._user_with_page_grant(client, f"fraud_history_{uuid.uuid4().hex[:8]}", "fraud")
-        so_id = _seed_so("FRAUD_REVIEW", memo="before")
-        updated = client.patch(
-            f"/api/admin/sales-orders/{so_id}/memo",
-            headers=headers,
-            json={"memo": "after", "expected_memo": "before"},
-        )
-        assert updated.status_code == 200
-        response = client.get(
-            f"/api/admin/sales-orders/{so_id}/audit-history?page=1&per_page=1",
-            headers=headers,
-        )
-        assert response.status_code == 200
-        body = response.get_json()
-        assert body["total"] == 1
-        assert body["page"] == 1
-        assert body["per_page"] == 1
-        assert body["pages"] == 1
-        assert body["entries"][0]["action_type"] == "SO_MEMO_EDITED"
-
-    def test_audit_history_hides_foreign_warehouse_order(self, client):
-        headers = self._user_with_page_grant(client, f"fraud_history_scope_{uuid.uuid4().hex[:8]}", "fraud")
-        foreign_id = _seed_so("FRAUD_REVIEW", warehouse_id=2)
-        response = client.get(
-            f"/api/admin/sales-orders/{foreign_id}/audit-history",
-            headers=headers,
-        )
-        assert response.status_code == 404
-
-    def test_audit_history_requires_fraud_or_audit_log_grant(self, client):
-        headers = self._user_with_page_grant(
-            client, f"sales_history_denied_{uuid.uuid4().hex[:8]}", "sales-orders"
-        )
-        so_id = _seed_so("FRAUD_REVIEW", warehouse_id=1)
-        response = client.get(
-            f"/api/admin/sales-orders/{so_id}/audit-history",
-            headers=headers,
-        )
-        assert response.status_code == 403
-
-    def test_push_to_queue_duplicate_is_conflict_and_audits_once(self, client, auth_headers):
-        so_id = _seed_so("FRAUD_REVIEW")
-        first = client.post(f"/api/admin/sales-orders/{so_id}/push-to-queue", headers=auth_headers)
-        second = client.post(f"/api/admin/sales-orders/{so_id}/push-to-queue", headers=auth_headers)
-        assert first.status_code == 200
-        assert second.status_code == 409
-        count = _query(
-            "SELECT COUNT(*) FROM audit_log WHERE entity_type='SO' AND entity_id=%s AND action_type='SO_FRAUD_CLEARED'",
-            (so_id,),
-        )[0][0]
-        assert count == 1
-
-    def test_sales_order_row_lock_serializes_competing_writers(self):
-        """Use independent PostgreSQL sessions; the second writer cannot acquire the same SO lock."""
-        so_number = f"SO-LOCK-{uuid.uuid4().hex[:8]}"
-        setup = psycopg2.connect(os.environ["TEST_DATABASE_URL"])
-        setup.autocommit = True
-        with setup.cursor() as cur:
-            cur.execute(
-                "INSERT INTO sales_orders (so_number, status, warehouse_id, external_id) "
-                "VALUES (%s, 'FRAUD_REVIEW', 1, %s) RETURNING so_id",
-                (so_number, str(uuid.uuid4())),
-            )
-            so_id = cur.fetchone()[0]
-        setup.close()
-
-        first = psycopg2.connect(os.environ["TEST_DATABASE_URL"])
-        second = psycopg2.connect(os.environ["TEST_DATABASE_URL"])
-        try:
-            with first.cursor() as cur:
-                cur.execute("SELECT so_id FROM sales_orders WHERE so_id=%s FOR UPDATE", (so_id,))
-                assert cur.fetchone()[0] == so_id
-            with second.cursor() as cur:
-                with pytest.raises(psycopg2.errors.LockNotAvailable):
-                    cur.execute(
-                        "SELECT so_id FROM sales_orders WHERE so_id=%s FOR UPDATE NOWAIT",
-                        (so_id,),
-                    )
-            second.rollback()
-        finally:
-            first.rollback()
-            first.close()
-            second.close()
-            cleanup = psycopg2.connect(os.environ["TEST_DATABASE_URL"])
-            cleanup.autocommit = True
-            with cleanup.cursor() as cur:
-                cur.execute("DELETE FROM sales_orders WHERE so_id=%s", (so_id,))
-            cleanup.close()
 """Fraud-flag at ingest + admin push-to-queue + memo PATCH.
 
 Covers the ingest auto-flag scenarios (pure-match, mismatch on city,
@@ -624,3 +511,113 @@ class TestFraudWarehouseScopeAndPermission:
             json={"memo": "must be denied"},
         )
         assert memo.status_code == 403
+
+    def test_stale_memo_update_returns_conflict_and_preserves_newer_value(self, client, auth_headers):
+        so_id = _seed_so("FRAUD_REVIEW", memo="initial")
+        first = client.patch(
+            f"/api/admin/sales-orders/{so_id}/memo",
+            headers=auth_headers,
+            json={"memo": "first operator", "expected_memo": "initial"},
+        )
+        assert first.status_code == 200
+        stale = client.patch(
+            f"/api/admin/sales-orders/{so_id}/memo",
+            headers=auth_headers,
+            json={"memo": "stale overwrite", "expected_memo": "initial"},
+        )
+        assert stale.status_code == 409
+        assert stale.get_json()["current_memo"] == "first operator"
+        assert _query("SELECT memo FROM sales_orders WHERE so_id = %s", (so_id,))[0][0] == "first operator"
+        audit_count = _query(
+            "SELECT COUNT(*) FROM audit_log WHERE entity_type='SO' AND entity_id=%s AND action_type='SO_MEMO_EDITED'",
+            (so_id,),
+        )[0][0]
+        assert audit_count == 1
+
+    def test_audit_history_is_available_to_fraud_grant_and_paginated(self, client):
+        headers = self._user_with_page_grant(client, f"fraud_history_{uuid.uuid4().hex[:8]}", "fraud")
+        so_id = _seed_so("FRAUD_REVIEW", memo="before")
+        updated = client.patch(
+            f"/api/admin/sales-orders/{so_id}/memo",
+            headers=headers,
+            json={"memo": "after", "expected_memo": "before"},
+        )
+        assert updated.status_code == 200
+        response = client.get(
+            f"/api/admin/sales-orders/{so_id}/audit-history?page=1&per_page=1",
+            headers=headers,
+        )
+        assert response.status_code == 200
+        body = response.get_json()
+        assert body["total"] == 1
+        assert body["page"] == 1
+        assert body["per_page"] == 1
+        assert body["pages"] == 1
+        assert body["entries"][0]["action_type"] == "SO_MEMO_EDITED"
+
+    def test_audit_history_hides_foreign_warehouse_order(self, client):
+        headers = self._user_with_page_grant(client, f"fraud_history_scope_{uuid.uuid4().hex[:8]}", "fraud")
+        foreign_id = _seed_so("FRAUD_REVIEW", warehouse_id=2)
+        response = client.get(
+            f"/api/admin/sales-orders/{foreign_id}/audit-history",
+            headers=headers,
+        )
+        assert response.status_code == 404
+
+    def test_audit_history_requires_fraud_or_audit_log_grant(self, client):
+        headers = self._user_with_page_grant(
+            client, f"sales_history_denied_{uuid.uuid4().hex[:8]}", "sales-orders"
+        )
+        so_id = _seed_so("FRAUD_REVIEW", warehouse_id=1)
+        response = client.get(
+            f"/api/admin/sales-orders/{so_id}/audit-history",
+            headers=headers,
+        )
+        assert response.status_code == 403
+
+    def test_push_to_queue_duplicate_is_conflict_and_audits_once(self, client, auth_headers):
+        so_id = _seed_so("FRAUD_REVIEW")
+        first = client.post(f"/api/admin/sales-orders/{so_id}/push-to-queue", headers=auth_headers)
+        second = client.post(f"/api/admin/sales-orders/{so_id}/push-to-queue", headers=auth_headers)
+        assert first.status_code == 200
+        assert second.status_code == 409
+        count = _query(
+            "SELECT COUNT(*) FROM audit_log WHERE entity_type='SO' AND entity_id=%s AND action_type='SO_FRAUD_CLEARED'",
+            (so_id,),
+        )[0][0]
+        assert count == 1
+
+    def test_sales_order_row_lock_serializes_competing_writers(self):
+        """Independent PostgreSQL sessions prove the SO row lock serializes writers."""
+        so_number = f"SO-LOCK-{uuid.uuid4().hex[:8]}"
+        setup = psycopg2.connect(os.environ["TEST_DATABASE_URL"])
+        setup.autocommit = True
+        with setup.cursor() as cur:
+            cur.execute(
+                "INSERT INTO sales_orders (so_number, status, warehouse_id, external_id) "
+                "VALUES (%s, 'FRAUD_REVIEW', 1, %s) RETURNING so_id",
+                (so_number, str(uuid.uuid4())),
+            )
+            so_id = cur.fetchone()[0]
+        setup.close()
+
+        first = psycopg2.connect(os.environ["TEST_DATABASE_URL"])
+        second = psycopg2.connect(os.environ["TEST_DATABASE_URL"])
+        try:
+            with first.cursor() as cur:
+                cur.execute("SELECT so_id FROM sales_orders WHERE so_id=%s FOR UPDATE", (so_id,))
+                assert cur.fetchone()[0] == so_id
+            with second.cursor() as cur:
+                with pytest.raises(psycopg2.errors.LockNotAvailable):
+                    cur.execute("SELECT so_id FROM sales_orders WHERE so_id=%s FOR UPDATE NOWAIT", (so_id,))
+            second.rollback()
+        finally:
+            first.rollback()
+            first.close()
+            second.close()
+            cleanup = psycopg2.connect(os.environ["TEST_DATABASE_URL"])
+            cleanup.autocommit = True
+            with cleanup.cursor() as cur:
+                cur.execute("DELETE FROM sales_orders WHERE so_id=%s", (so_id,))
+            cleanup.close()
+
