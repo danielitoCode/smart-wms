@@ -71,6 +71,13 @@
 			status: 'ready',
 			href: '/lab/testimonial',
 			description: 'Carrusel de testimonios con autoplay, dots y stats (CSS, sin Framer).'
+		},
+		{
+			id: 'byobu',
+			name: 'ByobuCarousel',
+			status: 'ready',
+			href: '/lab/byobu',
+			description: 'Carrusel 3D tipo biombo: paneles plegados, drag e inercia (RAF).'
 		}
 	] as const;
 </script>
