@@ -1,17 +1,3 @@
-/** GET /api/admin/search result; customer hit id is the customer name, not a canonical ID. */
-export type SearchCustomerHitDto = {
-	type?: string;
-	id?: string | number;
-	label?: string;
-	sublabel?: string | null;
-};
-
-export type SearchResponseDto = {
-	query?: string;
-	warehouse_id?: number | null;
-	results?: SearchCustomerHitDto[];
-};
-
 /** Fields actually returned by GET /api/admin/sales-orders list. */
 export type SalesOrderCustomerDto = {
 	so_id?: number;
