@@ -317,3 +317,34 @@ Page grant: `webhooks`. Todos los endpoints admin requieren sesión y `require_a
 
 **Permisos cruzados:** el endpoint `GET /api/admin/connector-registry` pertenece a F5.2 y exige el page grant `consumer-groups`, no `webhooks`. Por ello, un usuario que solo tenga `webhooks` puede listar/administrar suscripciones pero recibir 403 al consultar el catálogo de conectores. La pantalla no bloquea la lista en ese caso y permite introducir manualmente un `connector_id`; Flask valida su existencia al crear la suscripción (400 `connector_not_found`). La solución estructural sería exponer un lookup de conectores para `webhooks` o compartir permiso de lectura, pero no se modifica Flask en esta migración.\n\n**Limitaciones confirmadas del backend:** no existe endpoint para recuperar plaintext o historial de secretos; no existe endpoint individual de detalle de una delivery ni un endpoint de payload completo de `integration_events` desde DLQ. La respuesta DLQ solo ofrece event_type, timestamp, aggregate_external_id, warehouse_id y source_txn_id. Replay individual inserta una entrega pending nueva, conserva la original y no mueve el cursor. A diferencia del replay batch, el handler individual no toma lock de suscripción ni mantiene una clave idempotente/deduplicación por delivery; las peticiones repetidas/concurrentes pueden generar más de una entrega. La UI bloquea dobles clics mientras la petición está en curso, pero la garantía global requiere una mejora backend y no se simula en Svelte.
 
+
+
+
+## F5.6 — Imports (contrato Flask verificado)
+
+### Importación genérica de catálogos
+
+- **Permiso:** sesión autenticada y require_admin_or_page_permission("imports").
+- **Endpoint único:** POST /api/admin/import/{entity_type}. No es multipart ni recibe archivos: recibe JSON.
+- **Tipos admitidos exactamente:** items, bins, purchase-orders, sales-orders, inventory-adjustments. Cualquier otro tipo devuelve 400. No se debe inferir que todos los catálogos WMS admiten importación.
+- **Request canónico:** { "records": [{...}] }. Flask también admite como alternativa la clave del tipo o su variante con guiones sustituidos por guiones bajos, pero Svelte envía siempre records.
+- **Límite:** máximo 5.000 registros por petición; 5.001 devuelve 400. El límite global de cuerpo de Flask es 10 MiB (MAX_CONTENT_LENGTH); no existe un límite de bytes específico para el importador.
+- **Respuesta HTTP 200:** { message, total, imported, skipped, errors: [{ row, error }] }. Los números de fila son 1-based. Los errores de validación y reglas por fila se agregan y el resto de filas continúa; la operación hace commit de las filas procesadas y puede devolver éxito parcial. No existe created/updated.
+- **Errores de petición:** tipo no admitido, body/records ausente o vacío y más de 5.000 registros responden 400. Un fallo HTTP/global no equivale a un resultado parcial.
+- **Validación:** api/schemas/csv_import.py define un schema Pydantic independiente para cada tipo. Los campos extra se ignoran; los campos de texto protegidos rechazan prefijos de fórmula (=, +, -, @, tab y CR). Las filas inválidas se informan en errors.
+
+| Tipo | Campos esenciales y semántica específica |
+|---|---|
+| items | sku obligatorio; nombre mediante item_name o name; SKU y UPC duplicados se omiten como error de fila. Cantidad inicial solo crea inventario si se proporciona un default_bin válido. |
+| bins | bin_code obligatorio; requiere zone_id o zone resoluble. warehouse_id opcional y derivable de la zona; bin_code duplicado dentro del almacén se omite. |
+| purchase-orders | po_number y sku obligatorios; cantidad positiva y warehouse_id por fila o en la cabecera del request. Cada registro crea una línea; si existe la PO, agrega una nueva línea. |
+| sales-orders | so_number y sku obligatorios; cantidad positiva y warehouse_id por fila o en la cabecera. Cada registro crea una línea; si existe el pedido, agrega una línea. Admite los campos de dirección estructurada definidos en el schema. |
+| inventory-adjustments | sku, warehouse (código), bin (código) y qty no cero obligatorios. Aplica el cambio de existencias inmediatamente y crea un ajuste APPROVED con motivo CORRECTION; cantidades negativas verifican stock suficiente. No es una simulación ni una importación pendiente de aprobación. |
+
+**No hay endpoints de ImportJob:** Flask no ofrece GET de listado/historial, GET detalle, POST create-job, validate/dry-run, execute separado ni get-errors independiente. La importación se ejecuta directamente en el POST anterior. Tampoco existe informe descargable generado por servidor. Svelte mantiene un estado de ejecución efímero en cliente y puede generar un CSV local con los errores devueltos; no debe presentarlo como un informe persistido.
+
+**Reintento:** no existe endpoint dedicado ni clave idempotente del importador. La UI puede reenviar exclusivamente las filas que el servidor devolvió como omitidas (errors) para evitar repetir filas ya confirmadas en una respuesta parcial. No debe reintentar automáticamente una petición cuyo resultado se perdió por timeout/desconexión: el servidor pudo haber hecho commit y el resultado sería desconocido.
+
+### Importación de órdenes de traslado (endpoint distinto; no es un catálogo genérico)
+
+POST /api/admin/transfer-orders/import requiere page grant transfer-orders, no imports. Body estricto: source_warehouse_code, destination_warehouse_code, records (1–5.000 objetos { sku, quantity }) y notes opcional. Responde 201 con la orden creada y shortages; errores de cabecera/filas pueden responder 422, almacén desconocido 404 y almacenes iguales 422. Resuelve SKU, valida las filas y reserva inventario en origen; las faltas de stock se aceptan parcialmente mediante committed_qty y se informan en shortages. Esta operación crea una Transfer Order y no debe mezclarse con el POST genérico ni ofrecerse bajo su permiso.

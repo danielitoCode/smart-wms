@@ -1,6 +1,7 @@
 export type CsvImportResponseDto = {
-	created?: number;
-	updated?: number;
-	errors?: Array<{ row?: number; message?: string; error?: string }>;
-	[key: string]: unknown;
+	message?: string;
+	total: number;
+	imported: number;
+	skipped: number;
+	errors: Array<{ row: number; error: string }>;
 };

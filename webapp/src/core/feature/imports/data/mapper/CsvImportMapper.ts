@@ -1,17 +1,18 @@
-import type { CsvImportResult, CsvImportType } from '../../domain/entity/CsvImport';
+import type { ImportResult, CsvImportType } from '../../domain/entity/CsvImport';
 import type { CsvImportResponseDto } from '../dto/CsvImportDto';
 
 export const CsvImportMapper = {
-	toDomain(importType: CsvImportType, dto: CsvImportResponseDto): CsvImportResult {
+	toDomain(importType: CsvImportType, dto: CsvImportResponseDto): ImportResult {
 		return {
 			importType,
-			created: dto.created ?? 0,
-			updated: dto.updated ?? 0,
-			errors: (dto.errors ?? []).map((e) => ({
-				row: e.row,
-				message: e.message ?? e.error ?? 'Error de importación'
+			total: dto.total,
+			imported: dto.imported,
+			skipped: dto.skipped,
+			errors: (dto.errors ?? []).map((error) => ({
+				row: error.row,
+				message: error.error
 			})),
-			raw: dto
+			message: dto.message ?? 'Importación procesada'
 		};
 	}
 };

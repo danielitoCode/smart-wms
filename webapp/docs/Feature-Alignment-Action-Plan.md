@@ -466,11 +466,14 @@ Referencia: [React Dashboard.jsx](https://github.com/danielitoCode/smart-wms/blo
 
 ## F5.6 Imports
 
-1. **Domain:** ImportJob, Source, Result y errores por fila.
-2. **Application:** List, Detail, Create si existe, Validate, Execute y GetErrors.
-3. **Data:** localizar endpoints reales; verificar formatos, límites, respuestas y errores. No asumir que un endpoint admite todos los catálogos.
-4. **UI:** tipo, archivo, validación, vista previa, ejecución, errores por fila e informe descargable si existe.
-5. **Pruebas:** archivo vacío/formato inválido, duplicados, error parcial, tamaño y reintento.
+**Avance implementado en frontend Svelte; pendiente de CI para cierre:**
+- Contrato Flask inspeccionado en api/routes/admin/admin_items.py, api/routes/admin/admin_transfer_orders.py y api/schemas/csv_import.py.
+- Corregido el request Svelte de { rows } a { records }; DTO/mapping alineado con total/imported/skipped/errors[{row,error}].
+- Tipos genéricos limitados a los cinco entity types reales; Transfer Orders documentadas como endpoint separado con permiso y contrato propio.
+- Parser CSV con comillas, escapes, comas y saltos de línea; JSON array o wrapper records; rechaza archivo vacío, formato no soportado, encabezados duplicados/vacíos, filas con columnas inconsistentes y más de 5.000 registros.
+- UI incluye selección de tipo, plantilla específica, archivo, preview de 20 filas, ejecución directa, resultado parcial, errores por fila, descarga local del informe CSV y reintento solo de filas rechazadas por el servidor.
+- No se simulan Validate/Dry-run, historial, detalle, job persistido ni informe del servidor: Flask no expone esos endpoints. La validación definitiva de negocio ocurre al ejecutar el POST.
+- **Pendiente:** ejecutar Svelte check, build, suites Domain/Data/UI e integración/regresión; revisar resultados CI antes de marcar F5.6 cerrada.
 
 ## F5.7 Inbound Activity — cierre de integración
 

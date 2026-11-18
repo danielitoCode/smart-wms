@@ -1,5 +1,6 @@
-import type { CsvImportResult, CsvImportType } from '../entity/CsvImport';
+import type { ImportResult, CsvImportType } from '../entity/CsvImport';
+import type { ImportRecord } from '../service/ImportFileParser';
 
 export interface ImportsRepository {
-	importRows(importType: CsvImportType, rows: Record<string, string>[]): Promise<CsvImportResult>;
+	importRows(importType: CsvImportType, rows: ImportRecord[]): Promise<ImportResult>;
 }
