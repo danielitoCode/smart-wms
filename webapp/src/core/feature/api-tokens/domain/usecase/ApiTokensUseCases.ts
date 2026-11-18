@@ -12,7 +12,7 @@ export class ListApiTokensUseCase {
 
 export class CreateApiTokenUseCase {
 	constructor(private readonly repository: ApiTokensRepository) {}
-	execute(input: ApiTokenCreateInput) {
+	async execute(input: ApiTokenCreateInput) {
 		const name = input.name.trim();
 		if (!name) throw new Error('El nombre del token es obligatorio');
 		if (name.length > 128) throw new Error('El nombre no puede superar 128 caracteres');
@@ -40,17 +40,17 @@ export class CreateApiTokenUseCase {
 
 export class RotateApiTokenUseCase {
 	constructor(private readonly repository: ApiTokensRepository) {}
-	execute(tokenId: number) { assertTokenId(tokenId); return this.repository.rotate(tokenId); }
+	async execute(tokenId: number) { assertTokenId(tokenId); return this.repository.rotate(tokenId); }
 }
 
 export class RevokeApiTokenUseCase {
 	constructor(private readonly repository: ApiTokensRepository) {}
-	execute(tokenId: number) { assertTokenId(tokenId); return this.repository.revoke(tokenId); }
+	async execute(tokenId: number) { assertTokenId(tokenId); return this.repository.revoke(tokenId); }
 }
 
 export class DeleteApiTokenUseCase {
 	constructor(private readonly repository: ApiTokensRepository) {}
-	execute(tokenId: number) { assertTokenId(tokenId); return this.repository.remove(tokenId); }
+	async execute(tokenId: number) { assertTokenId(tokenId); return this.repository.remove(tokenId); }
 }
 
 export class GetScopeCatalogUseCase {
