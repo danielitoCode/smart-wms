@@ -16,6 +16,7 @@
 		const activeWarehouseId = warehouseSelection.warehouseId;
 		if (lastWarehouseId === activeWarehouseId) return;
 		lastWarehouseId = activeWarehouseId;
+		searchScopeError = null;
 		state.setWarehouseId(activeWarehouseId);
 		void state.load(1);
 	});
