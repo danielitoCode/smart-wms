@@ -182,6 +182,7 @@ export function createFraudReviewState() {
     try {
       await dependencies.push.execute(id);
       await load(warehouseId, currentQuery, page);
+      if (rows.length === 0 && page > 1) await load(warehouseId, currentQuery, page - 1);
       return true;
     } catch (cause) {
       error = toUserMessage(cause, 'No se pudo liberar el pedido a preparación');
