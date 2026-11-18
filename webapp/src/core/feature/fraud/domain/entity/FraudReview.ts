@@ -26,5 +26,22 @@ export type FraudReview = {
   shippingAddressPostalCode: string | null;
 };
 
+export type FraudReviewDetail = {
+  order: FraudReview;
+  sourceSystem: string | null;
+  lines: Array<{
+    lineId: number;
+    itemId: number;
+    sku: string | null;
+    itemName: string;
+    quantityOrdered: number;
+    quantityAllocated: number;
+    quantityPicked: number;
+    quantityPacked: number;
+    quantityShipped: number;
+    status: string;
+  }>;
+};
+
 export type UpdateFraudMemo = { salesOrderId: number; memo: string };
 export type PushFraudOrderToQueue = { salesOrderId: number };
