@@ -54,7 +54,8 @@
 	let slotEls: (HTMLDivElement | null)[] = [];
 	let containerW = $state(0);
 
-	const state = {
+	/** Mutable RAF physics (not a Svelte rune — name must not be `state`). */
+	const physics = {
 		scroll: 0,
 		velocity: 0,
 		isDragging: false,
@@ -87,7 +88,7 @@
 		if (typeof window === 'undefined') return;
 		const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
 		const update = () => {
-			state.reducedMotion = mq.matches;
+			physics.reducedMotion = mq.matches;
 		};
 		update();
 		mq.addEventListener('change', update);
@@ -123,7 +124,7 @@
 		const tick = (ts: number) => {
 			const dt = Math.min(50, ts - lastTs);
 			lastTs = ts;
-			const s = state;
+			const s = physics;
 
 			if (!s.isDragging) {
 				s.scroll += s.velocity * dt;
@@ -195,7 +196,7 @@
 	});
 
 	function onPointerDown(e: PointerEvent) {
-		const s = state;
+		const s = physics;
 		s.isDragging = true;
 		s.pointerId = e.pointerId;
 		s.lastPointerX = e.clientX;
@@ -205,7 +206,7 @@
 	}
 
 	function onPointerMove(e: PointerEvent) {
-		const s = state;
+		const s = physics;
 		if (!s.isDragging) return;
 		const dx = e.clientX - s.lastPointerX;
 		const now = performance.now();
@@ -219,7 +220,7 @@
 	}
 
 	function onPointerUp(e: PointerEvent) {
-		const s = state;
+		const s = physics;
 		if (!s.isDragging) return;
 		s.isDragging = false;
 		try {
@@ -230,7 +231,7 @@
 	}
 
 	function onKeyDown(e: KeyboardEvent) {
-		const s = state;
+		const s = physics;
 		if (e.key === 'ArrowLeft') {
 			s.scroll -= KEY_STEP;
 			s.velocity = 0;
@@ -257,10 +258,10 @@
 		onpointerup={onPointerUp}
 		onpointercancel={onPointerUp}
 		onmouseenter={() => {
-			state.hovering = true;
+			physics.hovering = true;
 		}}
 		onmouseleave={() => {
-			state.hovering = false;
+			physics.hovering = false;
 		}}
 		onkeydown={onKeyDown}
 		tabindex="0"
