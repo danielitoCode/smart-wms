@@ -67,8 +67,13 @@
 
 	let projW = panelWidth * Math.cos((foldAngle * Math.PI) / 180);
 
-	function setSlotRef(el: HTMLDivElement | null, k: number) {
-		slotEls[k] = el;
+	function slotAction(node: HTMLDivElement, k: number) {
+		slotEls[k] = node;
+		return {
+			destroy() {
+				slotEls[k] = null;
+			}
+		};
 	}
 
 	$effect(() => {
@@ -276,14 +281,7 @@
 						style:margin-left="{-panelWidth / 2}px"
 						style:border-left="1px solid {borderColor}"
 						style:border-right="1px solid {borderColor}"
-						use:((node) => {
-							setSlotRef(node, k);
-							return {
-								destroy() {
-									setSlotRef(null, k);
-								}
-							};
-						})}
+						use:slotAction={k}
 					>
 						<img
 							src={initialItem.image}
