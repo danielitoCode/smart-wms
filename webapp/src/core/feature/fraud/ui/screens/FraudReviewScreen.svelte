@@ -23,6 +23,11 @@
     activeQuery = searchInput.trim();
   }
 
+  async function openDetail(id: number) {
+    const warehouseId = warehouseSelection.warehouseId;
+    if (warehouseId !== null) await vm.openDetail(id, warehouseId);
+  }
+
   async function saveMemo(id: number) {
     const warehouseId = warehouseSelection.warehouseId;
     if (warehouseId === null) return;
@@ -51,7 +56,7 @@
       <h1>{i18n.t('Revisión de pedidos')}</h1>
       <p>{i18n.t('Pedidos retenidos por revisión manual antes de preparación.')}</p>
     </div>
-    <button type="button" onclick={() => search()} disabled={vm.loading || warehouseSelection.warehouseId === null}>
+    <button type="button" onclick={() => { const id = warehouseSelection.warehouseId; if (id !== null) void vm.load(id, activeQuery); }} disabled={vm.loading || warehouseSelection.warehouseId === null}>
       {i18n.t('Actualizar')}
     </button>
   </header>
@@ -124,7 +129,8 @@
                   {i18n.t('Guardar nota')}
                 </button>
               </td>
-              <td>
+              <td class="actions">
+                <button type="button" onclick={() => void openDetail(row.salesOrderId)} disabled={vm.detailLoading}>{i18n.t('Ver detalle')}</button>
                 <button class="primary" type="button" onclick={() => void pushToQueue(row.salesOrderId)} disabled={vm.saving}>
                   {i18n.t('Enviar a preparación')}
                 </button>
@@ -134,6 +140,30 @@
         </tbody>
       </table>
     </div>
+  {/if}
+
+  {#if vm.detailLoading}
+    <UiLoader label={i18n.t('Cargando detalle…')} />
+  {:else if vm.selectedDetail}
+    <section class="detail" aria-label={i18n.t('Detalle del pedido')}>
+      <header class="detail-header">
+        <div><h2>{i18n.t('Detalle')} · {vm.selectedDetail.order.salesOrderNumber}</h2><p>{i18n.t('Almacén')} {vm.selectedDetail.order.warehouseId} · {vm.selectedDetail.order.status}</p></div>
+        <button type="button" onclick={() => vm.closeDetail()}>{i18n.t('Cerrar')}</button>
+      </header>
+      <div class="detail-grid">
+        <div><strong>{i18n.t('Facturación')}</strong><p>{address([vm.selectedDetail.order.billingAddressLine1, vm.selectedDetail.order.billingAddressLine2, vm.selectedDetail.order.billingAddressCity, vm.selectedDetail.order.billingAddressState, vm.selectedDetail.order.billingAddressPostalCode])}</p></div>
+        <div><strong>{i18n.t('Envío')}</strong><p>{address([vm.selectedDetail.order.shippingAddressLine1, vm.selectedDetail.order.shippingAddressLine2, vm.selectedDetail.order.shippingAddressCity, vm.selectedDetail.order.shippingAddressState, vm.selectedDetail.order.shippingAddressPostalCode])}</p></div>
+        <div><strong>{i18n.t('Sistema origen')}</strong><p>{vm.selectedDetail.sourceSystem ?? vm.selectedDetail.order.orderOrigin ?? vm.selectedDetail.order.orderSource ?? '—'}</p></div>
+        <div><strong>{i18n.t('Cliente')}</strong><p>{vm.selectedDetail.order.customerName ?? '—'} · {vm.selectedDetail.order.customerPhone ?? '—'}</p></div>
+      </div>
+      <h3>{i18n.t('Líneas del pedido')}</h3>
+      <div class="table-wrap"><table><thead><tr><th>{i18n.t('SKU')}</th><th>{i18n.t('Producto')}</th><th>{i18n.t('Solicitado')}</th><th>{i18n.t('Asignado')}</th><th>{i18n.t('Preparado')}</th><th>{i18n.t('Empacado')}</th><th>{i18n.t('Enviado')}</th><th>{i18n.t('Estado')}</th></tr></thead><tbody>
+        {#each vm.selectedDetail.lines as line (line.lineId)}
+          <tr><td>{line.sku ?? line.itemId}</td><td>{line.itemName}</td><td>{line.quantityOrdered}</td><td>{line.quantityAllocated}</td><td>{line.quantityPicked}</td><td>{line.quantityPacked}</td><td>{line.quantityShipped}</td><td>{line.status}</td></tr>
+        {/each}
+      </tbody></table></div>
+      <p class="history-note">{i18n.t('El backend registra los cambios de memo y la liberación en audit_log, pero no ofrece un endpoint para consultar el historial desde esta pantalla.')}</p>
+    </section>
   {/if}
 </section>
 
@@ -152,6 +182,11 @@
   .filters label{font-size:.82rem;font-weight:600}
   .filters input{min-width:14rem;max-width:24rem;border:1px solid var(--line);border-radius:8px;padding:.5rem .65rem;background:var(--card);color:var(--ink)}
   .warehouse{margin-left:auto;color:var(--slate);font-size:.82rem}
+  .actions{min-width:10rem}.actions button{display:block;margin-bottom:.35rem}
+  .detail{margin-top:1.25rem;padding:1rem;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+  .detail-header{align-items:center}.detail-header h2{margin:0;font-size:1.1rem}.detail-header p{margin:.25rem 0;color:var(--slate)}
+  .detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;margin:1rem 0}.detail-grid p{margin:.35rem 0;color:var(--slate);font-size:.85rem}
+  .detail h3{font-size:.95rem}.history-note{padding:.65rem;border-radius:8px;background:var(--surface);color:var(--slate);font-size:.8rem}
   .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:var(--card)}
   table{width:100%;min-width:76rem;border-collapse:collapse;font-size:.82rem}
   th,td{text-align:left;padding:.65rem;border-bottom:1px solid var(--line);vertical-align:top}
@@ -160,5 +195,5 @@
   textarea{width:100%;min-width:12rem;max-width:18rem;border:1px solid var(--line);border-radius:8px;padding:.4rem;background:var(--card);color:var(--ink);resize:vertical}
   .error{color:var(--danger)}
   .empty{color:var(--slate);padding:1rem}
-  @media(max-width:720px){header{flex-direction:column}.warehouse{margin-left:0}.filters input{flex:1;min-width:10rem}}
+  @media(max-width:720px){header{flex-direction:column}.warehouse{margin-left:0}.filters input{flex:1;min-width:10rem}.detail-grid{grid-template-columns:1fr}}
 </style>
