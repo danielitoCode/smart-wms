@@ -299,12 +299,100 @@
 
 			<section class="od__card od__card--mobile-panel">
 				<h2>Order details</h2>
-				<div class="od__panel-stack">{render panelBlocks()}</div>
+				<div class="od__panel-stack">
+					<div class="od__acc">
+						<button type="button" class="od__acc-t" aria-expanded={openNotes} onclick={() => (openNotes = !openNotes)}>
+							Notes
+							<svg class="od__chev" class:od__chev--open={openNotes} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+							</svg>
+						</button>
+						{#if openNotes}<p class="od__acc-b">{order.notes}</p>{/if}
+					</div>
+					<div class="od__acc">
+						<button type="button" class="od__acc-t" aria-expanded={openCustomer} onclick={() => (openCustomer = !openCustomer)}>
+							Customer
+							<svg class="od__chev" class:od__chev--open={openCustomer} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+							</svg>
+						</button>
+						{#if openCustomer}
+							<dl class="od__meta-list od__meta-list--panel">
+								<div class="od__meta-row"><dt>Name</dt><dd>{order.customer.name}</dd></div>
+								<div class="od__meta-row"><dt>Address</dt><dd>{order.customer.address}</dd></div>
+								<div class="od__meta-row"><dt>Phone</dt><dd>{order.customer.phone}</dd></div>
+								<div class="od__meta-row"><dt>Email</dt><dd>{order.customer.email}</dd></div>
+								<div class="od__meta-row"><dt>Billing Address</dt><dd>{order.customer.billingNote ?? '—'}</dd></div>
+							</dl>
+						{/if}
+					</div>
+					<div class="od__acc">
+						<button type="button" class="od__acc-t" aria-expanded={openFraud} onclick={() => (openFraud = !openFraud)}>
+							Fraud Analysis
+							<svg class="od__chev" class:od__chev--open={openFraud} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+							</svg>
+						</button>
+						{#if openFraud}
+							<div class="od__fraud">
+								<div class="od__progress" role="progressbar" aria-valuenow={order.fraudRisk ?? 0} aria-valuemin={0} aria-valuemax={100} aria-label="Risk level">
+									<div class="od__progress-bar" style="width: {order.fraudRisk ?? 0}%"></div>
+								</div>
+								<p class="od__fraud-rec">Recommendation: {order.fraudRecommendation ?? '—'}</p>
+								<p class="od__fraud-body">{order.fraudBody}</p>
+							</div>
+						{/if}
+					</div>
+				</div>
 			</section>
 		</div>
 
 		{#if showPanel}
-			<aside class="od__panel" aria-label="Order details">{render panelBlocks()}</aside>
+			<aside class="od__panel" aria-label="Order details">
+				<div class="od__acc">
+					<button type="button" class="od__acc-t" aria-expanded={openNotes} onclick={() => (openNotes = !openNotes)}>
+						Notes
+						<svg class="od__chev" class:od__chev--open={openNotes} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+						</svg>
+					</button>
+					{#if openNotes}<p class="od__acc-b">{order.notes}</p>{/if}
+				</div>
+				<div class="od__acc">
+					<button type="button" class="od__acc-t" aria-expanded={openCustomer} onclick={() => (openCustomer = !openCustomer)}>
+						Customer
+						<svg class="od__chev" class:od__chev--open={openCustomer} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+						</svg>
+					</button>
+					{#if openCustomer}
+						<dl class="od__meta-list od__meta-list--panel">
+							<div class="od__meta-row"><dt>Name</dt><dd>{order.customer.name}</dd></div>
+							<div class="od__meta-row"><dt>Address</dt><dd>{order.customer.address}</dd></div>
+							<div class="od__meta-row"><dt>Phone</dt><dd>{order.customer.phone}</dd></div>
+							<div class="od__meta-row"><dt>Email</dt><dd>{order.customer.email}</dd></div>
+							<div class="od__meta-row"><dt>Billing Address</dt><dd>{order.customer.billingNote ?? '—'}</dd></div>
+						</dl>
+					{/if}
+				</div>
+				<div class="od__acc">
+					<button type="button" class="od__acc-t" aria-expanded={openFraud} onclick={() => (openFraud = !openFraud)}>
+						Fraud Analysis
+						<svg class="od__chev" class:od__chev--open={openFraud} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+						</svg>
+					</button>
+					{#if openFraud}
+						<div class="od__fraud">
+							<div class="od__progress" role="progressbar" aria-valuenow={order.fraudRisk ?? 0} aria-valuemin={0} aria-valuemax={100} aria-label="Risk level">
+								<div class="od__progress-bar" style="width: {order.fraudRisk ?? 0}%"></div>
+							</div>
+							<p class="od__fraud-rec">Recommendation: {order.fraudRecommendation ?? '—'}</p>
+							<p class="od__fraud-body">{order.fraudBody}</p>
+						</div>
+					{/if}
+				</div>
+			</aside>
 		{/if}
 	</div>
 </div>
@@ -330,52 +418,6 @@
 		</div>
 	</div>
 {/if}
-
-{#snippet panelBlocks()}
-	<div class="od__acc">
-		<button type="button" class="od__acc-t" aria-expanded={openNotes} onclick={() => (openNotes = !openNotes)}>
-			Notes
-			<svg class="od__chev" class:od__chev--open={openNotes} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
-			</svg>
-		</button>
-		{#if openNotes}<p class="od__acc-b">{order.notes}</p>{/if}
-	</div>
-	<div class="od__acc">
-		<button type="button" class="od__acc-t" aria-expanded={openCustomer} onclick={() => (openCustomer = !openCustomer)}>
-			Customer
-			<svg class="od__chev" class:od__chev--open={openCustomer} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
-			</svg>
-		</button>
-		{#if openCustomer}
-			<dl class="od__meta-list od__meta-list--panel">
-				<div class="od__meta-row"><dt>Name</dt><dd>{order.customer.name}</dd></div>
-				<div class="od__meta-row"><dt>Address</dt><dd>{order.customer.address}</dd></div>
-				<div class="od__meta-row"><dt>Phone</dt><dd>{order.customer.phone}</dd></div>
-				<div class="od__meta-row"><dt>Email</dt><dd>{order.customer.email}</dd></div>
-				<div class="od__meta-row"><dt>Billing Address</dt><dd>{order.customer.billingNote ?? '—'}</dd></div>
-			</dl>
-		{/if}
-	</div>
-	<div class="od__acc">
-		<button type="button" class="od__acc-t" aria-expanded={openFraud} onclick={() => (openFraud = !openFraud)}>
-			Fraud Analysis
-			<svg class="od__chev" class:od__chev--open={openFraud} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
-			</svg>
-		</button>
-		{#if openFraud}
-			<div class="od__fraud">
-				<div class="od__progress" role="progressbar" aria-valuenow={order.fraudRisk ?? 0} aria-valuemin="0" aria-valuemax="100" aria-label="Risk level">
-					<div class="od__progress-bar" style:width="{(order.fraudRisk ?? 0)}%"></div>
-				</div>
-				<p class="od__fraud-rec">Recommendation: {order.fraudRecommendation ?? '—'}</p>
-				<p class="od__fraud-body">{order.fraudBody}</p>
-			</div>
-		{/if}
-	</div>
-{/snippet}
 
 <style>
 	.od { position: relative; width: 100%; max-width: 1100px; margin: 0 auto; color: var(--ink, #132234); }
