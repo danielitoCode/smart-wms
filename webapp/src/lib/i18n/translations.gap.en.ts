@@ -205,4 +205,11 @@ export const gapEn: Record<string, string> = {
   'Guardar nota': 'Save note',
   'Enviar a preparación': 'Send to picking',
   'Sistema origen': 'Source system',
+  'Paginación de pedidos': 'Order pagination',
+  'Historial de auditoría': 'Audit history',
+  'Cargando historial…': 'Loading history…',
+  'No hay eventos de auditoría para este pedido.': 'No audit events for this order.',
+  'eventos': 'events',
+  'Paginación del historial': 'History pagination',
+  'pedidos': 'orders',
 };
