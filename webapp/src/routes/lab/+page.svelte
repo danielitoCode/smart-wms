@@ -92,6 +92,13 @@
 			status: 'ready',
 			href: '/lab/sticky-cards',
 			description: 'Stack sticky de cards que escalan con el scroll (sin Framer/Lenis).'
+		},
+		{
+			id: 'inline-table',
+			name: 'InlineTableControl',
+			status: 'ready',
+			href: '/lab/inline-table',
+			description: 'Tabla de gastos con edición inline por fila (CSS, sin Motion).'
 		}
 	] as const;
 </script>
