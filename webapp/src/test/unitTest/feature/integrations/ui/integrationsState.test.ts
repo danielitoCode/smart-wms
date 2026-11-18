@@ -96,6 +96,27 @@ describe('Integrations UI state', () => {
     state.destroy();
   });
 
+
+  it('clears warehouse-scoped credentials when the warehouse selection is removed', async () => {
+    const state = createIntegrationsState(createDeps());
+    await state.selectConnector(connector('erp'), 1);
+    expect(state.credentials).toHaveLength(1);
+    await state.selectConnector(connector('erp'), null);
+    expect(state.credentials).toEqual([]);
+    expect(state.syncStates).toEqual([]);
+    expect(state.error).toContain('Selecciona un almacén');
+    state.destroy();
+  });
+
+  it('surfaces connection timeouts distinctly from ordinary disconnections', async () => {
+    const state = createIntegrationsState(createDeps());
+    await state.selectConnector(connector('erp'), 1);
+    deps.testConnection.execute.mockRejectedValue(new ApiError(0, 'Request timed out', 'timeout'));
+    await state.testConnection('erp', 1);
+    expect(state.error).toContain('Tiempo de espera agotado');
+    state.destroy();
+  });
+
   it('polls after enqueue until a running sync transitions to completed', async () => {
     vi.useFakeTimers();
     deps.syncStatus.execute
