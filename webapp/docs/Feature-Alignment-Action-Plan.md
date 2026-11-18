@@ -396,11 +396,13 @@ Referencia: [React Dashboard.jsx](https://github.com/danielitoCode/smart-wms/blo
 
 ## F4.6 POS Activity
 
-1. **Domain:** venta, transacción, usuario/terminal y resumen.
-2. **Application:** ListPOSSales, GetPOSSummary y FilterPOSActivity.
-3. **Data:** contrastar GET `/admin/pos/sales-orders` y `/admin/pos/summary`; revisar `schemas/pos.py`.
-4. **UI:** listado, filtros, resumen, detalle y relación con Sales Orders.
-5. **Pruebas:** venta anulada/incompleta, paginación, fechas y permisos.
+1. **Domain:** venta, transacción, usuario/terminal, estado y resumen KPI, pace, semana y tender.
+2. **Application:** `ListPosActivityUseCase`, `FilterPosActivityUseCase`, `GetPosActivitySummaryUseCase`.
+3. **Data:** contratos GET `/api/admin/pos/sales-orders` y `/api/admin/pos/summary`; `schemas/pos.py` valida requests POS, no estos GET administrativos.
+4. **UI:** filtros date/type/channel/status/terminal/cashier; KPIs; comparativa semanal y medios de pago; tabla, detalle y enlace a Sales Order.
+5. **Pruebas:** refunds/cancelled/incomplete rows, filtros, pagination, fecha local, summary y errores de permiso.
+
+**Avance:** DTO de resumen ampliado al contrato Flask; filtro de cajero; fecha local Denver; cargas independientes y protección contra respuestas obsoletas; detalle y navegación a Sales Order. Tests Domain/Data añadidos. Pendiente ejecutar suite y CI, corregir fallos observados y cerrar revisión de permisos.
 
 ---
 
