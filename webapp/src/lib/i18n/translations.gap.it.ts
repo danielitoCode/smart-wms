@@ -243,4 +243,9 @@ export const gapIt: Record<string, string> = {
   'No se pudo cargar el detalle del cliente': 'Impossibile caricare i dettagli del cliente',
   'No se pudo cargar el historial de pedidos': 'Impossibile caricare la cronologia degli ordini',
   'coincidencias backend': 'corrispondenze backend',
+
+  'Todos los autorizados': 'Tutti quelli autorizzati',
+  'No se pudieron cargar los clientes': 'Impossibile caricare i clienti',
+  'Total': 'Totale',
+  'Tel.': 'Tel.',
 };
