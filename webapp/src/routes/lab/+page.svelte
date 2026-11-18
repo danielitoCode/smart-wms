@@ -1,7 +1,6 @@
 <script lang="ts">
 	/**
 	 * Component Lab — overview de componentes migrados React → Svelte.
-	 * Ruta pública (sin auth) para revisión rápida durante la migración.
 	 */
 	import TaskWidget from '../../lib/components/TaskWidget.svelte';
 	import type { TaskData } from '../../lib/components/taskWidget.types';
@@ -43,16 +42,21 @@
 			name: 'TaskWidget',
 			status: 'ready',
 			href: '/lab/task-widget',
-			description:
-				'Tarjeta expandible de tarea con progreso, subtasks, priority/status y assignees.'
+			description: 'Tarjeta expandible de tarea con progreso, subtasks, priority/status y assignees.'
 		},
 		{
 			id: 'hover-expand',
 			name: 'HoverExpand',
 			status: 'ready',
 			href: '/lab/hover-expand',
-			description:
-				'Franja de imágenes: el panel activo se ensancha al hover o click (CSS, sin Framer).'
+			description: 'Franja de imágenes: el panel activo se ensancha al hover o click (CSS, sin Framer).'
+		},
+		{
+			id: 'onboarding',
+			name: 'OnboardingScreen',
+			status: 'ready',
+			href: '/lab/onboarding',
+			description: 'Card multi-paso de alta de negocio/workspace con progress y preview panel.'
 		}
 	] as const;
 </script>
@@ -92,7 +96,7 @@
 	</div>
 </section>
 
-<section class="lab-preview lab-preview--wide">
+<section class="lab-preview">
 	<div class="lab-preview__head">
 		<h2>HoverExpand</h2>
 		<a href="/lab/hover-expand">Ver detalle →</a>
@@ -103,141 +107,62 @@
 </section>
 
 <style>
-	.lab-intro {
-		margin-bottom: 2rem;
-	}
-
+	.lab-intro { margin-bottom: 2rem; }
 	.lab-kicker {
-		margin: 0 0 0.35rem;
-		font-size: 0.72rem;
-		font-weight: 600;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		color: var(--navy, #004c8b);
+		margin: 0 0 0.35rem; font-size: 0.72rem; font-weight: 600;
+		letter-spacing: 0.12em; text-transform: uppercase; color: var(--navy, #004c8b);
 	}
-
 	.lab-title {
-		margin: 0 0 0.5rem;
-		font-family: var(--disp, 'Space Grotesk', system-ui, sans-serif);
-		font-size: clamp(1.6rem, 3vw, 2rem);
-		font-weight: 700;
-		letter-spacing: -0.025em;
+		margin: 0 0 0.5rem; font-family: var(--disp, 'Space Grotesk', system-ui, sans-serif);
+		font-size: clamp(1.6rem, 3vw, 2rem); font-weight: 700; letter-spacing: -0.025em;
 		color: var(--head-ink, #012a50);
 	}
-
 	.lab-lead {
-		margin: 0;
-		max-width: 42rem;
-		font-size: 0.95rem;
-		line-height: 1.55;
-		color: var(--slate, #5c6b7d);
+		margin: 0; max-width: 42rem; font-size: 0.95rem; line-height: 1.55; color: var(--slate, #5c6b7d);
 	}
-
 	.lab-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-		gap: 0.85rem;
-		margin-bottom: 2.5rem;
+		display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+		gap: 0.85rem; margin-bottom: 2.5rem;
 	}
-
 	.lab-card {
-		display: block;
-		padding: 1rem 1.1rem;
-		border-radius: var(--radius-card, 16px);
-		border: 1.5px solid var(--line, #d9e2ec);
-		background: var(--card, #fff);
-		box-shadow: var(--shadow-1);
-		text-decoration: none;
-		color: inherit;
+		display: block; padding: 1rem 1.1rem; border-radius: var(--radius-card, 16px);
+		border: 1.5px solid var(--line, #d9e2ec); background: var(--card, #fff);
+		box-shadow: var(--shadow-1); text-decoration: none; color: inherit;
 		transition: box-shadow 160ms ease, border-color 160ms ease;
 	}
-
 	.lab-card:hover {
 		border-color: color-mix(in srgb, var(--navy, #004c8b) 35%, var(--line));
 		box-shadow: var(--shadow-2);
 	}
-
-	.lab-card__top {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.5rem;
-		margin-bottom: 0.4rem;
-	}
-
+	.lab-card__top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.4rem; }
 	.lab-card__name {
-		font-family: var(--disp, 'Space Grotesk', system-ui, sans-serif);
-		font-weight: 600;
-		font-size: 1rem;
-		color: var(--head-ink, #012a50);
+		font-family: var(--disp, 'Space Grotesk', system-ui, sans-serif); font-weight: 600;
+		font-size: 1rem; color: var(--head-ink, #012a50);
 	}
-
 	.lab-card__status {
-		font-size: 0.68rem;
-		font-weight: 700;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-		padding: 0.2rem 0.45rem;
-		border-radius: 6px;
-		background: var(--success-bg, #eaf5ee);
-		color: var(--success, #1e7a46);
+		font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+		padding: 0.2rem 0.45rem; border-radius: 6px;
+		background: var(--success-bg, #eaf5ee); color: var(--success, #1e7a46);
 	}
-
-	.lab-card__desc {
-		margin: 0;
-		font-size: 0.8125rem;
-		line-height: 1.45;
-		color: var(--slate, #5c6b7d);
-	}
-
+	.lab-card__desc { margin: 0; font-size: 0.8125rem; line-height: 1.45; color: var(--slate, #5c6b7d); }
 	.lab-preview {
-		border-radius: var(--radius-card, 22px);
-		border: 1.5px solid var(--line, #d9e2ec);
-		background: var(--card, #fff);
-		padding: 1.25rem;
-		box-shadow: var(--shadow-1);
-		margin-bottom: 1.5rem;
+		border-radius: var(--radius-card, 22px); border: 1.5px solid var(--line, #d9e2ec);
+		background: var(--card, #fff); padding: 1.25rem; box-shadow: var(--shadow-1); margin-bottom: 1.5rem;
 	}
-
 	.lab-preview__head {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.75rem;
-		margin-bottom: 1.25rem;
+		display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 1.25rem;
 	}
-
 	.lab-preview__head h2 {
-		margin: 0;
-		font-family: var(--disp, 'Space Grotesk', system-ui, sans-serif);
-		font-size: 1.1rem;
-		font-weight: 600;
-		color: var(--head-ink, #012a50);
+		margin: 0; font-family: var(--disp, 'Space Grotesk', system-ui, sans-serif);
+		font-size: 1.1rem; font-weight: 600; color: var(--head-ink, #012a50);
 	}
-
-	.lab-preview__head a {
-		font-size: 0.8125rem;
-		font-weight: 500;
-		color: var(--link, #004c8b);
-		text-decoration: none;
-	}
-
-	.lab-preview__head a:hover {
-		text-decoration: underline;
-	}
-
+	.lab-preview__head a { font-size: 0.8125rem; font-weight: 500; color: var(--link, #004c8b); text-decoration: none; }
+	.lab-preview__head a:hover { text-decoration: underline; }
 	.lab-preview__stage {
-		display: flex;
-		justify-content: center;
-		padding: 1.5rem 0.5rem 1rem;
-		background: var(--surface-2, #f5f8fc);
-		border-radius: 16px;
-		border: 1px solid var(--line-soft, #e4eaf1);
+		display: flex; justify-content: center; padding: 1.5rem 0.5rem 1rem;
+		background: var(--surface-2, #f5f8fc); border-radius: 16px; border: 1px solid var(--line-soft, #e4eaf1);
 	}
-
 	.lab-preview__stage--scroll {
-		overflow-x: auto;
-		justify-content: flex-start;
-		padding-block: 2rem;
+		overflow-x: auto; justify-content: flex-start; padding-block: 2rem;
 	}
 </style>
