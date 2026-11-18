@@ -621,3 +621,36 @@ class TestFraudWarehouseScopeAndPermission:
                 cur.execute("DELETE FROM sales_orders WHERE so_id=%s", (so_id,))
             cleanup.close()
 
+    def test_fraud_queue_returns_real_pagination_metadata(self, client, auth_headers):
+        so_ids = [_seed_so("FRAUD_REVIEW") for _ in range(3)]
+        first = client.get(
+            "/api/admin/sales-orders?status=FRAUD_REVIEW&warehouse_id=1&page=1&per_page=2",
+            headers=auth_headers,
+        )
+        assert first.status_code == 200
+        first_body = first.get_json()
+        assert first_body["total"] == 3
+        assert first_body["page"] == 1
+        assert first_body["per_page"] == 2
+        assert first_body["pages"] == 2
+        assert len(first_body["sales_orders"]) == 2
+
+        second = client.get(
+            "/api/admin/sales-orders?status=FRAUD_REVIEW&warehouse_id=1&page=2&per_page=2",
+            headers=auth_headers,
+        )
+        assert second.status_code == 200
+        second_body = second.get_json()
+        assert second_body["total"] == 3
+        assert second_body["page"] == 2
+        assert len(second_body["sales_orders"]) == 1
+        assert set(
+            [row["so_id"] for row in first_body["sales_orders"] + second_body["sales_orders"]]
+        ) == set(so_ids)
+
+        invalid = client.get(
+            "/api/admin/sales-orders?status=FRAUD_REVIEW&page=1&per_page=0",
+            headers=auth_headers,
+        )
+        assert invalid.status_code == 400
+
