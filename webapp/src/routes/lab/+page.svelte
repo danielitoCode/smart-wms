@@ -5,6 +5,8 @@
 	 */
 	import TaskWidget from '../../lib/components/TaskWidget.svelte';
 	import type { TaskData } from '../../lib/components/taskWidget.types';
+	import HoverExpand from '../../lib/components/HoverExpand.svelte';
+	import type { HoverExpandImage } from '../../lib/components/hoverExpand.types';
 
 	const MOCK_TASK: TaskData = {
 		title: 'Design System',
@@ -26,6 +28,15 @@
 		]
 	};
 
+	const DEMO_IMAGES: HoverExpandImage[] = [
+		{ src: 'https://picsum.photos/seed/he01/600/900', alt: 'Panel 1', code: '# 01' },
+		{ src: 'https://picsum.photos/seed/he02/600/900', alt: 'Panel 2', code: '# 23' },
+		{ src: 'https://picsum.photos/seed/he03/600/900', alt: 'Panel 3', code: '# 07' },
+		{ src: 'https://picsum.photos/seed/he04/600/900', alt: 'Panel 4', code: '# 12' },
+		{ src: 'https://picsum.photos/seed/he05/600/900', alt: 'Panel 5', code: '# 18' },
+		{ src: 'https://picsum.photos/seed/he06/600/900', alt: 'Panel 6', code: '# 04' }
+	];
+
 	const components = [
 		{
 			id: 'task-widget',
@@ -34,6 +45,14 @@
 			href: '/lab/task-widget',
 			description:
 				'Tarjeta expandible de tarea con progreso, subtasks, priority/status y assignees.'
+		},
+		{
+			id: 'hover-expand',
+			name: 'HoverExpand',
+			status: 'ready',
+			href: '/lab/hover-expand',
+			description:
+				'Franja de imágenes: el panel activo se ensancha al hover o click (CSS, sin Framer).'
 		}
 	] as const;
 </script>
@@ -70,6 +89,16 @@
 	</div>
 	<div class="lab-preview__stage">
 		<TaskWidget data={MOCK_TASK} />
+	</div>
+</section>
+
+<section class="lab-preview lab-preview--wide">
+	<div class="lab-preview__head">
+		<h2>HoverExpand</h2>
+		<a href="/lab/hover-expand">Ver detalle →</a>
+	</div>
+	<div class="lab-preview__stage lab-preview__stage--scroll">
+		<HoverExpand images={DEMO_IMAGES} />
 	</div>
 </section>
 
@@ -167,6 +196,7 @@
 		background: var(--card, #fff);
 		padding: 1.25rem;
 		box-shadow: var(--shadow-1);
+		margin-bottom: 1.5rem;
 	}
 
 	.lab-preview__head {
@@ -203,5 +233,11 @@
 		background: var(--surface-2, #f5f8fc);
 		border-radius: 16px;
 		border: 1px solid var(--line-soft, #e4eaf1);
+	}
+
+	.lab-preview__stage--scroll {
+		overflow-x: auto;
+		justify-content: flex-start;
+		padding-block: 2rem;
 	}
 </style>
