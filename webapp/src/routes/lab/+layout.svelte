@@ -22,6 +22,7 @@
 			<a href="/lab/disperse">Disperse</a>
 			<a href="/lab/sticky-cards">StickyCards</a>
 			<a href="/lab/inline-table">InlineTable</a>
+			<a href="/lab/view-on-map">ViewOnMap</a>
 		</nav>
 	</header>
 	<main class="lab-main">
