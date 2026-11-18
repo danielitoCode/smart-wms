@@ -802,7 +802,7 @@ Cualquier desarrollador debe poder identificar qué existía en React, qué ofre
 
 **Clasificación:** feature nueva; no suma paridad React porque el frontend React no tenía un módulo de administración independiente de clientes.
 
-**Decisión contractual:** Flask no ofrece CRUD ni endpoint maestro de clientes. El campo de cliente está desnormalizado en `sales_orders`; mantener esta pantalla como proyección de solo lectura. No añadir Create/Update/Delete ni simular persistencia de un Customer canónico.
+**Decisión contractual:** Flask tiene una tabla canónica `customers` alimentada por inbound (`POST /api/v1/inbound/customers`), pero no ofrece endpoints administrativos de listado/detalle/CRUD para esa tabla. El módulo Svelte usa la proyección disponible de `sales_orders` y global search; mantenerlo read-only. El endpoint inbound es una superficie de ingestión WMS-token, no una API de administración web. No añadir Create/Update/Delete ni simular persistencia de un Customer canónico.
 
 1. **Domain**
    - Modelar Customer como proyección: identidad visible por nombre normalizado, contacto, direcciones observadas, almacenes y pedidos.
