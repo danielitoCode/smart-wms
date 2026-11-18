@@ -101,7 +101,6 @@
 		margin: 0;
 		border: 0;
 		border-radius: 1.5rem;
-		outflow: hidden;
 		overflow: hidden;
 		cursor: pointer;
 		background: var(--surface-3, #e7eef6);
