@@ -84,7 +84,8 @@ export function createApiTokensState() {
 	}
 
 	async function refreshRows() {
-		rows = await deps.list.execute();
+		try { rows = await deps.list.execute(); }
+		catch (e) { error = toUserMessage(e, 'La acción se completó, pero no se pudo actualizar el listado'); }
 	}
 
 	return {
