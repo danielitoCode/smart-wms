@@ -76,6 +76,7 @@ export function resolveHomePath(input: {
 export function requiredPageKeysForPath(pathname: string): string[] {
 	if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) return ['dashboard'];
 	if (pathname === '/sales-orders' || pathname.startsWith('/sales-orders/')) return ['sales-orders'];
+	if (pathname === '/customers' || pathname.startsWith('/customers/')) return ['sales-orders'];
 	if (pathname === '/inventory' || pathname.startsWith('/inventory/')) return ['inventory'];
 	if (pathname === '/cycle-count' || pathname.startsWith('/cycle-count/')) return ['cycle-counts'];
 	if (pathname === '/receiving' || pathname.startsWith('/receiving/')) return ['receiving'];
