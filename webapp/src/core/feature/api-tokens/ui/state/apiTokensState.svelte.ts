@@ -26,14 +26,16 @@ export function createApiTokensState() {
 		loading = true;
 		error = null;
 		try {
-			const [tokens, scopeCatalog, warehouseOptions] = await Promise.all([
+			const [tokens, scopeCatalog] = await Promise.all([
 				deps.list.execute(),
-				deps.scopeCatalog.execute(),
-				deps.warehouses.execute()
+				deps.scopeCatalog.execute()
 			]);
 			rows = tokens;
 			catalog = scopeCatalog;
-			warehouses = warehouseOptions;
+			// React treats the warehouse picker as optional because its
+			// endpoint may require a separate "warehouses" page grant.
+			try { warehouses = await deps.warehouses.execute(); }
+			catch { warehouses = []; }
 		} catch (e) {
 			error = toUserMessage(e, 'No se pudieron cargar los tokens');
 		} finally {
