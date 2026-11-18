@@ -46,3 +46,5 @@ export type ApiTokenIssueResult = {
 	/** Plaintext is returned by Flask only on create/rotate. Never persist it. */
 	plaintext: string;
 };
+
+export type WarehouseOption = { id: number; code: string; name: string | null };
