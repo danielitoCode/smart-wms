@@ -248,4 +248,7 @@ export const gapIt: Record<string, string> = {
   'No se pudieron cargar los clientes': 'Impossibile caricare i clienti',
   'Total': 'Totale',
   'Tel.': 'Tel.',
+
+  'Reintentar': 'Riprova',
+  'de': 'di',
 };
