@@ -348,3 +348,37 @@ Page grant: `webhooks`. Todos los endpoints admin requieren sesión y `require_a
 ### Importación de órdenes de traslado (endpoint distinto; no es un catálogo genérico)
 
 POST /api/admin/transfer-orders/import requiere page grant transfer-orders, no imports. Body estricto: source_warehouse_code, destination_warehouse_code, records (1–5.000 objetos { sku, quantity }) y notes opcional. Responde 201 con la orden creada y shortages; errores de cabecera/filas pueden responder 422, almacén desconocido 404 y almacenes iguales 422. Resuelve SKU, valida las filas y reserva inventario en origen; las faltas de stock se aceptan parcialmente mediante committed_qty y se informan en shortages. Esta operación crea una Transfer Order y no debe mezclarse con el POST genérico ni ofrecerse bajo su permiso.
+
+
+## F5.7 — Inbound Activity: contrato verificado
+
+**Admin observability (read-only):** ambos endpoints requieren sesión autenticada y `require_admin_or_page_permission("inbound")`.
+
+| Método | Endpoint | Query / respuesta | Semántica |
+|---|---|---|---|
+| GET | `/api/admin/inbound/activity` | `source_system`, `resource`, `status`, `since`, `until`, `page`, `per_page` → `{ rows, page, per_page, limit, total, has_next }` | Unión de cinco tablas staging: sales_orders, items, customers, vendors y purchase_orders. Máximo 500 filas por página. Orden: received_at DESC, resource, inbound_id. |
+| GET | `/api/admin/inbound/activity/{resource}/{inbound_id}` | Detalle con metadatos, `source_payload`, `canonical_payload`, `source_payload_retained` | 400 resource desconocido; 404 fila inexistente. |
+
+**Valores reales y filtros:**
+- `resource` es el tipo de recurso inbound; no existe un filtro independiente `event_type` en este contrato.
+- `status` solo admite `applied` y `superseded`.
+- `since` y `until` son timestamps ISO; `since > until` devuelve 400.
+- `source_system` es la clave del sistema externo ligada al WMS token que ingirió la fila. La fila también expone `ingested_via_token_id`; ni el token plaintext ni su hash se incluyen.
+- El catálogo de source systems está en `GET /api/admin/scope-catalog`, pero requiere permiso `api-tokens`, no `inbound`. La pantalla inbound usa filtro exacto por texto y no depende de un permiso adicional ni presenta el catálogo como disponible.
+
+**Semántica de estado — no confundir recepción con aplicación:**
+- `applied` se inserta al completar mapping, upsert de la entidad canónica, relación de cross-system mapping y auditoría dentro de la transacción.
+- Una nueva versión aplicada cambia la fila anterior a `superseded`; esa fila también fue aplicada históricamente.
+- Reenvío idéntico (`source_system + external_id + external_version`) responde 200 idempotente con el inbound_id y canonical_id existentes; no crea una fila duplicada.
+- Lock ocupado responde 409 `lock_held` con Retry-After: 1. Versión obsoleta responde 409 `stale_version`. Lookup cruzado no resuelto responde 409 `cross_system_lookup_miss`; errores de mapping responden 422 `mapping_apply_error`; el límite de body responde 413 `body_too_large`.
+- **Límite funcional:** los errores/rechazos no se persisten en staging. No existe endpoint admin de intentos fallidos, errores, replay o retry. Por tanto esta pantalla no puede mostrar una DLQ ni el historial completo de intentos. El reintento lo realiza el sistema origen; la idempotencia evita duplicar la fila si el primer POST sí se confirmó.
+
+**Payload y privacidad:**
+- El detalle devuelve source y canonical payload, con redacción recursiva server-side de claves reconocidas como password, secret, token, authorization, api key, email, teléfono, dirección, identificadores fiscales, nombre y datos de tarjeta.
+- `source_payload_retained=false` indica que el payload fuente fue eliminado por retención; la UI no debe reconstruirlo.
+- La redacción se aplica al payload, no es una garantía de anonimización de todos los campos de metadatos.
+- Los endpoints no tienen warehouse scope: la prueba Flask confirma que el grant `inbound` expone un feed global y que las tablas staging no tienen warehouse_id. El permiso `inbound` debe tratarse como acceso a datos de integración de todos los almacenes; no se debe insinuar aislamiento por almacén.
+
+**Integración:** la correlación a la entidad canónica se hace mediante `canonical_id` y el tipo se deriva de `resource`. La ruta de detalle directa depende del módulo canónico; si no hay una ruta verificable, la UI abre el módulo y lo identifica explícitamente como navegación general, no como enlace al registro exacto.
+
+**Pruebas backend existentes (no ejecutadas por el alcance frontend):** `api/tests/test_admin_inbound.py` cubre paginación, filtros, permiso, detalle, redacción recursiva y payload eliminado por retención; `api/tests/test_inbound_*_endpoint.py` y `api/tests/test_inbound_*.py` cubren procesamiento, idempotencia y fallos del POST inbound. No se declara aquí su resultado de ejecución.
