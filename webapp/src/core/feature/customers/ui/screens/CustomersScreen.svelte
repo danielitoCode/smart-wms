@@ -38,7 +38,7 @@
 		<label class="field grow"><span>{i18n.t('Buscar cliente (mínimo 2 caracteres)')}</span>
 			<input type="search" placeholder={i18n.t('Nombre del cliente')} value={state.query} oninput={(e) => state.setQuery(e.currentTarget.value)} />
 		</label>
-		<span class="warehouse-context">Almacén activo: {warehouseSelection.warehouseId ?? i18n.t('Todos los autorizados')}</span>
+		<span class="warehouse-context">{i18n.t('Almacén activo:')} {warehouseSelection.warehouseId ?? i18n.t('Todos los autorizados')}</span>
 		<button type="submit" disabled={state.loading}>{i18n.t('Buscar')}</button>
 	</form>
 	{#if searchScopeError}<p class="status error" role="alert">{searchScopeError}</p>{/if}
@@ -85,7 +85,7 @@
 				{/if}
 				{#if state.customerOrders.totalPages > 1}
 					<div class="pagination"><span>{i18n.t('Página')} {state.customerOrders.page} {i18n.t('de')} {state.customerOrders.totalPages} · {state.customerOrders.matchingSalesOrders} {i18n.t('coincidencias backend')}</span>
-					<div><button type="button" disabled={state.ordersPage <= 1} onclick={() => state.loadOrders(state.ordersPage - 1)}>Anterior</button><button type="button" disabled={state.ordersPage >= state.customerOrders.totalPages} onclick={() => state.loadOrders(state.ordersPage + 1)}>Siguiente</button></div></div>
+					<div><button type="button" disabled={state.ordersPage <= 1} onclick={() => state.loadOrders(state.ordersPage - 1)}>{i18n.t('Anterior')}</button><button type="button" disabled={state.ordersPage >= state.customerOrders.totalPages} onclick={() => state.loadOrders(state.ordersPage + 1)}>{i18n.t('Siguiente')}</button></div></div>
 				{/if}
 			{:else if !state.detailLoading}<p class="hint">{i18n.t('No se encontraron pedidos para este cliente.')}</p>{/if}
 			<p class="hint">{i18n.t('El endpoint q busca por número o nombre de pedido. El historial filtra por nombre exacto; el total de páginas puede incluir coincidencias por número de pedido.')}</p>
