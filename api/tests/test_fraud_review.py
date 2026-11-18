@@ -303,7 +303,7 @@ class TestFraudIngest:
 # ----------------------------------------------------------------------
 
 
-def _seed_so(status, *, memo=None):
+def _seed_so(status, *, memo=None, warehouse_id=1):
     """INSERT a minimal sales_orders row in the test transaction and
     return so_id. Bypasses the inbound flow so we can isolate the
     admin endpoints under test."""
@@ -311,8 +311,8 @@ def _seed_so(status, *, memo=None):
     rows = _query(
         "INSERT INTO sales_orders (so_number, status, warehouse_id, "
         "                          external_id, memo) "
-        "VALUES (%s, %s, 1, %s, %s) RETURNING so_id",
-        (so_number, status, str(uuid.uuid4()), memo),
+        "VALUES (%s, %s, %s, %s, %s) RETURNING so_id",
+        (so_number, status, warehouse_id, str(uuid.uuid4()), memo),
     )
     return rows[0][0]
 
@@ -418,3 +418,72 @@ class TestMemoPatch:
         _, details = rows[0]
         assert details["old_value"] == "old note"
         assert details["new_value"] == "new note"
+
+
+class TestFraudWarehouseScopeAndPermission:
+    def _fraud_user(self, client, username):
+        """Create a non-admin assigned only to warehouse 1 with Fraud page grant."""
+        conn = db_test_context.get_raw_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """INSERT INTO users (username, password_hash, full_name, role,
+                   warehouse_id, warehouse_ids, allowed_functions, external_id)
+               VALUES (%s, '$2b$12$zDGRKFLmc6v/A4mVhxOzb.7uoW1ulnXn0AisK5uJ5iWk33vC2EpSK',
+                       'Fraud Scope Test', 'PICKER', 1, '{1}', '{pick,receive,count}', gen_random_uuid())
+               RETURNING user_id""",
+            (username,),
+        )
+        user_id = cur.fetchone()[0]
+        cur.execute(
+            "INSERT INTO user_page_permissions (user_id, page_key) VALUES (%s, 'fraud')",
+            (user_id,),
+        )
+        cur.close()
+        resp = client.post("/api/auth/login", json={"username": username, "password": "admin"})
+        assert resp.status_code == 200
+        return {"Authorization": f"Bearer {resp.get_json()['token']}"}
+
+    def test_fraud_grant_is_sufficient_for_list_and_detail(self, client):
+        headers = self._fraud_user(client, f"fraud_read_{uuid.uuid4().hex[:8]}")
+        so_id = _seed_so("FRAUD_REVIEW", warehouse_id=1)
+        listed = client.get(
+            "/api/admin/sales-orders?status=FRAUD_REVIEW&warehouse_id=1",
+            headers=headers,
+        )
+        assert listed.status_code == 200
+        assert any(row["so_id"] == so_id for row in listed.get_json()["sales_orders"])
+        detail = client.get(f"/api/admin/sales-orders/{so_id}", headers=headers)
+        assert detail.status_code == 200
+        assert detail.get_json()["sales_order"]["warehouse_id"] == 1
+
+    def test_list_and_detail_do_not_expose_other_warehouses(self, client):
+        headers = self._fraud_user(client, f"fraud_scope_{uuid.uuid4().hex[:8]}")
+        own_id = _seed_so("FRAUD_REVIEW", warehouse_id=1)
+        foreign_id = _seed_so("FRAUD_REVIEW", warehouse_id=2)
+        listed = client.get(
+            "/api/admin/sales-orders?status=FRAUD_REVIEW",
+            headers=headers,
+        )
+        assert listed.status_code == 200
+        ids = {row["so_id"] for row in listed.get_json()["sales_orders"]}
+        assert own_id in ids
+        assert foreign_id not in ids
+        detail = client.get(f"/api/admin/sales-orders/{foreign_id}", headers=headers)
+        assert detail.status_code == 404
+
+    def test_memo_and_push_reject_orders_from_other_warehouses(self, client):
+        headers = self._fraud_user(client, f"fraud_write_scope_{uuid.uuid4().hex[:8]}")
+        foreign_id = _seed_so("FRAUD_REVIEW", memo="keep", warehouse_id=2)
+        memo = client.patch(
+            f"/api/admin/sales-orders/{foreign_id}/memo",
+            headers=headers,
+            json={"memo": "unauthorized"},
+        )
+        assert memo.status_code == 404
+        assert _query("SELECT memo FROM sales_orders WHERE so_id = %s", (foreign_id,))[0][0] == "keep"
+        pushed = client.post(
+            f"/api/admin/sales-orders/{foreign_id}/push-to-queue",
+            headers=headers,
+        )
+        assert pushed.status_code == 404
+        assert _query("SELECT status FROM sales_orders WHERE so_id = %s", (foreign_id,))[0][0] == "FRAUD_REVIEW"

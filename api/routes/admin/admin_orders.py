@@ -41,6 +41,7 @@ from middleware.auth_middleware import (
     require_admin_or_page_permission,
     require_auth,
     require_role,
+    warehouse_scope_clause,
 )
 from middleware.db import with_db
 from routes.admin import admin_bp
@@ -908,7 +909,7 @@ def list_source_systems():
 
 @admin_bp.route("/sales-orders", methods=["GET"])
 @require_auth
-@require_admin_or_page_permission("sales-orders")
+@require_admin_or_page_permission("fraud")
 @with_db
 def list_sales_orders():
     page = request.args.get("page", 1, type=int)
@@ -919,6 +920,10 @@ def list_sales_orders():
     # every SO listing -- they are "deleted". Only return SOs ever carry
     # voided_at, so this never affects normal sales orders (voided_at NULL).
     where_clauses.append("so.voided_at IS NULL")
+    warehouse_scope, warehouse_scope_params = warehouse_scope_clause("so.warehouse_id")
+    if warehouse_scope:
+        where_clauses.append(warehouse_scope.replace("AND ", "", 1))
+        params.update(warehouse_scope_params)
     status = request.args.get("status")
     warehouse_id = request.args.get("warehouse_id", type=int)
     # Opt-in order_type filter. The RMA admin page passes order_type=return to
@@ -1113,9 +1118,10 @@ def list_sales_orders():
 
 @admin_bp.route("/sales-orders/<int:so_id>", methods=["GET"])
 @require_auth
-@require_admin_or_page_permission("sales-orders")
+@require_admin_or_page_permission("fraud")
 @with_db
 def get_sales_order(so_id):
+    warehouse_scope, warehouse_scope_params = warehouse_scope_clause("so.warehouse_id")
     so = g.db.execute(
         text("""
             SELECT so_id, so_number, so_barcode,
@@ -1142,9 +1148,9 @@ def get_sales_order(so_id):
                    shipping_address_city, shipping_address_state,
                    shipping_address_postal_code, shipping_address_country,
                    shipping_address_phone
-              FROM sales_orders WHERE so_id = :sid
-        """),
-        {"sid": so_id, "company_tz": COMPANY_TIMEZONE},
+              FROM sales_orders so WHERE so.so_id = :sid {warehouse_scope}
+        """.format(warehouse_scope=warehouse_scope)),
+        {"sid": so_id, "company_tz": COMPANY_TIMEZONE, **warehouse_scope_params},
     ).fetchone()
     if not so:
         return jsonify({"error": "Sales order not found"}), 404
@@ -2068,9 +2074,15 @@ def update_sales_order_memo(so_id, validated):
     """Edit the free-form CSR memo on an SO (Outbound > Fraud page).
     Empty string clears to NULL. One audit row per actual change
     carrying old/new for a forensic diff."""
+    warehouse_scope, warehouse_scope_params = warehouse_scope_clause("so.warehouse_id")
     so = g.db.execute(
-        text("SELECT so_id, memo, warehouse_id FROM sales_orders WHERE so_id = :sid FOR UPDATE"),
-        {"sid": so_id},
+        text(
+            "SELECT so.so_id, so.memo, so.warehouse_id FROM sales_orders so "
+            "WHERE so.so_id = :sid {warehouse_scope} FOR UPDATE".format(
+                warehouse_scope=warehouse_scope
+            )
+        ),
+        {"sid": so_id, **warehouse_scope_params},
     ).fetchone()
     if not so:
         return jsonify({"error": "Sales order not found"}), 404
@@ -2235,9 +2247,15 @@ def push_sales_order_to_queue(so_id):
     queue. Only valid when status=FRAUD_REVIEW; any other current
     status is a 409 because this path does not know how to transition
     out of (e.g.) PICKING. Status moves to OPEN."""
+    warehouse_scope, warehouse_scope_params = warehouse_scope_clause("so.warehouse_id")
     so = g.db.execute(
-        text("SELECT so_id, status, warehouse_id FROM sales_orders WHERE so_id = :sid FOR UPDATE"),
-        {"sid": so_id},
+        text(
+            "SELECT so.so_id, so.status, so.warehouse_id FROM sales_orders so "
+            "WHERE so.so_id = :sid {warehouse_scope} FOR UPDATE".format(
+                warehouse_scope=warehouse_scope
+            )
+        ),
+        {"sid": so_id, **warehouse_scope_params},
     ).fetchone()
     if not so:
         return jsonify({"error": "Sales order not found"}), 404
