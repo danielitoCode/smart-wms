@@ -38,6 +38,7 @@
 			label: 'Forms & inputs',
 			items: [
 				{ href: '/lab/onboarding', label: 'Onboarding', hint: 'Multi-paso' },
+				{ href: '/lab/form-two-column', label: 'FormTwoColumn', hint: 'Contacto 2 cols' },
 				{ href: '/lab/inline-table', label: 'InlineTable', hint: 'Edición fila' },
 				{ href: '/lab/option-picker', label: 'OptionPicker', hint: 'Private/Public' },
 				{ href: '/lab/tags', label: 'Tags', hint: 'Chips multi' }
@@ -64,7 +65,6 @@
 		sidebarOpen = false;
 	}
 
-	// Cerrar drawer al cambiar de ruta (móvil)
 	$effect(() => {
 		void page.url.pathname;
 		sidebarOpen = false;
@@ -72,7 +72,6 @@
 </script>
 
 <div class="lab-shell" class:lab-shell--nav-open={sidebarOpen}>
-	<!-- Mobile top bar -->
 	<header class="lab-top">
 		<button
 			type="button"
@@ -100,8 +99,7 @@
 	</header>
 
 	{#if sidebarOpen}
-		<button type="button" class="lab-backdrop" aria-label="Cerrar menú" onclick={closeSidebar}
-		></button>
+		<button type="button" class="lab-backdrop" aria-label="Cerrar menú" onclick={closeSidebar}></button>
 	{/if}
 
 	<aside id="lab-sidebar" class="lab-sidebar" aria-label="Componentes del lab">
@@ -159,7 +157,6 @@
 		grid-template-rows: auto 1fr;
 	}
 
-	/* —— Mobile top bar —— */
 	.lab-top {
 		display: flex;
 		align-items: center;
@@ -227,7 +224,6 @@
 		cursor: pointer;
 	}
 
-	/* —— Sidebar —— */
 	.lab-sidebar {
 		position: fixed;
 		top: 0;
@@ -353,13 +349,11 @@
 		color: var(--slate, #5c6b7d);
 	}
 
-	/* —— Main —— */
 	.lab-main {
 		min-width: 0;
 		padding: 1.25rem 1rem 2.5rem;
 	}
 
-	/* —— Desktop: fixed sidebar, no top bar —— */
 	@media (min-width: 900px) {
 		.lab-shell {
 			grid-template-columns: var(--lab-sidebar-w) 1fr;
@@ -391,7 +385,6 @@
 			max-width: 1100px;
 		}
 
-		/* hide mobile brand duplicate in top — sidebar has brand */
 		.lab-brand--top {
 			display: none;
 		}
