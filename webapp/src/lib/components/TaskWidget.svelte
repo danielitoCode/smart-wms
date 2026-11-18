@@ -3,19 +3,30 @@
 	 * TaskWidget — tarjeta expandible de tarea / progreso.
 	 * Migrado desde React a Svelte 5. Tokens Abellis.
 	 */
-	export interface Subtask { id: string; title: string; completed: boolean; }
-	export interface Assignee { name: string; avatar: string; color?: string; }
-	export interface TaskData {
-		title: string; progress: number; completedCount: number; totalCount: number;
-		priority: string; status: string; subtasks: Subtask[]; assignees: Assignee[];
+	import type { TaskData } from './taskWidget.types';
+
+	interface Props {
+		data: TaskData;
+		/** Arranca expandido */
+		initiallyOpen?: boolean;
+		class?: string;
 	}
-	interface Props { data: TaskData; initiallyOpen?: boolean; class?: string; }
+
 	let { data, initiallyOpen = false, class: className = '' }: Props = $props();
+
 	let isOpen = $state(initiallyOpen);
-	function toggle() { isOpen = !isOpen; }
-	function onKeydown(e: KeyboardEvent) {
-		if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+
+	function toggle() {
+		isOpen = !isOpen;
 	}
+
+	function onKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			toggle();
+		}
+	}
+
 	const progressPct = $derived(Math.max(0, Math.min(100, data.progress)));
 </script>
 
