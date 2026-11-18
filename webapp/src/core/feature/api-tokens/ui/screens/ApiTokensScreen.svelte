@@ -16,7 +16,6 @@
 	let expiresAt = $state('');
 	let showForm = $state(false);
 	let formError = $state<string | null>(null);
-	let revealAcknowledged = $state(false);
 
 	onMount(() => { void vm.load(); });
 
@@ -39,7 +38,7 @@
 				inboundResources, mappingOverride,
 				expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null
 			});
-			if (ok) { showForm = false; resetForm(); revealAcknowledged = false; }
+			if (ok) { showForm = false; resetForm(); }
 		} catch (error) {
 			formError = error instanceof Error ? error.message : 'No se pudo crear el token';
 		}
@@ -47,7 +46,6 @@
 
 	async function onRotate(tokenId: number) {
 		if (!confirm(i18n.t('La rotación invalida el secreto anterior. ¿Continuar?'))) return;
-		revealAcknowledged = false;
 		await vm.rotate(tokenId);
 	}
 
