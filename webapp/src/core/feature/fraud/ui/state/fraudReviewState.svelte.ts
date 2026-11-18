@@ -1,5 +1,5 @@
 import { createFraudReviewDependencies } from '../../di/fraudReview.dependencies';
-import type { FraudReview, FraudReviewDetail } from '../../domain/entity/FraudReview';
+import { isFraudReviewInWarehouse, type FraudReview, type FraudReviewDetail } from '../../domain/entity/FraudReview';
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 
 const dependencies = createFraudReviewDependencies();
@@ -50,7 +50,7 @@ export function createFraudReviewState() {
 
   async function openDetail(id: number, warehouseId: number) {
     const row = rows.find((candidate) => candidate.salesOrderId === id);
-    if (!row || row.warehouseId !== warehouseId) {
+    if (!row || !isFraudReviewInWarehouse(row, warehouseId)) {
       error = 'El pedido ya no pertenece al almacén seleccionado. Actualiza la bandeja.';
       return false;
     }
