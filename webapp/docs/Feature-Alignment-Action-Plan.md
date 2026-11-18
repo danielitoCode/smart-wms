@@ -392,6 +392,8 @@ Referencia: [React Dashboard.jsx](https://github.com/danielitoCode/smart-wms/blo
 4. **UI:** listado, selector de scopes, secreto visible una sola vez, rotación, revocación y advertencias.
 5. **Pruebas:** scopes inválidos, token revocado, rotación, secreto no recuperable y logs sin secretos.
 
+**Verificación de contrato y avance Svelte (2026-11-17):** inspeccionados `api/routes/admin/admin_tokens.py`, `api/schemas/tokens.py`, `api/tests/test_admin_tokens.py` y React `admin/src/pages/Tokens.jsx`. Las seis operaciones existen. El contrato real usa `token_name`, `warehouse_ids`, `event_types`, `endpoints`, `source_system`, `inbound_resources`, `mapping_override` y `expires_at`; el catálogo devuelve cuatro listas, no `scopes`. Se corrigieron Domain, use cases, DTO, mapper, datasource, repositorio, DI, estado y UI; se añadieron pruebas Domain/Data/UI. El selector de almacenes es opcional porque GET warehouses exige grant independiente. El secreto se conserva separado del modelo/listado y solo se revela en create/rotate. **Pendiente:** ejecutar check/tests, corregir los fallos observados y revisar cobertura efectiva de audit log sin secretos antes del cierre.
+
 ## F4.6 POS Activity
 
 1. **Domain:** venta, transacción, usuario/terminal y resumen.
