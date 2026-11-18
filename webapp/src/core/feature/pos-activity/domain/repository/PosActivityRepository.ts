@@ -1,0 +1,2 @@
+import type {PosActivityPage,PosActivityQuery,PosActivitySummary} from '../entity/PosActivity';
+export interface PosActivityRepository{list(query?:PosActivityQuery):Promise<PosActivityPage>;summary(date:string):Promise<PosActivitySummary>;}

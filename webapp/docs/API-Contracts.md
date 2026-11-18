@@ -1,0 +1,226 @@
+# Flask API contracts and frontend authorization matrix
+
+Fuente de verdad: decoradores de rutas, esquemas Pydantic y middleware de Flask en esta rama. Los sufijos indicados se publican bajo `/api`. El inventario de rutas no equivale a una migración funcional: cada respuesta debe contrastarse con su DTO Svelte y un test de contrato antes de dar una feature por completa.
+
+## 1. Sesión de navegador
+
+| Método | Endpoint | Request DTO | Seguridad / efecto |
+|---|---|---|---|
+| POST | `/api/auth/login` | `LoginRequest` — `api/schemas/auth.py` | Público; rate limit por IP+usuario; emite cookie HttpOnly y cookie CSRF |
+| POST | `/api/auth/logout` | CSRF si hay cookie válida | Sin cookie es no-op; con sesión válida exige CSRF y limpia cookies |
+| GET | `/api/auth/me` | — | Auth; devuelve identidad, rol, almacenes, funciones, páginas, overrides, require_packing y must_change_password |
+| POST | `/api/auth/refresh` | — | Auth; vuelve a comprobar usuario activo y renueva cookies |
+| POST | `/api/auth/change-password` | `ChangePasswordRequest` | Auth; valida contraseña actual/política, cambia hash, elimina flag forzado y audita |
+
+**Reglas globales:** las mutaciones con cookie requieren double-submit CSRF; 401 significa sesión/token inválido o cuenta inactiva; 403 significa CSRF, permiso o scope denegado. Con `must_change_password=true` solo se permiten `auth.me`, `auth.logout` y `auth.change_password`. Flask recarga estado activo, rol, almacenes y permisos desde DB en cada request; el JWT no es autoridad para grants actuales.
+
+## 2. Endpoints operativos autenticados
+
+Los endpoints siguientes usan `require_auth`. Para usuarios no ADMIN, el middleware limita los IDs explícitos de almacén a `warehouse_ids`. Si path, query y JSON body aportan `warehouse_id`, deben coincidir (400 si hay discrepancia); un almacén ajeno devuelve 403. Las consultas multi-almacén deben filtrar en SQL con `warehouse_scope_clause` o equivalente para no filtrar existencia de datos de otro almacén.
+
+| Funcionalidad | Rutas | DTO de request |
+|---|---|---|
+| Dashboard | GET `/dashboard/productivity` (ADMIN); GET/PUT `/dashboard/preferences`; GET `/dashboard/received`; GET `/dashboard/shipping-health` | Preferencias definidas en route |
+| Conteo cíclico operativo | POST `/inventory/cycle-count/create`; GET `/inventory/cycle-count/{count_id}`; POST `/inventory/cycle-count/submit` | `CreateCycleCountRequest`, `SubmitCycleCountRequest` — `schemas/cycle_count.py` |
+| Lookup | GET `/lookup/item/{barcode}`, `/lookup/bin/{barcode}`, `/lookup/so/{barcode}`, `/lookup/item/search?q=`, `/lookup/bin/search?q=` | Parámetros URL/query; respuestas route-defined |
+| Receiving | GET `/receiving/po/{barcode}`; POST `/receiving/receive`; POST `/receiving/cancel` | `ReceiveItemsRequest`, `CancelReceivingRequest` — `schemas/receiving.py` |
+| Putaway | GET `/putaway/pending/{warehouse_id}`, `/putaway/staging-summary/{warehouse_id}`, `/putaway/suggest/{item_id}`; POST `/putaway/confirm`, `/putaway/update-preferred` | `schemas/putaway.py` |
+| Picking | GET `/picking/active-batch`; POST `/picking/create-batch`, `/picking/wave-validate`, `/picking/wave-create`; GET `/picking/batch/{id}`, `/picking/batch/{id}/next`; POST `/picking/confirm`, `/picking/short`, `/picking/complete-batch`, `/picking/cancel-batch` | `schemas/pick_walks.py` |
+| Packing | GET `/packing/order/{barcode}`; POST `/packing/verify`, `/packing/complete` | `schemas/pack_verification.py` |
+| Shipping | GET `/shipping/order/{barcode}`; POST `/shipping/fulfill` | `schemas/shipping.py` |
+| Movimiento interno | POST `/transfers/move` | `schemas/bin_transfer.py` |
+| Almacenes para operación | GET `/warehouses/list` | — |
+
+## 3. Admin endpoints y page grants
+
+Salvo excepción anotada, cada grupo usa `require_auth` + `require_admin_or_page_permission("<key>")`. ADMIN omite el grant; USER necesita la clave exacta en `user_page_permissions`. La denegación devuelve 403 `Permission denied` y `page_key`.
+
+| Page key | Endpoints Flask (sufijo) | Request schema |
+|---|---|---|
+| `items` | GET/POST `/admin/items`; GET/PUT/DELETE `/admin/items/{id}`; POST `/admin/items/{id}/archive` | `schemas/items.py` |
+| `preferred-bins` | Rutas de preferred bins declaradas en `admin_items.py` | `schemas/items.py` |
+| `warehouses` | GET/POST `/admin/warehouses`; GET/PUT/DELETE `/admin/warehouses/{id}` | `schemas/warehouses.py` |
+| `zones` | GET/POST `/admin/zones`; PUT/DELETE `/admin/zones/{id}` | `schemas/zones.py` |
+| `bins` | GET/POST `/admin/bins`; GET/PUT/DELETE `/admin/bins/{id}` | `schemas/bins.py` |
+| `vendors` | GET/POST `/admin/vendors`; GET/PUT/DELETE `/admin/vendors/{canonical_id}` | `schemas/vendors.py` |
+| `purchase-orders` | GET/POST `/admin/purchase-orders`; GET/PUT detail; POST lines; PATCH/DELETE lines; POST close/reopen | `schemas/purchase_orders.py` |
+| `receiving` | GET `/admin/purchase-orders/{id}/receipts`; POST `/admin/receipts/{id}/unreceive` | `schemas/receiving.py` |
+| `sales-orders` | GET/POST list; GET/PUT detail; GET related/source-systems; PATCH address/allocation; POST cancel/revert/admin-pick/admin-ship/partial-fulfill/create-rma/receive-return; POST/PATCH/DELETE lines; GET available-bins/short-picks | `schemas/sales_orders.py`, `schemas/receiving.py` |
+| `fraud` | PATCH sales-order memo; POST push-to-queue | `schemas/sales_orders.py` |
+| `backorders` | GET `/admin/backorders`; cancel-backorder action on sales order (guarded by sales-orders) | `schemas/sales_orders.py` |
+| `picking-tickets` | GET sales-order picking-ticket; POST sales-orders/mark-printed | `schemas/sales_orders.py` |
+| `picking-batches` | GET `/admin/pick-batches`; POST `/admin/pick-batches/{id}/delete` | Route-defined |
+| `transfer-orders` | GET list/detail; POST cancel/import/start-picking/short-close/approve/reject; DELETE detail; picker GET/submit uses auth + warehouse scope | `schemas/bin_transfer.py` |
+| `users` | GET/POST `/admin/users`; PUT/DELETE detail; GET/PUT permissions | `schemas/users.py` |
+| `audit-log` | GET `/admin/audit-log` | Query filters |
+| `settings` | GET `/admin/settings`, GET setting detail, PUT settings | `schemas/settings.py` |
+| `cycle-counts` | GET `/admin/cycle-counts` | Query filters |
+| `adjustments` | GET pending/list; POST review/direct | `schemas/inventory_adjustments.py` |
+| `api-tokens` | GET scope-catalog/list; POST create; POST rotate/revoke; DELETE token | `schemas/tokens.py` |
+| `integrations` | GET connectors/config-schema/credentials/sync-status; POST credentials/test/sync-reset/sync; DELETE credentials | `schemas/connectors.py` |
+| `consumer-groups` | CRUD connector-registry and consumer-groups | `schemas/consumer_groups.py` |
+| `inbound` | GET inbound/activity and detail | `schemas/inbound.py` |
+| `notifications` | CRUD notification-webhooks; POST rotate-url/test-send | `schemas/notification_webhooks.py` |
+| `webhooks` | CRUD webhooks; GET DLQ/stats/errors; POST rotate-secret/replay/replay-batch | `schemas/webhooks.py` |
+| `channels` | GET/POST list; GET/PATCH/DELETE detail; GET channel DLQ | `schemas/channels.py` |
+| `pos-activity` | GET POS sales-orders and summary | `schemas/pos.py` |
+| Sin page grant | GET `/admin/dashboard`, GET `/admin/search` | Auth only; dashboard exposes counts, global search still scope-filtered and click-through protected |
+
+### API surfaces con WMS token (no usar el cliente de sesión web)
+
+- `/api/v1/events*` y `/api/v1/snapshot/*`: token outbound con endpoint slugs explícitos.
+- `/api/v1/inbound/*`: token ligado a source system y recursos de entrada permitidos.
+- `/api/v1/dockd/*`: scope aislado `dockd.dispatch`.
+- `/api/v1/pos/*`: scope aislado `pos.dispatch`.
+- `/api/inbound/mapping-schema`: endpoint de descubrimiento sin decorador de sesión en el archivo inspeccionado.
+
+### 3.2 Autorización efectiva de Users (F4.1.3–F4.1.5)
+
+- El selector de almacenes consume `GET /api/admin/warehouses` mediante `ListManagedWarehousesUseCase` y el puerto de repositorio; el mapper convierte el DTO a `ManagedWarehouse`. Guarda IDs reales; la lista vacía es una revocación explícita, no un campo omitido.
+- Los módulos móviles usan `allowed_functions`; el acceso web usa `page_keys`. Los overrides (por ahora `so-full-edit`) viajan en el mismo conjunto de permisos que las páginas y se reemplazan de forma atómica.
+- Al promover un usuario a `ADMIN`, se eliminan grants USER antiguos de `user_page_permissions`. Si posteriormente se degrada a `USER`, no recupera privilegios obsoletos automáticamente.
+- `require_auth` consulta la fila actual del usuario y sus permisos en cada petición. Cambios de rol, almacenes, grants y estado se aplican a la siguiente petición con el mismo JWT; una cuenta inactiva recibe 401, una petición a almacén revocado recibe 403 y una página revocada recibe 403.
+- La interfaz no guarda permisos vacíos si falla la lectura inicial de permisos al editar, para evitar una revocación accidental por fallo de red/autorización.
+
+**Cobertura añadida en `api/tests/test_admin.py`:** usuario sin almacenes; asignación múltiple; cambio de almacenes con JWT ya emitido; revocación de páginas; revocación de override; cuenta ADMIN con acceso completo; desactivación inmediata de sesión. La existencia del test no equivale a ejecución satisfactoria: el resultado de pytest y el chequeo Svelte deben registrarse tras ejecutarlos contra el entorno de pruebas aislado.
+
+### 3.1 Contrato detallado de Users (F4.1)
+
+| Método | Endpoint | Request | Response / semántica |
+|---|---|---|---|
+| GET | `/api/admin/users?page=1&per_page=50` | Query: `page >= 1`, `1 <= per_page <= 1000` | `{ users: ManagedUser[], total, page, per_page, pages }`; cada usuario contiene `user_id, username, full_name, role, warehouse_id, warehouse_ids, allowed_functions, is_active, must_change_password, created_at, last_login`. |
+| GET | `/api/admin/users/warehouse-options` | — | `{ warehouses: [{ warehouse_id, warehouse_code, warehouse_name, is_active }], total }`; catálogo de asignación autorizado por `users`, independiente del permiso de navegación/CRUD `warehouses`. |
+| POST | `/api/admin/users` | `CreateUserRequest`: username, password, full_name, role, warehouse_ids, warehouse_id legado opcional, allowed_functions, must_change_password opcional | Un usuario; HTTP 201. Contraseña validada por política y almacenada como hash. |
+| PUT | `/api/admin/users/{user_id}` | `UpdateUserRequest` parcial: full_name, role, warehouse_id, warehouse_ids, allowed_functions, is_active, must_change_password, password | Usuario actualizado. Protege auto-desactivación/auto-degradación y último ADMIN activo. |
+| DELETE | `/api/admin/users/{user_id}` | — | `{ message: "User deleted" }`; no permite autoeliminación ni borrar el último ADMIN activo. |
+| GET | `/api/admin/users/{user_id}/permissions` | — | `{ user_id, role, page_keys, is_full_access }`; ADMIN recibe el catálogo completo y `is_full_access=true`. |
+| PUT | `/api/admin/users/{user_id}/permissions` | `{ page_keys: string[] }` | Reemplaza el conjunto completo de grants de páginas + overrides; valida contra `ALL_PAGE_KEYS ∪ ALL_OVERRIDE_KEYS`. Para ADMIN es no-op y devuelve acceso completo. |
+
+**Cambio obligatorio de contraseña:** `must_change_password` se puede establecer en creación y actualización. El valor se devuelve en listado/alta/edición. `require_auth` bloquea las demás rutas con `403 password_change_required` hasta que el usuario complete `POST /api/auth/change-password`; `GET /api/auth/me` expone el estado para la UI de autenticación.
+
+**Semántica de almacenes:** `warehouse_ids` es la asignación autoritativa. En PUT, enviar `warehouse_ids: []` elimina todas las asignaciones y limpia también el campo legado `warehouse_id`; si hay almacenes, `warehouse_id` refleja el primero. El DTO frontend debe preservar la diferencia entre omitir `warehouse_ids` (no cambiar asignación) y enviar una lista vacía (revocarla).
+
+**Límite del contrato:** Flask no declara `GET /api/admin/users/{user_id}`; la edición trabaja con el registro devuelto por el listado y la lectura de permisos usa el endpoint dedicado. No se añade una ruta de detalle ficticia en Svelte.
+
+**Casos de uso Domain/Application:** `ListManagedUsersUseCase`, `CreateManagedUserUseCase`, `UpdateManagedUserUseCase`, `DeleteManagedUserUseCase`, `GetUserPagePermissionsUseCase` y `UpdateUserPagePermissionsUseCase`. Los dos últimos operan sobre grants completos; no modelan un CRUD genérico de roles.
+
+**Catálogo de autorización para la UI (F4.1.3):** Svelte refleja las claves de `api/constants.py` `ALL_PAGE_KEYS` y `ALL_OVERRIDE_KEYS`. Las claves de override se muestran en un grupo separado, pero se envían en el mismo `page_keys` porque Flask las persiste en `user_page_permissions`. La prueba `userPermissionGroups.test.ts` fija el catálogo completo para detectar divergencias.
+
+**Compatibilidad de almacenes:** la creación y actualización validan que todos los IDs existan. Clientes antiguos que envían solo `warehouse_id` se normalizan a `warehouse_ids=[warehouse_id]`; el campo múltiple sigue siendo la fuente autoritativa. La omisión de ambos campos no modifica asignaciones; `warehouse_ids: []` revoca todas.
+
+**Revalidación de sesión:** `require_auth` vuelve a consultar en cada petición el estado activo, rol, almacenes y grants de páginas del usuario. Por tanto, una desactivación, cambio de rol, revocación de permisos o reasignación de almacenes se aplica al siguiente request con el mismo JWT, sin esperar al refresh/expiración del token. La UI no debe simular este control únicamente en cliente.
+
+**Límites persistidos:** `users.username` admite 50 caracteres y `users.full_name` 100; los schemas Pydantic y límites del formulario Svelte respetan esos máximos.
+
+**Pruebas F4.1.5:** `api/tests/test_admin.py` cubre usuarios sin almacenes, asignación múltiple, revocación de grants, reasignación durante sesión, desactivación inmediata, ADMIN full-access, overrides, compatibilidad con `warehouse_id` legado, IDs inexistentes, cambios de rol con token existente, catálogo de almacenes bajo permiso `users` y cambio obligatorio de contraseña. Se añadieron nueve regresiones API para esos límites. En Svelte, `ManagedUserMapper.test.ts` (6 casos) y `userPermissionGroups.test.ts` (2 casos) cubren serialización de revocación, flags de cuenta y paridad del catálogo.
+
+
+
+### Settings — contrato verificado en Flask
+
+- `GET /api/admin/settings`: requiere sesión y `settings` page grant (ADMIN bypass). Devuelve `{ settings: [{ id, key, value, updated_at }] }` ordenado por clave. Devuelve únicamente filas persistidas en `app_settings`; los valores por defecto no se insertan ni se devuelven automáticamente.
+- `GET /api/admin/settings/{key}`: misma autorización; devuelve `{ key, value }` o `404 { error: "Setting not found" }` si no existe.
+- `PUT /api/admin/settings`: misma autorización, `UpdateSettingsRequest` (`schemas/settings.py`) exige `settings` como diccionario no vacío de valores string. Cada par se persiste con UPSERT en `app_settings` y `updated_at=NOW()`; por tanto, la actualización es parcial y conserva claves omitidas. Responde `{ message: "Settings updated" }`.
+- El backend no aplica lista blanca de claves ni validación semántica general en este handler: Pydantic valida el tipo string, y existe una regla específica que impide desactivar `require_packing_before_shipping` si quedan pedidos PACKED (400). El cliente valida sus claves conocidas y valores, pero Flask sigue siendo autoridad de permisos.
+- Defaults de compatibilidad de la UI React: `count_show_expected=true`, `require_packing_before_shipping=true`, `allow_over_receiving=true`, `default_receiving_bin=""`, `require_count_approval_separation=false`, `picking_ticket_company_name=""`, `picking_ticket_company_address=""`, `picking_ticket_logo_url=""`, `picking_ticket_returns_text=""`, `pos_activity_enabled=false`, `fraud_review_billing_shipping=false` y `dashboard_bubble_origins=[]`. Estos defaults son de frontend/consumidores; no son defaults SQL demostrados.
+
+## 4. DTO backend → frontend
+
+Los request DTO Pydantic y los response DTO JSON son contratos diferentes. La forma de respuesta se define en cada `jsonify`; no asumir que coincide con el esquema de entrada.
+
+| Backend | Svelte DTO / mapper |
+|---|---|
+| `schemas/auth.py` | `core/feature/auth/data/dto/AuthDto.ts`, `AuthMapper.ts` |
+| `schemas/items.py` + respuestas de `admin_items.py` | `core/feature/items/data/dto/ItemDto.ts`, `ItemMapper.ts` |
+| `schemas/warehouses.py`, `zones.py`, `bins.py` | `core/feature/warehouses/data/dto/WarehouseDto.ts`, `WarehouseMutationDto.ts`, `WarehouseMapper.ts` |
+| `schemas/receiving.py`, `purchase_orders.py` | `core/feature/receiving/data/dto/ReceivingDto.ts` |
+| `schemas/putaway.py` | `core/feature/putaway/data/dto/PutawayDto.ts` |
+| `schemas/pick_walks.py` | `core/feature/picking/data/dto/PickingDto.ts` |
+| `schemas/pack_verification.py` | `core/feature/packing/data/dto/PackingDto.ts` |
+| `schemas/shipping.py` | `core/feature/shipping/data/dto/ShippingDto.ts` |
+
+Para cada feature, completar con tests: campos obligatorios/opcionales, nulabilidad, envelope, paginación, errores/status HTTP, permiso y efectos secundarios. El inventario aquí localiza los contratos; no sustituye esos tests.
+
+## 5. Matriz de regresión de permisos y almacenes
+
+| ID | Escenario | Resultado esperado |
+|---|---|---|
+| P-01 | ADMIN abre página admin | Pasa el gate de página |
+| P-02 | USER sin grant llama GET `/admin/items` | 403 `Permission denied`, `page_key=items` |
+| P-03 | USER con grant `items` llama listado | Pasa page gate; se mantienen otros controles |
+| P-04 | USER tiene `bins`, no `zones`, abre `/data/bins` | UI deniega porque requiere ambos grants |
+| P-05 | USER con warehouses+zones+bins abre detalle de almacén | UI permite ruta |
+| P-06 | USER asignado a almacén 4 solicita almacén 4 | Permitido |
+| P-07 | USER asignado a almacén 4 solicita almacén 9 | 403 |
+| P-08 | path warehouse 4 + body warehouse 9 | 400 mismatch antes del handler |
+| P-09 | USER sin almacenes asignados solicita ID explícito | 403 |
+| P-10 | ADMIN solicita cualquier warehouse ID | Scope bypass |
+| P-11 | sessionStorage conserva 99, asignación actual [4,8] | Descarta 99 y selecciona 4 (o ID guardado válido) |
+| P-12 | Se revoca grant/asignación con JWT aún vigente | Siguiente request aplica DB actualizada |
+| P-13 | USER con must_change_password llama endpoint normal | 403 `password_change_required` |
+| P-14 | Mutación cookie sin CSRF válido | 403 CSRF |
+| P-15 | Usuario inactivo o JWT invalidado por cambio de password | 401 |
+| P-16 | WMS token con slug/recurso/dirección incorrectos | 401 token inválido o 403 scope violation |
+
+**Límite de seguridad:** el frontend solo mejora UX; Flask es la frontera de autorización. Ocultar una ruta o menú no protege un endpoint.
+
+## 6. Reglas para cerrar contratos
+
+1. Registrar método, path, query/path params y schema Pydantic.
+2. Registrar response JSON real, incluyendo wrappers, arrays, paginación y nullability.
+3. Registrar códigos de error y significado; no traducir 403 como sesión expirada.
+4. Registrar page key / role guard y si hay alcance de almacén.
+5. Registrar side effects: inventario, estado de pedido, auditoría, eventos, notificaciones.
+6. Añadir test de contrato en Svelte con fixtures del backend y verificar DTO/mapper.
+7. Si la operación no existe, documentar bloqueo; no simular persistencia en frontend.
+
+
+## 7. Dashboard (F4.2)
+
+| Method | Endpoint | Query / body | Response contract and authorization |
+|---|---|---|---|
+| GET | `/api/v1/dashboard/productivity` | `start`, `end` (inclusive ISO dates), `warehouse_id` | ADMIN only; `range`, `events_visible`, `users[]` with `user_id, username, display_name, metrics, total`, `totals_per_event`. Each productivity user includes `user_id, username, display_name, metrics, total`; an empty period returns empty `users` and zero event totals. Maximum 90 days. |
+| GET | `/api/v1/dashboard/preferences` | — | Authenticated; current user only. Returns `chart_order`, `default_range`, `default_view`, `updated_at`; defaults when no row exists. |
+| PUT | `/api/v1/dashboard/preferences` | Partial `chart_order`, `default_range`, `default_view` | Authenticated; user ID comes from session, not body. Unknown/duplicate chart keys, invalid ranges/views and empty patches return 422. |
+| GET | `/api/v1/dashboard/received` | `warehouse_id` required; optional inclusive `start/end` | Authenticated; returns `{warehouse_id, range, pos[]}`; each PO includes `po_id, po_number, vendor_name, status, units_received, lines_received, receive_events, receivers, last_received_at`. |
+| GET | `/api/v1/dashboard/shipping-health` | `warehouse_id` required; optional inclusive `start/end` | Authenticated; returns `{warehouse_id, range, by_source[]}`; each source includes received/shipped counts, current `need_to_ship_today`, and up to 200 drill-down orders. Channel list is configured by `app_settings.dashboard_bubble_origins`; empty/malformed setting returns an empty array. |
+| GET | `/api/admin/sales-orders` | `warehouse_id`, `local_pickup=true`, optional `q`, `status`, `per_page` | Auth + `sales-orders` page permission; list envelope `sales_orders,total,page,per_page,pages`. Local pickup filter matches `ship_method` containing `local` or `pickup`. |
+| PUT | `/api/admin/sales-orders/{so_id}` | `{status:"SHIPPED"}` for pickup handoff | Auth + Sales Orders grant; SHIPPED transition only from PICKED/PACKED; tracking number waived only when ship method indicates pickup. UI also checks ADMIN or `so-full-edit` before enabling the action. |
+
+Dashboard date presets use local calendar dates (not UTC ISO conversion): Today, Yesterday, Last 7d, Last 30d and inclusive Custom; the productivity endpoint caps the range at 90 days. `/api/admin/dashboard` is a separate admin summary endpoint (including pending transfer-order approvals), not the data source for the four React dashboard tabs.
+
+
+### Audit Log — contrato Flask verificado
+
+- **Ruta:** `GET /api/admin/audit-log` (cliente Svelte: `/api/admin/audit-log`).
+- **Autorización:** `require_auth` + `require_admin_or_page_permission("audit-log")`; no existe filtro adicional por almacén en este handler.
+- **Filtros admitidos:** `action_type`, `user_id`, `start_date`, `end_date`, `item_id`. No admite `entity_type`, `warehouse_id`, `from` ni `to`.
+- **Paginación:** `page` (por defecto 1), `per_page` (por defecto 50, máximo 1000); respuesta `total`, `page`, `per_page`, `pages`. `pages` tiene mínimo 1 incluso sin resultados.
+- **Orden:** `sort_by` admite `created_at`, `action_type`, `user_id`, `entity_type`; cualquier otro valor cae a `created_at`. `sort_direction=asc` produce ASC; cualquier otro valor produce DESC. Se añade `log_id DESC` como desempate.
+- **DTO de cada entrada:** `log_id`, `action_type`, `entity_type`, `entity_id`, `entity_name`, `username`, `device_id`, `warehouse_id`, `warehouse_code`, `details`, `created_at`. Actor se entrega como `username` (puede ser nulo); no se devuelve `user_id` separado. `details` puede contener objetos heterogéneos, valores resueltos o nulos.
+- **Detalle individual:** no existe GET por `log_id`; el detalle de UI se construye desde la entrada del listado. El historial por artículo usa `item_id` sobre el mismo endpoint.
+- **Datos sensibles:** `api/services/audit_service.py` persiste el diccionario `details` tal como lo reciben los escritores; este endpoint no aplica una redacción general al serializarlo. El cliente Svelte redacta claves de credenciales y datos personales reconocibles antes de presentarlas. Esto protege la presentación UI, no sustituye la minimización/redacción en los escritores o en el servidor.
+
+
+### 3.3 Contrato detallado de API Tokens (F4.5)
+
+Todas las rutas están bajo `/api/admin` y requieren sesión de navegador más `require_admin_or_page_permission("api-tokens")`. No se debe usar el cliente de WMS token para estas operaciones.
+
+| Método | Endpoint | Request / response |
+|---|---|---|
+| GET | `/scope-catalog` | `{ event_types: string[], endpoints: string[], inbound_resources: string[], source_systems: [{ source_system, kind }] }`; catálogos dinámicos desde `V150_CATALOG`, endpoints Flask registrados, recursos canónicos y allowlist de orígenes. |
+| GET | `/tokens` | `{ tokens: [...] }`; lista ordenada por `created_at DESC`, sin plaintext ni hash. |
+| POST | `/tokens` | `CreateTokenRequest`; devuelve 201 con `token_id, token_name, token, status, created_at, rotated_at, expires_at`. El campo `token` es secreto plaintext de un solo uso. |
+| POST | `/tokens/{token_id}/rotate` | Sin body; reemplaza el hash y devuelve el nuevo `token` una sola vez. 404 si no existe; 400 si está revocado. |
+| POST | `/tokens/{token_id}/revoke` | Sin body; devuelve `token_id, status, revoked_at`. 404 si no existe. |
+| DELETE | `/tokens/{token_id}` | Eliminación física; 204 sin body; 404 si no existe. La auditoría conserva snapshot de scopes. |
+
+**CreateTokenRequest — campos exactos:** `token_name` (1–128), `warehouse_ids: int[]`, `event_types: string[]` (máx. 64), `endpoints: string[]` (máx. 64), `connector_id?: string`, `expires_at?: datetime`, `source_system?: string`, `inbound_resources: string[]`, `mapping_override: boolean`, `mapping_overrides: Record<string, any>`. Los campos adicionales se prohíben (`extra="forbid"`).
+
+**Reglas de scopes:** debe existir al menos un endpoint saliente o la pareja `source_system + inbound_resources`; ambos campos de entrada deben estar presentes juntos. `endpoints` e `inbound_resources` se validan contra allowlists. El handler comprueba existencia de warehouse IDs, event types y source system; las claves de `mapping_overrides` deben ser columnas canónicas de las tablas seleccionadas. `mapping_overrides` exige `mapping_override=true`. La UI debe usar catálogos; la validación Flask sigue siendo autoridad.
+
+**Listado:** cada token devuelve `token_id, token_name, warehouse_ids, event_types, endpoints, connector_id, status, created_at, rotated_at, expires_at, revoked_at, last_used_at, rotation_status, source_system, inbound_resources, mapping_override, mapping_overrides_keys`. Nunca devuelve `token` ni `token_hash`. El DTO frontend usa `token_name`, no `name`; los arrays de scopes no se consolidan en un campo genérico.
+
+**Almacenes:** `GET /api/admin/warehouses` requiere además el page grant `warehouses`. La pantalla de tokens puede funcionar sin ese permiso; si el catálogo de almacenes responde 403, se muestra el selector vacío sin bloquear listado, catálogo ni operaciones de tokens.
+
+**Secreto y auditoría:** el servidor guarda solo `SHA256(pepper || plaintext)`; creación y rotación son las únicas respuestas que incluyen plaintext. Listado, mapper de dominio y audit log no deben retenerlo. Los eventos `TOKEN_ISSUE`, `TOKEN_ROTATE`, `TOKEN_REVOKE` y `TOKEN_DELETE` registran metadatos/snapshots de scopes, no el plaintext ni el hash. La invalidación de caché se ejecuta tras rotación, revocación y eliminación. La revocación se propaga entre workers mediante invalidación Redis y TTL de respaldo.

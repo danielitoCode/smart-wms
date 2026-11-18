@@ -1,0 +1,2 @@
+import {apiClient} from '../../../infrastructure/api/ApiClient';import {PosActivityRemoteDataSource} from '../data/datasource/PosActivityRemoteDataSource';import {PosActivityRepositoryImpl} from '../data/repository/PosActivityRepositoryImpl';import {ListPosActivityUseCase,GetPosActivitySummaryUseCase} from '../domain/usecase/PosActivityUseCases';
+export function createPosActivityDependencies(){const r=new PosActivityRepositoryImpl(new PosActivityRemoteDataSource(apiClient));return {list:new ListPosActivityUseCase(r),summary:new GetPosActivitySummaryUseCase(r)};}

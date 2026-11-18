@@ -1,0 +1,7 @@
+# Synthetic POS idempotency-key values in unit tests (not credentials).
+32eeea5c234bf7e811e3e4d15be7c30307eadd94:wms-twin/internal/application/pos/pos_test.go:generic-api-key:221
+32eeea5c234bf7e811e3e4d15be7c30307eadd94:wms-twin/internal/application/pos/pos_test.go:generic-api-key:232
+32eeea5c234bf7e811e3e4d15be7c30307eadd94:wms-twin/internal/application/pos/pos_test.go:generic-api-key:244
+6f75d2c403b320c8f70e47030ed79b17c2e611f1:wms-twin/internal/application/pos/pos_test.go:generic-api-key:118
+6f75d2c403b320c8f70e47030ed79b17c2e611f1:wms-twin/internal/application/pos/pos_test.go:generic-api-key:123
+6f75d2c403b320c8f70e47030ed79b17c2e611f1:wms-twin/internal/application/pos/pos_test.go:generic-api-key:129

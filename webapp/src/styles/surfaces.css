@@ -1,0 +1,99 @@
+/**
+ * Superficies internas enganchadas al tema (paneles, tablas, toolbars).
+ * Evita islas blancas y barras de filtro sin margen interno.
+ */
+body .shell .content .panel,
+body .shell .content .toolbar,
+body .shell .content .table-wrap,
+body .shell .content .bin-card,
+body .shell .content .card-panel,
+body .shell .content .form-panel,
+body .shell .content .filters,
+body .shell .content .detail-panel {
+	background: var(--card);
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	color: var(--ink);
+}
+
+/* Márgenes internos en barras de filtro / toolbars */
+body .shell .content .filters,
+body .shell .content .toolbar,
+body .shell .content .panel,
+body .shell .content .form-panel,
+body .shell .content .card-panel,
+body .shell .content .detail-panel {
+	padding: 0.85rem 1rem;
+	gap: 0.75rem;
+	box-sizing: border-box;
+}
+
+body .shell .content .filters,
+body .shell .content .toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	margin-bottom: 1rem;
+}
+
+body .shell .content .filters label,
+body .shell .content .toolbar label {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	min-width: 9.5rem;
+	color: var(--slate);
+	font-size: var(--fs-sm, 0.8125rem);
+	font-weight: 500;
+}
+
+body .shell .content .filters .search {
+	flex: 1 1 16rem;
+	min-width: 12rem;
+}
+
+body .shell .content .filter-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	align-items: center;
+}
+
+body .shell .content th {
+	background: color-mix(in srgb, var(--surface) 88%, var(--navy) 12%);
+	color: var(--slate);
+	border-color: var(--line);
+}
+
+body .shell .content td {
+	border-color: var(--line);
+	color: var(--ink);
+}
+
+body .shell .content table {
+	color: var(--ink);
+}
+
+body .shell .content .subtitle,
+body .shell .content .meta,
+body .shell .content .muted,
+body .shell .content .hint,
+body .shell .content .empty,
+body .shell .content .status:not(.error):not(.ok) {
+	color: var(--slate);
+}
+
+body .shell .content .status.error,
+body .shell .content .error {
+	color: var(--danger);
+}
+
+body .shell .content .status.ok {
+	color: var(--success, #166534);
+}
+
+/* table-wrap: borde/fondo sin padding que desplace celdas */
+body .shell .content .table-wrap {
+	padding: 0;
+	overflow: auto;
+}

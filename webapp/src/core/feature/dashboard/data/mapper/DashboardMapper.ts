@@ -1,0 +1,9 @@
+import type {DashboardPreferences,LocalPickupPage,Productivity,ReceivedDashboard,ShippingHealth} from '../../domain/entity/Dashboard';
+import type {PreferencesDto,ProductivityDto,ReceivedDto,ShippingHealthDto,LocalPickupDto} from '../dto/DashboardDto';
+export const DashboardMapper={
+ preferences(d:PreferencesDto):DashboardPreferences{return {chartOrder:d.chart_order,defaultRange:d.default_range,defaultView:d.default_view,updatedAt:d.updated_at??null};},
+ productivity(d:ProductivityDto):Productivity{return {warehouseId:d.warehouse_id,range:d.range,eventsVisible:d.events_visible??[],users:(d.users??[]).map(u=>({userId:u.user_id,username:u.username,displayName:u.display_name,metrics:u.metrics??{},total:u.total??0})),totalsPerEvent:d.totals_per_event??{}};},
+ received(d:ReceivedDto):ReceivedDashboard{return {warehouseId:d.warehouse_id,range:d.range,pos:(d.pos??[]).map(x=>({poId:x.po_id,poNumber:x.po_number,vendorName:x.vendor_name,status:x.status,unitsReceived:x.units_received??0,linesReceived:x.lines_received??0,receiveEvents:x.receive_events??0,receivers:x.receivers??[],lastReceivedAt:x.last_received_at??null}))};},
+ shipping(d:ShippingHealthDto):ShippingHealth{return {warehouseId:d.warehouse_id,range:d.range,bySource:(d.by_source??[]).map(x=>({orderOrigin:x.order_origin,label:x.label,ordersReceived:x.orders_received??0,ordersShipped:x.orders_shipped??0,needToShipToday:x.need_to_ship_today??0,orders:(x.orders??[]).map(o=>({soId:o.so_id,soNumber:o.so_number,customerName:o.customer_name,status:o.status,shipByDate:o.ship_by_date}))}))};},
+ localPickup(d:LocalPickupDto):LocalPickupPage{return {orders:(d.sales_orders??[]).map(x=>({soId:x.so_id,soNumber:x.so_number,customerName:x.customer_name,status:x.status,orderDate:x.order_date,createdAt:x.created_at,shipMethod:x.ship_method,customerPhone:x.customer_phone,shipAddress:x.ship_address,priority:x.priority,memo:x.memo})),total:d.total??0};}
+};

@@ -1,0 +1,150 @@
+/**
+ * Motion system — Smart WMS / Abellis
+ * Navegación interna: solo fade del contenido (no la barra lateral).
+ */
+
+@keyframes fade-in {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+@keyframes fade-out {
+	from { opacity: 1; }
+	to { opacity: 0; }
+}
+
+@keyframes page-in {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+@keyframes rise-in {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@keyframes shake-x {
+	0%, 100% { transform: translateX(0); }
+	20% { transform: translateX(-4px); }
+	40% { transform: translateX(4px); }
+	60% { transform: translateX(-3px); }
+	80% { transform: translateX(2px); }
+}
+
+@keyframes pulse-soft {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.55; }
+}
+
+@keyframes spin {
+	to { transform: rotate(360deg); }
+}
+
+@keyframes shimmer {
+	0% { background-position: -200% 0; }
+	100% { background-position: 200% 0; }
+}
+
+@keyframes toast-in {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+.motion-page-in {
+	animation: fade-in var(--motion-page) var(--ease-out) both;
+}
+
+.motion-fade-in {
+	animation: fade-in var(--motion-base) var(--ease-out) both;
+}
+
+.motion-rise-in {
+	animation: rise-in var(--motion-slow) var(--ease-out) both;
+}
+
+.motion-error {
+	animation: shake-x var(--motion-slow) var(--ease-in-out) both;
+}
+
+.motion-toast {
+	animation: toast-in var(--motion-base) var(--ease-out) both;
+}
+
+.ui-spinner {
+	width: 1.35rem;
+	height: 1.35rem;
+	border: 2.5px solid color-mix(in srgb, var(--navy) 18%, transparent);
+	border-top-color: var(--gold);
+	border-radius: 50%;
+	animation: spin 0.7s linear infinite;
+}
+
+.ui-skeleton {
+	border-radius: 8px;
+	background: linear-gradient(
+		90deg,
+		var(--surface-3) 0%,
+		var(--surface-2) 40%,
+		var(--surface-3) 80%
+	);
+	background-size: 200% 100%;
+	animation: shimmer 1.2s var(--ease-in-out) infinite;
+}
+
+/* View Transitions: solo el contenido principal hace fade; shell estable */
+@supports (view-transition-name: none) {
+	::view-transition-old(root),
+	::view-transition-new(root) {
+		animation: none;
+		mix-blend-mode: normal;
+	}
+
+	::view-transition-group(app-content) {
+		animation-duration: var(--motion-page);
+		animation-timing-function: var(--ease-out);
+	}
+
+	::view-transition-old(app-content) {
+		animation: fade-out var(--motion-page) var(--ease-out) both;
+	}
+
+	::view-transition-new(app-content) {
+		animation: fade-in var(--motion-page) var(--ease-out) both;
+	}
+}
+
+/* Región nombrada para la transición (sidebar/topbar fuera) */
+.app-content-transition {
+	view-transition-name: app-content;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.motion-page-in,
+	.motion-fade-in,
+	.motion-rise-in,
+	.motion-error,
+	.motion-toast,
+	.ui-spinner,
+	.ui-skeleton {
+		animation: none !important;
+	}
+
+	@supports (view-transition-name: none) {
+		::view-transition-old(app-content),
+		::view-transition-new(app-content) {
+			animation: none !important;
+		}
+	}
+}

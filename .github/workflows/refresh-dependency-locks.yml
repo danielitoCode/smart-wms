@@ -1,0 +1,99 @@
+name: Refresh dependency lockfiles
+
+on:
+  push:
+    branches: [svelte-webapp]
+    paths:
+      - "api/requirements.txt"
+      - "admin/package.json"
+      - "mobile/package.json"
+      - "webapp/package.json"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dependency-lock-refresh-svelte-webapp
+  cancel-in-progress: false
+
+jobs:
+  refresh-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: svelte-webapp
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Regenerate admin lockfile
+        working-directory: admin
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Regenerate mobile lockfile
+        working-directory: mobile
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "26"
+          cache: npm
+          cache-dependency-path: webapp/package-lock.json
+
+      - name: Regenerate webapp lockfile
+        working-directory: webapp
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Install and audit admin dependencies
+        working-directory: admin
+        run: |
+          npm ci --ignore-scripts
+          python3 "${{ github.workspace }}/.github/scripts/npm_audit_gate.py"
+
+      - name: Install and audit mobile dependencies
+        working-directory: mobile
+        env:
+          AUDIT_ALLOW: GHSA-w3rx-r6r6-pgpr GHSA-5p2g-fcmc-qvqq
+        run: |
+          npm ci --ignore-scripts
+          python3 "${{ github.workspace }}/.github/scripts/npm_audit_gate.py" --omit=dev
+          python3 "${{ github.workspace }}/.github/scripts/npm_audit_gate.py"
+
+      - name: Install and validate Svelte webapp
+        working-directory: webapp
+        run: |
+          npm ci
+          npm run check
+          npm run build
+          npm run test:domain
+          npm run test:application
+          npm run test:infrastructure
+          npm run test:ui
+          npm run test:integration
+          npm run test:all
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Audit Python dependencies
+        run: |
+          pip install pip-audit==2.7.3
+          pip-audit --requirement api/requirements.txt --strict --vulnerability-service osv \
+            --ignore-vuln PYSEC-2024-271 \
+            --ignore-vuln PYSEC-2025-183
+
+      - name: Commit verified lockfiles
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add admin/package-lock.json mobile/package-lock.json webapp/package-lock.json
+          if git diff --cached --quiet; then
+            echo "Lockfiles already current."
+          else
+            git commit -m "chore(deps): refresh patched dependency lockfiles"
+            git push origin svelte-webapp
+          fi

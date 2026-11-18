@@ -1,0 +1,2 @@
+import type {PickingBatch,ReleasePickingBatchResult} from '../entity/PickingBatch';
+export interface PickingBatchRepository{list(warehouseId:number):Promise<PickingBatch[]>;release(batchId:number):Promise<ReleasePickingBatchResult>;}

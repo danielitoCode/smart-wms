@@ -1,0 +1,140 @@
+import { describe, it, expect } from 'vitest';
+import {
+	canAccessPages,
+	canPerform,
+	hasOverride,
+	requiredPageKeysForPath,
+	resolveHomePath
+} from '../../../../../../core/feature/auth/domain/policy/AccessPolicy';
+import { ALL_PAGE_KEYS, isKnownPageKey } from '../../../../../../core/feature/auth/domain/policy/PermissionCatalog';
+import { PERMISSION_MATRIX } from '../../../../../../core/feature/auth/domain/policy/PermissionMatrix';
+
+describe('AccessPolicy F0.2', () => {
+	it('ADMIN bypasses every page key', () => {
+		expect(canAccessPages('ADMIN', [], ['fraud', 'users', 'settings'])).toBe(true);
+		expect(
+			canPerform('ADMIN', [], [], { pageKey: 'fraud', capability: 'open_page' })
+		).toBe(true);
+	});
+
+	it('USER without permission cannot open protected pages', () => {
+		expect(canAccessPages('USER', ['inventory'], ['fraud'])).toBe(false);
+		expect(canAccessPages('USER', [], ['inventory'])).toBe(false);
+	});
+
+	it('USER with read page key can open page', () => {
+		expect(canAccessPages('USER', ['sales-orders'], ['sales-orders'])).toBe(true);
+	});
+
+	it('USER with sales-orders but without so-full-edit fails full-edit grant', () => {
+		expect(
+			canPerform('USER', ['sales-orders'], [], {
+				pageKey: 'sales-orders',
+				capability: 'approve_or_modify',
+				overrideKey: 'so-full-edit'
+			})
+		).toBe(false);
+		expect(
+			canPerform('USER', ['sales-orders'], ['so-full-edit'], {
+				pageKey: 'sales-orders',
+				capability: 'approve_or_modify',
+				overrideKey: 'so-full-edit'
+			})
+		).toBe(true);
+	});
+
+	it('revoked permission: allowedPages without key fails', () => {
+		const before = ['inventory', 'fraud'];
+		const afterRevoke = ['inventory'];
+		expect(canAccessPages('USER', before, ['fraud'])).toBe(true);
+		expect(canAccessPages('USER', afterRevoke, ['fraud'])).toBe(false);
+	});
+
+	it('Dashboard route requires the dashboard grant and ADMIN bypasses it', () => {
+		const required = requiredPageKeysForPath('/dashboard');
+		expect(required).toEqual(['dashboard']);
+		expect(canAccessPages('USER', [], required)).toBe(false);
+		expect(canAccessPages('USER', ['dashboard'], required)).toBe(true);
+		expect(canAccessPages('ADMIN', [], required)).toBe(true);
+	});
+
+	it('direct URL fraud requires fraud key not sales-orders', () => {
+		expect(requiredPageKeysForPath('/management/fraud')).toEqual(['fraud']);
+		expect(canAccessPages('USER', ['sales-orders'], requiredPageKeysForPath('/management/fraud'))).toBe(
+			false
+		);
+		expect(canAccessPages('USER', ['fraud'], requiredPageKeysForPath('/management/fraud'))).toBe(true);
+	});
+
+	it('direct sales-order detail URLs require the sales-orders page grant', () => {
+		const required = requiredPageKeysForPath('/sales-orders/42');
+		expect(required).toEqual(['sales-orders']);
+		expect(canAccessPages('USER', [], required)).toBe(false);
+		expect(canAccessPages('USER', ['sales-orders'], required)).toBe(true);
+	});
+
+	it('backorder detail route remains gated by the backorders page grant', () => {
+		const required = requiredPageKeysForPath('/management/backorders/41');
+		expect(required).toEqual(['backorders']);
+		expect(canAccessPages('USER', ['backorders'], required)).toBe(true);
+		expect(canAccessPages('USER', ['sales-orders'], required)).toBe(false);
+	});
+
+	it('count-approvals page open uses count-approvals key', () => {
+		expect(requiredPageKeysForPath('/management/count-approvals')).toEqual(['count-approvals']);
+	});
+
+	it('vendors route is gated by the vendors permission key', () => {
+		const required = requiredPageKeysForPath('/management/vendors');
+		expect(required).toEqual(['vendors']);
+		expect(canAccessPages('USER', [], required)).toBe(false);
+		expect(canAccessPages('USER', ['vendors'], required)).toBe(true);
+		expect(canAccessPages('ADMIN', [], required)).toBe(true);
+	});
+
+	it('zones route is gated by the zones permission key', () => {
+		const required = requiredPageKeysForPath('/data/zones');
+		expect(required).toEqual(['zones']);
+		expect(canAccessPages('USER', ['zones'], required)).toBe(true);
+		expect(canAccessPages('USER', ['warehouses'], required)).toBe(false);
+		expect(canAccessPages('ADMIN', [], required)).toBe(true);
+	});
+
+	it('hasOverride respects ADMIN and list', () => {
+		expect(hasOverride('ADMIN', [], 'so-full-edit')).toBe(true);
+		expect(hasOverride('USER', [], 'so-full-edit')).toBe(false);
+		expect(hasOverride('USER', ['so-full-edit'], 'so-full-edit')).toBe(true);
+	});
+
+	it('resolveHomePath respects mustChangePassword and grants', () => {
+		expect(resolveHomePath({ role: 'USER', allowedPages: ['receiving'], mustChangePassword: true })).toBe(
+			'/change-password'
+		);
+		expect(resolveHomePath({ role: 'USER', allowedPages: ['receiving'] })).toBe('/receiving');
+	});
+
+	it('catalog contains fraud and count-approvals', () => {
+		expect(isKnownPageKey('fraud')).toBe(true);
+		expect(isKnownPageKey('count-approvals')).toBe(true);
+		expect(ALL_PAGE_KEYS.includes('fraud')).toBe(true);
+	});
+
+	it('permission matrix marks fraud gate as fraud', () => {
+		const fraud = PERMISSION_MATRIX.find((r) => r.sveltePath === '/management/fraud');
+		expect(fraud?.flaskGate).toBe('fraud');
+		expect(fraud?.pageKey).toBe('fraud');
+	});
+});
+
+
+describe('Preferred Bins route access', () => {
+	it('gates the data route with the preferred-bins page grant', () => {
+		expect(requiredPageKeysForPath('/data/preferred-bins')).toEqual(['preferred-bins']);
+		expect(canAccessPages('USER', [], requiredPageKeysForPath('/data/preferred-bins'))).toBe(false);
+		expect(canAccessPages('USER', ['preferred-bins'], requiredPageKeysForPath('/data/preferred-bins'))).toBe(true);
+	});
+
+	it('uses Preferred Bins as the landing page when it is the only grant', () => {
+		expect(resolveHomePath({ role: 'USER', allowedPages: ['preferred-bins'] })).toBe('/data/preferred-bins');
+	});
+});

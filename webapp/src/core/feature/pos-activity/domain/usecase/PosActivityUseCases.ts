@@ -1,0 +1,3 @@
+import type {PosActivityRepository} from '../repository/PosActivityRepository';import type {PosActivityQuery} from '../entity/PosActivity';
+export class ListPosActivityUseCase{constructor(private r:PosActivityRepository){}execute(q?:PosActivityQuery){return this.r.list(q);}}
+export class GetPosActivitySummaryUseCase{constructor(private r:PosActivityRepository){}execute(date:string){return this.r.summary(date);}}

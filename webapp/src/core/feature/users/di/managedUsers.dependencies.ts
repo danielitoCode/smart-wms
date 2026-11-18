@@ -1,0 +1,5 @@
+import {apiClient} from '../../../infrastructure/api/ApiClient';
+import {ManagedUsersRemoteDataSource} from '../data/datasource/ManagedUsersRemoteDataSource';
+import {ManagedUsersRepositoryImpl} from '../data/repository/ManagedUsersRepositoryImpl';
+import {ListManagedWarehousesUseCase,ListManagedUsersUseCase,CreateManagedUserUseCase,UpdateManagedUserUseCase,DeleteManagedUserUseCase,GetUserPagePermissionsUseCase,UpdateUserPagePermissionsUseCase} from '../domain/usecase/ManagedUsersUseCases';
+export function createManagedUsersDependencies(){const remote=new ManagedUsersRemoteDataSource(apiClient);const r=new ManagedUsersRepositoryImpl(remote);return {remote,listWarehouses:new ListManagedWarehousesUseCase(r),list:new ListManagedUsersUseCase(r),create:new CreateManagedUserUseCase(r),update:new UpdateManagedUserUseCase(r),remove:new DeleteManagedUserUseCase(r),getPermissions:new GetUserPagePermissionsUseCase(r),updatePermissions:new UpdateUserPagePermissionsUseCase(r)};}
