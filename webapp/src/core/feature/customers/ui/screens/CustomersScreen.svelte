@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import type { WarehouseSelectionState } from '../../../../warehouses/ui/state/warehouseSelectionState.svelte';
+	import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
 	import { createCustomersState } from '../state/customersState.svelte';
 
 	const state = createCustomersState();
@@ -77,6 +77,7 @@
 	h1{margin:0 0 .35rem;font-family:var(--display,var(--body));font-size:1.75rem}h2{margin:0 0 .25rem;font-size:1.25rem}h3{margin:1.25rem 0 .6rem;font-size:1rem}
 	.subtitle,.hint{margin:0;color:var(--slate,#5c6b7d);line-height:1.45;font-size:.92rem}
 	.filters{display:flex;flex-wrap:wrap;gap:.75rem 1rem;align-items:flex-end;margin:1.5rem 0}.field{display:flex;flex-direction:column;gap:.3rem;min-width:10rem}.field.grow{flex:1 1 16rem}
+	.warehouse-context{align-self:center;color:var(--slate,#5c6b7d);font-size:.85rem}
 	.field span,.facts span{font-size:.75rem;font-weight:600;color:var(--slate,#5c6b7d);text-transform:uppercase}
 	input,button{padding:.55rem .75rem;border:1px solid var(--line,#e4eaf1);border-radius:6px;background:var(--card,#fff);font:inherit}button{cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}.link{border:0;color:var(--accent,#1769aa);text-decoration:underline;padding:.2rem}
 	.table-wrap{overflow-x:auto;border:1px solid var(--line,#e4eaf1);border-radius:8px;background:var(--card,#fff);margin-top:.75rem}table{width:100%;border-collapse:collapse;font-size:.9rem}th,td{text-align:left;padding:.7rem .9rem;border-bottom:1px solid var(--line,#e4eaf1)}th{background:var(--surface-muted,#f7fafc);font-weight:600}tr:last-child td{border-bottom:0}
