@@ -787,3 +787,14 @@ Cualquier desarrollador debe poder identificar qué existía en React, qué ofre
 - UI Svelte sustituye la tarjeta de prueba aislada por catálogo, formulario dinámico de secretos, test, estado y acciones de sync; las credenciales guardadas solo se representan como configuradas, nunca se reutiliza la máscara `****` como valor.
 - Pruebas iniciales de contratos y validación de casos de uso añadidas.
 - **Pendiente para cierre:** validar compilación y suites; ampliar pruebas de concurrencia/respuestas 409, timeout/desconexión y respuestas obsoletas al cambiar almacén; revisar la UX de sync-reset y refresco de estado; comprobar permisos y traducciones completas.
+
+
+### F6.1 — Fraud / Control de fraude (auditoría inicial)
+
+- Feature Svelte preexistente inspeccionada: Domain `FraudReview`, casos de uso List/UpdateMemo/PushOrderToQueue, datasource, repositorio, DI, estado y pantalla. React original también inspeccionado.
+- Contratos confirmados: listado `GET /admin/sales-orders?status=FRAUD_REVIEW`, detalle `GET /admin/sales-orders/{id}`, memo `PATCH /admin/sales-orders/{id}/memo` y retorno `POST /admin/sales-orders/{id}/push-to-queue`. Se documentan permisos, payloads, respuestas, auditoría y errores en `API-Contracts.md`.
+- Hallazgo de contrato: el schema de Flask admite memo de hasta 4000 caracteres; el caso de uso Svelte limitaba a 2000. Se alinea el límite local con el contrato real.
+- Límites backend: no hay filtro de fecha ni endpoint de lectura de historial/audit log. El detalle devuelve Sales Order y líneas, pero no su historial de auditoría.
+- **Bloqueo P0 de seguridad:** el listado y detalle usan grant `sales-orders`; PATCH memo y push-to-queue usan `fraud`. Ninguno de los dos handlers de escritura comprueba que el pedido pertenezca al almacén activo/autorizado; el listado puede devolver globalmente si no se pasa `warehouse_id`, y el detalle consulta por ID sin scope. `FOR UPDATE` + auditoría no corrigen este defecto. Requiere cambio Flask, fuera del alcance frontend actual.
+- Concurrencia: push-to-queue bloquea la fila y solo transiciona desde `FRAUD_REVIEW`; el segundo intento responde 409. Memo también bloquea y audita, pero carece de versión/ETag y permite last-write-wins entre ediciones serializadas.
+- **Estado:** auditoría contractual completada; implementación Svelte y pruebas por capas pendientes. F6.1 no está cerrada ni supera el Gate de seguridad hasta corregir y probar el aislamiento backend.
