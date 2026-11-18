@@ -49,13 +49,13 @@ describe('API tokens presentation state', () => {
 			sourceSystem: null, inboundResources: [], mappingOverride: false
 		})).toBe(true);
 		expect(state.plaintext).toBe('secret-only-once');
-		expect(state.rows).not.toContain(expect.objectContaining({ token: 'secret-only-once' }));
+		expect(JSON.stringify(state.rows)).not.toContain('secret-only-once');
 		state.clearPlaintext();
 		expect(state.plaintext).toBeNull();
 
 		expect(await state.rotate(12)).toBe(true);
 		expect(state.plaintext).toBe('rotated-secret');
-		expect(state.rows).not.toContain(expect.objectContaining({ token: 'rotated-secret' }));
+		expect(JSON.stringify(state.rows)).not.toContain('rotated-secret');
 	});
 
 	it('does not swallow revoke or delete failures', async () => {
