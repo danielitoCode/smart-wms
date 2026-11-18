@@ -48,6 +48,35 @@ describe('FraudReviewMapper', () => {
     })).toThrow('El pedido ya no está en revisión de fraude');
   });
 
+  it('maps paginated queue metadata and rows', () => {
+    const page = FraudReviewMapper.toPage({
+      sales_orders: [{
+        so_id: 22, so_number: 'SO-22', status: 'FRAUD_REVIEW',
+        order_type: 'sale', order_source: null, order_origin: null,
+        warehouse_id: 4, customer_name: null, customer_phone: null,
+        memo: null, created_at: null
+      }],
+      total: 51, page: 2, per_page: 50, pages: 2
+    });
+    expect(page).toMatchObject({ page: 2, perPage: 50, total: 51, pages: 2 });
+    expect(page.items[0].salesOrderId).toBe(22);
+  });
+
+  it('maps the scoped audit-history response', () => {
+    const history = FraudReviewMapper.toAuditHistory({
+      entries: [{
+        log_id: 7, action_type: 'SO_MEMO_EDITED', username: 'operator',
+        warehouse_id: 4, details: { old_value: 'a', new_value: 'b' },
+        created_at: '2026-11-18T10:00:00Z'
+      }],
+      total: 1, page: 1, per_page: 20, pages: 1
+    });
+    expect(history).toMatchObject({
+      page: 1, perPage: 20, total: 1,
+      entries: [{ logId: 7, actionType: 'SO_MEMO_EDITED', username: 'operator' }]
+    });
+  });
+
   it('normalizes absent address fields to null', () => {
     const dto: FraudReviewDto = {
       so_id: 12, so_number: 'SO-12', status: 'FRAUD_REVIEW',
