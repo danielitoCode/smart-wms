@@ -261,3 +261,28 @@ Todas las rutas usan el prefijo `/api/admin` y requieren sesión autenticada má
 **Credenciales y seguridad:** `schemas/connectors.py` declara `SaveCredentialsRequest(warehouse_id > 0, credentials: Dict[str,str] no vacío)`, `TestConnectionRequest(warehouse_id > 0)` y `DeleteCredentialsRequest(warehouse_id > 0)`. El vault cifra cada valor con Fernet y requiere `SENTRY_ENCRYPTION_KEY`; los valores plaintext solo se descifran dentro del servicio para test/sync. El GET devuelve nombres de claves y máscara fija `****`; la UI no debe tratar esa máscara como valor editable ni volver a enviarla. Al guardar, solo se envían claves con nuevos valores. Los mensajes de conexión se sanitizan, limitan a 500 caracteres y eliminan patrones de secretos antes de llegar a la UI/estado.
 
 **Límite funcional:** no existe un endpoint para borrar una credencial individual ni para leer el valor secreto; DELETE elimina todas las credenciales del conector en el almacén indicado. No existe endpoint para consultar el estado de una tarea Celery por `task_id`; la UI debe refrescar `sync-status` y no presentar el 202 como sincronización completada. El reset solo limpia estados `running`; no es una cancelación del worker.
+
+
+## F5.2 — Consumer Groups y Connector Registry
+
+Page grant: `consumer-groups`. Todas las rutas requieren `require_auth` y `require_admin_or_page_permission("consumer-groups")`. No existe scope de almacén en estos recursos.
+
+| Método | Endpoint | Request | Response / semántica |
+|---|---|---|---|
+| GET | `/api/admin/connector-registry` | — | `{ connectors: ConnectorRegistry[] }`; cada fila: `connector_id, display_name, created_at, updated_at`. |
+| POST | `/api/admin/connector-registry` | `{ connector_id, display_name }`; ID 1–64, nombre 1–128; extras prohibidos | Connector; 201. Duplicado: 409 `duplicate_connector_id`. |
+| PATCH | `/api/admin/connector-registry/{connector_id}` | `{ display_name }` (1–128); no acepta cambio de ID | Connector actualizado; 404 `connector_not_found`. |
+| DELETE | `/api/admin/connector-registry/{connector_id}` | — | 200 `{ connector_id, deleted: true }`; 404 inexistente; 409 `connector_in_use` con cantidades `consumer_groups` y `webhook_subscriptions`. |
+| GET | `/api/admin/consumer-groups` | — | `{ consumer_groups: ConsumerGroup[] }`; cada fila: `consumer_group_id, connector_id, last_cursor, last_heartbeat, subscription, created_at, updated_at`. |
+| POST | `/api/admin/consumer-groups` | `{ consumer_group_id, connector_id, subscription?, acknowledge_replay? }`; IDs 1–64; extras prohibidos | ConsumerGroup; 201. ID duplicado: 409 `duplicate_consumer_group_id`; FK de conector inválida: 400 `unknown_connector_id`; tombstone sin reconocimiento: 409 `replay_would_skip_history`. |
+| PATCH | `/api/admin/consumer-groups/{consumer_group_id}` | `{ subscription }` solamente | ConsumerGroup actualizado; 400 `no_fields_to_update`; 404 `consumer_group_not_found`. Connector y cursor son inmutables desde esta API. |
+| DELETE | `/api/admin/consumer-groups/{consumer_group_id}` | — | 204; 404 `consumer_group_not_found`. Guarda tombstone con cursor, connector, fecha y autor para proteger frente a replay accidental. |
+
+`schemas/consumer_groups.py` define `SubscriptionFilter` estricto: `event_types: string[]` y `warehouse_ids: integer[]`, opcionales y con máximo 64 elementos cada uno. Claves desconocidas, tipos erróneos y valores que no sean arrays se rechazan mediante 400. Un objeto vacío `{}` representa ausencia de filtro. En persistencia se omiten campos null.
+
+**Semántica de estado:** el DTO de consumer group no contiene un campo `status`. La UI presenta cursor y heartbeat reales; “Con heartbeat” / “Sin heartbeat” es una etiqueta derivada exclusivamente de la presencia de `last_heartbeat`, no un estado operativo ni una garantía de que el consumidor esté vivo ahora.
+
+**Eliminaciones:** eliminar un grupo es destructivo porque el consumidor vuelve a leer desde el inicio si se recrea. La UI exige confirmación y el backend conserva tombstone; recrear el mismo ID requiere `acknowledge_replay: true`. Eliminar un conector requiere confirmación y el backend bloquea con 409 si tiene grupos o webhooks asociados. El frontend no debe borrar dependencias automáticamente.
+
+**Auditoría:** create/update/delete de ambos recursos escriben eventos de auditoría. El DELETE de consumer group devuelve 204 sin body. La respuesta del registry y del grupo es un DTO directo; los listados usan wrappers separados.
+

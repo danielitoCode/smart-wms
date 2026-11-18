@@ -428,11 +428,14 @@ Referencia: [React Dashboard.jsx](https://github.com/danielitoCode/smart-wms/blo
 
 ## F5.2 Consumer Groups
 
-1. **Domain:** ConsumerGroup, ConnectorRegistry, estado y configuración.
-2. **Application:** CRUD separado de registry y consumer groups.
-3. **Data:** contrastar rutas y `schemas/consumer_groups.py`.
-4. **UI:** listados separados, formularios, estado, relación con conectores y eliminación confirmada.
-5. **Pruebas:** duplicados, conector inexistente, grupo en uso y estado inválido.
+**Avance implementado en `svelte-webapp`:**
+- Contrato Flask contrastado en `api/routes/admin/admin_consumer_groups.py` y `api/schemas/consumer_groups.py`; contrato completo añadido a `API-Contracts.md`.
+- Domain/Application separados para Connector Registry y Consumer Groups; validación estricta local de IDs y filtros, sin exponer connector_id ni cursor como campos editables del grupo.
+- Data DTO y mappers corregidos a los campos reales (`display_name`, `last_cursor`, `last_heartbeat`, `subscription`); datasource/repository cubren GET/POST/PATCH/DELETE de ambos recursos.
+- UI presenta dos listados, relación grupo-conector, edición de nombre visible y suscripción JSON, cursor/heartbeat y confirmaciones de borrado. El estado se describe como presencia/ausencia de heartbeat, ya que Flask no devuelve un campo status.
+- La recreación de un ID con tombstone incorpora reconocimiento explícito de replay. El borrado de conectores informa el conflicto 409 cuando hay consumer groups o webhook subscriptions asociados.
+- Pruebas Domain/Data/UI state añadidas para duplicados, conector inexistente, conector en uso, filtros inválidos, serialización de payloads y separación de operaciones.
+- **Pendiente de cierre:** ejecutar Svelte check, build y suites; revisar regresiones e i18n en CI. No declarar F5.2 cerrada hasta disponer de resultados verdes observados.
 
 ## F5.3 Webhooks
 
