@@ -439,11 +439,14 @@ Referencia: [React Dashboard.jsx](https://github.com/danielitoCode/smart-wms/blo
 
 ## F5.3 Webhooks
 
-1. **Domain:** Webhook, Secret, Delivery y DLQ.
-2. **Application:** CRUD, RotateSecret, GetDLQ, GetStats, GetErrors, ReplayEvent y ReplayBatch.
-3. **Data:** contrastar CRUD, DLQ/stats/errors, rotate-secret y replay; revisar `schemas/webhooks.py`.
-4. **UI:** listado/detalle, eventos, estado, rotación, estadísticas, errores y replay.
-5. **Pruebas:** secreto rotado, duplicados, replay fallido/concurrente, DLQ vacía y permisos.
+**Avance implementado en `webapp`:**
+- Domain modelado para Webhook, Secret, Delivery, DLQ, estadísticas, errores y replay.
+- Application incluye List, Detail, Create, Update, Delete lógico/purge, RotateSecret, GetDLQ, GetStats, GetErrors, ReplayEvent y ReplayBatch.
+- Data usa DTO/mappers alineados con `api/routes/admin/admin_webhooks.py` y `api/schemas/webhooks.py`; se consume el Connector Registry existente.
+- UI incorpora listado, detalle, formularios de alta/edición, estado/pausa, rotación con secreto de una sola lectura, estadísticas, DLQ paginada, errores globales, replay individual y por lotes, revocación y purga confirmadas.
+- Pruebas Svelte añadidas para reglas Domain, contratos HTTP/mappers y estado de UI; incluyen secret de una sola vez, conflicto de URL tombstone, replay y DLQ vacía.
+- Limitaciones del backend documentadas en `API-Contracts.md` y señaladas en la vista: no hay payload de evento completo ni detalle individual de delivery; replay individual no tiene protección idempotente/concurrente equivalente al replay batch.
+- **Pendiente de cierre:** ejecutar y corregir únicamente `svelte-check`, build y suites frontend. Los fallos de tests Python/Flask quedan fuera del alcance de esta migración frontend y no se modificarán.
 
 ## F5.4 Channels
 

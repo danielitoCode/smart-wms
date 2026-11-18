@@ -1,12 +1,10 @@
-export type WebhookDto = {
-	subscription_id: string;
-	name: string;
-	url?: string | null;
-	status?: string | null;
-	event_types?: string[] | null;
-	created_at?: string | null;
-	updated_at?: string | null;
-	secret?: string | null;
-};
-
-export type WebhookListResponseDto = { webhooks?: WebhookDto[]; subscriptions?: WebhookDto[] };
+export type SubscriptionFilterDto={event_types?:string[];warehouse_ids?:number[];aggregate_external_id_allowlist?:string[]};
+export type WebhookStatsRollupDto={attempts_24h:number;succeeded_24h:number;failed_24h:number;dlq_24h:number;success_rate_24h:number|null;pending_count:number};
+export type WebhookDto={subscription_id:string;connector_id:string;display_name:string;delivery_url:string;subscription_filter:SubscriptionFilterDto;status:'active'|'paused'|'revoked';pause_reason:string|null;rate_limit_per_second:number;pending_ceiling:number;dlq_ceiling:number;last_delivered_event_id:number|null;created_at:string|null;updated_at:string|null;stats:WebhookStatsRollupDto};
+export type WebhookListResponseDto={webhooks:WebhookDto[]};
+export type WebhookSecretDto={subscription_id:string;secret:string;secret_generation:number};
+export type WebhookDeliveryDto={delivery_id:number;event_id:number|null;attempt_number:number;http_status:number|null;error_kind:string|null;error_detail:string|null;attempted_at:string|null;completed_at:string|null;scheduled_at:string|null;secret_generation:number;event?:{event_type:string|null;event_timestamp:string|null;aggregate_external_id:string|null;warehouse_id:number|null;source_txn_id:string|null}};
+export type WebhookStatsDto={subscription_id:string;window:'1h'|'6h'|'24h'|'7d';generated_at:number;attempts_total:number;succeeded:number;failed:number;dlq:number;in_flight:number;pending:number;success_rate:number|null;response_time_ms:{p50:number|null;p95:number|null;p99:number|null};top_error_kinds:Array<{kind:string;count:number}>;current_lag:number};
+export type WebhookErrorDto={delivery_id:number;subscription_id:string;subscription_display_name:string;connector_id:string;event_id:number|null;attempt_number:number;status:string;http_status:number|null;error_kind:string;error_detail:string|null;short_message:string;description:string;triage_hint:string;completed_at:string|null;attempted_at:string|null;scheduled_at:string|null};
+export type ReplayBatchResultDto={subscription_id:string;impact_count:number;replayed_count:number;matched_with_event_data:number;matched_without_event_data:number;detail?:string};
+export type ConnectorRegistryResponseDto={connectors:Array<{connector_id:string;display_name:string}>};

@@ -286,3 +286,34 @@ Page grant: `consumer-groups`. Todas las rutas requieren `require_auth` y `requi
 
 **Auditoría:** create/update/delete de ambos recursos escriben eventos de auditoría. El DELETE de consumer group devuelve 204 sin body. La respuesta del registry y del grupo es un DTO directo; los listados usan wrappers separados.
 
+
+
+## F5.3 — Webhooks
+
+Page grant: `webhooks`. Todos los endpoints admin requieren sesión y `require_admin_or_page_permission("webhooks")`. Las rutas siguientes se publican bajo `/api`.
+
+| Método | Endpoint | Request / respuesta |
+|---|---|---|
+| GET | `/api/admin/webhooks` | `{ webhooks: Webhook[] }`; incluye stats agregadas de 24 h. |
+| GET | `/api/admin/webhooks/{subscription_id}` | Detalle con la misma forma del listado; UUID inválido 400, inexistente 404. |
+| POST | `/api/admin/webhooks` | `connector_id`, `display_name`, `delivery_url`, `subscription_filter?`, `rate_limit_per_second?` (1–100, default 50), `pending_ceiling?` (default 10000), `dlq_ceiling?` (default 1000), `acknowledge_url_reuse?`. 201 y plaintext `secret` + `secret_generation=1`, mostrado una sola vez. |
+| PATCH | `/api/admin/webhooks/{subscription_id}` | Campos parciales: `display_name`, `delivery_url`, `subscription_filter`, `rate_limit_per_second`, `pending_ceiling`, `dlq_ceiling`, `status=active|paused`, `acknowledge_url_reuse`. Campos extra prohibidos. |
+| POST | `/api/admin/webhooks/{subscription_id}/rotate-secret` | Genera nuevo secreto primario. El anterior pasa a generación 2 y se acepta durante 24 h. El nuevo plaintext se devuelve una sola vez. Revoked: 400. |
+| DELETE | `/api/admin/webhooks/{subscription_id}` | Revocación lógica por defecto: `status=revoked`, conserva historial. |
+| DELETE | `/api/admin/webhooks/{subscription_id}?purge=true` | Purga irreversible de suscripción, secretos e historial de entregas; crea tombstone URL. Si hay pending/in_flight: 409 `live_deliveries_block_hard_delete` + `live_count`. |
+| GET | `/api/admin/webhooks/{subscription_id}/dlq?limit=50&offset=0` | `deliveries,total,limit,offset`; limit 1–500. Cada entrega incluye contexto parcial del evento. Una DLQ vacía devuelve 200 y lista vacía. |
+| POST | `/api/admin/webhooks/{subscription_id}/replay/{delivery_id}` | Replay individual; 201 con `original_delivery_id` y `replayed_delivery_id`. Rechaza delivery ajena, inexistente o suscripción revoked. |
+| POST | `/api/admin/webhooks/{subscription_id}/replay-batch` | Body `{ filter, acknowledge_large_replay }`; filtros: status dlq/failed/succeeded, event_type, warehouse_id, completed_at_from/to. 201 con impacto y recuentos. |
+| GET | `/api/admin/webhooks/{subscription_id}/stats?window=24h` | Ventanas 1h/6h/24h/7d; counters, tasa, percentiles, top errors, lag. Caché 30 s. |
+| GET | `/api/admin/webhook-errors?limit=50&offset=0&subscription_id=&error_kind=&from=&to=` | Errores failed/dlq con catálogo servidor: short_message, description, triage_hint y lista error_kinds. limit 1–500. |
+
+**Schema de filtros:** `schemas/webhooks.py` usa `SubscriptionFilter` estricto de `services/webhook_dispatcher/subscription_filter.py`: `event_types: string[]`, `warehouse_ids: integer[]`, `aggregate_external_id_allowlist: UUID[]`. No acepta claves extra. Los arrays vacíos son rechazados por el handler; omitir la clave significa no filtrar esa dimensión. Los event types y warehouse IDs se contrastan contra los catálogos persistidos. La URL debe ser HTTP(S), HTTPS por defecto; SSRF/private destinations se rechazan en servidor. Los techos pending/DLQ no pueden superar hard caps configurados.
+
+**Estado:** `active`, `paused`, `revoked`. PATCH solo acepta active/paused; revoked es terminal y solo se alcanza mediante DELETE lógico. Una suscripción revoked no se puede editar, reanudar, rotar ni recibir replay. Cambiar límites de una suscripción pausada por ceiling no la reanuda automáticamente; se requiere PATCH `status=active`.
+
+**Secret:** jamás se incluye en GET/list/detail ni en DTO de dominio. Create y rotate son las únicas respuestas que incluyen plaintext. Rotación mantiene la generación anterior durante 24 h; una segunda rotación sustituye la anterior generación 2. La UI debe mostrar y permitir copiar el valor recién emitido, y luego ocultarlo.
+
+**Replay batch:** Flask serializa batches concurrentes por suscripción con `SELECT FOR UPDATE`, aplica throttling de 60 s por suscripción y presupuesto global, hard cap configurable (409 `batch_size_above_hard_cap`, reintento con `acknowledge_large_replay=true`), y pending ceiling no eludible (409 `replay_would_exceed_pending_ceiling`). También puede responder 429 `replay_batch_throttled` o `replay_batch_global_throttled`. Los registros de evento eliminados se cuentan como `matched_without_event_data` y no se pueden re-dispatch.
+
+**Limitaciones confirmadas del backend:** no existe endpoint para recuperar plaintext o historial de secretos; no existe endpoint individual de detalle de una delivery ni un endpoint de payload completo de `integration_events` desde DLQ. La respuesta DLQ solo ofrece event_type, timestamp, aggregate_external_id, warehouse_id y source_txn_id. Replay individual inserta una entrega pending nueva, conserva la original y no mueve el cursor. A diferencia del replay batch, el handler individual no toma lock de suscripción ni mantiene una clave idempotente/deduplicación por delivery; las peticiones repetidas/concurrentes pueden generar más de una entrega. La UI bloquea dobles clics mientras la petición está en curso, pero la garantía global requiere una mejora backend y no se simula en Svelte.
+

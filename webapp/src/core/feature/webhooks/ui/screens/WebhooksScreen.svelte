@@ -1,88 +1,85 @@
 <script lang="ts">
-	import { onMount, getContext } from 'svelte';
-	import type { I18nState } from '#lib/i18n/i18n.svelte';
-	import { createWebhooksState } from '../state/webhooksState.svelte';
-
-	const i18n = getContext<I18nState>('i18n');
-	const vm = createWebhooksState();
-	let name = $state('');
-	let targetUrl = $state('');
-	let eventTypes = $state('');
-	let showForm = $state(false);
-
-	onMount(() => { void vm.load(); });
-
-	async function onCreate() {
-		const types = eventTypes.split(',').map((s) => s.trim()).filter(Boolean);
-		const ok = await vm.create({ name: name.trim(), url: targetUrl.trim(), eventTypes: types });
-		if (ok) {
-			name = '';
-			targetUrl = '';
-			eventTypes = '';
-			showForm = false;
-		}
-	}
+ import {onMount,getContext} from 'svelte';
+ import type {I18nState} from '#lib/i18n/i18n.svelte';
+ import {createWebhooksState} from '../state/webhooksState.svelte';
+ import type {WebhookSubscription,WebhookCreateInput,WebhookStats,ReplayBatchFilter} from '../../domain/entity/Webhook';
+ const i18n=getContext<I18nState>('i18n'); const vm=createWebhooksState();
+ let showCreate=$state(false),editing=$state<WebhookSubscription|null>(null),confirmDelete=$state<WebhookSubscription|null>(null),confirmPurge=$state<WebhookSubscription|null>(null),confirmRotate=$state<WebhookSubscription|null>(null);
+ let name=$state(''),connectorId=$state(''),url=$state(''),eventTypes=$state(''),warehouseIds=$state(''),externalIds=$state('');
+ let rate=$state(50),pending=$state(10000),dlqCeiling=$state(1000),filterJson=$state('{}'),formError=$state('');
+ let dlqPage=$state(0),statsWindow=$state<WebhookStats['window']>('24h'),showErrors=$state(false),errorKind=$state(''),errorSubscription=$state(''),errorFrom=$state(''),errorTo=$state('');
+ let errorsPage=$state(0); let replayStatus=$state<'dlq'|'failed'|'succeeded'>('dlq'),replayType=$state(''),replayWarehouse=$state(''),replayFrom=$state(''),replayTo=$state(''),ackLarge=$state(false),showReplay=$state(false);
+ onMount(()=>{void vm.load();});
+ function parseList(s:string){return s.split(',').map(v=>v.trim()).filter(Boolean);}
+ function currentFilter(){return { ...(parseList(eventTypes).length?{eventTypes:parseList(eventTypes)}:{}),...(parseList(warehouseIds).length?{warehouseIds:parseList(warehouseIds).map(Number)}:{}),...(parseList(externalIds).length?{aggregateExternalIdAllowlist:parseList(externalIds)}:{})};}
+ function resetForm(){name='';connectorId=vm.connectors[0]?.connectorId??'';url='';eventTypes='';warehouseIds='';externalIds='';rate=50;pending=10000;dlqCeiling=1000;formError='';}
+ function openCreate(){resetForm();editing=null;showCreate=true;}
+ function openEdit(row:WebhookSubscription){editing=row;name=row.displayName;url=row.deliveryUrl;eventTypes=(row.subscriptionFilter.eventTypes??[]).join(', ');warehouseIds=(row.subscriptionFilter.warehouseIds??[]).join(', ');externalIds=(row.subscriptionFilter.aggregateExternalIdAllowlist??[]).join(', ');filterJson=JSON.stringify({...(row.subscriptionFilter.eventTypes?.length?{event_types:row.subscriptionFilter.eventTypes}:{}),...(row.subscriptionFilter.warehouseIds?.length?{warehouse_ids:row.subscriptionFilter.warehouseIds}:{}),...(row.subscriptionFilter.aggregateExternalIdAllowlist?.length?{aggregate_external_id_allowlist:row.subscriptionFilter.aggregateExternalIdAllowlist}:{})},null,2);rate=row.rateLimitPerSecond;pending=row.pendingCeiling;dlqCeiling=row.dlqCeiling;formError='';showCreate=true;}
+ function parseEditFilter(){try{const v:unknown=JSON.parse(filterJson);if(!v||typeof v!=='object'||Array.isArray(v))throw new Error('El filtro debe ser un objeto JSON');const r=v as Record<string,unknown>;if(Object.keys(r).some(k=>!['event_types','warehouse_ids','aggregate_external_id_allowlist'].includes(k)))throw new Error('El filtro contiene claves no permitidas');if(r.event_types!==undefined&&(!Array.isArray(r.event_types)||r.event_types.length===0||r.event_types.some(x=>typeof x!=='string')))throw new Error('event_types debe ser una lista no vacía de textos');if(r.warehouse_ids!==undefined&&(!Array.isArray(r.warehouse_ids)||r.warehouse_ids.length===0||r.warehouse_ids.some(x=>!Number.isInteger(x)||Number(x)<1)))throw new Error('warehouse_ids debe ser una lista no vacía de enteros positivos');if(r.aggregate_external_id_allowlist!==undefined&&(!Array.isArray(r.aggregate_external_id_allowlist)||r.aggregate_external_id_allowlist.length===0||r.aggregate_external_id_allowlist.some(x=>typeof x!=='string')))throw new Error('aggregate_external_id_allowlist debe ser una lista no vacía de UUID');return { ...(r.event_types?{eventTypes:r.event_types as string[]}:{}),...(r.warehouse_ids?{warehouseIds:r.warehouse_ids as number[]}:{}),...(r.aggregate_external_id_allowlist?{aggregateExternalIdAllowlist:r.aggregate_external_id_allowlist as string[]}:{})};}catch(e){formError=e instanceof Error?e.message:'JSON inválido';return null;}}
+ async function save(){formError='';if(editing){const subscriptionFilter=parseEditFilter();if(!subscriptionFilter)return;const ok=await vm.update({subscriptionId:editing.subscriptionId,displayName:name,deliveryUrl:url,subscriptionFilter,rateLimitPerSecond:rate,pendingCeiling:pending,dlqCeiling});if(ok){showCreate=false;editing=null;}else formError=vm.error??'No se pudo guardar';return;}
+  const input:WebhookCreateInput={connectorId,displayName:name,deliveryUrl:url,subscriptionFilter:currentFilter(),rateLimitPerSecond:rate,pendingCeiling:pending,dlqCeiling};
+  const ok=await vm.create(input);if(ok){showCreate=false;}else formError=vm.error??'No se pudo crear';
+ }
+ async function confirmUrlReuse(){if(editing){const subscriptionFilter=parseEditFilter();if(!subscriptionFilter)return;const ok=await vm.updateAcknowledged({subscriptionId:editing.subscriptionId,displayName:name,deliveryUrl:url,subscriptionFilter,rateLimitPerSecond:rate,pendingCeiling:pending,dlqCeiling});if(ok){showCreate=false;editing=null;}else formError=vm.error??'No se pudo actualizar';return;}if(!connectorId)return;const input:WebhookCreateInput={connectorId,displayName:name,deliveryUrl:url,subscriptionFilter:currentFilter(),rateLimitPerSecond:rate,pendingCeiling:pending,dlqCeiling};if(await vm.createAcknowledged(input))showCreate=false;else formError=vm.error??'No se pudo crear';}
+ async function openDetail(row:WebhookSubscription){if(await vm.detail(row.subscriptionId)){dlqPage=0;void vm.loadStats(row.subscriptionId,statsWindow);void vm.loadDlq(row.subscriptionId,50,0);}}
+ async function loadDlqPage(next:number){if(!vm.selected)return;dlqPage=next;await vm.loadDlq(vm.selected.subscriptionId,50,next*50);}
+ async function openStats(w:WebhookStats['window']){statsWindow=w;if(vm.selected)await vm.loadStats(vm.selected.subscriptionId,w);}
+ async function openErrorLog(){showErrors=true;await loadErrorPage(0);}
+ async function loadErrorPage(offset:number){errorsPage=offset;await vm.loadErrors({limit:50,offset,subscriptionId:errorSubscription||undefined,errorKind:errorKind||undefined,from:errorFrom?new Date(errorFrom).toISOString():undefined,to:errorTo?new Date(errorTo).toISOString():undefined});}
+ async function replayBatch(ack=false){if(!vm.selected)return;const filter:ReplayBatchFilter={status:replayStatus,...(replayType.trim()?{eventType:replayType.trim()}:{}),...(replayWarehouse?{warehouseId:Number(replayWarehouse)}:{}),...(replayFrom?{completedAtFrom:new Date(replayFrom).toISOString()}:{}),...(replayTo?{completedAtTo:new Date(replayTo).toISOString()}:{})};const result=await vm.replayMany(vm.selected.subscriptionId,filter,ack);if(result){ackLarge=false;showReplay=false;}}
+ async function rotate(){if(confirmRotate&&await vm.rotate(confirmRotate.subscriptionId)){confirmRotate=null;}}
+ async function softDelete(){if(confirmDelete&&await vm.remove(confirmDelete.subscriptionId)){confirmDelete=null;}}
+ async function hardDelete(){if(confirmPurge){const result=await vm.remove(confirmPurge.subscriptionId,true);if(result){confirmPurge=null;} }}
+ async function copySecret(){if(vm.secret?.secret&&typeof navigator!=='undefined'&&navigator.clipboard)await navigator.clipboard.writeText(vm.secret.secret);}
+ function pct(v:number|null){return v===null?'—':(v*100).toFixed(1)+'%';}
+ function date(v:string|null){return v?new Date(v).toLocaleString():'—';}
 </script>
 
 <section class="page">
-	<header>
-		<div>
-			<p class="eyebrow">ABELLIS · SMART WMS</p>
-			<h1>{i18n.t('Webhooks')}</h1>
-			<p>{i18n.t('Suscripciones de eventos hacia sistemas externos.')}</p>
-		</div>
-		<button class="primary" type="button" onclick={() => (showForm = !showForm)}>{i18n.t('Nueva suscripción')}</button>
-	</header>
-	{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
-	{#if vm.secret}<p class="warn" role="status">{i18n.t('Nuevo secreto:')} <code>{vm.secret}</code></p>{/if}
-	{#if showForm}
-		<form class="form" onsubmit={(e) => { e.preventDefault(); void onCreate(); }}>
-			<label>{i18n.t('Nombre')}<input required bind:value={name} maxlength="120" /></label>
-			<label>{i18n.t('URL destino')}<input type="url" required bind:value={targetUrl} placeholder="https://…" /></label>
-			<label>{i18n.t('Tipos de evento')}<input bind:value={eventTypes} placeholder="order.created, inventory.updated" /></label>
-			<div class="actions">
-				<button type="button" onclick={() => (showForm = false)}>{i18n.t('Cancelar')}</button>
-				<button class="primary" type="submit" disabled={vm.saving}>{i18n.t('Crear')}</button>
-			</div>
-		</form>
-	{/if}
-	{#if vm.loading}<p>{i18n.t('Cargando…')}</p>
-	{:else if vm.rows.length === 0}<p class="empty">{i18n.t('No hay webhooks.')}</p>
-	{:else}
-		<div class="table-wrap"><table>
-			<thead><tr><th>{i18n.t('URL')}</th><th>{i18n.t('Eventos')}</th><th>{i18n.t('Estado')}</th><th>{i18n.t('Acciones')}</th></tr></thead>
-			<tbody>
-			{#each vm.rows as row (row.subscriptionId)}
-				<tr>
-					<td class="mono">{row.url}</td>
-					<td>{Array.isArray(row.eventTypes) ? row.eventTypes.join(', ') : row.eventTypes}</td>
-					<td>{row.status ?? '—'}</td>
-					<td><button type="button" class="danger" disabled={vm.saving} onclick={() => void vm.remove(row.subscriptionId)}>{i18n.t('Eliminar')}</button></td>
-				</tr>
-			{/each}
-			</tbody>
-		</table></div>
-	{/if}
+ <header><div><p class="eyebrow">SMART WMS · ADMIN</p><h1>{i18n.t('Webhooks')}</h1><p>{i18n.t('Suscripciones, entregas y recuperación de eventos externos.')}</p></div><div class="actions"><button type="button" onclick={() => void openErrorLog()}>{i18n.t('Registro de errores')}</button><button class="primary" type="button" onclick={openCreate} disabled={vm.connectors.length===0}>{i18n.t('Nueva suscripción')}</button></div></header>
+ {#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
+ {#if vm.secret}<section class="secret" role="status"><strong>{i18n.t('Secreto nuevo · generación')} {vm.secret.secretGeneration}</strong><p>{i18n.t('Este valor solo se muestra ahora. Cópialo y guárdalo en el sistema consumidor; no se puede recuperar después.')}</p><code>{vm.secret.secret}</code><div class="actions"><button type="button" onclick={() => void copySecret()}>{i18n.t('Copiar secreto')}</button><button type="button" onclick={() => vm.clearSecret()}>{i18n.t('Ocultar')}</button></div></section>{/if}
+ {#if vm.loading}<p>{i18n.t('Cargando…')}</p>{:else if vm.rows.length===0}<p class="empty">{i18n.t('No hay suscripciones webhook.')}</p>{:else}
+ <div class="table-wrap"><table><thead><tr><th>{i18n.t('Nombre')}</th><th>{i18n.t('Conector')}</th><th>{i18n.t('Estado')}</th><th>{i18n.t('Motivo pausa')}</th><th>{i18n.t('Éxito 24 h')}</th><th>{i18n.t('Pendientes')}</th><th>DLQ</th><th>{i18n.t('Acciones')}</th></tr></thead><tbody>
+ {#each vm.rows as row (row.subscriptionId)}<tr class:selected={vm.selected?.subscriptionId===row.subscriptionId}><td><button class="link" type="button" onclick={() => void openDetail(row)}>{row.displayName}</button><small class="mono">{row.subscriptionId}</small></td><td>{vm.connectors.find(c=>c.connectorId===row.connectorId)?.displayName??row.connectorId}</td><td><span class="status" class:paused={row.status==='paused'} class:revoked={row.status==='revoked'}>{row.status}</span></td><td>{row.pauseReason??'—'}</td><td>{pct(row.stats.successRate24h)}</td><td>{row.stats.pendingCount}</td><td>{row.stats.dlq24h}</td><td class="actions"><button type="button" onclick={() => void openDetail(row)}>{i18n.t('Detalle')}</button><button type="button" onclick={() => openEdit(row)} disabled={vm.saving||row.status==='revoked'}>{i18n.t('Editar')}</button><button type="button" onclick={() => void vm.setStatus(row,row.status==='active'?'paused':'active')} disabled={row.status==='revoked'||vm.saving}>{row.status==='active'?i18n.t('Pausar'):i18n.t('Reanudar')}</button><button type="button" onclick={() => confirmRotate=row} disabled={vm.saving||row.status==='revoked'}>{i18n.t('Rotar secreto')}</button><button class="danger" type="button" onclick={() => confirmDelete=row} disabled={vm.saving||row.status==='revoked'}>{i18n.t('Revocar')}</button><button class="danger" type="button" onclick={() => confirmPurge=row} disabled={vm.saving}>{i18n.t('Purgar')}</button></td></tr>{/each}
+ </tbody></table></div>{/if}
+
+ {#if vm.selected}
+ <section class="detail panel"><div class="section-head"><div><p class="eyebrow">{i18n.t('DETALLE DE SUSCRIPCIÓN')}</p><h2>{vm.selected.displayName}</h2><p class="mono">{vm.selected.connectorId} · {vm.selected.subscriptionId}</p></div><button type="button" onclick={() => vm.clearSelected()}>{i18n.t('Cerrar detalle')}</button></div>
+ <div class="facts"><div><small>{i18n.t('URL destino')}</small><span class="mono break">{vm.selected.deliveryUrl}</span></div><div><small>{i18n.t('Estado / pausa')}</small><strong>{vm.selected.status} · {vm.selected.pauseReason??'—'}</strong></div><div><small>{i18n.t('Rate limit')}</small><strong>{vm.selected.rateLimitPerSecond}/s</strong></div><div><small>{i18n.t('Límites pending / DLQ')}</small><strong>{vm.selected.pendingCeiling} / {vm.selected.dlqCeiling}</strong></div><div><small>{i18n.t('Último evento entregado')}</small><strong>{vm.selected.lastDeliveredEventId??'—'}</strong></div><div><small>{i18n.t('Actualizado')}</small><strong>{date(vm.selected.updatedAt)}</strong></div></div>
+ <div class="section-head sub"><h3>{i18n.t('Estadísticas')}</h3><div class="actions">{#each ['1h','6h','24h','7d'] as w}<button class:active={statsWindow===w} type="button" onclick={() => void openStats(w as WebhookStats['window'])}>{w}</button>{/each}</div></div>
+ {#if vm.stats}<div class="stats"><div><small>Attempts</small><strong>{vm.stats.attemptsTotal}</strong></div><div><small>Succeeded</small><strong>{vm.stats.succeeded}</strong></div><div><small>Failed</small><strong>{vm.stats.failed}</strong></div><div><small>DLQ</small><strong>{vm.stats.dlq}</strong></div><div><small>Pending</small><strong>{vm.stats.pending}</strong></div><div><small>In flight</small><strong>{vm.stats.inFlight}</strong></div><div><small>Success rate</small><strong>{pct(vm.stats.successRate)}</strong></div><div><small>Current lag</small><strong>{vm.stats.currentLag}</strong></div></div><p class="muted">Response time · p50 {vm.stats.responseTimeMs.p50??'—'} ms · p95 {vm.stats.responseTimeMs.p95??'—'} ms · p99 {vm.stats.responseTimeMs.p99??'—'} ms</p>{#if vm.stats.topErrorKinds.length}<ul>{#each vm.stats.topErrorKinds as e}<li><code>{e.kind}</code> · {e.count}</li>{/each}</ul>{/if}{:else}<p class="muted">{i18n.t('Sin estadísticas cargadas.')}</p>{/if}
+ <p class="hint">{i18n.t('El backend expone metadatos del evento (tipo, fecha, warehouse y referencia), pero no un endpoint de detalle con el payload original completo.')}</p><div class="section-head sub"><h3>Dead Letter Queue ({vm.dlqTotal})</h3><button type="button" onclick={() => {showReplay=true;ackLarge=false;vm.clearError();}} disabled={vm.selected.status==='revoked'}>{i18n.t('Replay por lotes')}</button></div>
+ {#if vm.dlq.length===0}<p class="empty">{i18n.t('La DLQ está vacía para esta suscripción.')}</p>{:else}<div class="table-wrap"><table><thead><tr><th>Delivery</th><th>Event</th><th>Type</th><th>Attempt</th><th>HTTP</th><th>Error</th><th>{i18n.t('Fecha')}</th><th></th></tr></thead><tbody>{#each vm.dlq as d (d.deliveryId)}<tr><td>{d.deliveryId}</td><td>{d.eventId??'—'}</td><td>{d.event?.eventType??'—'}</td><td>{d.attemptNumber}</td><td>{d.httpStatus??'—'}</td><td title={d.errorDetail??''}>{d.errorKind??'—'}</td><td>{date(d.completedAt)}</td><td><button type="button" onclick={() => void vm.replayOne(vm.selected!.subscriptionId,d.deliveryId)} disabled={vm.saving||vm.selected.status==='revoked'}>{i18n.t('Repetir')}</button></td></tr>{/each}</tbody></table></div>{/if}
+ <div class="pager"><button type="button" onclick={() => void loadDlqPage(Math.max(0,dlqPage-1))} disabled={dlqPage===0}>←</button><span>{dlqPage*50+1}–{Math.min((dlqPage+1)*50,vm.dlqTotal)} / {vm.dlqTotal}</span><button type="button" onclick={() => void loadDlqPage(dlqPage+1)} disabled={(dlqPage+1)*50>=vm.dlqTotal}>→</button></div>
+ </section>{/if}
+
+ {#if showCreate}<div class="overlay"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="form-title"><h2 id="form-title">{editing?i18n.t('Editar webhook'):i18n.t('Nueva suscripción webhook')}</h2>{#if formError}<p class="error" role="alert">{formError}</p>{/if}
+ <label>{i18n.t('Nombre visible')}<input bind:value={name} maxlength="128" required /></label>
+ {#if !editing}<label>{i18n.t('Conector')}<select bind:value={connectorId}>{#each vm.connectors as c}<option value={c.connectorId}>{c.displayName} ({c.connectorId})</option>{/each}</select></label>{/if}
+ <label>{i18n.t('URL destino')}<input type="url" bind:value={url} maxlength="2048" placeholder="https://…" required /></label>
+ {#if editing}<label>{i18n.t('Filtro de suscripción (JSON)')}<textarea bind:value={filterJson} rows="6"></textarea></label><p class="hint">event_types · warehouse_ids · aggregate_external_id_allowlist. No envíes arrays vacíos.</p>
+ {:else}<label>event_types <input bind:value={eventTypes} placeholder="order.created, inventory.updated" /></label><label>warehouse_ids <input bind:value={warehouseIds} placeholder="1, 2" /></label><label>aggregate_external_id_allowlist <input bind:value={externalIds} placeholder="UUID, UUID" /></label>{/if}
+ <div class="numbers"><label>rate_limit_per_second<input type="number" min="1" max="100" bind:value={rate} /></label><label>pending_ceiling<input type="number" min="1" bind:value={pending} /></label><label>dlq_ceiling<input type="number" min="1" bind:value={dlqCeiling} /></label></div>
+ <div class="actions end"><button type="button" onclick={() => {showCreate=false;editing=null;}}>{i18n.t('Cancelar')}</button><button class="primary" type="button" onclick={() => void save()} disabled={vm.saving}>{i18n.t('Guardar')}</button></div>
+ {#if vm.urlReuse}<div class="warning" role="alert"><strong>{i18n.t('URL asociada a una suscripción eliminada')}</strong><p>{vm.urlReuse.detail}</p><button class="primary" type="button" onclick={() => void confirmUrlReuse()} disabled={vm.saving}>{i18n.t('Confirmar reutilización de URL')}</button></div>{/if}
+ </section></div>{/if}
+
+ {#if showReplay}<div class="overlay"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="replay-title"><h2 id="replay-title">{i18n.t('Replay por lotes')}</h2><p>{i18n.t('El servidor limita el tamaño, la frecuencia y el backlog pendiente. Los eventos cuyo registro original fue eliminado no se pueden reenviar.')}</p>
+ <label>Status<select bind:value={replayStatus}><option value="dlq">dlq</option><option value="failed">failed</option><option value="succeeded">succeeded</option></select></label><label>event_type<input bind:value={replayType} /></label><label>warehouse_id<input type="number" min="1" bind:value={replayWarehouse} /></label><div class="numbers"><label>completed_at_from<input type="datetime-local" bind:value={replayFrom} /></label><label>completed_at_to<input type="datetime-local" bind:value={replayTo} /></label></div>
+ {#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}{#if vm.error?.includes('batch_size_above_hard_cap')}<p class="warning">{i18n.t('El lote supera el límite de seguridad. Confirma explícitamente para reintentarlo.')}</p>{/if}{#if vm.lastReplay}<p role="status">Replayed {vm.lastReplay.replayedCount} · impact {vm.lastReplay.impactCount} · sin evento original {vm.lastReplay.matchedWithoutEventData}</p>{/if}
+ <div class="actions end"><button type="button" onclick={() => showReplay=false}>{i18n.t('Cerrar')}</button><button class="primary" type="button" onclick={() => void replayBatch(ackLarge)} disabled={vm.saving}>{vm.error?.includes('batch_size_above_hard_cap')?i18n.t('Confirmar replay grande'):i18n.t('Ejecutar replay')}</button></div><label class="check"><input type="checkbox" bind:checked={ackLarge} />{i18n.t('Reconozco el replay masivo si el servidor exige confirmación.')}</label>
+ </section></div>{/if}
+
+ {#if showErrors}<div class="overlay"><section class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="errors-title"><h2 id="errors-title">{i18n.t('Registro global de errores webhook')}</h2><div class="filters"><select bind:value={errorSubscription} onchange={() => void loadErrorPage(0)}><option value="">{i18n.t('Todas las suscripciones')}</option>{#each vm.rows as r}<option value={r.subscriptionId}>{r.displayName}</option>{/each}</select><select bind:value={errorKind} onchange={() => void loadErrorPage(0)}><option value="">{i18n.t('Todos los errores')}</option>{#each vm.errorKinds as k}<option value={k}>{k}</option>{/each}</select><input type="datetime-local" bind:value={errorFrom} /><input type="datetime-local" bind:value={errorTo} /><button type="button" onclick={() => {errorSubscription='';errorKind='';errorFrom='';errorTo='';void loadErrorPage(0);}}>{i18n.t('Limpiar')}</button><button type="button" onclick={() => void loadErrorPage(0)}>{i18n.t('Filtrar')}</button></div>
+ {#if vm.errors.length===0}<p class="empty">{i18n.t('No hay errores para estos filtros.')}</p>{:else}<div class="table-wrap"><table><thead><tr><th>{i18n.t('Suscripción')}</th><th>Delivery</th><th>Status</th><th>Error</th><th>{i18n.t('Diagnóstico')}</th><th>{i18n.t('Fecha')}</th></tr></thead><tbody>{#each vm.errors as e (e.deliveryId)}<tr><td>{e.subscriptionDisplayName}<small>{e.connectorId}</small></td><td>{e.deliveryId}</td><td>{e.status}</td><td>{e.shortMessage}<small>{e.errorKind} · HTTP {e.httpStatus??'—'}</small></td><td title={e.triageHint}>{e.description}</td><td>{date(e.completedAt)}</td></tr>{/each}</tbody></table></div>{/if}
+ <div class="pager"><button type="button" onclick={() => void loadErrorPage(0)}>↻</button><span>{vm.errors.length} / {vm.errorsTotal}</span><button type="button" onclick={() => void loadErrorPage(errorsPage+50)} disabled={vm.errors.length===0||errorsPage+50>=vm.errorsTotal}>→</button></div><div class="actions end"><button type="button" onclick={() => showErrors=false}>{i18n.t('Cerrar')}</button></div>
+ </section></div>{/if}
+
+ {#if confirmRotate}<div class="overlay"><section class="dialog" role="alertdialog" aria-modal="true"><h2>{i18n.t('Rotar secreto')}</h2><p>{i18n.t('El secreto anterior se mantiene válido durante 24 horas. El nuevo valor se mostrará una sola vez.')}</p><div class="actions end"><button onclick={() => confirmRotate=null}>{i18n.t('Cancelar')}</button><button class="primary" onclick={() => void rotate()} disabled={vm.saving}>{i18n.t('Confirmar rotación')}</button></div></section></div>{/if}
+ {#if confirmDelete}<div class="overlay"><section class="dialog" role="alertdialog" aria-modal="true"><h2>{i18n.t('Revocar suscripción')}</h2><p>{i18n.t('La revocación detiene nuevos envíos y conserva el historial. No se puede reactivar una suscripción revocada.')}</p><div class="actions end"><button onclick={() => confirmDelete=null}>{i18n.t('Cancelar')}</button><button class="danger" onclick={() => void softDelete()} disabled={vm.saving}>{i18n.t('Confirmar revocación')}</button></div></section></div>{/if}
+ {#if confirmPurge}<div class="overlay"><section class="dialog" role="alertdialog" aria-modal="true"><h2>{i18n.t('Purgar suscripción')}</h2><p>{i18n.t('El borrado permanente elimina también el historial de entregas y los secretos. Solo se permite si no hay entregas pendientes o en vuelo.')}</p><div class="actions end"><button onclick={() => confirmPurge=null}>{i18n.t('Cancelar')}</button><button class="danger" onclick={() => void hardDelete()} disabled={vm.saving}>{i18n.t('Confirmar purga')}</button></div></section></div>{/if}
 </section>
 <style>
-	.page{max-width:56rem;margin:0 auto;padding:2rem 1.25rem}
-	header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1.25rem}
-	.eyebrow{margin:0;font-size:.68rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--navy)}
-	h1{margin:.2rem 0 .35rem;font-size:1.45rem}
-	header p{margin:0;color:var(--slate)}
-	.form{display:flex;flex-direction:column;gap:.8rem;margin-bottom:1rem;padding:1rem;border:1px solid var(--line);border-radius:10px}
-	label{display:flex;flex-direction:column;gap:.3rem}
-	input{padding:.5rem .65rem;border:1px solid var(--line);border-radius:var(--radius-field)}
-	.actions{display:flex;gap:.5rem}
-	button{padding:.45rem .9rem;min-height:2.25rem;max-height:2.5rem;border:1px solid var(--line);border-radius:8px;background:var(--surface);cursor:pointer;width:auto;align-self:flex-start}
-	.primary{background:var(--navy);color:#fff;border-color:var(--navy);white-space:nowrap}
-	.danger{color:var(--danger)}
-	.error{color:var(--danger)}
-	.warn{color:var(--warning,#b7791f)}
-	.empty{color:var(--slate)}
-	.mono{font-family:ui-monospace,monospace;font-size:.82rem}
-	.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:10px}
-	table{width:100%;border-collapse:collapse;font-size:.88rem}
-	th,td{padding:.65rem .75rem;border-bottom:1px solid var(--line);text-align:left}
-	th{background:var(--surface);color:var(--slate)}
+.page{max-width:92rem;margin:0 auto;padding:2rem 1.25rem}header,.section-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}header{margin-bottom:1.3rem}header p{color:var(--slate);margin:.3rem 0}.eyebrow{font-size:.68rem;letter-spacing:.13em;font-weight:700;color:var(--navy)}h1{font-size:1.5rem;margin:.2rem 0}.panel{border:1px solid var(--line);border-radius:12px;padding:1rem;margin:1rem 0;background:var(--surface)}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:9px}table{width:100%;border-collapse:collapse;font-size:.83rem;min-width:65rem}th,td{text-align:left;padding:.65rem .7rem;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--slate);font-weight:600}td small{display:block;color:var(--slate);font-size:.72rem;margin-top:.2rem}.actions{display:flex;gap:.35rem;flex-wrap:wrap;align-items:center}.actions.end{justify-content:flex-end;margin-top:.5rem}button{border:1px solid var(--line);border-radius:7px;padding:.4rem .65rem;background:var(--surface);color:inherit;cursor:pointer;font-size:.8rem}button:disabled{opacity:.5;cursor:not-allowed}.primary{background:var(--navy);color:white;border-color:var(--navy)}.danger,.error{color:var(--danger)}.error{padding:.6rem;background:color-mix(in srgb,var(--danger) 8%,transparent);border-radius:7px}.empty,.muted,.hint{color:var(--slate)}.mono,code{font-family:ui-monospace,monospace}.break{overflow-wrap:anywhere}.status{display:inline-block;padding:.2rem .5rem;border-radius:12px;background:var(--surface-muted);font-size:.75rem}.status.paused{color:var(--warning)}.status.revoked{color:var(--danger)}tr.selected{background:var(--surface-muted)}.link{border:0;padding:0;color:var(--navy);text-decoration:underline;background:transparent}.secret,.warning{padding:.9rem;border:1px solid var(--warning);border-radius:9px;margin:1rem 0;background:var(--surface)}.secret code{display:block;overflow-wrap:anywhere;padding:.65rem;background:var(--surface-muted);margin:.5rem 0}.detail{margin-top:1.25rem}.section-head{align-items:center}.section-head h2{margin:.15rem 0}.section-head.sub{margin:1.2rem 0 .65rem}.section-head h3{font-size:1rem;margin:0}.facts,.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.65rem;margin:1rem 0}.facts>div,.stats>div{border:1px solid var(--line);border-radius:8px;padding:.65rem}.facts small,.stats small{display:block;color:var(--slate);font-size:.72rem}.facts strong,.stats strong{display:block;margin-top:.25rem}.stats strong{font-size:1.2rem}.active{background:var(--navy);color:white}.pager{display:flex;justify-content:flex-end;align-items:center;gap:.75rem;margin:.65rem 0;color:var(--slate);font-size:.8rem}.overlay{position:fixed;inset:0;background:#10182899;display:grid;place-items:center;padding:1rem;z-index:80}.dialog{width:min(38rem,100%);max-height:92vh;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;gap:.75rem}.dialog.wide{width:min(70rem,100%)}.dialog label{display:flex;flex-direction:column;gap:.3rem;font-size:.85rem}.dialog input,.dialog select,.dialog textarea,.filters input,.filters select{width:100%;min-width:0;padding:.5rem .6rem;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:inherit}.numbers{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem}.filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem}.check{display:flex!important;flex-direction:row!important;align-items:center}.check input{width:auto!important}@media(max-width:720px){.page{padding:1rem .7rem}header,.section-head{flex-direction:column}.numbers,.filters{grid-template-columns:1fr}.actions{max-width:100%}}
 </style>

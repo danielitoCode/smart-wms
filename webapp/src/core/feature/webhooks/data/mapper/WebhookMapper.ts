@@ -1,16 +1,16 @@
-import type { WebhookSubscription } from '../../domain/entity/WebhookSubscription';
-import type { WebhookDto } from '../dto/WebhookDto';
-
-export const WebhookMapper = {
-	toDomain(dto: WebhookDto): WebhookSubscription {
-		return {
-			subscriptionId: dto.subscription_id,
-			name: dto.name,
-			url: dto.url ?? '',
-			status: dto.status ?? 'unknown',
-			eventTypes: dto.event_types ?? [],
-			createdAt: dto.created_at ?? null,
-			updatedAt: dto.updated_at ?? null
-		};
-	}
+import type {WebhookSubscription,WebhookStatsRollup,WebhookDelivery,WebhookStats,WebhookError,WebhookSecret,ReplayBatchResult} from '../../domain/entity/Webhook';
+import type {WebhookDto,WebhookStatsRollupDto,WebhookDeliveryDto,WebhookStatsDto,WebhookErrorDto,WebhookSecretDto,ReplayBatchResultDto,SubscriptionFilterDto} from '../dto/WebhookDto';
+const mapFilter=(f:SubscriptionFilterDto)=>({
+  ...(f?.event_types?{eventTypes:[...f.event_types]}:{}),
+  ...(f?.warehouse_ids?{warehouseIds:[...f.warehouse_ids]}:{}),
+  ...(f?.aggregate_external_id_allowlist?{aggregateExternalIdAllowlist:[...f.aggregate_external_id_allowlist]}:{})
+});
+const mapRollup=(s:WebhookStatsRollupDto):WebhookStatsRollup=>({attempts24h:s.attempts_24h,succeeded24h:s.succeeded_24h,failed24h:s.failed_24h,dlq24h:s.dlq_24h,successRate24h:s.success_rate_24h,pendingCount:s.pending_count});
+export const WebhookMapper={
+  toDomain(d:WebhookDto):WebhookSubscription{return {subscriptionId:d.subscription_id,connectorId:d.connector_id,displayName:d.display_name,deliveryUrl:d.delivery_url,subscriptionFilter:mapFilter(d.subscription_filter??{}),status:d.status,pauseReason:d.pause_reason,rateLimitPerSecond:d.rate_limit_per_second,pendingCeiling:d.pending_ceiling,dlqCeiling:d.dlq_ceiling,lastDeliveredEventId:d.last_delivered_event_id,createdAt:d.created_at,updatedAt:d.updated_at,stats:mapRollup(d.stats)};},
+  toSecret(d:WebhookSecretDto):WebhookSecret{return {subscriptionId:d.subscription_id,secret:d.secret,secretGeneration:d.secret_generation};},
+  toDelivery(d:WebhookDeliveryDto):WebhookDelivery{return {deliveryId:d.delivery_id,eventId:d.event_id,attemptNumber:d.attempt_number,status:'dlq',httpStatus:d.http_status,errorKind:d.error_kind,errorDetail:d.error_detail,attemptedAt:d.attempted_at,completedAt:d.completed_at,scheduledAt:d.scheduled_at,secretGeneration:d.secret_generation,event:d.event?{eventType:d.event.event_type,eventTimestamp:d.event.event_timestamp,aggregateExternalId:d.event.aggregate_external_id,warehouseId:d.event.warehouse_id,sourceTxnId:d.event.source_txn_id}:undefined};},
+  toStats(d:WebhookStatsDto):WebhookStats{return {subscriptionId:d.subscription_id,window:d.window,generatedAt:d.generated_at,attemptsTotal:d.attempts_total,succeeded:d.succeeded,failed:d.failed,dlq:d.dlq,inFlight:d.in_flight,pending:d.pending,successRate:d.success_rate,responseTimeMs:d.response_time_ms,topErrorKinds:d.top_error_kinds,currentLag:d.current_lag};},
+  toError(d:WebhookErrorDto):WebhookError{return {deliveryId:d.delivery_id,subscriptionId:d.subscription_id,subscriptionDisplayName:d.subscription_display_name,connectorId:d.connector_id,eventId:d.event_id,attemptNumber:d.attempt_number,status:d.status,httpStatus:d.http_status,errorKind:d.error_kind,errorDetail:d.error_detail,shortMessage:d.short_message,description:d.description,triageHint:d.triage_hint,completedAt:d.completed_at,attemptedAt:d.attempted_at,scheduledAt:d.scheduled_at};},
+  toReplay(d:ReplayBatchResultDto):ReplayBatchResult{return {subscriptionId:d.subscription_id,impactCount:d.impact_count,replayedCount:d.replayed_count,matchedWithEventData:d.matched_with_event_data,matchedWithoutEventData:d.matched_without_event_data,detail:d.detail};}
 };
