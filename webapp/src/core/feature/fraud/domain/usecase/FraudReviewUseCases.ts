@@ -11,6 +11,15 @@ export class ListFraudReviewsUseCase {
   }
 }
 
+export class GetFraudReviewDetailUseCase {
+  constructor(private readonly repository: FraudReviewRepository) {}
+
+  execute(id: number) {
+    if (!Number.isSafeInteger(id) || id <= 0) throw new Error('Pedido no válido');
+    return this.repository.getDetail(id);
+  }
+}
+
 export class UpdateFraudMemoUseCase {
   constructor(private readonly repository: FraudReviewRepository) {}
 
