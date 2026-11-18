@@ -1,10 +1,13 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
+	import { createAuthGuardState } from '../../../auth/ui/state/authGuardState.svelte';
 	import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
 	import { createCustomersState } from '../state/customersState.svelte';
 
 	const state = createCustomersState();
+	const authGuard = getContext<ReturnType<typeof createAuthGuardState>>('authGuard');
 	const warehouseSelection = getContext<WarehouseSelectionState>('warehouseSelection');
+	let searchScopeError = $state<string | null>(null);
 	let lastWarehouseId: number | null | undefined = undefined;
 	$effect(() => {
 		if (!warehouseSelection.initialized) return;
@@ -14,7 +17,17 @@
 		state.setWarehouseId(activeWarehouseId);
 		void state.load(1);
 	});
-	function onSearch(event: Event) { event.preventDefault(); void state.load(1); }
+	function onSearch(event: Event) {
+		event.preventDefault();
+		// Flask global search is only warehouse-filtered when warehouse_id is supplied.
+		// Do not issue an unscoped search for a USER without an active authorized warehouse.
+		if (authGuard.user?.role !== 'ADMIN' && warehouseSelection.warehouseId == null) {
+			searchScopeError = 'No hay un almacén autorizado activo para buscar clientes.';
+			return;
+		}
+		searchScopeError = null;
+		void state.load(1);
+	}
 </script>
 
 <section class="page">
@@ -26,6 +39,7 @@
 		<span class="warehouse-context">Almacén activo: {warehouseSelection.warehouseId ?? 'Todos los autorizados'}</span>
 		<button type="submit" disabled={state.loading}>Buscar</button>
 	</form>
+	{#if searchScopeError}<p class="status error" role="alert">{searchScopeError}</p>{/if}
 
 	{#if state.loading}<p class="status">Cargando clientes…</p>
 	{:else if state.error}<p class="status error" role="alert">{state.error}</p><button type="button" onclick={() => state.load(1)}>Reintentar</button>
