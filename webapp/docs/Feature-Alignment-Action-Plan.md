@@ -415,7 +415,9 @@ Referencia: [React Dashboard.jsx](https://github.com/danielitoCode/smart-wms/blo
 - Domain/Application/Data/DI implementados para catálogo, schema, credenciales, test, estado, reset, sync y borrado.
 - UI incluye formulario schema-driven, secretos enmascarados, validación de campos obligatorios, test, estado y sincronización por almacén.
 - Pruebas Data/Application/UI cubren payloads, secretos, desconexión, credenciales inválidas, timeout, 409, cambios de almacén durante operaciones pendientes, limpieza de selección y polling hasta completar una sincronización.
-- Se corrigió el bloqueo previo de `svelte-check` en las rutas de Component Lab. La ejecución posterior validó typecheck y build; una expectativa inicial de polling se ajustó en las pruebas. **El cierre queda condicionado a la ejecución completa de CI del último commit y a revisar los resultados de las suites.**
+- Se corrigió el bloqueo previo de `svelte-check` en las rutas de Component Lab. Se ajustaron las pruebas de polling y concurrencia.
+- **CERRADA:** Webapp CI del commit `e2e8f4576d96a847f98d021e7be66d0babe1ff97` terminó en éxito. Typecheck, build, Domain, Application, Infrastructure, UI/presentation, i18n, Integration, full regression y coverage by feature paths pasaron. Gitleaks, Dependency Audit y Lockfile Version Check también pasaron.
+- La ejecución independiente del workflow `Tests` (suite Flask completa) seguía en curso al registrar este cierre; no se atribuye su resultado a F5.1 ni se declara aprobada.
 
 
 1. **Domain:** Connector, Credential, SyncStatus y configuración.
