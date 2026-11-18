@@ -157,5 +157,6 @@ export const gapEn: Record<string, string> = {
   "Cabecera, cliente, direcciones y líneas de venta": "Sales order header, customer, addresses and lines",
   "Ajustes de inventario": "Inventory adjustments",
   "Correcciones aprobadas de existencias por SKU, almacén y bin": "Approved stock corrections by SKU, warehouse and bin"
-
+,
+  "Límite del servidor: 5.000 registros y 10 MiB por petición.": "Server limit: 5,000 records and 10 MiB per request."
 };

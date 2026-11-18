@@ -157,5 +157,6 @@ export const gapIt: Record<string, string> = {
   "Cabecera, cliente, direcciones y líneas de venta": "Testata, cliente, indirizzi e righe di vendita",
   "Ajustes de inventario": "Rettifiche inventario",
   "Correcciones aprobadas de existencias por SKU, almacén y bin": "Correzioni approvate delle giacenze per SKU, magazzino e ubicazione"
-
+,
+  "Límite del servidor: 5.000 registros y 10 MiB por petición.": "Limite server: 5.000 record e 10 MiB per richiesta."
 };

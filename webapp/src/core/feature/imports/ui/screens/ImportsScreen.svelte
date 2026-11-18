@@ -70,6 +70,7 @@
 		<label>{i18n.t('Archivo CSV o JSON')}
 			<input type="file" accept=".csv,.json,text/csv,application/json" bind:this={fileInput} onchange={onFileChange} />
 		</label>
+		<p class="hint">{i18n.t('Límite del servidor: 5.000 registros y 10 MiB por petición.')}</p>
 		{#if vm.source}
 			<p class="file-meta">{vm.source.name} · {(vm.source.size / 1024).toFixed(1)} KB · {vm.records.length} {i18n.t('registros preparados')}</p>
 		{/if}
