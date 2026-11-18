@@ -10,14 +10,13 @@ function address(
 	row: SalesOrderCustomerDto,
 	warehouseId: number | null
 ): CustomerAddress | null {
-	const prefix = kind === 'billing' ? 'billing' : kind === 'shipping' ? 'shipping' : 'customer';
 	const line1 = kind === 'customer' ? row.customer_address : kind === 'shipping' ? (row.shipping_address_line1 ?? row.ship_address) : row.billing_address_line1;
-	const line2 = kind === 'customer' ? null : row[`${prefix}_address_line2` as keyof SalesOrderCustomerDto] as string | null | undefined;
-	const city = kind === 'customer' ? null : row[`${prefix}_address_city` as keyof SalesOrderCustomerDto] as string | null | undefined;
-	const state = kind === 'customer' ? null : row[`${prefix}_address_state` as keyof SalesOrderCustomerDto] as string | null | undefined;
-	const postalCode = kind === 'customer' ? null : row[`${prefix}_address_postal_code` as keyof SalesOrderCustomerDto] as string | null | undefined;
-	const country = kind === 'customer' ? null : row[`${prefix}_address_country` as keyof SalesOrderCustomerDto] as string | null | undefined;
-	const phone = kind === 'customer' ? row.customer_phone : row[`${prefix}_address_phone` as keyof SalesOrderCustomerDto] as string | null | undefined;
+	const line2 = kind === 'customer' ? null : kind === 'shipping' ? row.shipping_address_line2 : row.billing_address_line2;
+	const city = kind === 'customer' ? null : kind === 'shipping' ? row.shipping_address_city : row.billing_address_city;
+	const state = kind === 'customer' ? null : kind === 'shipping' ? row.shipping_address_state : row.billing_address_state;
+	const postalCode = kind === 'customer' ? null : kind === 'shipping' ? row.shipping_address_postal_code : row.billing_address_postal_code;
+	const country = null;
+	const phone = kind === 'customer' ? row.customer_phone : null;
 	const lines = [line1, line2].map((v) => (v ?? '').trim()).filter(Boolean);
 	if (!lines.length && !city && !state && !postalCode && !country && !phone) return null;
 	return { kind, lines, city: city ?? null, state: state ?? null, postalCode: postalCode ?? null, country: country ?? null, phone: phone ?? null, warehouseId };
