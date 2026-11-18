@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { FraudReviewRepository } from '../../../../../core/feature/fraud/domain/repository/FraudReviewRepository';
+import type { FraudReviewRepository } from '../../../../../../core/feature/fraud/domain/repository/FraudReviewRepository';
 import {
   ListFraudReviewsUseCase,
   GetFraudReviewDetailUseCase,
   PushFraudOrderToQueueUseCase,
   UpdateFraudMemoUseCase
-} from '../../../../../core/feature/fraud/domain/usecase/FraudReviewUseCases';
+} from '../../../../../../core/feature/fraud/domain/usecase/FraudReviewUseCases';
 
 function repository() {
   return {
