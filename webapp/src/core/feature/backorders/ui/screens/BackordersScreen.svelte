@@ -1,5 +1,5 @@
 <script lang="ts">
-	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
+	import UiStatePanel from '#lib/components/UiStatePanel.svelte';
   import { getContext } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -164,7 +164,7 @@
   {#if scopeError}
     <p class="message error" role="alert">{scopeErrorMessage}</p>
   {:else if vm.error}
-    <UiStatePanel kind="error" title={i18n.t('No se pudieron cargar los backorders')} message={vm.error} retry={() => vm.load()} />
+    <UiStatePanel kind="error" title={i18n.t('No se pudieron cargar los backorders')} message={vm.error} retry={() => vm.load(warehouseSelection?.warehouseId ?? null, activeTab)} />
   {:else if vm.loading}
     <UiStatePanel kind="loading" title={i18n.t('Cargando backorders')} message={i18n.t('Estamos consultando los pedidos pendientes y su disponibilidad.')} />
   {:else if visibleRows.length === 0}
