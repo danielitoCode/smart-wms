@@ -197,11 +197,17 @@ export function createItemsState(dependencies: ItemsDependencies = createItemsDe
 		archivingIds = [...archivingIds, item.id];
 		error = null;
 		try {
-			await dependencies.archiveItem.execute(item.id);
-			await load(page);
+			const result = await dependencies.archiveItem.execute(item.id);
+			// Flask toggles is_active and returns the authoritative resulting value.
+			// Apply it immediately so a failed list refresh cannot leave a stale action label.
+			items = items.map((current) => current.id === item.id
+				? { ...current, active: result.active }
+				: current);
 			if (detail?.item.id === item.id) {
-				await openDetail(item.id);
+				detail = { ...detail, item: { ...detail.item, active: result.active } };
 			}
+			await load(page);
+			if (detail?.item.id === item.id) await openDetail(item.id);
 			return true;
 		} catch (err) {
 			error = toUserMessage(err, 'No se pudo archivar/restaurar el producto');
