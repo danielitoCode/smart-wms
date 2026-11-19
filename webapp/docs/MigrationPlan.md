@@ -660,3 +660,10 @@ Cada riesgo debe reabrirse solo con evidencia del HEAD/Flask vigente. No asumir 
 - Documento rector: `webapp/docs/MigrationPlan.md`
 
 **Principio final:** el resultado buscado no es una colección de módulos Svelte que compilan. Es una aplicación WMS cuyos recorridos completos son coherentes de extremo a extremo, respetan permisos y almacenes, mantienen la integridad del inventario, coinciden con React donde corresponde y comunican honestamente las capacidades que Flask todavía no ofrece.
+
+
+## R0 — Integración transversal de sesión, grants y UI
+
+La política observada de `allowed_functions`, el alcance real de `allowed_pages`, el scope de almacenes, las pruebas de integración añadidas y los criterios pendientes de cierre están documentados en [R0-Session-Grants-Integration.md](./R0-Session-Grants-Integration.md).
+
+**No declarar R0 cerrado:** la adopción de `UiStatePanel` debe verificarse pantalla por pantalla; el nuevo bloque de tests debe ejecutarse con Node 26; y el resultado del workflow CI del HEAD definitivo debe quedar registrado. No se debe introducir enforcement genérico de `allowed_functions` en el frontend ni atribuírselo a Flask sin implementar y probar el contrato backend.
