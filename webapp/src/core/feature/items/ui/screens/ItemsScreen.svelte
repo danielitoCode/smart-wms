@@ -180,6 +180,30 @@
 					oninput={(e) => vm.setFormField('weightLbs', e.currentTarget.value)}
 				/>
 			</label>
+			{#if vm.editId != null}
+				<label>
+					{i18n.t('Punto de reposición')}
+					<input
+						type="number"
+						min="0"
+						step="1"
+						value={vm.form.reorderPoint}
+						oninput={(e) => vm.setFormField('reorderPoint', e.currentTarget.value)}
+						placeholder={i18n.t('Sin configurar')}
+					/>
+				</label>
+				<label>
+					{i18n.t('Cantidad de reposición')}
+					<input
+						type="number"
+						min="0"
+						step="1"
+						value={vm.form.reorderQty}
+						oninput={(e) => vm.setFormField('reorderQty', e.currentTarget.value)}
+						placeholder={i18n.t('Sin configurar')}
+					/>
+				</label>
+			{/if}
 			<label>
 				{i18n.t('Bin por defecto (ID)')}
 				<input
@@ -210,8 +234,19 @@
 				<dt>{i18n.t('SKU')}</dt><dd class="mono">{vm.detail.item.sku}</dd>
 				<dt>{i18n.t('UPC')}</dt><dd class="mono">{vm.detail.item.upc ?? '—'}</dd>
 				<dt>{i18n.t('MPN')}</dt><dd class="mono">{vm.detail.item.mpn ?? '—'}</dd>
+				<dt>{i18n.t('Descripción')}</dt><dd>{vm.detail.item.description ?? '—'}</dd>
+				<dt>{i18n.t('Códigos de barras alternativos')}</dt><dd class="mono">{vm.detail.item.barcodeAliases.length ? vm.detail.item.barcodeAliases.join(', ') : '—'}</dd>
 				<dt>{i18n.t('Categoría')}</dt><dd>{vm.detail.item.category ?? '—'}</dd>
 				<dt>{i18n.t('Peso (lb)')}</dt><dd>{vm.detail.item.weightLbs != null ? `${vm.detail.item.weightLbs} lb` : '—'}</dd>
+				<dt>{i18n.t('Largo (in)')}</dt><dd>{vm.detail.item.lengthIn ?? '—'}</dd>
+				<dt>{i18n.t('Ancho (in)')}</dt><dd>{vm.detail.item.widthIn ?? '—'}</dd>
+				<dt>{i18n.t('Alto (in)')}</dt><dd>{vm.detail.item.heightIn ?? '—'}</dd>
+				<dt>{i18n.t('Punto de reposición')}</dt><dd>{vm.detail.item.reorderPoint ?? '—'}</dd>
+				<dt>{i18n.t('Cantidad de reposición')}</dt><dd>{vm.detail.item.reorderQty ?? '—'}</dd>
+				<dt>{i18n.t('Control por lote')}</dt><dd>{vm.detail.item.isLotTracked ? i18n.t('Sí') : i18n.t('No')}</dd>
+				<dt>{i18n.t('Control por número de serie')}</dt><dd>{vm.detail.item.isSerialTracked ? i18n.t('Sí') : i18n.t('No')}</dd>
+				<dt>{i18n.t('Creado')}</dt><dd>{vm.detail.item.createdAt ?? '—'}</dd>
+				<dt>{i18n.t('Última actualización')}</dt><dd>{vm.detail.item.updatedAt ?? '—'}</dd>
 				<dt>{i18n.t('Bin por defecto')}</dt><dd class="mono">{vm.detail.item.defaultBinCode ?? '—'}</dd>
 				<dt>{i18n.t('Estado')}</dt><dd>{vm.detail.item.active ? i18n.t('Activo') : i18n.t('Archivado')}</dd>
 			</dl>
@@ -228,8 +263,9 @@
 					</table>
 				</div>
 			{/if}
+			<h3>{i18n.t('Inventario')}</h3>
+			<p class="status inventory-scope-warning">{i18n.t('El inventario mostrado es el devuelto por el servidor y no incluye identificación del almacén. No debe interpretarse como inventario exclusivo del almacén seleccionado.')}</p>
 			{#if vm.detail.inventory.length}
-				<h3>{i18n.t('Inventario')}</h3>
 				<table>
 					<thead>
 						<tr>
