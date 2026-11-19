@@ -7,7 +7,11 @@ import { EnsureAuthenticatedUseCase } from '../../core/feature/auth/domain/useca
 import { ChangePasswordUseCase } from '../../core/feature/auth/domain/usecase/ChangePasswordUseCase';
 import { LogoutUseCase } from '../../core/feature/auth/domain/usecase/LogoutUseCase';
 import { authSession } from '../../core/infrastructure/auth/AuthSession';
-import { notifyWarehouseChanged, beginWarehouseScopedRequest, resetWarehouseRequestScopeForTests } from '../../core/infrastructure/warehouse/WarehouseRequestScope';
+import {
+	beginWarehouseScopedRequest,
+	notifyWarehouseChanged,
+	resetWarehouseRequestScopeForTests
+} from '../../core/infrastructure/warehouse/WarehouseRequestScope';
 
 afterEach(() => {
 	vi.unstubAllGlobals();
@@ -46,51 +50,36 @@ function createStack(fetchMock: ReturnType<typeof vi.fn>) {
 }
 
 describe('Auth HTTP integration', () => {
-	it('POST /api/auth/login maps user and stores session snapshot', async () => {
+	it('logs in and obtains the complete authorization snapshot from /me', async () => {
 		const fetchMock = vi.fn()
 			.mockResolvedValueOnce(jsonResponse({ token: 'opaque', user: sampleUserDto }))
 			.mockResolvedValueOnce(jsonResponse(sampleUserDto));
 		const { repo } = createStack(fetchMock);
-		const result = await new LoginUseCase(repo).execute({
-			username: 'op1',
-			password: 'secret12'
-		});
-		expect(fetchMock).toHaveBeenNthCalledWith(
-			1,
-			'https://wms.test/api/auth/login',
-			expect.objectContaining({ method: 'POST', credentials: 'include' })
-		);
-		expect(fetchMock).toHaveBeenNthCalledWith(
-			2,
-			'https://wms.test/api/auth/me',
-			expect.objectContaining({ method: 'GET', credentials: 'include' })
-		);
+		const result = await new LoginUseCase(repo).execute({ username: 'op1', password: 'secret12' });
+		expect(fetchMock).toHaveBeenNthCalledWith(1, 'https://wms.test/api/auth/login', expect.objectContaining({ method: 'POST', credentials: 'include' }));
+		expect(fetchMock).toHaveBeenNthCalledWith(2, 'https://wms.test/api/auth/me', expect.objectContaining({ method: 'GET', credentials: 'include' }));
 		expect(result.user.userId).toBe(7);
 		expect(result.user.allowedPages).toEqual(['inventory', 'receiving']);
 		expect(authSession.getUser()?.username).toBe('op1');
 	});
 
-	it('GET /api/auth/me validates session without client token', async () => {
+	it('validates a cookie session through /me without a client token', async () => {
 		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(sampleUserDto));
 		const { repo } = createStack(fetchMock);
 		const result = await new EnsureAuthenticatedUseCase(repo).execute();
-		expect(fetchMock).toHaveBeenCalledWith(
-			'https://wms.test/api/auth/me',
-			expect.objectContaining({ method: 'GET', credentials: 'include' })
-		);
+		expect(fetchMock).toHaveBeenCalledWith('https://wms.test/api/auth/me', expect.objectContaining({ method: 'GET', credentials: 'include' }));
 		expect(result).toMatchObject({ ok: true });
 		if (result.ok) expect(result.user.username).toBe('op1');
 	});
 
-	it('on /me 401 tries POST /api/auth/refresh then /me again', async () => {
-		const fetchMock = vi
-			.fn()
+	it('refreshes the cookie and retries /me after a 401', async () => {
+		const fetchMock = vi.fn()
 			.mockResolvedValueOnce(jsonResponse({ error: 'unauthorized' }, 401))
 			.mockResolvedValueOnce(jsonResponse({ token: 'new' }))
 			.mockResolvedValueOnce(jsonResponse(sampleUserDto));
 		const { repo } = createStack(fetchMock);
 		const result = await new EnsureAuthenticatedUseCase(repo).execute();
-		expect(fetchMock.mock.calls.map((c) => c[0])).toEqual([
+		expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
 			'https://wms.test/api/auth/me',
 			'https://wms.test/api/auth/refresh',
 			'https://wms.test/api/auth/me'
@@ -98,32 +87,19 @@ describe('Auth HTTP integration', () => {
 		expect(result.ok).toBe(true);
 	});
 
-	it('POST /api/auth/change-password sends snake_case body', async () => {
+	it('sends change-password fields in the Flask snake_case contract', async () => {
 		const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ message: 'ok' }));
 		const { repo } = createStack(fetchMock);
-		await new ChangePasswordUseCase(repo).execute({
-			currentPassword: 'old-pass-1',
-			newPassword: 'new-pass-99'
-		});
-		const [, init] = fetchMock.mock.calls[0];
-		expect(fetchMock.mock.calls[0][0]).toBe('https://wms.test/api/auth/change-password');
-		expect(JSON.parse(init.body)).toEqual({
-			current_password: 'old-pass-1',
-			new_password: 'new-pass-99'
-		});
+		await new ChangePasswordUseCase(repo).execute({ currentPassword: 'old-pass-1', newPassword: 'new-pass-99' });
+		const [url, init] = fetchMock.mock.calls[0];
+		expect(url).toBe('https://wms.test/api/auth/change-password');
+		expect(JSON.parse(init.body)).toEqual({ current_password: 'old-pass-1', new_password: 'new-pass-99' });
 	});
 
-	it('POST /api/auth/logout clears in-memory session even if server fails', async () => {
+	it('clears local session on logout even when the remote endpoint fails', async () => {
 		authSession.setUser({
-			userId: 1,
-			username: 'x',
-			fullName: 'X',
-			role: 'USER',
-			warehouseIds: [],
-			allowedPages: [],
-			allowedFunctions: [],
-			allowedOverrides: [],
-			mustChangePassword: false
+			userId: 1, username: 'x', fullName: 'X', role: 'USER', warehouseIds: [],
+			allowedPages: [], allowedFunctions: [], allowedOverrides: [], mustChangePassword: false
 		});
 		const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ error: 'down' }, 500));
 		const { repo } = createStack(fetchMock);
@@ -131,15 +107,13 @@ describe('Auth HTTP integration', () => {
 		expect(authSession.getUser()).toBeNull();
 	});
 
-	it('login rejects inactive user after successful HTTP 200', async () => {
-		const inactive = { ...sampleUserDto, is_active: false };
-		const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ token: 't', user: inactive }));
+	it('rejects an inactive account even when login returns HTTP 200', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ token: 't', user: { ...sampleUserDto, is_active: false } }));
 		const { repo } = createStack(fetchMock);
-		await expect(
-			new LoginUseCase(repo).execute({ username: 'op1', password: 'secret12' })
-		).rejects.toThrow(/inactivo/i);
+		await expect(new LoginUseCase(repo).execute({ username: 'op1', password: 'secret12' })).rejects.toThrow(/inactivo/i);
 	});
-	it('does not restore an authenticated user when /me resolves after logout', async () => {
+
+	it('does not restore a user when /me resolves after logout', async () => {
 		let resolveMe!: (response: Response) => void;
 		const fetchMock = vi.fn()
 			.mockImplementationOnce(() => new Promise<Response>((resolve) => { resolveMe = resolve; }))
@@ -167,44 +141,35 @@ describe('Auth HTTP integration', () => {
 		await expect(pendingLogin).rejects.toThrow(/sesión cambió/i);
 		expect(authSession.getUser()).toBeNull();
 	});
-
 });
 
-
-describe('session, grants and request-scope integration', () => {
-	it('refreshes the authorization snapshot from /me after a page grant is revoked', async () => {
+describe('grants and request cancellation integration', () => {
+	it('replaces the cached page and function grants when /me reports a revocation', async () => {
 		const before = { ...sampleUserDto, allowed_functions: ['receive', 'putaway'], allowed_pages: ['inventory', 'receiving', 'putaway'] };
 		const after = { ...sampleUserDto, allowed_functions: ['receive'], allowed_pages: ['inventory', 'receiving'] };
-		const fetchMock = vi.fn()
-			.mockResolvedValueOnce(jsonResponse(before))
-			.mockResolvedValueOnce(jsonResponse(after));
+		const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(before)).mockResolvedValueOnce(jsonResponse(after));
 		const { repo } = createStack(fetchMock);
-
 		await repo.getCurrentUser();
 		expect(authSession.getUser()?.allowedPages).toContain('putaway');
 		expect(authSession.getUser()?.allowedFunctions).toContain('putaway');
-
 		await repo.getCurrentUser();
 		expect(authSession.getUser()?.allowedPages).not.toContain('putaway');
 		expect(authSession.getUser()?.allowedFunctions).not.toContain('putaway');
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 	});
 
-	it('cancels an in-flight API request when its caller aborts', async () => {
-		const fetchMock = vi.fn((_url: string, init: RequestInit) =>
-			new Promise<Response>((_resolve, reject) => {
-				init.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
-			})
-		);
-		const { repo } = createStack(fetchMock);
+	it('normalizes caller cancellation of an in-flight API request', async () => {
+		const fetchMock = vi.fn((_url: string, init: RequestInit) => new Promise<Response>((_resolve, reject) => {
+			init.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+		}));
+		createStack(fetchMock);
 		const controller = new AbortController();
 		const request = new ApiClient('https://wms.test').get('/api/inventory', { signal: controller.signal });
 		controller.abort();
 		await expect(request).rejects.toMatchObject({ code: 'cancelled' });
-		void repo;
 	});
 
-	it('invalidates and aborts warehouse-scoped requests after a warehouse switch', () => {
+	it('aborts requests and invalidates results after an active warehouse change', () => {
 		const request = beginWarehouseScopedRequest();
 		expect(request.isCurrent()).toBe(true);
 		notifyWarehouseChanged();

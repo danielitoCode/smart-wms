@@ -10,42 +10,22 @@ vi.mock('../../../../../core/feature/warehouses/di/warehouses.dependencies', () 
 }));
 
 import { createWarehouseSelectionState } from '../../../../../core/feature/warehouses/ui/state/warehouseSelectionState.svelte';
-import { beginWarehouseScopedRequest, resetWarehouseRequestScopeForTests } from '../../../../../core/infrastructure/warehouse/WarehouseRequestScope';
+import {
+	beginWarehouseScopedRequest,
+	resetWarehouseRequestScopeForTests
+} from '../../../../../core/infrastructure/warehouse/WarehouseRequestScope';
 
 const warehouse = (id: number) => ({
 	id, code: 'WH-' + id, name: 'Warehouse ' + id, address: null, active: true, createdAt: null
-	it('aborts work from the previous warehouse when the active selection changes', async () => {
-		const state = createWarehouseSelectionState();
-		await state.load({
-			userId: 4, username: 'zone-user', fullName: 'Zone User', role: 'USER',
-			warehouseIds: [1, 2], allowedPages: ['zones'], allowedFunctions: [], allowedOverrides: [],
-			mustChangePassword: false
-		});
-		const pending = beginWarehouseScopedRequest();
-		state.select(2);
-		expect(state.warehouseId).toBe(2);
-		expect(pending.signal.aborted).toBe(true);
-		expect(pending.isCurrent()).toBe(false);
-		pending.release();
-	});
-
-	it('moves away from a warehouse that is removed from the refreshed user assignments', async () => {
-		const state = createWarehouseSelectionState();
-		const user = {
-			userId: 4, username: 'zone-user', fullName: 'Zone User', role: 'USER',
-			warehouseIds: [1, 2], allowedPages: ['zones'], allowedFunctions: [], allowedOverrides: [],
-			mustChangePassword: false
-		};
-		await state.load(user);
-		state.select(2);
-		await state.syncFromUser({ ...user, warehouseIds: [1] });
-		expect(state.warehouseId).toBe(1);
-		expect(state.selectableIds).toEqual([1]);
-	});
-
 });
 
-describe('warehouse selection state for zone workflows', () => {
+const zoneUser = (warehouseIds = [1, 2]) => ({
+	userId: 4, username: 'zone-user', fullName: 'Zone User', role: 'USER',
+	warehouseIds, allowedPages: ['zones'], allowedFunctions: [], allowedOverrides: [],
+	mustChangePassword: false
+});
+
+describe('warehouse selection state', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		resetWarehouseRequestScopeForTests();
@@ -54,11 +34,7 @@ describe('warehouse selection state for zone workflows', () => {
 
 	it('allows selecting only warehouses assigned to a user with the zones grant', async () => {
 		const state = createWarehouseSelectionState();
-		await state.load({
-			userId: 4, username: 'zone-user', fullName: 'Zone User', role: 'USER',
-			warehouseIds: [1, 2], allowedPages: ['zones'], allowedFunctions: [], allowedOverrides: [],
-			mustChangePassword: false
-		});
+		await state.load(zoneUser());
 		expect(state.canSelect).toBe(true);
 		expect(state.warehouseId).toBe(1);
 		state.select(2);
@@ -68,29 +44,43 @@ describe('warehouse selection state for zone workflows', () => {
 		expect(state.warehouses.map(item => item.id)).toEqual([1, 2]);
 	});
 
-	it('preserves the selected warehouse when synchronizing the authenticated user without reloading the catalogue', async () => {
+	it('preserves the selected warehouse when synchronizing unchanged authority', async () => {
 		const state = createWarehouseSelectionState();
-		const user = {
-			userId: 4, username: 'zone-user', fullName: 'Zone User', role: 'USER',
-			warehouseIds: [1, 2], allowedPages: ['zones'], allowedFunctions: [], allowedOverrides: [],
-			mustChangePassword: false
-		};
+		const user = zoneUser();
 		await state.load(user);
 		state.select(2);
-
 		await state.syncFromUser(user);
-
 		expect(dependencies.listWarehouses.execute).toHaveBeenCalledTimes(1);
 		expect(state.warehouseId).toBe(2);
 		expect(state.selectableIds).toEqual([1, 2]);
 	});
 
-	it('does not expose warehouse selection to a user without warehouse, zones or bins grants', async () => {
+	it('aborts requests from the previous warehouse when the active selection changes', async () => {
+		const state = createWarehouseSelectionState();
+		await state.load(zoneUser());
+		const pending = beginWarehouseScopedRequest();
+		state.select(2);
+		expect(state.warehouseId).toBe(2);
+		expect(pending.signal.aborted).toBe(true);
+		expect(pending.isCurrent()).toBe(false);
+		pending.release();
+	});
+
+	it('moves away from a warehouse removed from refreshed assignments', async () => {
+		const state = createWarehouseSelectionState();
+		await state.load(zoneUser());
+		state.select(2);
+		await state.syncFromUser(zoneUser([1]));
+		expect(state.warehouseId).toBe(1);
+		expect(state.selectableIds).toEqual([1]);
+	});
+
+	it('does not expose warehouse selection without a warehouse-related page grant', async () => {
 		const state = createWarehouseSelectionState();
 		await state.load({
-			userId: 5, username: 'reader', fullName: 'Reader', role: 'USER',
-			warehouseIds: [1], allowedPages: ['items'], allowedFunctions: [], allowedOverrides: [],
-			mustChangePassword: false
+			...zoneUser([1]),
+			username: 'reader',
+			allowedPages: ['items']
 		});
 		expect(state.canSelect).toBe(false);
 		state.select(2);
