@@ -41,7 +41,7 @@ export function createAuthGuardState() {
 	}
 
 	/**
-	 * Soft refresh of grants via /me (+ optional refresh).
+	 * Soft refresh of grants via /me.
 	 * Used on internal navigation so revoked page keys take effect without full boot flash.
 	 * Network failures keep the previous in-memory user (Flask still enforces 403).
 	 */
