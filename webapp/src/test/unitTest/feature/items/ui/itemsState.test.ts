@@ -127,7 +127,48 @@ describe('Items UI state', () => {
 
 		expect(state.form.weightLbs).toBe('12.5');
 		expect(state.form.defaultBinId).toBe('4');
+		expect(state.form.reorderPoint).toBe('4');
+		expect(state.form.reorderQty).toBe('12');
 		expect(state.showForm).toBe(true);
+	});
+
+
+	it('includes validated reorder values only in update payloads', async () => {
+		const state = createItemsState(dependencies);
+		state.openEdit({ ...item, reorderPoint: 5, reorderQty: 20 });
+		await state.save();
+		expect(dependencies.updateItem.execute).toHaveBeenCalledWith(item.id, expect.objectContaining({
+			reorderPoint: 5,
+			reorderQty: 20
+		}));
+	});
+
+	it.each([
+		['reorderPoint', '-1'],
+		['reorderPoint', '1.5'],
+		['reorderPoint', 'abc'],
+		['reorderQty', '-2'],
+		['reorderQty', '2.5'],
+		['reorderQty', 'xyz']
+	] as const)('rejects invalid %s before calling the update use case', async (field, value) => {
+		const state = createItemsState(dependencies);
+		state.openEdit(item);
+		state.setFormField(field, value);
+		await expect(state.save()).resolves.toBe(false);
+		expect(dependencies.updateItem.execute).not.toHaveBeenCalled();
+		expect(state.showForm).toBe(true);
+		expect(state.error).toMatch(/entero mayor o igual que cero/i);
+	});
+
+	it('does not send reorder fields when creating an item', async () => {
+		const state = createItemsState(dependencies);
+		state.openCreate();
+		state.setFormField('sku', 'SKU-8');
+		state.setFormField('itemName', 'Caja nueva');
+		await state.save();
+		const payload = vi.mocked(dependencies.createItem.execute).mock.calls[0][0];
+		expect(payload).not.toHaveProperty('reorderPoint');
+		expect(payload).not.toHaveProperty('reorderQty');
 	});
 
 	it('loads and exposes item detail', async () => {
