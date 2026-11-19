@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
 	import { onMount, getContext } from 'svelte';
 	import type { I18nState } from '#lib/i18n/i18n.svelte';
 	import { createChannelsState } from '../state/channelsState.svelte';
@@ -21,7 +22,7 @@
 		</div>
 		<button class="primary" type="button" onclick={() => (showForm = !showForm)}>{i18n.t('Nuevo canal')}</button>
 	</header>
-	{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
+	{#if vm.error}<UiStatePanel kind="error" title={i18n.t('No se pudieron cargar los canales')} message={vm.error} retry={() => vm.load()} />{/if}
 	{#if showForm}
 		<form class="form" onsubmit={(e) => { e.preventDefault(); void onCreate(); }}>
 			<label>{i18n.t('Nombre')}<input required bind:value={name} /></label>
@@ -31,8 +32,8 @@
 			</div>
 		</form>
 	{/if}
-	{#if vm.loading}<p>{i18n.t('Cargando…')}</p>
-	{:else if vm.rows.length === 0}<p class="empty">{i18n.t('No hay canales.')}</p>
+	{#if vm.loading}<UiStatePanel kind="loading" title={i18n.t('Cargando canales')} message={i18n.t('Estamos recuperando los canales de integración.')} />
+	{:else if vm.rows.length === 0}<UiStatePanel kind="empty" title={i18n.t('Sin canales')} message={i18n.t('Todavía no hay canales de integración registrados.')} />
 	{:else}
 		<div class="table-wrap"><table>
 			<thead><tr><th>{i18n.t('Nombre')}</th><th>{i18n.t('Estado')}</th><th>{i18n.t('Sistema origen')}</th><th>{i18n.t('Acciones')}</th></tr></thead>

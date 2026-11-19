@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
 	import { onMount, getContext } from 'svelte';
 	import type { I18nState } from '#lib/i18n/i18n.svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
@@ -63,9 +64,9 @@
 	</div>
 
 	{#if vm.loading && vm.rows.length === 0}
-		<p class="empty" role="status">{i18n.t('Cargando auditoría…')}</p>
+		<UiStatePanel kind="loading" title={i18n.t('Cargando auditoría')} message={i18n.t('Estamos recuperando los eventos de auditoría.')} />
 	{:else if vm.rows.length === 0}
-		<p class="empty">{i18n.t('No hay eventos para los filtros seleccionados.')}</p>
+		<UiStatePanel kind="empty" title={i18n.t('Sin eventos')} message={i18n.t('No hay eventos para los filtros seleccionados.')} />
 	{:else}
 		<div class="table-wrap">
 			<table>

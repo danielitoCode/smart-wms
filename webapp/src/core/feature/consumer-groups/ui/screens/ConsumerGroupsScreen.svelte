@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
   import { onMount, getContext } from 'svelte';
   import type { I18nState } from '#lib/i18n/i18n.svelte';
   import { createConsumerGroupsState } from '../state/consumerGroupsState.svelte';
@@ -92,12 +93,12 @@
     <button class="primary" type="button" onclick={() => openGroup()} disabled={vm.registry.length === 0}>{i18n.t('Nuevo grupo')}</button>
   </header>
 
-  {#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
-  {#if vm.loading}<p>{i18n.t('Cargando…')}</p>{/if}
+  {#if vm.error}<UiStatePanel kind="error" title={i18n.t('No se pudo cargar la configuración')} message={vm.error} retry={() => vm.load()} />{/if}
+  {#if vm.loading}<UiStatePanel kind="loading" title={i18n.t('Cargando conectores')} message={i18n.t('Estamos recuperando conectores y consumer groups.')} />{/if}
 
   <section class="panel">
     <div class="section-head"><div><h2>{i18n.t('Connector Registry')}</h2><p>{i18n.t('Registro independiente de conectores disponibles.')}</p></div><button type="button" onclick={() => openConnector()}>{i18n.t('Nuevo conector')}</button></div>
-    {#if vm.registry.length === 0 && !vm.loading}<p class="empty">{i18n.t('No hay conectores registrados.')}</p>{:else}
+    {#if vm.registry.length === 0 && !vm.loading}<UiStatePanel kind="empty" title={i18n.t('Sin conectores')} message={i18n.t('No hay conectores registrados.')} />{:else}
       <div class="table-wrap"><table><thead><tr><th>ID</th><th>{i18n.t('Nombre visible')}</th><th>{i18n.t('Creado')}</th><th>{i18n.t('Acciones')}</th></tr></thead>
         <tbody>{#each vm.registry as item (item.connectorId)}<tr><td class="mono">{item.connectorId}</td><td>{item.displayName}</td><td>{formatDate(item.createdAt)}</td><td class="actions"><button type="button" onclick={() => openConnector(item)}>{i18n.t('Editar')}</button><button class="danger" type="button" onclick={() => { connectorDelete = item; formError = ''; }}>{i18n.t('Eliminar')}</button></td></tr>{/each}</tbody>
       </table></div>
@@ -106,7 +107,7 @@
 
   <section class="panel">
     <div class="section-head"><div><h2>{i18n.t('Consumer Groups')}</h2><p>{i18n.t('Cursor, heartbeat y filtros asociados a cada conector.')}</p></div><button class="primary" type="button" onclick={() => openGroup()} disabled={vm.registry.length === 0}>{i18n.t('Nuevo grupo')}</button></div>
-    {#if vm.groups.length === 0 && !vm.loading}<p class="empty">{i18n.t('No hay consumer groups.')}</p>{:else}
+    {#if vm.groups.length === 0 && !vm.loading}<UiStatePanel kind="empty" title={i18n.t('Sin consumer groups')} message={i18n.t('No hay grupos de consumo registrados.')} />{:else}
       <div class="table-wrap"><table><thead><tr><th>{i18n.t('Group ID')}</th><th>{i18n.t('Conector')}</th><th>{i18n.t('Cursor')}</th><th>{i18n.t('Heartbeat')}</th><th>{i18n.t('Suscripción')}</th><th>{i18n.t('Estado')}</th><th>{i18n.t('Acciones')}</th></tr></thead>
         <tbody>{#each vm.groups as item (item.consumerGroupId)}<tr><td class="mono">{item.consumerGroupId}</td><td class="mono">{vm.registry.find(c => c.connectorId === item.connectorId)?.displayName ?? item.connectorId}</td><td>{item.lastCursor}</td><td>{formatDate(item.lastHeartbeat)}</td><td>{subscriptionLabel(item.subscription)}</td><td><span class:muted={!item.lastHeartbeat} class="state">{item.lastHeartbeat ? i18n.t('Con heartbeat') : i18n.t('Sin heartbeat')}</span></td><td class="actions"><button type="button" onclick={() => openGroup(item)}>{i18n.t('Editar')}</button><button class="danger" type="button" onclick={() => { groupDelete = item; }}>{i18n.t('Eliminar')}</button></td></tr>{/each}</tbody>
       </table></div>

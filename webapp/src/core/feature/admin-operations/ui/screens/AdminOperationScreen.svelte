@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
   import { getContext, untrack } from 'svelte';
   import { page } from '$app/state';
   import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
@@ -255,12 +256,11 @@
     {/if}
 
     {#if vm.error}
-      <p class="error" role="alert">{vm.error}</p>
-      <button type="button" onclick={load}>{i18n.t('Reintentar')}</button>
+      <UiStatePanel kind="error" title={i18n.t('No se pudieron cargar los registros')} message={vm.error} retry={load} />
     {:else if vm.loading}
-      <div class="skeleton" aria-label={i18n.t('Cargando')}><span></span><span></span><span></span></div>
+      <UiStatePanel kind="loading" title={i18n.t('Cargando registros')} message={i18n.t('Estamos consultando la operación seleccionada.')} />
     {:else if vm.rows.length === 0}
-      <p class="empty">{i18n.t('No hay registros para mostrar.')}</p>
+      <UiStatePanel kind="empty" title={i18n.t('Sin registros')} message={i18n.t('No hay registros para mostrar con los filtros actuales.')} />
     {:else}
       <div class="table-wrap">
         <table>

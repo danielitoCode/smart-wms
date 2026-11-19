@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
 	import { getContext } from 'svelte';
 	import { createAuthGuardState } from '../../../auth/ui/state/authGuardState.svelte';
 	import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
@@ -44,9 +45,9 @@
 	</form>
 	{#if searchScopeError}<p class="status error" role="alert">{searchScopeError}</p>{/if}
 
-	{#if state.loading}<p class="status">{i18n.t('Cargando clientes…')}</p>
-	{:else if state.error}<p class="status error" role="alert">{state.error}</p><button type="button" onclick={() => state.load(1)}>{i18n.t('Reintentar')}</button>
-	{:else if state.customers.length === 0}<p class="status">{i18n.t('No hay clientes para estos criterios.')}</p>
+	{#if state.loading}<UiStatePanel kind="loading" title={i18n.t('Cargando clientes')} message={i18n.t('Estamos buscando clientes en los pedidos del almacén autorizado.')} />
+	{:else if state.error}<UiStatePanel kind="error" title={i18n.t('No se pudieron cargar los clientes')} message={state.error} retry={() => state.load(1)} />
+	{:else if state.customers.length === 0}<UiStatePanel kind="empty" title={i18n.t('Sin coincidencias')} message={i18n.t('No hay clientes para estos criterios de búsqueda.')} />
 	{:else}
 		<div class="table-wrap"><table>
 			<thead><tr><th>{i18n.t('Cliente')}</th><th>{i18n.t('Teléfono')}</th><th>{i18n.t('Pedidos en página')}</th><th>{i18n.t('Almacenes')}</th><th></th></tr></thead>
