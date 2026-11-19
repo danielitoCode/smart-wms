@@ -7,6 +7,7 @@
 	import ThemeToggle from '../../lib/components/ThemeToggle.svelte';
 	import WarehousePicker from '../../lib/components/WarehousePicker.svelte';
 	import SessionBootView from '../../lib/components/SessionBootView.svelte';
+	import UiStatePanel from '../../lib/components/UiStatePanel.svelte';
 	import type { I18nState } from '../../lib/i18n/i18n.svelte';
 	import { createAuthGuardState } from '../../core/feature/auth/ui/state/authGuardState.svelte';
 	import { createWarehouseSelectionState } from '../../core/feature/warehouses/ui/state/warehouseSelectionState.svelte';
@@ -314,14 +315,18 @@
 			</header>
 			<main class="content">
 				{#if warehouseSelection.error}
-					<section class="denied" role="alert">
-						<p>{warehouseSelection.error}</p>
-					</section>
+					<UiStatePanel
+						kind="error"
+						title={i18n.t('Contexto de almacén no disponible')}
+						message={warehouseSelection.error}
+					/>
 				{/if}
 				{#if !hasRouteAccess}
-					<section class="denied" role="alert">
-						<p>{i18n.t('No tienes permiso para ver esta página.')}</p>
-					</section>
+					<UiStatePanel
+						kind="forbidden"
+						title={i18n.t('Acceso denegado')}
+						message={i18n.t('No tienes permiso para ver esta página.')}
+					/>
 				{:else}
 					{@render children()}
 				{/if}
