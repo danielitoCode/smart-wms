@@ -33,7 +33,7 @@ function emptyForm(): ItemFormModel {
 function parseOptionalNonNegativeInteger(value: string, field: string): number | null {
 	const normalized = value.trim();
 	if (normalized === '') return null;
-	if (!/^\\d+$/.test(normalized)) {
+	if (!/^\d+$/.test(normalized)) {
 		throw new Error(`${field} debe ser un número entero mayor o igual que cero`);
 	}
 	const parsed = Number(normalized);
