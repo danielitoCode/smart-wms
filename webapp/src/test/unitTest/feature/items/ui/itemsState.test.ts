@@ -252,6 +252,38 @@ describe('Items UI state', () => {
 		);
 	});
 
+	it.each([
+		[true, false],
+		[false, true]
+	] as const)('uses Flask is_active=%s -> %s as the authoritative archive result', async (initialActive, resultingActive) => {
+		vi.mocked(dependencies.archiveItem.execute).mockResolvedValueOnce({
+			message: 'updated',
+			active: resultingActive
+		});
+		vi.mocked(dependencies.listItems.execute).mockRejectedValueOnce(new ApiError(503, 'No se pudo actualizar el listado', 'unavailable'));
+		const state = createItemsState(dependencies);
+		await state.load();
+		const row = { ...item, active: initialActive };
+		// Keep the fixture row consistent with the state under test.
+		vi.mocked(dependencies.listItems.execute).mockResolvedValueOnce({ ...firstPage, items: [row] });
+		await state.load();
+		await expect(state.toggleArchive(row)).resolves.toBe(true);
+		expect(state.items[0].active).toBe(resultingActive);
+		expect(state.error).toBe('No se pudo actualizar el listado');
+	});
+
+	it('does not change the item state when the archive endpoint rejects', async () => {
+		vi.mocked(dependencies.archiveItem.execute).mockRejectedValueOnce(
+			new ApiError(400, 'No se pudo cambiar el estado', 'bad_request')
+		);
+		const state = createItemsState(dependencies);
+		await state.load();
+		await expect(state.toggleArchive(item)).resolves.toBe(false);
+		expect(state.items[0].active).toBe(true);
+		expect(state.error).toBe('No se pudo cambiar el estado');
+		expect(state.isArchiving(item.id)).toBe(false);
+	});
+
 	it('deletes only after confirmation and clears the selected detail', async () => {
 		const state = createItemsState(dependencies);
 		await state.openDetail(item.id);
