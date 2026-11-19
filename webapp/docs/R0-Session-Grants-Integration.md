@@ -76,3 +76,24 @@ No se afirma ejecución local ni resultado verde de CI en este commit. El conect
 - [ ] Verificar CI del HEAD final; todos los jobs obligatorios deben estar verdes.
 - [ ] Actualizar este documento con SHA del HEAD y enlaces a los runs.
 
+
+
+## 2.1 Adopción realizada de UiStatePanel
+
+Se integró el panel compartido en los estados de página de estas features:
+
+- **Operación de almacén:** Inventory, Cycle Count, Put-away, Receiving, Picking, Packing, Shipping, Picking Batches, Picking Batch Detail, Picking Tickets y sus vistas de impresión.
+- **Catálogos y almacenes:** Items, Warehouses, Warehouse Detail, Workspace de Zones/Bins, Preferred Bins y Customers.
+- **Órdenes y movimientos:** Purchase Orders, Sales Orders, Backorders y detalle, Transfer Orders, Inter-Warehouse Transfers, Refunds y Returns.
+- **Administración y plataforma:** Dashboard, Admin Operations, Audit Log, Users, Vendors, Settings, Notifications, API Tokens, Channels, Consumer Groups, Integrations, Webhooks, Inbound Activity, POS Activity, Fraud Review e Inventory Adjustments.
+
+La adopción cubre estados bloqueantes de carga, error de consulta, vacío y acceso/contexto no disponible cuando son estados de página. Los flujos de autenticación, cambio de contraseña, formularios, validaciones por campo, errores de una mutación que no bloquea la pantalla, errores por fila y mensajes de éxito conservan sus patrones locales; no deben transformarse mecánicamente en una pantalla de error.
+
+Las pantallas ZonesScreen y BinsScreen delegan su estado al WarehouseWorkspaceScreen; SalesOrderDetailScreen delega el detalle en SalesOrdersScreen. No se duplicó la gestión de estado en esos wrappers. ImportsScreen conserva errores y resultados locales de preparación/importación CSV/JSON, que no son estados de carga de una consulta inicial.
+
+## 3.1 Cobertura adicional de carreras de sesión y almacén
+
+- AuthRepositoryImpl mantiene una generación de sesión. logout() incrementa la generación y limpia el usuario local antes de la llamada remota; una respuesta tardía de getCurrentUser() o del tramo /me de login no puede volver a establecer el usuario si la generación cambió.
+- Integración: logout mientras /me está pendiente; logout mientras login ya obtuvo respuesta pero /me sigue pendiente; revocación de allowed_pages y allowed_functions al consultar /me de nuevo; cancelación de ApiClient con AbortSignal.
+- Warehouse selection: cambiar de almacén aborta peticiones de la generación anterior; quitar el almacén seleccionado de las asignaciones del usuario desplaza el contexto a un almacén todavía autorizado; selección fuera del conjunto permitido no cambia el almacén activo.
+
