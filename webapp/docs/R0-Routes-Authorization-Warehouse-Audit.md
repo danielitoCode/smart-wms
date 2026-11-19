@@ -137,23 +137,11 @@ El menú de `routes/(app)/+layout.svelte` enlaza a varias rutas `/management/*`,
 - **Impacto:** un usuario con varias asignaciones puede recibir o cancelar recibos de otro almacén asignado mientras el selector muestra uno diferente.
 - **Resolución:** verificar warehouse de PO contra el contexto activo antes de recibir/cancelar; invalidar detalle al cambiar de almacén; mantener el scope SQL server-side.
 
-### R0-WH-08 — Purchase Orders no aplica warehouse scope en rutas administrativas
-- **Severidad:** crítica (lectura y mutación cross-warehouse).
-- **Evidencia:** en `api/routes/admin/admin_orders.py`, `GET /purchase-orders` (línea 110) añade filtro `warehouse_id` solo si el caller lo proporciona; no aplica `warehouse_scope_clause`. `GET /purchase-orders/<po_id>` (183) consulta por ID sin scope. Las mutaciones `PUT /purchase-orders/<po_id>`, add/update/delete line, close/reopen y el listado/unreceive de receipts consultan por IDs y usan page grant, pero no validan el warehouse del PO/receipt contra `g.current_user.warehouse_ids`.
-- **Impacto:** un USER con grant `purchase-orders` puede listar o modificar órdenes de otros almacenes mediante requests directas si conoce los IDs. El middleware solo valida un `warehouse_id` explícito en path/query/body; estas rutas usan `po_id` o `receipt_id` y no envían ese campo.
-- **Resolución:** aplicar `warehouse_scope_clause` a SELECT/COUNT de listado y a todas las lecturas/mutaciones por PO/receipt ID; en updates usar SELECT ... FOR UPDATE con scope SQL y mantener el mismo scope hasta la mutación. Pruebas cross-warehouse para cada verbo.
-
 ### R0-WH-10 — Purchase Orders: listado/detalle y mutaciones por ID sin aislamiento
 - **Severidad:** crítica (exposición y modificación cross-warehouse).
 - **Evidencia:** `api/routes/admin/admin_orders.py::list_purchase_orders` (línea 110) añade `warehouse_id` solo si viene en query; no aplica `warehouse_scope_clause`. `get_purchase_order` (183) busca por `po_id` sin scope. `update_purchase_order` (316), `add_purchase_order_line` (429), `update_purchase_order_line` (532), `delete_purchase_order_line` (632), `close_purchase_order` (713), `reopen_purchase_order` (735), `list_po_receipts` (762) y `unreceive_receipt` (819) se protegen con page grant, pero no se observó scope SQL ni `check_warehouse_access` sobre el PO/receipt recuperado.
 - **Impacto:** un usuario con grant `purchase-orders` o `receiving` puede consultar o alterar POs/receipts de almacenes no asignados mediante IDs, y el listado sin filtro devuelve registros de todos los almacenes.
 - **Resolución:** usar scope SQL para listados y lecturas; para cada mutación cargar PO/receipt mediante SELECT ... FOR UPDATE con warehouse scope antes de validar estado o escribir. Los endpoints deben responder 404 para IDs fuera de ámbito.
-
-### R0-WH-09 — Sales Order mutaciones por ID no verifican warehouse scope
-- **Severidad:** crítica (mutación cross-warehouse).
-- **Evidencia:** `GET /sales-orders/<so_id>` aplica `warehouse_scope_clause`, pero `PUT /sales-orders/<so_id>` (1684) carga `sales_orders` solo por `so_id`; `PATCH /sales-orders/<so_id>/address` (1996) hace lo mismo y además solo tiene `require_auth`, sin page grant; `POST /sales-orders/<so_id>/cancel` (2356) delega al servicio por ID sin validar scope en el handler; add/update/delete line (3550, 3631, 3738) también cargan el SO por ID sin scope. La ruta memo sí aplica scope y grant `fraud`, por lo que sirve de contraste.
-- **Impacto:** page grant `sales-orders` no limita las mutaciones al almacén asignado; address PATCH no exige ni siquiera el grant de la página. Las restricciones de estado y el override `so-full-edit` no sustituyen autorización de almacén.
-- **Resolución:** scope SQL al cargar el SO antes de cada mutación, o derivar el warehouse y llamar a `check_warehouse_access` antes de tocar líneas/estado/direcciones; añadir el page/function grant requerido a address. Mantener 404 indistinguible para SO inexistente y SO de otro almacén cuando corresponda.
 
 ### R0-WH-11 — Sales Orders: varias mutaciones por so_id no verifican warehouse scope
 - **Severidad:** crítica (mutación cross-warehouse).
@@ -189,7 +177,7 @@ El menú de `routes/(app)/+layout.svelte` enlaza a varias rutas `/management/*`,
 | Shipping | fulfill | requireWarehouseId y pedido comparado con almacén | require_auth + warehouse_scope_clause + filtro contextual opcional | Parcial |
 | Dashboard | update preferences, mark pickup, update pickup | el tab de datos usa warehouseId; mutaciones de pickup no reciben warehouseId | preferencias por usuario; pickup usa endpoints admin sales-orders | Falta completar matriz de permisos |
 | Purchase Orders | create/update header, add/update/delete line, close/reopen, unreceive | el feature no quedó auditado en todas sus pantallas; endpoints usan PO/receipt IDs | page grant purchase-orders/receiving, pero no SQL warehouse scope en las rutas administrativas revisadas | Brecha crítica R0-WH-10 |
-| Purchase Orders | create/update header, add/update/delete line, close/reopen, unreceive | el feature no quedó auditado en todas sus pantallas; endpoints usan PO/receipt IDs | page grant purchase-orders/receiving, pero no SQL warehouse scope en las rutas administrativas revisadas | Brecha crítica R0-WH-08 |
+
 | Sales Orders | create/update, address, cancel, line CRUD, fulfillment/RMA actions | create inicia con almacén activo pero permite editar ID; el state no impone scope en cada mutación | list/detail aplican scope; varios handlers mutables por so_id no lo aplican; address PATCH carece de page grant | Brecha crítica R0-WH-11 |
 
 ---
