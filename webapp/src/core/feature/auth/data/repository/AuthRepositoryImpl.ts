@@ -8,8 +8,11 @@ export class AuthRepositoryImpl implements AuthRepository {
 	constructor(private readonly datasource: AuthRemoteDataSource) {}
 
 	async login(credentials: Credentials): Promise<LoginResult> {
-		const response = await this.datasource.login(credentials.username, credentials.password);
-		const user = AuthMapper.toUser(response.user);
+		// /login returns the account profile but not the web page/override grants.
+		// Load /me immediately so the first route decision uses the same complete,
+		// current authorization snapshot as a cold application bootstrap.
+		await this.datasource.login(credentials.username, credentials.password);
+		const user = AuthMapper.toUser(await this.datasource.me());
 		this.storeSessionUser(user);
 		return { user };
 	}
