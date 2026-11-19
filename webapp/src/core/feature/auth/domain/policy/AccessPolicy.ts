@@ -171,3 +171,46 @@ export function canSelectWarehouse(
 }
 
 export { ALL_OVERRIDE_KEYS };
+
+
+/**
+ * Explicit route policy for the authenticated Svelte application shell.
+ * A null policy means the path has not been reviewed and must fail closed.
+ */
+export type RouteAccessPolicy =
+	| { kind: 'authenticated' }
+	| { kind: 'all'; pageKeys: readonly string[] }
+	| { kind: 'any'; pageKeys: readonly string[] };
+
+export function canAccessAnyPages(
+	role: AccessRole,
+	allowedPages: readonly string[],
+	requiredKeys: readonly string[]
+): boolean {
+	if (role === 'ADMIN') return true;
+	return requiredKeys.some((key) => allowedPages.includes(key));
+}
+
+export function routeAccessPolicyForPath(pathname: string): RouteAccessPolicy | null {
+	const path = pathname.replace(/\\/+$/, '') || '/';
+
+	// These operational scanner flows are authenticated, then authorized
+	// by Flask's allowed_functions / endpoint-specific checks, not page grants.
+	if (
+		path === '/picking' || path.startsWith('/picking/') ||
+		path === '/packing' || path.startsWith('/packing/') ||
+		path === '/shipping' || path.startsWith('/shipping/') ||
+		path === '/change-password' || path.startsWith('/change-password/')
+	) {
+		return { kind: 'authenticated' };
+	}
+
+	// The Data landing page is a tab container: any one of these page grants
+	// is sufficient to enter it; each child route still has its own gate.
+	if (path === '/data') {
+		return { kind: 'any', pageKeys: ['warehouses', 'bins', 'zones', 'preferred-bins'] };
+	}
+
+	const pageKeys = requiredPageKeysForPath(path);
+	return pageKeys.length > 0 ? { kind: 'all', pageKeys } : null;
+}
