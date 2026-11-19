@@ -13,10 +13,10 @@ describe('WarehouseMapper.toZone', () => {
 	});
 	it('rejects unsupported zone types and missing parent warehouse identity', () => {
 		expect(() => WarehouseMapper.toZone({
-			zone_id: 11, warehouse_id: 2, zone_code: 'X', zone_name: 'X', zone_type: 'UNKNOWN'
+			zone_id: 11, warehouse_id: 2, zone_code: 'X', zone_name: 'X', zone_type: 'UNKNOWN', is_active: true
 		})).toThrow(/Unsupported zone type/);
 		expect(() => WarehouseMapper.toZone({
-			zone_id: 11, warehouse_id: 0, zone_code: 'X', zone_name: 'X', zone_type: 'STORAGE'
+			zone_id: 11, warehouse_id: 0, zone_code: 'X', zone_name: 'X', zone_type: 'STORAGE', is_active: true
 		})).toThrow(/zone warehouse id/);
 	});
 });
