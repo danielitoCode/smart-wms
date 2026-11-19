@@ -23,6 +23,7 @@ vi.mock('../../../../../core/infrastructure/auth/AuthSession', () => ({
 }));
 
 import { createWarehouseDetailState } from '../../../../../core/feature/warehouses/ui/state/warehouseDetailState.svelte';
+import { notifyWarehouseChanged, resetWarehouseRequestScopeForTests } from '../../../../../core/infrastructure/warehouse/WarehouseRequestScope';
 
 const zone = { id: 11, warehouseId: 1, code: 'PICK', name: 'Picking', zoneType: 'PICKING' as const, active: true, binsCount: 2 };
 const bin = { id: 3, warehouseId: 1, zoneId: 11, zoneName: 'Picking', code: 'A-01', barcode: 'BC-01', binType: 'Pickable' as const, aisle: 'A', rowNumber: 1, levelNumber: 1, positionNumber: 1, pickSequence: 1, putawaySequence: 1, active: true, maxWeightLbs: 100, maxVolumeCuft: 20, quantityOnHand: 0, quantityAllocated: 0, inventoryLines: 0 };
@@ -31,6 +32,7 @@ const binPage = { items: [bin], total: 1, page: 1, pages: 1, perPage: 50 };
 describe('WarehouseDetailState zone and bins interactions', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		resetWarehouseRequestScopeForTests();
 		auth.user = { role: 'ADMIN', allowedPages: ['warehouses', 'zones', 'bins'] };
 		deps.getWarehouse.execute.mockResolvedValue({ id: 1, code: 'WH-01', name: 'Central', address: null, active: true, createdAt: null });
 		deps.listZones.execute.mockResolvedValue([zone]);
@@ -218,6 +220,28 @@ describe('WarehouseDetailState zone and bins interactions', () => {
 		deps.getBinDetail.execute.mockRejectedValueOnce(Object.assign(new Error('Bin not found'), { status: 404 }));
 		expect(await state.viewBin(404)).toBe(false);
 		expect(state.error).toContain('Bin not found');
+	});
+
+
+	it('drops a zones response after the active warehouse generation changes', async () => {
+		let resolveZones!: (value: typeof zone[]) => void;
+		deps.listZones.execute.mockImplementationOnce(() => new Promise<typeof zone[]>((resolve) => { resolveZones = resolve; }));
+		const state = createWarehouseDetailState(1, true, true);
+		const pending = state.load();
+		await Promise.resolve();
+		await Promise.resolve();
+		notifyWarehouseChanged();
+		resolveZones([zone]);
+		expect(await pending).toBe(false);
+		expect(deps.listBins.execute).not.toHaveBeenCalled();
+	});
+
+	it('rejects bins returned for a different zone even when warehouse matches', async () => {
+		deps.listBins.execute.mockResolvedValueOnce({ ...binPage, items: [{ ...bin, zoneId: 12 }] });
+		const state = createWarehouseDetailState(1, true, true);
+		expect(await state.load(11)).toBe(false);
+		expect(state.error).toContain('selected zone');
+		expect(state.bins).toEqual([]);
 	});
 
 });
