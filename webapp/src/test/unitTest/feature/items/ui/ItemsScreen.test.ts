@@ -18,17 +18,17 @@ const vm = vi.hoisted(() => ({
 	filter: 'active',
 	loading: false,
 	detailLoading: false,
-	detailError: null,
-	error: null,
+	detailError: null as string | null,
+	error: null as string | null,
 	page: 1,
 	pages: 3,
 	total: 101,
 	showForm: false,
-	editId: null,
+	editId: null as number | null,
 	form: {},
 	saving: false,
-	deleteId: null,
-	detail: {
+	deleteId: null as number | null,
+	detail: ({
 		item: {
 			id: 7,
 			sku: 'SKU-7',
@@ -53,7 +53,7 @@ const vm = vi.hoisted(() => ({
 		},
 		preferredBins: [{ preferredBinId: 3, binId: 4, binCode: 'A-01-02', zoneName: 'Picking', priority: 1 }],
 		inventory: [{ inventoryId: 9, binId: 4, binCode: 'A-01-02', zoneName: 'Picking', quantityOnHand: 20, quantityAllocated: 5 }]
-	},
+	} as any) as any,
 	setQuery: vi.fn(),
 	setFilter: vi.fn(),
 	setFormField: vi.fn(),
