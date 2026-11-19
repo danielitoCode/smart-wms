@@ -56,8 +56,6 @@ export const WarehouseMapper = {
 			pickSequence: dto.pick_sequence ?? 0,
 			putawaySequence: dto.putaway_sequence ?? 0,
 			active: dto.is_active,
-			maxWeightLbs: dto.max_weight_lbs == null ? null : Number(dto.max_weight_lbs),
-			maxVolumeCuft: dto.max_volume_cuft == null ? null : Number(dto.max_volume_cuft),
 			quantityOnHand: dto.quantity_on_hand ?? 0,
 			quantityAllocated: dto.quantity_allocated ?? 0,
 			inventoryLines: dto.inventory_lines ?? 0
