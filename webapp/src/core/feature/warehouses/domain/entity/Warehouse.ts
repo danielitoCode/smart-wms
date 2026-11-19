@@ -14,14 +14,12 @@ export type Bin = {
 	code: string; barcode: string | null; binType: BinType; aisle: string | null;
 	rowNumber: number | null; levelNumber: number | null; positionNumber: number | null;
 	pickSequence: number; putawaySequence: number; active: boolean;
-	maxWeightLbs: number | null; maxVolumeCuft: number | null;
 	quantityOnHand: number; quantityAllocated: number; inventoryLines: number;
 };
 export type CreateBinInput = {
 	warehouseId: number; zoneId: number; code: string; barcode: string; binType: BinType;
 	aisle?: string | null; rowNumber?: number | null; levelNumber?: number | null;
 	positionNumber?: number | null; pickSequence?: number; putawaySequence?: number;
-	maxWeightLbs?: number | null; maxVolumeCuft?: number | null;
 };
 export type UpdateBinInput = {
 	id: number; zoneId?: number; code?: string; barcode?: string; binType?: BinType;
