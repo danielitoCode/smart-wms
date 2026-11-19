@@ -792,15 +792,6 @@
 		padding: 0 0 0.5rem;
 	}
 
-	.denied {
-		max-width: 32rem;
-		margin: 2rem auto;
-		padding: 1.25rem;
-		border: 1px solid var(--line);
-		border-radius: 0.75rem;
-		background: var(--surface);
-	}
-
 	.scrim {
 		display: none;
 	}
