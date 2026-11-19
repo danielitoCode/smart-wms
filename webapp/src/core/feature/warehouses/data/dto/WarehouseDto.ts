@@ -9,21 +9,20 @@ export type WarehouseListResponseDto = {
 };
 export type WarehouseDetailResponseDto = { warehouse: WarehouseListItemDto; zones?: ZoneDto[] };
 export type ZoneDto = {
-	id?: number; zone_id?: number; warehouse_id: number; zone_code?: string; code?: string;
-	zone_name?: string; name?: string; zone_type: string; is_active?: boolean; active?: boolean; bins_count?: number;
+	zone_id: number; warehouse_id: number; zone_code: string; zone_name: string;
+	zone_type: string; is_active: boolean; bins_count?: number;
 };
 export type ZoneListResponseDto = {
 	zones?: ZoneDto[]; items?: ZoneDto[]; data?: ZoneDto[];
 	total?: number; page?: number; per_page?: number; pages?: number;
 };
 export type BinDto = {
-	id?: number; bin_id?: number; warehouse_id: number; zone_id?: number | null;
-	zone_name?: string | null; bin_code?: string; code?: string;
-	bin_barcode?: string | null; barcode?: string | null; bin_type: string;
-	aisle?: string | null; row_num?: number | null; level_num?: number | null;
-	position_num?: number | null; pick_sequence?: number; putaway_sequence?: number;
-	is_active?: boolean; active?: boolean;
-	max_weight_lbs?: number | string | null; max_volume_cuft?: number | string | null;
+	bin_id: number; warehouse_id: number; zone_id: number; bin_code: string;
+	bin_barcode: string; bin_type: string; is_active: boolean;
+	zone_name?: string | null; aisle?: string | null; row_num?: number | null;
+	level_num?: number | null; position_num?: number | null;
+	pick_sequence: number; putaway_sequence: number;
+	max_weight_lbs?: number | null; max_volume_cuft?: number | null;
 	quantity_on_hand?: number; quantity_allocated?: number; inventory_lines?: number;
 };
 export type BinListResponseDto = {
