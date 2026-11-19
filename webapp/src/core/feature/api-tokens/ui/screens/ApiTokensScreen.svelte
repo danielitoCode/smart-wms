@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
 	import { onMount, getContext } from 'svelte';
 	import type { I18nState } from '#lib/i18n/i18n.svelte';
 	import { createApiTokensState } from '../state/apiTokensState.svelte';
@@ -160,9 +161,9 @@
 	{/if}
 
 	{#if vm.loading}
-		<p>{i18n.t('Cargando…')}</p>
+		<UiStatePanel kind="loading" title={i18n.t('Cargando tokens')} message={i18n.t('Estamos consultando los tokens de integración.')} />
 	{:else if vm.rows.length === 0}
-		<p class="empty">{i18n.t('No hay tokens registrados.')}</p>
+		<UiStatePanel kind="empty" title={i18n.t('Sin tokens')} message={i18n.t('No hay tokens registrados.')} />
 	{:else}
 		<div class="table-wrap">
 			<table>

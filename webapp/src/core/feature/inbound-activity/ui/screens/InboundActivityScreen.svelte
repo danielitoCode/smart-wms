@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
 	import { onMount, getContext } from 'svelte';
 	import type { I18nState } from '#lib/i18n/i18n.svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
@@ -49,7 +50,7 @@
 		<p>{i18n.t('Las solicitudes rechazadas, los errores de validación y los reintentos sin éxito no se guardan en estas tablas y no aparecen aquí. Los reenvíos idempotentes devuelven la fila existente; esta vista no ofrece replay ni reintento.')}</p>
 		<p>{i18n.t('El permiso inbound permite consultar registros de integración de todos los almacenes; esta bandeja no tiene aislamiento por almacén.')}</p>
 	</aside>
-	{#if vm.loading && vm.rows.length === 0}<p class="muted" role="status">{i18n.t('Cargando actividad entrante…')}</p>
+	{#if vm.loading && vm.rows.length === 0}<UiStatePanel kind="loading" title={i18n.t('Cargando actividad entrante')} message={i18n.t('Estamos consultando los eventos de entrada.')} />
 	{:else if vm.rows.length === 0 && vm.error}<p class="empty">{i18n.t('No se pudo recuperar la actividad. Revisa el error anterior e inténtalo de nuevo.')}</p>
 	{:else if vm.rows.length === 0}<p class="empty">{vm.loading ? i18n.t('Cargando actividad entrante…') : i18n.t('No hay actividad entrante para estos filtros.')}</p>
 	{:else}

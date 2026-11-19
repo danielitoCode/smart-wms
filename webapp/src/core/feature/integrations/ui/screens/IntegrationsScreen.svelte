@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
   import { onMount, onDestroy, getContext } from 'svelte';
   import UiLoader from '../../../../../lib/components/UiLoader.svelte';
   import type { I18nState } from '#lib/i18n/i18n.svelte';
@@ -62,11 +63,11 @@
 </script>
 <section class="page">
   <header><div><p class="eyebrow">ABELLIS · SMART WMS</p><h1>{i18n.t('Integraciones')}</h1><p>{i18n.t('Conectores externos, credenciales y sincronización por almacén.')}</p></div></header>
-  {#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
+  {#if vm.error}<UiStatePanel kind="error" title={i18n.t('No se pudieron cargar los conectores')} message={vm.error} />{/if}
   {#if vm.message}<p class="success" role="status">{vm.message}</p>{/if}
   {#if !warehouse.warehouseId}<p class="notice">{i18n.t('Selecciona un almacén para administrar credenciales y sincronización.')}</p>{/if}
-  {#if vm.loading}<UiLoader label={i18n.t('Cargando…')} />{/if}
-  {#if vm.rows.length === 0 && !vm.loading}<p class="empty">{i18n.t('No hay conectores registrados.')}</p>{/if}
+  {#if vm.loading}<UiStatePanel kind="loading" title={i18n.t('Cargando conectores')} message={i18n.t('Estamos recuperando la configuración de integración.')} />{/if}
+  {#if vm.rows.length === 0 && !vm.loading}<UiStatePanel kind="empty" title={i18n.t('Sin conectores')} message={i18n.t('No hay conectores registrados.')} />{/if}
   <div class="catalog" aria-label={i18n.t('Catálogo de conectores')}>
     {#each vm.rows as connector (connector.name)}
       <button type="button" class:active={selectedName === connector.name} aria-pressed={selectedName === connector.name} onclick={() => choose(connector)}>{connector.name}<small>{connector.capabilities.length} {i18n.t('capacidades')}</small></button>

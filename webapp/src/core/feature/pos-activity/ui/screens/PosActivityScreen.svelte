@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
 	import { onMount, getContext } from 'svelte';
 	import { goto } from '$app/navigation';
 	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
@@ -35,9 +36,9 @@
 			<article class="panel"><h2>{i18n.t('Comparación semanal')}</h2><div class="week">{#each vm.summary.weekThis as day,i}<div class="day"><span>{['L','M','X','J','V','S','D'][i]}</span><div class="bars"><div class="bar last" style="height:{Math.max(2,vm.summary.weekLast[i]?.netCents/(Math.max(vm.summary.weekThisTotalCents,vm.summary.weekLastTotalCents,1))*100)}%"></div><div class="bar current" style="height:{Math.max(2,day.netCents/(Math.max(vm.summary.weekThisTotalCents,vm.summary.weekLastTotalCents,1))*100)}%"></div></div><small>{money(day.netCents)}</small></div>{/each}</div><footer>{i18n.t('Esta semana')}: {money(vm.summary.weekThisTotalCents)} · {i18n.t('Semana anterior')}: {money(vm.summary.weekLastTotalCents)}</footer></article>
 			<article class="panel"><h2>{i18n.t('Medios de pago')}</h2>{#if vm.summary.tenders.length===0}<p class="muted">{i18n.t('Sin datos')}</p>{:else}{#each vm.summary.tenders as tender}<div class="tender"><span>{tender.method}</span><strong>{money(tender.cents)}</strong><small>{tender.count}</small></div>{/each}{/if}<h3>{i18n.t('Terminales activas')}</h3><p>{vm.summary.activeTerminals.join(', ')||'—'}</p></article>
 		</div>
-	{:else if vm.summaryLoading}<p>{i18n.t('Cargando resumen…')}</p>{/if}
+	{:else if vm.summaryLoading}<UiStatePanel kind="loading" title={i18n.t('Cargando resumen POS')} message={i18n.t('Estamos calculando el resumen de actividad del punto de venta.')} />{/if}
 	{#if vm.listError}<p class="error" role="alert">{vm.listError}</p>{/if}
-	{#if vm.loading}<p>{i18n.t('Cargando transacciones…')}</p>{:else if vm.page.salesOrders.length===0}<p class="empty">{i18n.t('No hay transacciones para los filtros seleccionados.')}</p>{:else}
+	{#if vm.loading}<UiStatePanel kind="loading" title={i18n.t('Cargando transacciones')} message={i18n.t('Estamos recuperando las transacciones del período.')} />{:else if vm.page.salesOrders.length===0}<UiStatePanel kind="empty" title={i18n.t('Sin transacciones')} message={i18n.t('No hay transacciones para los filtros seleccionados.')} />{:else}
 		<div class="table-wrap"><table><thead><tr><th>{i18n.t('Pedido')}</th><th>{i18n.t('Fecha')}</th><th>{i18n.t('Tipo')}</th><th>{i18n.t('Canal')}</th><th>{i18n.t('Estado')}</th><th>{i18n.t('Terminal')}</th><th>{i18n.t('Cajero')}</th><th>{i18n.t('Cliente')}</th><th>{i18n.t('Total')}</th><th>{i18n.t('Pago')}</th><th>{i18n.t('Referencia')}</th></tr></thead><tbody>{#each vm.page.salesOrders as row (row.salesOrderId)}<tr class="clickable" onclick={()=>vm.select(row)}><td>{row.salesOrderNumber}</td><td>{dateTime(row.createdAt)}</td><td>{row.orderType}</td><td>{row.channel}</td><td>{row.status}</td><td>{row.terminalId??'—'}</td><td>{row.cashierId??'—'}</td><td>{row.customerName??i18n.t('Cliente ocasional')}</td><td>{money(row.totalCents)}</td><td>{row.paymentMethod??'—'}</td><td>{row.externalTxnRef??'—'}</td></tr>{/each}</tbody></table></div>
 		<div class="pagination"><span>{vm.page.total} {i18n.t('registros')} · {i18n.t('Página')} {vm.page.page} / {vm.page.pages}</span><button disabled={vm.page.page<=1} onclick={()=>{vm.setPage(vm.page.page-1);void vm.loadList();}}>{i18n.t('Anterior')}</button><button disabled={vm.page.page>=vm.page.pages} onclick={()=>{vm.setPage(vm.page.page+1);void vm.loadList();}}>{i18n.t('Siguiente')}</button></div>
 	{/if}

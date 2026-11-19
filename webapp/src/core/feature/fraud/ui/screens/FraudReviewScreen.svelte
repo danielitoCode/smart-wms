@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
   import { getContext } from 'svelte';
   import UiLoader from '../../../../../lib/components/UiLoader.svelte';
   import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
@@ -78,17 +79,17 @@
   </div>
 
   {#if vm.error}
-    <p class="error" role="alert">{vm.error}</p>
+    <UiStatePanel kind="error" title={i18n.t('No se pudo cargar la revisión de fraude')} message={vm.error} />
   {/if}
 
   {#if warehouseSelection.loading || !warehouseSelection.initialized}
-    <UiLoader label={i18n.t('Cargando almacenes…')} />
+    <UiStatePanel kind="loading" title={i18n.t('Cargando almacenes')} message={i18n.t('Estamos validando los almacenes disponibles.')} />
   {:else if warehouseSelection.warehouseId === null}
-    <p class="empty">{i18n.t('No hay un almacén autorizado seleccionado. Selecciona un almacén para consultar la bandeja.')}</p>
+    <UiStatePanel kind="forbidden" title={i18n.t('Selecciona un almacén autorizado')} message={i18n.t('No hay un almacén autorizado seleccionado. Selecciona un almacén para consultar la bandeja.')} />
   {:else if vm.loading}
-    <UiLoader label={i18n.t('Cargando pedidos retenidos…')} />
+    <UiStatePanel kind="loading" title={i18n.t('Cargando pedidos retenidos')} message={i18n.t('Estamos consultando la bandeja de revisión.')} />
   {:else if vm.rows.length === 0}
-    <p class="empty">{i18n.t('No hay pedidos retenidos para este almacén.')}</p>
+    <UiStatePanel kind="empty" title={i18n.t('Sin pedidos retenidos')} message={i18n.t('No hay pedidos retenidos para este almacén.')} />
   {:else}
     <div class="table-wrap">
       <table>
