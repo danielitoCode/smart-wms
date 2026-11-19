@@ -39,6 +39,7 @@ export function createWarehouseSelectionState() {
 	let canSelect = $state(false);
 	let loading = $state(false);
 	let error = $state<string | null>(null);
+	let catalogLoadFailed = false;
 	let initialized = $state(false);
 	let selectableIds = $state<number[]>([]);
 	let authorityRole = $state('USER');
@@ -82,6 +83,7 @@ export function createWarehouseSelectionState() {
 			const catalog = await deps.listWarehouses.execute();
 			if (epoch !== loadEpoch) return;
 
+			catalogLoadFailed = false;
 			warehouses = catalog;
 			selectableIds = resolveSelectableWarehouseIds(
 				authority,
@@ -101,6 +103,7 @@ export function createWarehouseSelectionState() {
 			initialized = true;
 		} catch (err) {
 			if (epoch !== loadEpoch) return;
+			catalogLoadFailed = true;
 			warehouses = [];
 			selectableIds = [];
 			applyActiveId(null);
@@ -117,6 +120,7 @@ export function createWarehouseSelectionState() {
 			selectableIds = [];
 			applyActiveId(null);
 			initialized = false;
+			catalogLoadFailed = false;
 			error = null;
 			return;
 		}
@@ -124,7 +128,7 @@ export function createWarehouseSelectionState() {
 		const scopeChanged =
 			nextAuthority.role !== authorityRole ||
 			!sameIds(nextAuthority.assignedWarehouseIds, assignedIds);
-		if (!initialized || scopeChanged || error !== null) {
+		if (!initialized || scopeChanged || catalogLoadFailed) {
 			await load(user);
 			return;
 		}
