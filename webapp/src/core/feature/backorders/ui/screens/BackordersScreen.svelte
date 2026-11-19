@@ -164,7 +164,7 @@
   {#if scopeError}
     <p class="message error" role="alert">{scopeErrorMessage}</p>
   {:else if vm.error}
-    <UiStatePanel kind="error" title={i18n.t('No se pudieron cargar los backorders')} message={vm.error} retry={() => vm.load(warehouseSelection?.warehouseId ?? null, activeTab)} />
+    <UiStatePanel kind="error" title={i18n.t('No se pudieron cargar los backorders')} message={vm.error} retry={() => vm.load(selection?.warehouseId ?? null, activeTab)} />
   {:else if vm.loading}
     <UiStatePanel kind="loading" title={i18n.t('Cargando backorders')} message={i18n.t('Estamos consultando los pedidos pendientes y su disponibilidad.')} />
   {:else if visibleRows.length === 0}

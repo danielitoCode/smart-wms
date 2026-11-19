@@ -1,5 +1,5 @@
 <script lang="ts">
-	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
+	import UiStatePanel from '#lib/components/UiStatePanel.svelte';
 import {getContext} from 'svelte';import {goto} from '$app/navigation';import PageHeader from '#lib/components/PageHeader.svelte';import UiBanner from '#lib/components/UiBanner.svelte';import {createPickingBatchesState} from '../state/pickingBatchesState.svelte';import type {PickingBatch} from '../../domain/entity/PickingBatch';
 let {batchId}: {batchId:number} = $props();const vm=createPickingBatchesState();const warehouse=getContext<{warehouseId:number|null}>('warehouseSelection');let target=$state<PickingBatch|null>(null);
 $effect(()=>{void vm.loadDetail(warehouse?.warehouseId??null,batchId);});
