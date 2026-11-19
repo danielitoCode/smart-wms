@@ -287,7 +287,7 @@
 					</nav>
 					<div class="topbar-spacer"></div>
 					<div class="topbar-actions">
-						{#if warehouseSelection.canSelect && warehouseSelection.warehouses.length > 0}
+						{#if warehouseSelection.warehouses.length > 0}
 							<div class="pill-slot warehouse-slot">
 								<WarehousePicker />
 							</div>
