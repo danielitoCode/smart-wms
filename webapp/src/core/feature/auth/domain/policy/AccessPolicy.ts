@@ -192,7 +192,7 @@ export function canAccessAnyPages(
 }
 
 export function routeAccessPolicyForPath(pathname: string): RouteAccessPolicy | null {
-	const path = pathname.replace(/\\/+$/, '') || '/';
+	const path = pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
 
 	// These operational scanner flows are authenticated, then authorized
 	// by Flask's allowed_functions / endpoint-specific checks, not page grants.
