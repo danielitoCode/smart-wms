@@ -98,7 +98,7 @@
   }
 
   function canDelete(): boolean {
-    return !!vm.selected && vm.selected.status === 'OPEN'
+    return !!vm.selected && vm.selected.reservationsTracked && vm.selected.status === 'OPEN'
       && vm.selected.lines.every(line => line.pickedQuantity === 0)
       && vm.selected.approvals.length === 0;
   }
@@ -106,12 +106,12 @@
     return !!vm.selected?.approvals.some(approval => approval.status === 'PENDING');
   }
   function canStartPicking(): boolean {
-    return !!vm.selected && !hasPendingApproval()
+    return !!vm.selected && vm.selected.reservationsTracked && !hasPendingApproval()
       && ['OPEN', 'PARTIALLY_PICKED'].includes(vm.selected.status)
       && vm.selected.lines.some(line => line.committedQuantity > line.pickedQuantity && ['PENDING', 'PARTIALLY_PICKED'].includes(line.status));
   }
   function hasUnsubmittedPicks(): boolean {
-    return !!vm.selected && !hasPendingApproval()
+    return !!vm.selected && vm.selected.reservationsTracked && !hasPendingApproval()
       && vm.selected.lines.some(line => line.pickedQuantity > line.approvedQuantity && ['PARTIALLY_PICKED', 'PICKED'].includes(line.status));
   }
   function lineQuantities(line: TransferOrderLine) {
@@ -141,7 +141,7 @@
     return vm.warehouses.find(warehouse => warehouse.warehouseId === id)?.warehouseCode ?? String(id);
   }
   function canShortClose(line: TransferOrderLine): boolean {
-    return !hasPendingApproval() && ['PENDING', 'PARTIALLY_PICKED', 'PICKED'].includes(line.status)
+    return !!vm.selected?.reservationsTracked && !hasPendingApproval() && ['PENDING', 'PARTIALLY_PICKED', 'PICKED'].includes(line.status)
       && line.committedQuantity > line.approvedQuantity;
   }
   function exportShortages() {
@@ -275,7 +275,7 @@
       {/if}
       <div class="action-bar">
         <button disabled={vm.saving || !canDelete()} onclick={() => { if (confirm('¿Eliminar definitivamente esta orden sin picking ni aprobaciones?')) void vm.remove(vm.selected!.transferOrderId).then(ok => { if (ok) vm.clearSelected(); }); }}>{i18n.t('Eliminar')}</button>
-        <button disabled={vm.saving || hasPendingApproval() || vm.selected.approvals.length > 0 || !['OPEN', 'PARTIALLY_PICKED'].includes(vm.selected.status)} onclick={() => { if (confirm('¿Cancelar la transferencia y liberar la reserva no aprobada?')) void vm.cancel(vm.selected!.transferOrderId); }}>{i18n.t('Cancelar orden')}</button>
+        <button disabled={vm.saving || !vm.selected.reservationsTracked || hasPendingApproval() || vm.selected.approvals.length > 0 || !['OPEN', 'PARTIALLY_PICKED'].includes(vm.selected.status)} onclick={() => { if (confirm('¿Cancelar la transferencia y liberar la reserva no aprobada?')) void vm.cancel(vm.selected!.transferOrderId); }}>{i18n.t('Cancelar orden')}</button>
         <button disabled={vm.saving || !canStartPicking()} onclick={() => void vm.startPicking(vm.selected!.transferOrderId)}>{i18n.t('Iniciar picking')}</button>
         <button disabled={vm.saving} onclick={() => { showPickerProgress = true; void vm.loadPickerDetail(); }}>{i18n.t('Ver progreso de preparación')}</button>
         <button class="primary" disabled={vm.saving || !hasUnsubmittedPicks()} onclick={() => { if (confirm('¿Enviar las cantidades recogidas para revisión? No se moverá inventario hasta su aprobación.')) void vm.submitPickerResult(vm.selected!.transferOrderId); }}>{i18n.t('Enviar resultado de picking')}</button>
@@ -297,6 +297,29 @@
           <tr><td class="mono">{line.sku ?? line.itemId}</td><td>{line.itemName ?? '—'}</td><td>{line.requestedQuantity}</td><td>{line.committedQuantity}</td><td>{line.pickedQuantity}</td><td>{line.approvedQuantity}</td><td class:warning-text={quantities.initialShortfall > 0}>{quantities.initialShortfall}</td><td>{quantities.pendingReservation}</td><td>{quantities.pickedAwaitingApproval}</td><td><span class="status">{line.status}</span></td><td>{#if canShortClose(line)}<button disabled={vm.saving} onclick={() => { if (confirm('¿Cerrar el faltante de esta línea y liberar su reserva pendiente?')) void vm.shortClose(vm.selected!.transferOrderId, line.toLineId); }}>{i18n.t('Cerrar faltante')}</button>{/if}</td></tr>
         {/each}
       </tbody></table></div>
+
+      <section class="reservation-ledger" aria-label={i18n.t('Trazabilidad de reservas')}>
+        <h3>{i18n.t('Reservas exactas por bin y lote')}</h3>
+        {#if !vm.selected.reservationsTracked}
+          <p class="alert error">{i18n.t('Esta transferencia es anterior al registro exacto de reservas. No se puede liberar ni mover inventario automáticamente hasta reconciliarla.')}</p>
+        {:else}
+          {#each vm.selected.lines as line (line.toLineId)}
+            <details>
+              <summary>{line.sku ?? line.itemId} · {line.reservations.length} {i18n.t('asignaciones')}</summary>
+              {#if line.reservations.length}
+                <div class="table-wrap"><table>
+                  <thead><tr><th>{i18n.t('Bin')}</th><th>{i18n.t('Lote')}</th><th>{i18n.t('Inventario')}</th><th>{i18n.t('Reservado')}</th><th>{i18n.t('Consumido')}</th><th>{i18n.t('Liberado')}</th><th>{i18n.t('Pendiente')}</th></tr></thead>
+                  <tbody>{#each line.reservations as reservation (reservation.reservationId)}
+                    <tr><td>{reservation.binCode}</td><td>{reservation.lotNumber ?? '—'}</td><td>{reservation.inventoryId}</td><td>{reservation.reservedQuantity}</td><td>{reservation.consumedQuantity}</td><td>{reservation.releasedQuantity}</td><td>{reservation.remainingQuantity}</td></tr>
+                  {/each}</tbody>
+                </table></div>
+              {:else}
+                <p class="muted">{i18n.t('Esta línea no tiene cantidades reservadas.')}</p>
+              {/if}
+            </details>
+          {/each}
+        {/if}
+      </section>
 
       {#if showPickerProgress && vm.pickerSnapshot}
         <section class="subpanel"><div class="section-heading"><div><h3>{i18n.t('Progreso del picker')}</h3><p>{vm.pickerSnapshot.transferOrderNumber} · {vm.pickerSnapshot.status}</p></div><button onclick={() => showPickerProgress = false}>{i18n.t('Ocultar')}</button></div>
@@ -320,7 +343,7 @@
               <p class="muted snapshot-unavailable">{i18n.t('El servidor no incluyó lines_snapshot en esta respuesta; no se puede reconstruir el contenido histórico de este envío.')}</p>
             {/if}</div>
             {#if approval.status === 'PENDING'}
-              <div class="approval-actions"><button class="primary" disabled={vm.saving} onclick={() => { if (confirm('La aprobación mueve el inventario del origen al destino. ¿Continuar?')) void vm.approve(vm.selected!.transferOrderId, approval.approvalId); }}>{i18n.t('Aprobar y mover inventario')}</button><input maxlength="1000" placeholder={i18n.t('Motivo de rechazo (opcional)')} value={rejectReasons[approval.approvalId] ?? ''} oninput={event => rejectReasons = { ...rejectReasons, [approval.approvalId]: event.currentTarget.value }} /><button class="danger" disabled={vm.saving} onclick={() => void vm.reject(vm.selected!.transferOrderId, approval.approvalId, rejectReasons[approval.approvalId] ?? '')}>{i18n.t('Rechazar')}</button></div>
+              <div class="approval-actions"><button class="primary" disabled={vm.saving || !vm.selected.reservationsTracked} onclick={() => { if (confirm('La aprobación mueve el inventario del origen al destino. ¿Continuar?')) void vm.approve(vm.selected!.transferOrderId, approval.approvalId); }}>{i18n.t('Aprobar y mover inventario')}</button><input maxlength="1000" placeholder={i18n.t('Motivo de rechazo (opcional)')} value={rejectReasons[approval.approvalId] ?? ''} oninput={event => rejectReasons = { ...rejectReasons, [approval.approvalId]: event.currentTarget.value }} /><button class="danger" disabled={vm.saving} onclick={() => void vm.reject(vm.selected!.transferOrderId, approval.approvalId, rejectReasons[approval.approvalId] ?? '')}>{i18n.t('Rechazar')}</button></div>
             {/if}
           </article>
         {/each}

@@ -9,10 +9,14 @@ const vm = vi.hoisted(() => ({
   selected: {
     transferOrderId: 12, transferOrderNumber: 'TO-12', sourceWarehouseId: 2,
     destinationWarehouseId: 4, status: 'PARTIALLY_PICKED', createdBy: 'operator',
-    notes: null, lines: [{
+    notes: null, reservationsTracked: true, lines: [{
       toLineId: 31, itemId: 7, sku: 'SKU-7', itemName: 'Widget',
       requestedQuantity: 10, committedQuantity: 8, pickedQuantity: 5,
-      approvedQuantity: 2, status: 'PARTIALLY_PICKED'
+      approvedQuantity: 2, status: 'PARTIALLY_PICKED', reservations: [{
+        reservationId: 101, inventoryId: 501, binId: 31, binCode: 'A-01-02',
+        lotNumber: 'LOT-7', reservedQuantity: 8, consumedQuantity: 2,
+        releasedQuantity: 1, remainingQuantity: 5
+      }]
     }], approvals: [{
       approvalId: 9, status: 'REJECTED', submittedBy: 'picker',
       submittedAt: '2026-11-17T10:00:00Z', approvedBy: null, approvedAt: null,
@@ -49,6 +53,18 @@ describe('TransferOrdersScreen', () => {
     expect(body).toContain('8');
     expect(body).toContain('5');
     expect(body).toContain('2');
+  });
+
+  it('renders exact reservation allocations with bin, lot and consumed/released balances', () => {
+    const { body } = render(TransferOrdersScreen, {
+      context: new Map([['i18n', { t: (value: string) => value }]])
+    });
+    expect(body).toContain('Reservas exactas por bin y lote');
+    expect(body).toContain('A-01-02');
+    expect(body).toContain('LOT-7');
+    expect(body).toContain('Reservado');
+    expect(body).toContain('Consumido');
+    expect(body).toContain('Liberado');
   });
 
   it('renders approval snapshot and rejection history without reconstructing missing data', () => {

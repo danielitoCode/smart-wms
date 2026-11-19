@@ -29,6 +29,8 @@ function mapPickTask(dto: PickTaskDto): PickTask | null {
 		quantityToPick: dto.quantity_to_pick ?? dto.qty_to_pick ?? 0,
 		quantityPicked: dto.quantity_picked,
 		binId: dto.bin_id ?? null,
+		inventoryId: dto.inventory_id ?? null,
+		lotNumber: dto.lot_number ?? null,
 		binCode: dto.bin_code ?? null,
 		binBarcode: dto.bin_barcode ?? null,
 		zone: dto.zone ?? null,

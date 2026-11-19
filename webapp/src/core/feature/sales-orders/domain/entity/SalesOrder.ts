@@ -104,6 +104,7 @@ export interface SalesOrder {
   primaryBinPickSequence?: number | null;
   lineCount?: number;
   pickedAt: string | null;
+  packedAt?: string | null;
   shippedAt: string | null;
   shippedDateLocal: string | null;
   billingAddress: SalesOrderAddress;

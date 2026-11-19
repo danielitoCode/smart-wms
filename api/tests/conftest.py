@@ -124,6 +124,7 @@ ALL_TABLES = [
     # v1.8.0 #281: warehouse-to-warehouse transfer order tables.
     # pick_tasks.to_id / .to_line_id reference these; pick_tasks is
     # listed above so a TRUNCATE...CASCADE wipes its rows first.
+    "transfer_order_reservations",
     "transfer_order_approvals",
     "transfer_order_lines",
     "transfer_orders",

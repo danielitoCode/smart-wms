@@ -158,6 +158,24 @@ class TestImport:
         )
         assert rows[0] == (5, 5, "PENDING")
         assert rows[1] == (12, 12, "PENDING")
+        reservation_rows = _query(
+            """
+            SELECT tol.line_number, SUM(r.reserved_qty), SUM(r.consumed_qty),
+                   SUM(r.released_qty)
+              FROM transfer_order_lines tol
+              JOIN transfer_order_reservations r ON r.to_line_id = tol.to_line_id
+             WHERE tol.to_id = %s
+             GROUP BY tol.line_number
+             ORDER BY tol.line_number
+            """,
+            (body["to_id"],),
+        )
+        assert reservation_rows == [(1, 5, 0, 0), (2, 12, 0, 0)]
+        tracked = _query(
+            "SELECT reservations_tracked FROM transfer_orders WHERE to_id = %s",
+            (body["to_id"],),
+        )
+        assert tracked == [(True,)]
 
         # Audit row written
         audit = _query(
@@ -243,6 +261,18 @@ class TestImport:
         # Total reservation == on_hand (8); first line gets 5, second
         # gets 3.
         assert _allocated(a, 1) == 8
+        allocations = _query(
+            """
+            SELECT tol.line_number, SUM(r.reserved_qty)
+              FROM transfer_order_lines tol
+              JOIN transfer_order_reservations r ON r.to_line_id = tol.to_line_id
+             WHERE tol.to_id = %s
+             GROUP BY tol.line_number
+             ORDER BY tol.line_number
+            """,
+            (body["to_id"],),
+        )
+        assert allocations == [(1, 5), (2, 3)]
         rows = _query(
             "SELECT line_number, committed_qty FROM transfer_order_lines "
             " WHERE to_id = %s ORDER BY line_number",

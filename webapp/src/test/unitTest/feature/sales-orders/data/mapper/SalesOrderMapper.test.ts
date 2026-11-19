@@ -28,8 +28,8 @@ describe('SalesOrderMapper', () => {
         ...summary, customer_email: null, order_total: '0.00',
         customer_shipping_paid: null, shipped_date_local: null, shipped_at: null,
         source_system: null, order_origin: null, parent_so_number: null,
-        cancellation_reason: null, created_by: 'admin', picked_at: null, packed_at: null,
-        backorder_opened_at: null, backorder_fulfillable_at: null,
+        cancellation_reason: null, created_by: 'admin', picked_at: null,
+        backorder_opened_at: null, backorder_fulfillable_at: null, packed_at: '2026-11-16T12:00:00Z',
         billing_address_name: 'Acme', billing_address_line1: '1 Main',
         billing_address_line2: null, billing_address_city: 'Havana',
         billing_address_state: null, billing_address_postal_code: null,
@@ -57,6 +57,7 @@ describe('SalesOrderMapper', () => {
       soLineId: 9, lineNumber: 1, itemId: 3, quantityOrdered: 5, quantityAllocated: 2
     });
     expect(order.pickTasks[0]).toMatchObject({ pickTaskId: 11, binCode: 'A-01' });
+    expect(order.packedAt).toBe('2026-11-16T12:00:00Z');
   });
 
   it('maps the complete related-order record shape', () => {

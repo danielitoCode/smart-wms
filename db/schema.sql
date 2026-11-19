@@ -390,8 +390,11 @@ CREATE TABLE pick_tasks (
     so_line_id INT REFERENCES sales_order_lines(so_line_id) ON DELETE SET NULL,
     item_id INT NOT NULL REFERENCES items(item_id),
     bin_id INT NOT NULL REFERENCES bins(bin_id),
+    inventory_id INT REFERENCES inventory(inventory_id) ON DELETE SET NULL,
     quantity_to_pick INT NOT NULL,
     quantity_picked INT NOT NULL DEFAULT 0,
+    quantity_approved INT NOT NULL DEFAULT 0
+        CHECK (quantity_approved >= 0 AND quantity_approved <= quantity_picked),
     pick_sequence INT NOT NULL,            -- ORDER BY this for optimized walk path
     tote_number VARCHAR(50),
     status VARCHAR(20) DEFAULT 'PENDING',  -- 'PENDING', 'PICKED', 'SHORT', 'SKIPPED', 'RELEASED' (RELEASED set by the SO revert / batch full-revert flow).
@@ -401,6 +404,7 @@ CREATE TABLE pick_tasks (
 );
 
 CREATE INDEX ix_pick_tasks_batch_sequence ON pick_tasks(batch_id, pick_sequence);
+CREATE INDEX ix_pick_tasks_inventory ON pick_tasks(inventory_id);
 
 -- Wave picking: links SOs to wave batches
 CREATE TABLE wave_pick_orders (
@@ -1987,6 +1991,7 @@ CREATE TABLE transfer_orders (
     created_by                VARCHAR(100) NOT NULL,
     notes                     TEXT,
     external_id               UUID NOT NULL UNIQUE,
+    reservations_tracked       BOOLEAN NOT NULL DEFAULT TRUE,
     created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT transfer_orders_warehouses_distinct
@@ -2016,6 +2021,63 @@ CREATE TABLE transfer_order_lines (
 
 CREATE INDEX ix_transfer_order_lines_to   ON transfer_order_lines(to_id);
 CREATE INDEX ix_transfer_order_lines_item ON transfer_order_lines(item_id);
+
+-- Exact per-line/per-inventory ownership for Transfer Order reservations.
+-- The corresponding forward migration is 085_transfer_order_exact_reservations.sql.
+CREATE TABLE transfer_order_reservations (
+    reservation_id BIGSERIAL PRIMARY KEY,
+    to_line_id INT NOT NULL
+        REFERENCES transfer_order_lines(to_line_id) ON DELETE CASCADE,
+    inventory_id INT NOT NULL
+        REFERENCES inventory(inventory_id),
+    reserved_qty INT NOT NULL CHECK (reserved_qty > 0),
+    consumed_qty INT NOT NULL DEFAULT 0 CHECK (consumed_qty >= 0),
+    released_qty INT NOT NULL DEFAULT 0 CHECK (released_qty >= 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT transfer_order_reservations_consumed_released
+        CHECK (consumed_qty + released_qty <= reserved_qty),
+    CONSTRAINT transfer_order_reservations_line_inventory_unique
+        UNIQUE (to_line_id, inventory_id)
+);
+
+CREATE INDEX ix_to_reservations_line
+    ON transfer_order_reservations(to_line_id, inventory_id);
+CREATE INDEX ix_to_reservations_inventory
+    ON transfer_order_reservations(inventory_id);
+
+
+-- Protect TO-owned reservations from unrelated allocation releases (e.g.
+-- SO cancellation or picking). The aggregate inventory counter is shared,
+-- so every decrement must leave at least the sum of still-open TO
+-- reservations on that exact inventory row.
+CREATE OR REPLACE FUNCTION prevent_to_reservation_underallocation()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $
+DECLARE
+    reserved_total BIGINT;
+BEGIN
+    SELECT COALESCE(SUM(reserved_qty - consumed_qty - released_qty), 0)
+      INTO reserved_total
+      FROM transfer_order_reservations
+     WHERE inventory_id = NEW.inventory_id;
+
+    IF NEW.quantity_allocated < reserved_total THEN
+        RAISE EXCEPTION
+            'inventory_id=% allocation % would undercut open Transfer Order reservations %',
+            NEW.inventory_id, NEW.quantity_allocated, reserved_total
+            USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END;
+$;
+
+DROP TRIGGER IF EXISTS trg_inventory_to_reservation_floor ON inventory;
+CREATE TRIGGER trg_inventory_to_reservation_floor
+BEFORE UPDATE OF quantity_allocated ON inventory
+FOR EACH ROW
+EXECUTE FUNCTION prevent_to_reservation_underallocation();
 
 CREATE TABLE transfer_order_approvals (
     to_approval_id    SERIAL PRIMARY KEY,

@@ -174,6 +174,9 @@
 				{#if state.task.binCode}
 					· ubicación: {state.task.binCode}
 				{/if}
+				{#if state.task.lotNumber}
+					· lote: {state.task.lotNumber}
+				{/if}
 				· cantidad: {state.task.quantityToPick}
 			</p>
 

@@ -1205,6 +1205,9 @@ def get_sales_order(so_id):
             "ship_by_date": so.ship_by_date.isoformat() if so.ship_by_date else None,
             "created_at": so.created_at.isoformat() if so.created_at else None,
             "created_by": so.created_by,
+            "picked_at": so.picked_at.isoformat() if so.picked_at else None,
+            "packed_at": so.packed_at.isoformat() if so.packed_at else None,
+            "shipped_at": so.shipped_at.isoformat() if so.shipped_at else None,
             # v1.8.0 (#282): per-order cost fields. Null vs 0.00 is
             # distinct (not provided vs explicitly zero). Decimal
             # serialised as string so the JSON does not lose precision.

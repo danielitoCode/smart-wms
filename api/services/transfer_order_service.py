@@ -156,6 +156,10 @@ def is_header_closeable(line_states: Iterable[tuple]) -> bool:
 # ============================================================
 
 
+class TransferOrderSubmissionConflict(Exception):
+    """A completed picker batch cannot be safely snapshotted for approval."""
+
+
 class OverPickAttempt(Exception):
     """picked_qty + delta would exceed committed_qty. The WHERE clause
     guard on update_transfer_order_line_picked is the atomic safety net
@@ -178,6 +182,43 @@ def update_transfer_order_line_picked(db, to_line_id: int, delta: int) -> dict:
     if delta <= 0:
         raise ValueError(f"delta must be > 0, got {delta!r}")
     from sqlalchemy import text  # local import to keep top of file lib-free
+
+    tracking = db.execute(
+        text(
+            """
+            SELECT o.reservations_tracked, tol.committed_qty, tol.approved_qty,
+                   COALESCE(SUM(r.reserved_qty), 0) AS reserved_qty,
+                   COALESCE(SUM(r.consumed_qty), 0) AS consumed_qty,
+                   COALESCE(SUM(r.released_qty), 0) AS released_qty
+              FROM transfer_order_lines tol
+              JOIN transfer_orders o ON o.to_id = tol.to_id
+              LEFT JOIN transfer_order_reservations r ON r.to_line_id = tol.to_line_id
+             WHERE tol.to_line_id = :lid
+             GROUP BY tol.to_line_id, o.reservations_tracked,
+                      tol.committed_qty, tol.approved_qty
+            """
+        ),
+        {"lid": to_line_id},
+    ).fetchone()
+    if not tracking or not tracking.reservations_tracked:
+        raise OverPickAttempt(
+            f"transfer_order_lines.to_line_id={to_line_id}: exact inventory reservations are unavailable"
+        )
+    expected_remaining = (
+        tracking.committed_qty - tracking.approved_qty - tracking.released_qty
+    )
+    actual_remaining = (
+        tracking.reserved_qty - tracking.consumed_qty - tracking.released_qty
+    )
+    if (
+        tracking.reserved_qty != tracking.committed_qty
+        or tracking.consumed_qty != tracking.approved_qty
+        or expected_remaining < 0
+        or actual_remaining != expected_remaining
+    ):
+        raise OverPickAttempt(
+            f"transfer_order_lines.to_line_id={to_line_id}: reservation ledger does not match committed/approved quantities"
+        )
 
     pending_approval = db.execute(
         text(
@@ -336,13 +377,15 @@ def submit_picks(db, to_id: int, username: str) -> dict:
 
     header = db.execute(
         text(
-            "SELECT to_id, to_number, status, source_warehouse_id "
+            "SELECT to_id, to_number, status, source_warehouse_id, reservations_tracked "
             "  FROM transfer_orders WHERE to_id = :tid FOR UPDATE"
         ),
         {"tid": to_id},
     ).fetchone()
     if not header:
         return {"ok": False, "reason": "not_found"}
+    if not header.reservations_tracked:
+        return {"ok": False, "reason": "reservation_tracking_unavailable"}
     if header.status not in (
         TO_STATUS_PARTIALLY_PICKED, TO_STATUS_AWAITING_APPROVAL,
     ):
@@ -350,21 +393,6 @@ def submit_picks(db, to_id: int, username: str) -> dict:
             "ok": False,
             "reason": "invalid_status",
             "current_status": header.status,
-        }
-
-    pending_approval = db.execute(
-        text(
-            "SELECT to_approval_id FROM transfer_order_approvals "
-            " WHERE to_id = :tid AND status = 'PENDING' "
-            " ORDER BY to_approval_id LIMIT 1"
-        ),
-        {"tid": to_id},
-    ).fetchone()
-    if pending_approval:
-        return {
-            "ok": False,
-            "reason": "pending_approval_exists",
-            "to_approval_id": pending_approval.to_approval_id,
         }
 
     # Lines with new picks since the last submit: picked_qty exceeds
@@ -385,14 +413,77 @@ def submit_picks(db, to_id: int, username: str) -> dict:
     if not lines:
         return {"ok": False, "reason": "nothing_picked"}
 
-    snapshot_lines = [
-        {
+    pending_tasks = db.execute(
+        text("SELECT COUNT(*) FROM pick_tasks WHERE to_id = :tid AND status = 'PENDING'"),
+        {"tid": to_id},
+    ).scalar()
+    if pending_tasks:
+        return {"ok": False, "reason": "pending_pick_tasks_exist", "pending_tasks": pending_tasks}
+
+    pending_approval = db.execute(
+        text(
+            "SELECT to_approval_id FROM transfer_order_approvals "
+            " WHERE to_id = :tid AND status = 'PENDING' "
+            " ORDER BY to_approval_id LIMIT 1"
+        ),
+        {"tid": to_id},
+    ).fetchone()
+    if pending_approval:
+        return {
+            "ok": False,
+            "reason": "pending_approval_exists",
+            "to_approval_id": pending_approval.to_approval_id,
+        }
+
+    snapshot_lines = []
+    for line in lines:
+        tasks = db.execute(
+            text(
+                """
+                SELECT pick_task_id, item_id, inventory_id, bin_id,
+                       quantity_picked, quantity_approved
+                  FROM pick_tasks
+                 WHERE to_id = :tid AND to_line_id = :lid
+                   AND status = 'PICKED'
+                   AND quantity_picked > quantity_approved
+                 ORDER BY inventory_id, pick_task_id
+                 FOR UPDATE
+                """
+            ),
+            {"tid": to_id, "lid": line.to_line_id},
+        ).fetchall()
+        task_snapshot = []
+        allocation_totals = {}
+        task_total = 0
+        for task in tasks:
+            delta = task.quantity_picked - task.quantity_approved
+            if task.item_id != line.item_id or task.inventory_id is None or delta <= 0:
+                return {"ok": False, "reason": "reservation_task_mismatch"}
+            task_total += delta
+            task_snapshot.append({
+                "pick_task_id": task.pick_task_id,
+                "inventory_id": task.inventory_id,
+                "bin_id": task.bin_id,
+                "picked_in_snapshot": delta,
+            })
+            current = allocation_totals.setdefault(
+                task.inventory_id,
+                {"inventory_id": task.inventory_id, "bin_id": task.bin_id, "quantity": 0},
+            )
+            if current["bin_id"] != task.bin_id:
+                return {"ok": False, "reason": "reservation_task_mismatch"}
+            current["quantity"] += delta
+
+        expected_delta = line.picked_qty - line.approved_qty
+        if task_total != expected_delta or not task_snapshot:
+            return {"ok": False, "reason": "reservation_task_mismatch"}
+        snapshot_lines.append({
             "to_line_id": line.to_line_id,
             "item_id": line.item_id,
-            "picked_in_snapshot": line.picked_qty - line.approved_qty,
-        }
-        for line in lines
-    ]
+            "picked_in_snapshot": expected_delta,
+            "tasks": task_snapshot,
+            "inventory_allocations": list(allocation_totals.values()),
+        })
     approval_row = db.execute(
         text(
             """

@@ -21,7 +21,7 @@ from schemas.pick_walks import (
     WaveCreateRequest,
     WaveValidateRequest,
 )
-from services.transfer_order_service import OverPickAttempt
+from services.transfer_order_service import OverPickAttempt, TransferOrderSubmissionConflict
 from services.picking_service import (
     AlreadyInBatchError,
     BarcodeError,
@@ -358,6 +358,9 @@ def complete(validated):
             username=g.current_user["username"],
         )
         return jsonify({"message": "Batch completed", **result})
+    except TransferOrderSubmissionConflict as e:
+        g.db.rollback()
+        return jsonify({"error": "transfer_order_submission_conflict", "detail": str(e)}), 409
     except ValueError as e:
         g.db.rollback()
         return jsonify({"error": str(e)}), 400

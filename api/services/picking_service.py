@@ -648,15 +648,17 @@ def get_next_task(db, batch_id):
         text(
             """
             SELECT pt.pick_task_id, pt.batch_id, pt.item_id, pt.bin_id,
-                   pt.pick_sequence, pt.quantity_to_pick, pt.quantity_picked,
-                   pt.tote_number, pt.status,
+                   pt.inventory_id, pt.pick_sequence, pt.quantity_to_pick,
+                   pt.quantity_picked, pt.tote_number, pt.status,
                    b.bin_code, b.bin_barcode, b.aisle, b.row_num, b.level_num,
+                   inv.lot_number,
                    i.sku, i.item_name, i.upc,
                    so.so_number,
                    tro.to_number,
                    z.zone_name
             FROM pick_tasks pt
             JOIN bins b ON b.bin_id = pt.bin_id
+            LEFT JOIN inventory inv ON inv.inventory_id = pt.inventory_id
             LEFT JOIN zones z ON z.zone_id = b.zone_id
             JOIN items i ON i.item_id = pt.item_id
             LEFT JOIN sales_orders so ON so.so_id = pt.so_id
@@ -698,16 +700,36 @@ def get_next_task(db, batch_id):
 
 
 def confirm_pick(db, pick_task_id, scanned_barcode, quantity_picked, username):
-    # 1. Load pick task
+    # 1. Discover the aggregate without locking, then use parent-first
+    # locking for TO tasks to match submit/approve/reject lifecycle paths.
+    task_ref = db.execute(
+        text("SELECT to_id FROM pick_tasks WHERE pick_task_id = :tid"),
+        {"tid": pick_task_id},
+    ).fetchone()
+    if not task_ref:
+        raise ValueError("Pick task not found")
+    if task_ref.to_id is not None:
+        to_header = db.execute(
+            text(
+                "SELECT reservations_tracked, status FROM transfer_orders "
+                " WHERE to_id = :tid FOR UPDATE"
+            ),
+            {"tid": task_ref.to_id},
+        ).fetchone()
+        if not to_header or not to_header.reservations_tracked:
+            raise ValueError("Transfer Order has no attributable inventory reservations")
+        if to_header.status in ("CANCELLED", "CLOSED"):
+            raise ValueError(f"Transfer Order is not pickable in status {to_header.status}")
+
     task = db.execute(
         text(
             """
             SELECT pt.pick_task_id, pt.batch_id, pt.so_id, pt.so_line_id,
-                   pt.to_id, pt.to_line_id,
-                   pt.item_id, pt.bin_id, pt.quantity_to_pick, pt.status,
-                   pt.tote_number
-            FROM pick_tasks pt
-            WHERE pt.pick_task_id = :tid
+                   pt.to_id, pt.to_line_id, pt.item_id, pt.bin_id,
+                   pt.inventory_id, pt.quantity_to_pick, pt.status, pt.tote_number
+              FROM pick_tasks pt
+             WHERE pt.pick_task_id = :tid
+             FOR UPDATE OF pt
             """
         ),
         {"tid": pick_task_id},
@@ -734,17 +756,23 @@ def confirm_pick(db, pick_task_id, scanned_barcode, quantity_picked, username):
         raise BarcodeError(f"Wrong item scanned. Expected SKU: {item.sku}")
 
     # 3. Update pick task
-    db.execute(
+    claimed = db.execute(
         text(
             """
             UPDATE pick_tasks
             SET status = :task_status, quantity_picked = :qty, picked_by = :user,
                 picked_at = NOW(), scan_confirmed = TRUE
-            WHERE pick_task_id = :tid
+            WHERE pick_task_id = :tid AND status = :pending_status
+            RETURNING pick_task_id
             """
         ),
-        {"qty": quantity_picked, "user": username, "tid": pick_task_id, "task_status": TASK_PICKED},
-    )
+        {
+            "qty": quantity_picked, "user": username, "tid": pick_task_id,
+            "task_status": TASK_PICKED, "pending_status": TASK_PENDING,
+        },
+    ).fetchone()
+    if not claimed:
+        raise ValueError("Pick task is no longer pending")
 
     # 4. Branch on the pick_tasks discriminator (mig 049 #281). SO
     # picks update sales_order_lines as before; TO picks update
@@ -752,6 +780,29 @@ def confirm_pick(db, pick_task_id, scanned_barcode, quantity_picked, username):
     # XOR CHECK on pick_tasks guarantees exactly one of so_id / to_id
     # is non-NULL so the branches are mutually exclusive.
     if task.to_id is not None:
+        if task.inventory_id is None:
+            raise ValueError("Transfer Order pick task is missing its exact inventory row")
+        reservation = db.execute(
+            text(
+                """
+                SELECT 1
+                  FROM transfer_order_reservations r
+                  JOIN inventory inv ON inv.inventory_id = r.inventory_id
+                 WHERE r.to_line_id = :lid
+                   AND inv.inventory_id = :iid
+                   AND inv.item_id = :item_id
+                   AND inv.bin_id = :bid
+                   AND r.reserved_qty > r.consumed_qty + r.released_qty
+                """
+            ),
+            {
+                "lid": task.to_line_id, "iid": task.inventory_id,
+                "item_id": task.item_id, "bid": task.bin_id,
+            },
+        ).fetchone()
+        if not reservation:
+            raise ValueError("Transfer Order pick task does not match an open bin reservation")
+
         # v1.8.0 (#292): TO line picked-qty + status update via the
         # WHERE-clause guard helper. Raises OverPickAttempt when a
         # concurrent picker has already filled the line; the route
@@ -905,6 +956,7 @@ def short_pick(db, pick_task_id, quantity_available, username):
                    pt.status, pt.tote_number
             FROM pick_tasks pt
             WHERE pt.pick_task_id = :tid
+            FOR UPDATE OF pt
             """
         ),
         {"tid": pick_task_id},
@@ -929,16 +981,22 @@ def short_pick(db, pick_task_id, quantity_available, username):
     shortage = task.quantity_to_pick - quantity_available
 
     # 2. Update pick task
-    db.execute(
+    claimed = db.execute(
         text(
             """
             UPDATE pick_tasks
             SET status = :task_status, quantity_picked = :qty, picked_by = :user, picked_at = NOW()
-            WHERE pick_task_id = :tid
+            WHERE pick_task_id = :tid AND status = :pending_status
+            RETURNING pick_task_id
             """
         ),
-        {"qty": quantity_available, "user": username, "tid": pick_task_id, "task_status": TASK_SHORT},
-    )
+        {
+            "qty": quantity_available, "user": username, "tid": pick_task_id,
+            "task_status": TASK_SHORT, "pending_status": TASK_PENDING,
+        },
+    ).fetchone()
+    if not claimed:
+        raise ValueError("Pick task is no longer pending")
 
     # 3. Update inventory (floor at zero for safety)
     db.execute(
@@ -1221,7 +1279,10 @@ def complete_batch(db, batch_id, username):
     # unlike a sales order, an under-picked TO line ships nothing, so a
     # partial completion is legitimate and the operator short-closes any
     # remainder downstream.
-    from services.transfer_order_service import submit_picks
+    from services.transfer_order_service import (
+        TransferOrderSubmissionConflict,
+        submit_picks,
+    )
 
     to_id_rows = db.execute(
         text(
@@ -1231,7 +1292,12 @@ def complete_batch(db, batch_id, username):
         {"bid": batch_id},
     ).fetchall()
     for to_row in to_id_rows:
-        submit_picks(db, to_row.to_id, username)
+        submission = submit_picks(db, to_row.to_id, username)
+        if not submission.get("ok") and submission.get("reason") != "nothing_picked":
+            raise TransferOrderSubmissionConflict(
+                f"Transfer Order {to_row.to_id} could not submit its picked tasks: "
+                f"{submission.get('reason')}"
+            )
 
     # 4. Audit log
     write_audit_log(
@@ -1996,15 +2062,18 @@ def _get_tasks_for_batch(db, batch_id):
     rows = db.execute(
         text(
             """
-            SELECT pt.pick_task_id, pt.pick_sequence, pt.quantity_to_pick, pt.quantity_picked,
-                   pt.tote_number, pt.status,
+            SELECT pt.pick_task_id, pt.batch_id, pt.item_id, pt.bin_id,
+                   pt.inventory_id, pt.pick_sequence, pt.quantity_to_pick,
+                   pt.quantity_picked, pt.tote_number, pt.status,
                    b.bin_code, b.bin_barcode, b.aisle, b.row_num, b.level_num,
+                   inv.lot_number,
                    i.sku, i.item_name, i.upc,
                    so.so_number,
                    tro.to_number,
                    z.zone_name
             FROM pick_tasks pt
             JOIN bins b ON b.bin_id = pt.bin_id
+            LEFT JOIN inventory inv ON inv.inventory_id = pt.inventory_id
             LEFT JOIN zones z ON z.zone_id = b.zone_id
             JOIN items i ON i.item_id = pt.item_id
             LEFT JOIN sales_orders so ON so.so_id = pt.so_id
@@ -2025,6 +2094,8 @@ def _task_row_to_dict(row):
         "batch_id": row.batch_id,
         "item_id": row.item_id,
         "bin_id": row.bin_id,
+        "inventory_id": getattr(row, "inventory_id", None),
+        "lot_number": getattr(row, "lot_number", None),
         "pick_sequence": row.pick_sequence,
         "bin_code": row.bin_code,
         "bin_barcode": row.bin_barcode,
