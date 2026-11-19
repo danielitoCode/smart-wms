@@ -25,7 +25,6 @@ export type UpdateBinInput = {
 	id: number; zoneId?: number; code?: string; barcode?: string; binType?: BinType;
 	aisle?: string | null; rowNumber?: number | null; levelNumber?: number | null;
 	positionNumber?: number | null; pickSequence?: number; putawaySequence?: number; active?: boolean;
-	maxWeightLbs?: number | null; maxVolumeCuft?: number | null;
 };
 export type BinInventoryRow = { inventoryId: number; itemId: number; sku: string; itemName: string; quantityOnHand: number; quantityAllocated: number };
 export type BinDetail = { bin: Bin; inventory: BinInventoryRow[]; occupancy: { quantityOnHand: number; quantityAllocated: number; quantityAvailable: number; inventoryLines: number } };
