@@ -4,7 +4,7 @@
 - **Fecha de revisión:** 2026-11-19
 - **Rama:** `svelte-webapp`
 - **Alcance:** frontend `webapp/`, frontend React `admin/` y contratos Flask `api/`.
-- **Último commit de código de esta intervención:** `c4c0535fa1d5c290768936ffeb68abf3390d378d`
+- **Último commit de código de esta intervención:** `6915644fa2e147f4626e0d5ffd33f6926c379b8f`
 - **Regla:** no se modificó Flask ni se cambió la semántica de autorización del servidor.
 
 Este documento registra evidencia comprobada y cambios realizados para R0. No certifica todavía el cierre del recorrido completo.
@@ -76,7 +76,11 @@ Este documento registra evidencia comprobada y cambios realizados para R0. No ce
 - Una ruta que no tenga política registrada queda denegada por defecto. Ya no se interpreta una lista vacía de permisos como autorización implícita.
 - La navegación Data y la política de entrada usan la misma regla any-of.
 
-### 2.4 Capability Registry
+### 2.4 Estados UI comunes
+
+Se añadió `src/lib/components/UiStatePanel.svelte` con variantes `forbidden`, `not-supported`, `empty`, `loading`, `error` y `conflict`, soporte de retry/action, roles ARIA y respeto a reduced motion. El layout ya lo utiliza para acceso denegado y contexto de almacén no disponible. La adopción en las pantallas de cada feature todavía está pendiente; crear el componente no certifica que todas las pantallas hayan dejado sus estados locales.
+
+### 2.5 Capability Registry
 
 Se creó `src/core/infrastructure/capabilities/CapabilityRegistry.ts` con estados `SUPPORTED`, `PARTIAL`, `NOT_SUPPORTED` y `UNVERIFIED`. En esta primera entrega registra contratos transversales de login, `/me`, refresh, logout, page grants, catálogo operativo de almacenes y scope de almacén, con permisos, DTO, efectos, idempotencia y referencias de evidencia.
 
@@ -102,7 +106,7 @@ El catálogo es todavía parcial: debe ampliarse con los contratos de cada recor
 2. Auditar todos los componentes Svelte para demostrar que ninguno llama directamente a `fetch` ni construye requests fuera de Data/Infrastructure.
 3. Auditar todos los casos de uso mutables y repositorios para verificar que autorización y warehouse scope se resuelven antes de ejecutar; la seguridad final sigue en Flask.
 4. Completar la matriz de DTO/request/response, códigos 400/401/403/404/409/422/5xx, paginación y errores por cada contrato consumido.
-5. Establecer y reutilizar componentes comunes para Forbidden, Not supported, Empty, Loading, Error y Conflict. Hay componentes de sesión/banner/toast existentes, pero todavía no se ha demostrado una cobertura homogénea de todos los features.
+5. Adoptar `UiStatePanel` en todas las pantallas para Forbidden, Not supported, Empty, Loading, Error y Conflict. Ya se usa en el layout para Forbidden/Error; falta migrar y verificar cada feature, evitando duplicar estados locales.
 6. Añadir pruebas de integración para login → /me → grants → almacén activo, revocación de grants, cambio de asignación de almacén, logout y aborto de peticiones del contexto anterior.
 7. Ejecutar `npm run check`, `npm run test` y `npm run build` con Node 26 sobre el HEAD definitivo; revisar CI y registrar resultados reales.
 8. Revisar las cadenas UI nuevas en i18n y evitar mensajes de error técnicos en pantalla.
