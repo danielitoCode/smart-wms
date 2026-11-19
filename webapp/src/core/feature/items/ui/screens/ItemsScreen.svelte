@@ -111,8 +111,8 @@
 							<td>{item.active ? i18n.t('Activo') : i18n.t('Archivado')}</td>
 							<td class="actions">
 								<button type="button" class="ghost" onclick={() => vm.openEdit(item)}>{i18n.t('Editar')}</button>
-								<button type="button" class="ghost" onclick={() => vm.toggleArchive(item)}>
-									{item.active ? i18n.t('Archivar') : i18n.t('Restaurar')}
+								<button type="button" class="ghost" onclick={() => vm.toggleArchive(item)} disabled={vm.isArchiving(item.id)}>
+									{vm.isArchiving(item.id) ? i18n.t('Procesando…') : item.active ? i18n.t('Archivar') : i18n.t('Restaurar')}
 								</button>
 								<button type="button" class="danger-ghost" onclick={() => vm.setDeleteId(item.id)}>
 									{i18n.t('Eliminar')}
@@ -225,9 +225,14 @@
 	</div>
 {/if}
 
-{#if vm.detail}
-	<div class="modal" role="dialog" aria-modal="true">
+{#if vm.detailLoading || vm.detailError || vm.detail}
+	<div class="modal" role="dialog" aria-modal="true" aria-busy={vm.detailLoading}>
 		<div class="panel wide">
+			{#if vm.detailLoading}
+				<UiStatePanel kind="loading" title={i18n.t('Cargando detalle')} message={i18n.t('Estamos recuperando la información del producto.')} />
+			{:else if vm.detailError}
+				<UiBanner tone="error" message={vm.detailError} />
+			{:else if vm.detail}
 			<h2>{vm.detail.item.name || vm.detail.item.sku}</h2>
 			<h3>{i18n.t('Detalles del producto')}</h3>
 			<dl class="detail-grid">
@@ -289,6 +294,7 @@
 			{:else}
 				<p class="status">{i18n.t('Sin existencias.')}</p>
 			{/if}
+			{/if}
 			<div class="modal-actions">
 				<button type="button" class="secondary" onclick={() => vm.closeDetail()}>{i18n.t('Cerrar')}</button>
 			</div>
@@ -305,6 +311,9 @@
 					'El producto y sus datos asociados se eliminarán de forma permanente. No se puede eliminar si tiene inventario o historial de pedidos.'
 				)}
 			</p>
+			{#if vm.error}
+				<UiBanner tone="error" message={vm.error} />
+			{/if}
 			<div class="modal-actions">
 				<button type="button" class="secondary" onclick={() => vm.setDeleteId(null)} disabled={vm.saving}>
 					{i18n.t('Cancelar')}
