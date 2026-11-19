@@ -308,6 +308,6 @@ describe('Items UI state', () => {
 		await state.openDetail(item.id);
 
 		expect(state.detail).toBeNull();
-		expect(state.error).toBe('Acceso denegado');
+		expect(state.detailError).toBe('Acceso denegado');
 	});
 });
