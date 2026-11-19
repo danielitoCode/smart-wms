@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
   import { getContext } from 'svelte';
   import { goto } from '$app/navigation';
   import PageHeader from '#lib/components/PageHeader.svelte';
@@ -134,7 +135,7 @@
       <button class="secondary" onclick={printSelected} disabled={!selectedVisibleIds.length}>Print selected ({selectedVisibleIds.length})</button>
       <button onclick={printAll} disabled={!visibleOrders.length}>{visibleOrders.length > batchLimit ? `Print first ${batchLimit} of ${visibleOrders.length}` : `Print all (${visibleOrders.length})`}</button>
     </div>
-    {#if loading}<p class="muted">Loading printable orders…</p>
+    {#if loading}<UiStatePanel kind="loading" title="Loading printable orders" message="Retrieving the orders and ticket data for printing." />
     {:else if visibleOrders.length === 0}<p class="empty">{warehouse?.warehouseId == null ? 'Select a warehouse to load picking tickets.' : multiOrders ? 'No multi-order groups in this queue.' : longOrders ? 'No long orders in this queue.' : 'No orders ready for picking.'}</p>
     {:else}
       <div class="table-wrap">

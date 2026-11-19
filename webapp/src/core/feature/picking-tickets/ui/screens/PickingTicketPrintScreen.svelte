@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { createPickingTicketsDependencies } from '../../di/pickingTickets.dependencies';
@@ -51,7 +52,7 @@
     {#if markFailed}<span class="warning" role="alert">Ticket loaded, but print status was not saved.</span><button class="secondary" onclick={markPrinted} disabled={marking}>{marking ? 'Retrying…' : 'Retry mark printed'}</button>{/if}
     <button onclick={print} disabled={!ticket}>Print</button>
   </div>
-  {#if loading}<p class="message">Loading ticket…</p>
+  {#if loading}<UiStatePanel kind="loading" title="Loading ticket" message="Retrieving the ticket details for printing." />
   {:else if error}<section class="message error"><h2>Could not render ticket</h2><p>{error}</p></section>
   {:else if ticket}
     <article class="ticket">

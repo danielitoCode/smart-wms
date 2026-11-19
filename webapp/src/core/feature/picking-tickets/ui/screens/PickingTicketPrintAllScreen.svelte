@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
   import { getContext, onMount } from 'svelte';
   import { createPickingTicketsDependencies } from '../../di/pickingTickets.dependencies';
   import Code128Barcode from '../components/Code128Barcode.svelte';
@@ -86,7 +87,7 @@
     {#if markFailed}<span class="warning" role="alert">Some tickets could not be marked printed.</span><button class="secondary" onclick={markPrinted} disabled={marking}>Retry</button>{/if}
     <button class="secondary" onclick={load} disabled={loading}>Reload</button><button onclick={print} disabled={!tickets.length}>Print all</button>
   </div>
-  {#if loading}<p class="message">Preparing print batch…</p>
+  {#if loading}<UiStatePanel kind="loading" title="Preparing print batch" message="Preparing the selected picking tickets for printing." />
   {:else if error}<section class="message error"><h2>Could not render tickets</h2><p>{error}</p></section>
   {:else if !tickets.length}<p class="message">No tickets to print.</p>
   {:else}
