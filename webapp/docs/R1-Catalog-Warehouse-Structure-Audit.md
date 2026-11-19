@@ -106,3 +106,52 @@ La paridad debe incluir los flujos y errores, no solo la existencia de pantallas
 ## 7. Criterio de cierre R1
 
 R1 no se cierra hasta demostrar paridad React donde Flask soporta la operación, contratos DTO/mappers correctos, filtros/paginación, guards de permisos, aislamiento de estado y de presentación por almacén en frontend, tratamiento explícito del catálogo global de Items, errores de dependencias y pruebas frontend de regresión. La autorización/aislamiento server-side de las rutas administrativas Zones/Bins y la persistencia de capacidades físicas son `BACKEND_LIMITATION`; no pueden certificarse ni resolverse desde esta migración frontend.
+
+## 8. Verificación de seguimiento — 2026-11-19
+
+**HEAD de implementación verificado:** `e6dd813539c76310dbc700001057c59e0fb2d9d6`  
+**Workflow Webapp CI:** https://github.com/danielitoCode/smart-wms/actions/runs/44612120135
+
+### Items
+
+Estado: **VERIFIED en las capas frontend cubiertas**.
+
+- Archivo/restauración aplica el `is_active` devuelto por Flask antes de refrescar la lista.
+- Se impide el doble envío por artículo y el doble envío de eliminación.
+- Detalle invalida respuestas antiguas al cambiar de artículo o cerrar el diálogo.
+- La confirmación de borrado permanece abierta y muestra el error HTTP 400 real de Flask. No se añade una preconsulta que el backend no ofrece.
+- DTO, mapper, repositorio, estado y UI tienen cobertura de regresión en las suites ejecutadas.
+
+### Warehouses, Zones y Bins
+
+Estado: **IN_PROGRESS — protecciones frontend verificadas; limitaciones de servidor pendientes**.
+
+- El estado de bins valida el almacén y, cuando dispone de la lista de zonas, la pertenencia de la zona; descarta detalles obsoletos y bloquea mutaciones de bins que no pertenecen al resultado cargado.
+- La exportación CSV pagina con `per_page=1000`, recorre todas las páginas y usa columnas presentes en las respuestas Flask. Se eliminaron columnas ficticias y el límite silencioso de 10.000 filas.
+- Se retiraron del dominio, DTO, repositorio, casos de uso y UI los campos de capacidad física que Flask no acepta ni devuelve.
+- Los errores de duplicado, inexistencia y dependencias (400/404/409) se conservan y se presentan en la UI.
+- Las respuestas y mutaciones se validan contra el almacén/zona activos en frontend. Esto no proporciona aislamiento de seguridad frente a llamadas directas: las rutas administrativas Flask inspeccionadas no aplican warehouse scope por usuario.
+
+### Ejecución CI
+
+En el workflow Webapp CI del HEAD anterior:
+
+| Paso | Resultado |
+|---|---|
+| Typecheck | PASS |
+| Build | PASS |
+| Domain | 82 archivos / 337 pruebas PASS |
+| Application | 57 archivos / 240 pruebas PASS |
+| Infrastructure/Data | 68 archivos / 274 pruebas PASS |
+| UI / Presentation | 39 archivos / 202 pruebas PASS |
+| i18n | 1 archivo / 5 pruebas PASS |
+| Integration | 22 PASS / 2 FAIL |
+
+Los dos fallos de integración pertenecen al gate R0 y no a los cambios de R1:
+1. `refreshes the cookie and retries /me after a 401`: la prueba espera una secuencia de refresh/reintento que el comportamiento/contrato vigente no ejecuta.
+2. `rejects an inactive account even when login returns HTTP 200`: falla por `Body is unusable: Body has already been read`.
+
+Por esos fallos, el workflow marcó el job como failure y omitió Full regression y Coverage by feature paths. No se declara CI global verde.
+
+**Decisión de cierre:** Items queda verificado en frontend. La auditoría/corrección frontend de Warehouses, Zones y Bins queda validada por las suites ejecutadas, pero R1 no se certifica globalmente mientras persistan el gate de integración R0 y las limitaciones server-side de warehouse scope y capacidades físicas. No se ha modificado Flask.
+
