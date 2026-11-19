@@ -268,7 +268,7 @@ describe('Items UI state', () => {
 		await state.load();
 		await expect(state.toggleArchive(row)).resolves.toBe(true);
 		expect(state.items[0].active).toBe(resultingActive);
-		expect(state.error).toBe('No se pudo actualizar el listado');
+		expect(state.error).toBe('Error del servidor. Inténtalo más tarde.');
 	});
 
 	it('does not change the item state when the archive endpoint rejects', async () => {
