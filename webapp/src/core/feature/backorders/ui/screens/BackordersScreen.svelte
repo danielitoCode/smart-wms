@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
   import { getContext } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -163,11 +164,11 @@
   {#if scopeError}
     <p class="message error" role="alert">{scopeErrorMessage}</p>
   {:else if vm.error}
-    <p class="message error" role="alert">{vm.error}</p>
+    <UiStatePanel kind="error" title={i18n.t('No se pudieron cargar los backorders')} message={vm.error} retry={() => vm.load()} />
   {:else if vm.loading}
-    <p class="empty">{i18n.t('Cargando pedidos pendientes…')}</p>
+    <UiStatePanel kind="loading" title={i18n.t('Cargando backorders')} message={i18n.t('Estamos consultando los pedidos pendientes y su disponibilidad.')} />
   {:else if visibleRows.length === 0}
-    <p class="empty">{search.trim() ? i18n.t('No hay resultados para este filtro.') : activeTab === 'waiting' ? i18n.t('No hay pedidos esperando inventario.') : i18n.t('No hay pedidos listos para despacho.')}</p>
+    <UiStatePanel kind="empty" title={i18n.t('Sin pedidos pendientes')} message={search.trim() ? i18n.t('No hay resultados para este filtro.') : activeTab === 'waiting' ? i18n.t('No hay pedidos esperando inventario.') : i18n.t('No hay pedidos listos para despacho.')} />
   {:else}
     <div class="cards">
       {#each visibleRows as row (row.salesOrderId)}

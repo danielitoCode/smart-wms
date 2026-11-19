@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
   import { onMount, getContext } from 'svelte';
   import { page as route } from '$app/state';
   import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
@@ -157,7 +158,7 @@
     <button onclick={() => void vm.load(selection?.warehouseId ?? null)}>{i18n.t('Aplicar filtros')}</button>
   </div>
 
-  {#if vm.loading}<p class="muted">{i18n.t('Cargando…')}</p>
+  {#if vm.loading}<UiStatePanel kind="loading" title={i18n.t('Cargando órdenes de compra')} message={i18n.t('Estamos consultando las órdenes del almacén seleccionado.')} />
   {:else}
     <div class="table-wrap panel">
       <table><thead><tr><th>{i18n.t('Orden')}</th><th>{i18n.t('Proveedor')}</th><th>{i18n.t('Almacén')}</th><th>{i18n.t('Estado')}</th><th>{i18n.t('Fecha prevista')}</th><th>{i18n.t('Acciones')}</th></tr></thead>

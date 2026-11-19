@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
   import { getContext, onMount } from 'svelte';
   import { page as route } from '$app/state';
   import { goto } from '$app/navigation';
@@ -616,9 +617,9 @@
   </section>
 
   {#if vm.loading && vm.orders.length === 0}
-    <div class="skeleton" aria-label={i18n.t('Cargando')}><span></span><span></span><span></span></div>
+    <UiStatePanel kind="loading" title={i18n.t('Cargando pedidos de venta')} message={i18n.t('Estamos recuperando los pedidos del almacén seleccionado.')} />
   {:else if vm.orders.length === 0}
-    <p class="empty">{i18n.t('No se encontraron pedidos.')}</p>
+    <UiStatePanel kind="empty" title={i18n.t('Sin pedidos')} message={i18n.t('No se encontraron pedidos para los filtros actuales.')} />
   {:else}
     <div class="table-wrap">
       <table>

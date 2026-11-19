@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
   import { getContext } from 'svelte';
   import { page } from '$app/state';
   import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
@@ -102,11 +103,11 @@
       <p>{i18n.t('La cola de backorders está disponible, pero el detalle y la cancelación utilizan las operaciones de Sales Orders. Necesitas el permiso Pedidos de venta para continuar.')}</p>
     </div>
   {:else if vm.detailLoading}
-    <p class="empty">{i18n.t('Cargando detalle del backorder…')}</p>
+    <UiStatePanel kind="loading" title={i18n.t('Cargando backorder')} message={i18n.t('Estamos recuperando el pedido pendiente y sus líneas.')} />
   {:else if vm.detailError}
-    <p class="message error" role="alert">{vm.detailError}</p>
+    <UiStatePanel kind="error" title={i18n.t('No se pudo cargar el backorder')} message={vm.detailError} retry={() => vm.load()} />
   {:else if order && !hasOrderWarehouseAccess}
-    <p class="message error" role="alert">{i18n.t('No tienes acceso al almacén de este pedido.')}</p>
+    <UiStatePanel kind="forbidden" title={i18n.t('Almacén no autorizado')} message={i18n.t('No tienes acceso al almacén de este pedido.')} />
   {:else if order}
     <header class="header">
       <div>
@@ -237,7 +238,7 @@
       </div>
     {/if}
   {:else}
-    <p class="empty">{i18n.t('No se encontró el pedido pendiente.')}</p>
+    <UiStatePanel kind="empty" title={i18n.t('Backorder no encontrado')} message={i18n.t('No se encontró el pedido pendiente solicitado.')} />
   {/if}
 </section>
 
