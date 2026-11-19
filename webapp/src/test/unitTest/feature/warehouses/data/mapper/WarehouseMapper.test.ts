@@ -34,7 +34,7 @@ describe('WarehouseMapper', () => {
 	});
 	it('maps the bin inventory projection and rejects malformed identifiers', () => {
 		const detail = WarehouseMapper.toBinDetail({
-			bin: { bin_id: 12, warehouse_id: 8, zone_id: 4, bin_code: 'A-01', bin_type: 'Pickable', bin_barcode: null },
+			bin: { bin_id: 12, warehouse_id: 8, zone_id: 4, bin_code: 'A-01', bin_type: 'Pickable', bin_barcode: null, is_active: true, pick_sequence: 0, putaway_sequence: 0 },
 			inventory: [{ inventory_id: 3, item_id: 21, sku: 'SKU-21', item_name: 'Item 21', quantity_on_hand: 10, quantity_allocated: 2 }]
 		});
 		expect(detail.inventory[0]).toEqual({
