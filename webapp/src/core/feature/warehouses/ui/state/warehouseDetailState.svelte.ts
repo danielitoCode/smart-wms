@@ -6,6 +6,7 @@ import type {
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 import { authSession } from '../../../../infrastructure/auth/AuthSession';
 import { assertZoneBelongsToWarehouse } from '../../domain/context/ZoneContext';
+import { beginWarehouseScopedRequest } from '../../../../infrastructure/warehouse/WarehouseRequestScope';
 
 const deps = createWarehousesDependencies();
 
@@ -27,12 +28,27 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 	let error = $state<string | null>(null);
 	let binsRequestVersion = 0;
 
+	function assertBinBelongsToWarehouse(bin: Bin, label = 'bin'): void {
+		if (bin.warehouseId !== warehouseId) {
+			throw new Error(`The ${label} does not belong to the active warehouse`);
+		}
+	}
+
+	function findLoadedBin(id: number): Bin {
+		if (!Number.isInteger(id) || id <= 0) throw new Error('bin id must be a positive integer');
+		const bin = bins.find((candidate) => candidate.id === id);
+		if (!bin) throw new Error('Bin is not present in the active warehouse result');
+		assertBinBelongsToWarehouse(bin);
+		return bin;
+	}
+
 	async function load(initialZoneId: number | null = null) {
 		if (loading) return false;
 		if (!Number.isInteger(warehouseId) || warehouseId <= 0) {
 			error = 'warehouseId inválido';
 			return false;
 		}
+		const scopedRequest = beginWarehouseScopedRequest();
 		loading = true;
 		error = null;
 		warehouse = null;
@@ -49,16 +65,22 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 				? await deps.getWarehouse.execute(warehouseId)
 				: { id: warehouseId, code: String(warehouseId), name: 'Almacén seleccionado', address: null, active: true, createdAt: null };
 			zones = await deps.listZones.execute(warehouseId);
+			if (!scopedRequest.isCurrent()) return false;
+			if (zones.some((zone) => zone.warehouseId !== warehouseId)) {
+				throw new Error('The zones response contains a zone from another warehouse');
+			}
 			if (initialZoneId != null && !zones.some(zone => zone.id === initialZoneId)) {
 				throw new Error('La zona seleccionada no pertenece al almacén activo');
 			}
 			if (includeBins) await loadBinsForZone(initialZoneId, 1);
 			return true;
 		} catch (err) {
+			if (!scopedRequest.isCurrent()) return false;
 			error = toUserMessage(err, 'No se pudo cargar el almacén');
 			return false;
 		} finally {
-			loading = false;
+			scopedRequest.release();
+			if (scopedRequest.isCurrent()) loading = false;
 		}
 	}
 
@@ -66,6 +88,7 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 		if (!includeBins) return false;
 		selectedZoneId = zoneId;
 		const requestVersion = ++binsRequestVersion;
+		const scopedRequest = beginWarehouseScopedRequest();
 		binsLoading = true;
 		error = null;
 		try {
@@ -73,17 +96,21 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 				warehouseId, ...(zoneId != null ? { zoneId } : {}), ...(binTypeFilter ? { binType: binTypeFilter } : {}), page, perPage: binPerPage,
 				...(binSearch.trim() ? { q: binSearch.trim() } : {})
 			});
-			if (requestVersion !== binsRequestVersion) return false;
+			if (requestVersion !== binsRequestVersion || !scopedRequest.isCurrent()) return false;
+			if (result.items.some((bin) => bin.warehouseId !== warehouseId)) {
+				throw new Error('The bins response contains a bin from another warehouse');
+			}
 			bins = result.items; binPage = result.page; binPages = result.pages;
 			binTotal = result.total; binPerPage = result.perPage;
 			return true;
 		} catch (err) {
-			if (requestVersion !== binsRequestVersion) return false;
+			if (requestVersion !== binsRequestVersion || !scopedRequest.isCurrent()) return false;
 			error = toUserMessage(err, 'No se pudieron cargar los bins');
 			bins = []; binTotal = 0;
 			return false;
 		} finally {
-			if (requestVersion === binsRequestVersion) binsLoading = false;
+			scopedRequest.release();
+			if (requestVersion === binsRequestVersion && scopedRequest.isCurrent()) binsLoading = false;
 		}
 	}
 
@@ -118,18 +145,30 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 	}
 	async function updateBin(input: UpdateBinInput) {
 		return mutate(async () => {
+			findLoadedBin(input.id);
 			if (input.zoneId !== undefined) assertZoneBelongsToWarehouse(input.zoneId, warehouseId, zones);
 			await deps.updateBin.execute(input);
 			await loadBinsForZone(selectedZoneId, binPage);
 		}, 'No se pudo actualizar el bin');
 	}
 	async function removeBin(id: number) {
-		return mutate(async () => { await deps.deleteBin.execute(id); selectedBinDetail = null; await loadBinsForZone(selectedZoneId, binPage); }, 'No se pudo eliminar el bin');
+		return mutate(async () => { findLoadedBin(id); await deps.deleteBin.execute(id); selectedBinDetail = null; await loadBinsForZone(selectedZoneId, binPage); }, 'No se pudo eliminar el bin');
 	}
 	async function viewBin(id: number) {
 		error = null;
-		try { selectedBinDetail = await deps.getBinDetail.execute(id); return true; }
-		catch (err) { error = toUserMessage(err, 'No se pudo cargar el detalle del bin'); return false; }
+		const scopedRequest = beginWarehouseScopedRequest();
+		try {
+			const detail = await deps.getBinDetail.execute(id);
+			if (!scopedRequest.isCurrent()) return false;
+			assertBinBelongsToWarehouse(detail.bin, 'bin detail');
+			selectedBinDetail = detail;
+			return true;
+		} catch (err) {
+			if (!scopedRequest.isCurrent()) return false;
+			error = toUserMessage(err, 'No se pudo cargar el detalle del bin');
+			selectedBinDetail = null;
+			return false;
+		} finally { scopedRequest.release(); }
 	}
 	async function exportAllBins(): Promise<Bin[]> {
 		const all: Bin[] = []; let page = 1; let pages = 1;
@@ -139,6 +178,9 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 				...(binTypeFilter ? { binType: binTypeFilter } : {}),
 				page, perPage: 50, ...(binSearch.trim() ? { q: binSearch.trim() } : {})
 			});
+			if (result.items.some((bin) => bin.warehouseId !== warehouseId)) {
+				throw new Error('The bins export contains a bin from another warehouse');
+			}
 			all.push(...result.items); pages = result.pages; page += 1;
 		} while (page <= pages && page <= 200);
 		return all;
