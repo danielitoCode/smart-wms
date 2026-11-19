@@ -27,6 +27,7 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 	let mutating = $state(false);
 	let error = $state<string | null>(null);
 	let binsRequestVersion = 0;
+	let binDetailRequestVersion = 0;
 
 	function assertBinBelongsToWarehouse(bin: Bin, label = 'bin'): void {
 		if (bin.warehouseId !== warehouseId) {
@@ -164,16 +165,18 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 		return mutate(async () => { findLoadedBin(id); await deps.deleteBin.execute(id); selectedBinDetail = null; await loadBinsForZone(selectedZoneId, binPage); }, 'No se pudo eliminar el bin');
 	}
 	async function viewBin(id: number) {
+		const requestVersion = ++binDetailRequestVersion;
 		error = null;
+		selectedBinDetail = null;
 		const scopedRequest = beginWarehouseScopedRequest();
 		try {
 			const detail = await deps.getBinDetail.execute(id);
-			if (!scopedRequest.isCurrent()) return false;
+			if (requestVersion !== binDetailRequestVersion || !scopedRequest.isCurrent()) return false;
 			assertBinBelongsToWarehouse(detail.bin, 'bin detail');
 			selectedBinDetail = detail;
 			return true;
 		} catch (err) {
-			if (!scopedRequest.isCurrent()) return false;
+			if (requestVersion !== binDetailRequestVersion || !scopedRequest.isCurrent()) return false;
 			error = toUserMessage(err, 'No se pudo cargar el detalle del bin');
 			selectedBinDetail = null;
 			return false;
@@ -186,14 +189,14 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 			const result = await deps.listBins.execute({
 				warehouseId, ...(selectedZoneId != null ? { zoneId: selectedZoneId } : {}),
 				...(binTypeFilter ? { binType: binTypeFilter } : {}),
-				page, perPage: 50, ...(binSearch.trim() ? { q: binSearch.trim() } : {})
+				page, perPage: 1000, ...(binSearch.trim() ? { q: binSearch.trim() } : {})
 			});
 			if (!scopedRequest.isCurrent()) throw new Error('Warehouse context changed during bin export');
 			if (result.items.some((bin) => bin.warehouseId !== warehouseId || (selectedZoneId != null && bin.zoneId !== selectedZoneId))) {
 				throw new Error('The bins export contains a bin outside the active warehouse or zone');
 			}
 			all.push(...result.items); pages = result.pages; page += 1;
-		} while (page <= pages && page <= 200);
+		} while (page <= pages);
 		return all;
 		} finally { scopedRequest.release(); }
 	}
@@ -212,7 +215,7 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 		get selectedZoneId() { return selectedZoneId; }, get selectedBinDetail() { return selectedBinDetail; },
 		get loading() { return loading; }, get binsLoading() { return binsLoading; },
 		get mutating() { return mutating; }, get error() { return error; },
-		clearError() { error = null; }, setError(message: string) { error = message; }, closeBinDetail() { selectedBinDetail = null; },
+		clearError() { error = null; }, setError(message: string) { error = message; }, closeBinDetail() { binDetailRequestVersion += 1; selectedBinDetail = null; },
 		load, loadBinsForZone, searchBins, filterBinsByType, createZone, updateZone, removeZone,
 		createBin, updateBin, removeBin, viewBin, exportAllBins
 	};
