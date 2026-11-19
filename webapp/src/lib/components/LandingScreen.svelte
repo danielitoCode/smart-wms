@@ -188,3 +188,5 @@
 		{ href: '#contacto', label: i18n.t('Ubicación') }
 	]);
 </script>
+
+<!--PART2_PLACEHOLDER-->
