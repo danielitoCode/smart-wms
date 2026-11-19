@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const auth = vi.hoisted(() => ({ user: { role: 'ADMIN', allowedPages: ['warehouses', 'zones', 'bins'] } }));
+const auth = vi.hoisted(() => ({ user: { role: 'ADMIN' as string, allowedPages: ['warehouses', 'zones', 'bins'] as string[] } }));
 
 const deps = vi.hoisted(() => ({
 	getWarehouse: { execute: vi.fn() },
