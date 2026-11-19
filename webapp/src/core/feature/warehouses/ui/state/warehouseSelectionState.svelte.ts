@@ -104,9 +104,7 @@ export function createWarehouseSelectionState() {
 			warehouses = [];
 			selectableIds = [];
 			applyActiveId(null);
-			error = err instanceof Error
-				? 'No se pudo validar el catálogo de almacenes: ' + err.message
-				: 'No se pudo validar el catálogo de almacenes.';
+			error = 'No se pudo validar el catálogo de almacenes. Las operaciones que requieren un almacén quedan bloqueadas.';
 			initialized = true;
 		} finally {
 			if (epoch === loadEpoch) loading = false;
@@ -126,7 +124,7 @@ export function createWarehouseSelectionState() {
 		const scopeChanged =
 			nextAuthority.role !== authorityRole ||
 			!sameIds(nextAuthority.assignedWarehouseIds, assignedIds);
-		if (!initialized || scopeChanged) {
+		if (!initialized || scopeChanged || error !== null) {
 			await load(user);
 			return;
 		}
