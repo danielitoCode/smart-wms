@@ -188,5 +188,3 @@
 		{ href: '#contacto', label: i18n.t('Ubicación') }
 	]);
 </script>
-
-<!-- STYLE_AND_MARKUP_CONTINUES_FROM_ARTIFACTS -->
