@@ -26,7 +26,7 @@ import { createWarehouseDetailState } from '../../../../../core/feature/warehous
 import { notifyWarehouseChanged, resetWarehouseRequestScopeForTests } from '../../../../../core/infrastructure/warehouse/WarehouseRequestScope';
 
 const zone = { id: 11, warehouseId: 1, code: 'PICK', name: 'Picking', zoneType: 'PICKING' as const, active: true, binsCount: 2 };
-const bin = { id: 3, warehouseId: 1, zoneId: 11, zoneName: 'Picking', code: 'A-01', barcode: 'BC-01', binType: 'Pickable' as const, aisle: 'A', rowNumber: 1, levelNumber: 1, positionNumber: 1, pickSequence: 1, putawaySequence: 1, active: true, maxWeightLbs: 100, maxVolumeCuft: 20, quantityOnHand: 0, quantityAllocated: 0, inventoryLines: 0 };
+const bin = { id: 3, warehouseId: 1, zoneId: 11, zoneName: 'Picking', code: 'A-01', barcode: 'BC-01', binType: 'Pickable' as const, aisle: 'A', rowNumber: 1, levelNumber: 1, positionNumber: 1, pickSequence: 1, putawaySequence: 1, active: true, quantityOnHand: 0, quantityAllocated: 0, inventoryLines: 0 };
 const binPage = { items: [bin], total: 1, page: 1, pages: 1, perPage: 50 };
 
 describe('WarehouseDetailState zone and bins interactions', () => {
@@ -100,15 +100,14 @@ describe('WarehouseDetailState zone and bins interactions', () => {
 		});
 	});
 
-	it('creates a bin with the active warehouse and optional capacity', async () => {
+	it('creates a bin with the active warehouse and only supported fields', async () => {
 		const state = createWarehouseDetailState(1, true);
 		await state.load(11);
 		await state.createBin({
-			zoneId: 11, code: 'A-02', barcode: 'BC-02', binType: 'Pickable',
-			maxWeightLbs: 120.5, maxVolumeCuft: 18
+			zoneId: 11, code: 'A-02', barcode: 'BC-02', binType: 'Pickable'
 		});
 		expect(deps.createBin.execute).toHaveBeenCalledWith(expect.objectContaining({
-			warehouseId: 1, zoneId: 11, code: 'A-02', maxWeightLbs: 120.5, maxVolumeCuft: 18
+			warehouseId: 1, zoneId: 11, code: 'A-02'
 		}));
 	});
 
