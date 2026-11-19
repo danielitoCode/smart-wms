@@ -217,6 +217,13 @@ export function createItemsState(dependencies: ItemsDependencies = createItemsDe
 		}
 	}
 
+	function closeDetail() {
+		detailRequestId += 1;
+		detail = null;
+		detailLoading = false;
+		detailError = null;
+	}
+
 	async function confirmDelete() {
 		if (deleteId == null || saving) return false;
 		saving = true;
@@ -311,12 +318,7 @@ export function createItemsState(dependencies: ItemsDependencies = createItemsDe
 			showForm = false;
 			editId = null;
 		},
-		closeDetail() {
-			detailRequestId += 1;
-			detail = null;
-			detailLoading = false;
-			detailError = null;
-		},
+		closeDetail,
 		load,
 		cancelLoad,
 		openDetail,
