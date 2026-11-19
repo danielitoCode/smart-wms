@@ -1,6 +1,7 @@
 import { createAuthDependencies } from '../../di/auth.dependencies';
 import type { User } from '../../domain/entity/User';
 import { ApiError } from '#core/infrastructure/errors/ApiError.ts';
+import { authBootHint } from '#core/infrastructure/auth/AuthBootHint.ts';
 
 const deps = createAuthDependencies();
 
@@ -47,6 +48,7 @@ export function createLoginState() {
 			const result = await deps.login.execute({ username: userName, password });
 			user = result.user;
 			password = '';
+			authBootHint.markKnown();
 			return true;
 		} catch (err) {
 			password = '';

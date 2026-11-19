@@ -1,5 +1,6 @@
 import { createAuthDependencies } from '../../di/auth.dependencies';
 import type { User, EnsureAuthenticatedResult } from '../../domain/entity/User';
+import { authBootHint } from '#core/infrastructure/auth/AuthBootHint.ts';
 
 const deps = createAuthDependencies();
 
@@ -22,6 +23,7 @@ export function createAuthGuardState() {
 				if (result.ok) {
 					user = result.user;
 					status = 'authenticated';
+					authBootHint.markKnown();
 					return;
 				}
 				user = null;
@@ -84,13 +86,21 @@ export function createAuthGuardState() {
 			user = null;
 			status = 'anonymous';
 			message = null;
+			// Explicit logout → next cold start at `/` is treated as anonymous → landing
+			authBootHint.clear();
 		}
 	}
 
 	return {
-		get status() { return status; },
-		get user() { return user; },
-		get message() { return message; },
+		get status() {
+			return status;
+		},
+		get user() {
+			return user;
+		},
+		get message() {
+			return message;
+		},
 		verify,
 		revalidatePermissions,
 		logout
