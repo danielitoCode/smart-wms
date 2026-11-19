@@ -33,6 +33,9 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 		if (bin.warehouseId !== warehouseId) {
 			throw new Error(`The ${label} belongs to another warehouse`);
 		}
+		if (includeZones && (bin.zoneId == null || !zones.some((zone) => zone.id === bin.zoneId))) {
+			throw new Error(`The ${label} references a zone outside the active warehouse`);
+		}
 	}
 
 	async function refreshZones(): Promise<Zone[]> {
@@ -106,7 +109,10 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 				...(binSearch.trim() ? { q: binSearch.trim() } : {})
 			});
 			if (requestVersion !== binsRequestVersion || !scopedRequest.isCurrent()) return false;
-			if (result.items.some((bin) => bin.warehouseId !== warehouseId || (zoneId != null && bin.zoneId !== zoneId))) {
+			if (result.items.some((bin) => {
+				try { assertBinBelongsToWarehouse(bin); return zoneId != null && bin.zoneId !== zoneId; }
+				catch { return true; }
+			})) {
 				throw new Error('The bins response contains a bin from another warehouse or outside the selected zone');
 			}
 			bins = result.items; binPage = result.page; binPages = result.pages;
@@ -184,17 +190,21 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 	}
 	async function exportAllBins(): Promise<Bin[]> {
 		const all: Bin[] = []; let page = 1; let pages = 1;
+		const exportZoneId = selectedZoneId;
+		const exportBinType = binTypeFilter;
+		const exportSearch = binSearch.trim();
 		const scopedRequest = beginWarehouseScopedRequest();
 		try { do {
 			const result = await deps.listBins.execute({
-				warehouseId, ...(selectedZoneId != null ? { zoneId: selectedZoneId } : {}),
-				...(binTypeFilter ? { binType: binTypeFilter } : {}),
-				page, perPage: 1000, ...(binSearch.trim() ? { q: binSearch.trim() } : {})
+				warehouseId, ...(exportZoneId != null ? { zoneId: exportZoneId } : {}),
+				...(exportBinType ? { binType: exportBinType } : {}),
+				page, perPage: 1000, ...(exportSearch ? { q: exportSearch } : {})
 			});
 			if (!scopedRequest.isCurrent()) throw new Error('Warehouse context changed during bin export');
-			if (result.items.some((bin) => bin.warehouseId !== warehouseId || (selectedZoneId != null && bin.zoneId !== selectedZoneId))) {
-				throw new Error('The bins export contains a bin outside the active warehouse or zone');
-			}
+			if (result.items.some((bin) => {
+				try { assertBinBelongsToWarehouse(bin, 'exported bin'); return exportZoneId != null && bin.zoneId !== exportZoneId; }
+				catch { return true; }
+			})) throw new Error('The bins export contains a bin outside the active warehouse or zone');
 			all.push(...result.items); pages = result.pages; page += 1;
 		} while (page <= pages);
 		return all;
