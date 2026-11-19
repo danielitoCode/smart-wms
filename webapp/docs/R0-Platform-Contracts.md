@@ -9,6 +9,8 @@
 
 Este documento registra evidencia comprobada y cambios realizados para R0. No certifica todavía el cierre del recorrido completo.
 
+Auditoría ampliada de rutas React/Svelte, llamadas HTTP, mutaciones y warehouse scope: [R0-Routes-Authorization-Warehouse-Audit.md](./R0-Routes-Authorization-Warehouse-Audit.md). Se encontraron brechas P0 de aislamiento en inventory y picking active-batch, discrepancias de grants en datos maestros y mutaciones operativas sin enforcement general de allowed_functions. R0 permanece abierto.
+
 ---
 
 ## 1. Contratos Flask comprobados
