@@ -27,12 +27,12 @@ export const WarehouseMapper = {
 			throw new Error('Unsupported zone type returned by warehouse API: ' + zoneType);
 		}
 		return {
-			id: requiredId(dto.id ?? dto.zone_id, 'zone id'),
+			id: requiredId(dto.zone_id, 'zone id'),
 			warehouseId: requiredId(dto.warehouse_id, 'zone warehouse id'),
-			code: requiredText(dto.zone_code ?? dto.code, 'zone code'),
-			name: requiredText(dto.zone_name ?? dto.name, 'zone name'),
+			code: requiredText(dto.zone_code, 'zone code'),
+			name: requiredText(dto.zone_name, 'zone name'),
 			zoneType: zoneType as ZoneType,
-			active: dto.is_active ?? dto.active ?? true,
+			active: dto.is_active,
 			binsCount: dto.bins_count ?? 0
 		};
 	},
@@ -42,12 +42,12 @@ export const WarehouseMapper = {
 			throw new Error('Unsupported bin type returned by warehouse API: ' + binType);
 		}
 		return {
-			id: requiredId(dto.id ?? dto.bin_id, 'bin id'),
+			id: requiredId(dto.bin_id, 'bin id'),
 			warehouseId: requiredId(dto.warehouse_id, 'bin warehouse id'),
 			zoneId: dto.zone_id ?? null,
 			zoneName: dto.zone_name ?? null,
-			code: requiredText(dto.bin_code ?? dto.code, 'bin code'),
-			barcode: dto.bin_barcode ?? dto.barcode ?? null,
+			code: requiredText(dto.bin_code, 'bin code'),
+			barcode: dto.bin_barcode,
 			binType: binType as BinType,
 			aisle: dto.aisle ?? null,
 			rowNumber: dto.row_num ?? null,
@@ -55,7 +55,7 @@ export const WarehouseMapper = {
 			positionNumber: dto.position_num ?? null,
 			pickSequence: dto.pick_sequence ?? 0,
 			putawaySequence: dto.putaway_sequence ?? 0,
-			active: dto.is_active ?? dto.active ?? true,
+			active: dto.is_active,
 			maxWeightLbs: dto.max_weight_lbs == null ? null : Number(dto.max_weight_lbs),
 			maxVolumeCuft: dto.max_volume_cuft == null ? null : Number(dto.max_volume_cuft),
 			quantityOnHand: dto.quantity_on_hand ?? 0,
