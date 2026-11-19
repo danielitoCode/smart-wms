@@ -685,3 +685,32 @@ Cada riesgo debe reabrirse solo con evidencia del HEAD/Flask vigente. No asumir 
 La política observada de `allowed_functions`, el alcance real de `allowed_pages`, el scope de almacenes, las pruebas de integración añadidas y los criterios pendientes de cierre están documentados en [R0-Session-Grants-Integration.md](./R0-Session-Grants-Integration.md).
 
 **No declarar R0 cerrado:** la adopción de `UiStatePanel` debe verificarse pantalla por pantalla; el nuevo bloque de tests debe ejecutarse con Node 26; y el resultado del workflow CI del HEAD definitivo debe quedar registrado. No se debe introducir enforcement genérico de `allowed_functions` en el frontend ni atribuírselo a Flask sin implementar y probar el contrato backend.
+
+## 13. Evaluación de transición R0 → R1 (2026-11-19)
+
+**Decisión: R1 puede prepararse y su análisis puede comenzar, pero la transición formal con R0 cerrado queda pendiente de corregir los bloqueos frontend siguientes.** No se condiciona esta decisión a corregir Flask ni a que pasen las suites backend.
+
+### Lo que NO bloquea R1
+- Hallazgos de seguridad/warehouse scope que requieren cambios Flask.
+- Ausencia de enforcement genérico server-side de `allowed_functions`.
+- Endpoints, validaciones, transacciones o auditoría que Flask todavía no exponga.
+- Fallos de workflows o suites que ejecutan pruebas del backend.
+
+Estos puntos se mantienen como `BACKEND_LIMITATION` o `UNVERIFIED_CONTRACT`, con su evidencia y el comportamiento frontend seguro requerido. No son trabajo de esta migración.
+
+### Bloqueos frontend comprobados
+1. **Integración de sesión:** en el Webapp CI del HEAD `cf10f5a4028d05eac7322f7ac085dcdf416d08ef`, typecheck, build y suites domain/application/infrastructure/UI/i18n pasaron, pero la suite de integración falló con 2 tests en `AuthHttpIntegration.test.ts`:
+   - `refreshes the cookie and retries /me after a 401`: el test espera una secuencia de refresh/reintentos que no coincide con el comportamiento actual documentado (401 no inicia un refresh imposible). Debe alinearse el test con el contrato real y la implementación vigente, no reintroducir un refresh que el servidor no soporta.
+   - `rejects an inactive account even when login returns HTTP 200`: el test/flujo falla al leer dos veces el body (`Body has already been read`). Corregir el consumo de respuesta en el frontend/test y conservar el rechazo de cuentas inactivas.
+   - Run: https://github.com/danielitoCode/smart-wms/actions/runs/44593552648
+2. **Grant de Bins:** la inspección del HEAD encontró que `data/+layout.svelte` exige simultáneamente `bins` y `zones`, y `data/+page.svelte` también exige ambos para dirigir a Bins. El contrato Flask observado protege Bins con el grant `bins` solamente. Corregir ambos guards en frontend; no requiere cambio Flask.
+3. **Cobertura de rutas:** las discrepancias React/Svelte del informe R0 deben clasificarse por recorrido. Las rutas de Items, Warehouses, Zones y Bins son parte directa de R1 y deben verificarse/corregirse dentro del primer bloque de R1. Las discrepancias de otros recorridos no deben bloquear el trabajo de R1 si no afectan sus dependencias.
+
+### Gate mínimo para declarar R0 frontend listo para R1
+- [ ] Corregir los dos fallos de integración de sesión descritos y obtener verde en la suite de integración de `webapp`.
+- [ ] Corregir el requisito de grant de Bins y añadir/ajustar pruebas frontend para usuario con solo `bins`.
+- [ ] Confirmar que el contexto de almacén compartido y sus pruebas frontend pasan.
+- [ ] Ejecutar y revisar el workflow **Webapp CI** del HEAD definitivo: check/typecheck, build, todas las suites frontend y regresión. Los workflows backend se excluyen de este gate.
+- [ ] Iniciar R1 con inventario actualizado de React, rutas Svelte y contratos Flask de Items, Warehouses, Zones y Bins; cualquier ausencia/limitación Flask queda documentada y no implementada en servidor.
+
+**Conclusión operativa:** no hay que esperar a que el backend se arregle. Sí hay que cerrar los dos fallos frontend de sesión y el grant de Bins antes de declarar R0 frontend verificado. El análisis de R1 y la preparación de su matriz pueden avanzar en paralelo; no se debe declarar R1 terminado hasta verificar sus propias pruebas y el comportamiento frontend con las capacidades reales del servidor.
