@@ -16,8 +16,8 @@ const warehouse = (id: number) => ({
 	id, code: 'WH-' + id, name: 'Warehouse ' + id, address: null, active: true, createdAt: null
 });
 
-const user = (warehouseIds = [1, 2], allowedPages = ['zones']) => ({
-	userId: 4, username: 'zone-user', fullName: 'Zone User', role: 'USER',
+const user = (warehouseIds = [1, 2], allowedPages: string[] = [], role = 'USER') => ({
+	userId: 4, username: 'zone-user', fullName: 'Zone User', role,
 	warehouseIds, allowedPages, allowedFunctions: [], allowedOverrides: [],
 	mustChangePassword: false
 });
@@ -26,6 +26,7 @@ describe('warehouse selection state', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		resetWarehouseRequestScopeForTests();
+		if (typeof sessionStorage !== 'undefined') sessionStorage.clear();
 		dependencies.listWarehouses.execute.mockResolvedValue([warehouse(1), warehouse(2), warehouse(3)]);
 	});
 	afterEach(() => vi.unstubAllGlobals());
@@ -42,7 +43,7 @@ describe('warehouse selection state', () => {
 
 	it('allows warehouse managers to select from the operational catalog', async () => {
 		const state = createWarehouseSelectionState();
-		await state.load(user([1, 2], ['warehouses']));
+		await state.load(user([1, 2], ['warehouses'], 'ADMIN'));
 		expect(state.canSelect).toBe(true);
 		state.select(2);
 		expect(state.warehouseId).toBe(2);
@@ -51,7 +52,7 @@ describe('warehouse selection state', () => {
 
 	it('preserves the selected warehouse when synchronizing unchanged authority', async () => {
 		const state = createWarehouseSelectionState();
-		const manager = user([1, 2], ['warehouses']);
+		const manager = user([1, 2], ['warehouses'], 'ADMIN');
 		await state.load(manager);
 		state.select(2);
 		await state.syncFromUser(manager);
@@ -62,7 +63,7 @@ describe('warehouse selection state', () => {
 
 	it('aborts requests from the previous warehouse when the active selection changes', async () => {
 		const state = createWarehouseSelectionState();
-		await state.load(user([1, 2], ['warehouses']));
+		await state.load(user([1, 2], ['warehouses'], 'ADMIN'));
 		const pending = beginWarehouseScopedRequest();
 		state.select(2);
 		expect(state.warehouseId).toBe(2);
@@ -73,9 +74,9 @@ describe('warehouse selection state', () => {
 
 	it('moves away from a selected warehouse when refreshed assignments revoke it', async () => {
 		const state = createWarehouseSelectionState();
-		await state.load(user([1, 2], ['warehouses']));
+		await state.load(user([1, 2], ['warehouses'], 'ADMIN'));
 		state.select(2);
-		await state.syncFromUser(user([1], ['zones']));
+		await state.syncFromUser(user([1], []));
 		expect(state.warehouseId).toBe(1);
 		expect(state.selectableIds).toEqual([1]);
 		expect(state.canSelect).toBe(false);
