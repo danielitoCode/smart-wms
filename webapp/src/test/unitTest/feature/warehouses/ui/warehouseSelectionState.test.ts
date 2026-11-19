@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const dependencies = vi.hoisted(() => ({
+	listWarehouses: { execute: vi.fn() },
 	listAdminWarehouses: { execute: vi.fn() }
 }));
 
@@ -17,7 +18,7 @@ const warehouse = (id: number) => ({
 describe('warehouse selection state for zone workflows', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		dependencies.listAdminWarehouses.execute.mockResolvedValue([warehouse(1), warehouse(2), warehouse(3)]);
+		dependencies.listWarehouses.execute.mockResolvedValue([warehouse(1), warehouse(2), warehouse(3)]);
 	});
 
 	it('allows selecting only warehouses assigned to a user with the zones grant', async () => {
@@ -48,7 +49,7 @@ describe('warehouse selection state for zone workflows', () => {
 
 		await state.syncFromUser(user);
 
-		expect(dependencies.listAdminWarehouses.execute).not.toHaveBeenCalled();
+		expect(dependencies.listWarehouses.execute).toHaveBeenCalledTimes(1);
 		expect(state.warehouseId).toBe(2);
 		expect(state.selectableIds).toEqual([1, 2]);
 	});

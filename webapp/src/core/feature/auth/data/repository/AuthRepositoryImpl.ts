@@ -5,20 +5,26 @@ import { AuthMapper } from '../mapper/AuthMapper';
 import { authSession } from '#core/infrastructure/auth/AuthSession.ts';
 
 export class AuthRepositoryImpl implements AuthRepository {
+	private sessionEpoch = 0;
+
 	constructor(private readonly datasource: AuthRemoteDataSource) {}
 
 	async login(credentials: Credentials): Promise<LoginResult> {
+		const epoch = ++this.sessionEpoch;
 		// /login returns the account profile but not the web page/override grants.
 		// Load /me immediately so the first route decision uses the same complete,
 		// current authorization snapshot as a cold application bootstrap.
 		await this.datasource.login(credentials.username, credentials.password);
 		const user = AuthMapper.toUser(await this.datasource.me());
+		if (epoch !== this.sessionEpoch) throw new Error('La sesión cambió durante el inicio de sesión.');
 		this.storeSessionUser(user);
 		return { user };
 	}
 
 	async getCurrentUser(): Promise<User> {
+		const epoch = this.sessionEpoch;
 		const user = AuthMapper.toUser(await this.datasource.me());
+		if (epoch !== this.sessionEpoch) throw new Error('La sesión cambió durante la validación.');
 		this.storeSessionUser(user);
 		return user;
 	}
@@ -42,6 +48,8 @@ export class AuthRepositoryImpl implements AuthRepository {
 	}
 
 	async logout(): Promise<void> {
+		this.sessionEpoch += 1;
+		authSession.clear();
 		try {
 			await this.datasource.logout();
 		} finally {
