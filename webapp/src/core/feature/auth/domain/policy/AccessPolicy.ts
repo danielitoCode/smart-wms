@@ -122,9 +122,9 @@ export function requiredPageKeysForPath(pathname: string): string[] {
 	// Datos maestros
 	if (pathname === '/warehouses' || pathname.startsWith('/data/warehouses')) return ['warehouses'];
 	if (pathname.startsWith('/data/zones')) return ['zones'];
-	if (pathname.startsWith('/data/bins')) return ['bins', 'zones'];
+	if (pathname.startsWith('/data/bins')) return ['bins'];
 	if (pathname.startsWith('/data/preferred-bins')) return ['preferred-bins'];
-	if (pathname.startsWith('/warehouses/')) return ['warehouses', 'zones', 'bins'];
+	if (pathname.startsWith('/warehouses/')) return ['warehouses'];
 
 	return [];
 }
