@@ -35,6 +35,17 @@ const vm = vi.hoisted(() => ({
 			mpn: 'BOX-7',
 			category: 'Embalaje',
 			weightLbs: 12.5,
+			description: 'Caja de cartón reforzado',
+			barcodeAliases: ['ALT-7', 'ALT-8'],
+			lengthIn: 10,
+			widthIn: 8,
+			heightIn: 6,
+			reorderPoint: 4,
+			reorderQty: 12,
+			isLotTracked: true,
+			isSerialTracked: false,
+			createdAt: '2026-01-01T10:00:00Z',
+			updatedAt: '2026-02-01T10:00:00Z',
 			defaultBinCode: 'A-01-02',
 			active: true
 		},
@@ -96,7 +107,7 @@ describe('ItemsScreen UI', () => {
 			context: new Map([['i18n', i18n]])
 		});
 
-		for (const value of ['Detalles del producto', 'SKU', 'UPC', 'MPN', 'Categoría', 'Peso (lb)', 'Bin por defecto', 'Ubicaciones preferidas', 'Prioridad', 'Inventario', 'Cantidad', 'Asignado', 'Picking', '20', '5']) {
+		for (const value of ['Detalles del producto', 'SKU', 'UPC', 'MPN', 'Descripción', 'Códigos de barras alternativos', 'ALT-7, ALT-8', 'Categoría', 'Peso (lb)', 'Largo (in)', 'Ancho (in)', 'Alto (in)', 'Punto de reposición', 'Cantidad de reposición', 'Control por lote', 'Control por número de serie', 'Creado', 'Última actualización', 'Ubicaciones preferidas', 'Prioridad', 'Inventario', 'no incluye identificación del almacén', 'Cantidad', 'Asignado', 'Picking', '20', '5']) {
 			expect(body).toContain(value);
 		}
 	});
