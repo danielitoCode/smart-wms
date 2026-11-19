@@ -169,6 +169,16 @@ describe('WarehouseDetailState zone and bins interactions', () => {
 		expect(deps.listBins.execute).not.toHaveBeenCalled();
 	});
 
+	it('rejects a bin whose zone is outside the active warehouse even without a zone filter', async () => {
+		deps.listBins.execute.mockResolvedValueOnce({
+			...binPage, items: [{ ...bin, zoneId: 99, zoneName: 'Foreign zone' }]
+		});
+		const state = createWarehouseDetailState(1, true, true);
+		expect(await state.load()).toBe(false);
+		expect(state.error).toContain('outside the active warehouse or zone');
+		expect(state.bins).toEqual([]);
+	});
+
 	it('rejects a bins response containing a different warehouse', async () => {
 		deps.listBins.execute.mockResolvedValueOnce({ ...binPage, items: [{ ...bin, warehouseId: 2 }] });
 		const state = createWarehouseDetailState(1, true);
