@@ -34,6 +34,16 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 		}
 	}
 
+	async function refreshZones(): Promise<Zone[]> {
+		if (!includeZones) { zones = []; return zones; }
+		const result = await deps.listZones.execute(warehouseId);
+		if (result.some((zone) => zone.warehouseId !== warehouseId)) {
+			throw new Error('The zones response contains a zone from another warehouse');
+		}
+		zones = result;
+		return zones;
+	}
+
 	function findLoadedBin(id: number): Bin {
 		if (!Number.isInteger(id) || id <= 0) throw new Error('bin id must be a positive integer');
 		const bin = bins.find((candidate) => candidate.id === id);
@@ -64,15 +74,12 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 			warehouse = canReadWarehouse
 				? await deps.getWarehouse.execute(warehouseId)
 				: { id: warehouseId, code: String(warehouseId), name: 'Almacén seleccionado', address: null, active: true, createdAt: null };
-			zones = includeZones ? await deps.listZones.execute(warehouseId) : [];
+			await refreshZones();
 			if (!scopedRequest.isCurrent()) return false;
-			if (zones.some((zone) => zone.warehouseId !== warehouseId)) {
-				throw new Error('The zones response contains a zone from another warehouse');
-			}
 			if (initialZoneId != null && includeZones && !zones.some(zone => zone.id === initialZoneId)) {
 				throw new Error('La zona seleccionada no pertenece al almacén activo');
 			}
-			if (includeBins) await loadBinsForZone(initialZoneId, 1);
+			if (includeBins && !(await loadBinsForZone(initialZoneId, 1))) return false;
 			return true;
 		} catch (err) {
 			if (!scopedRequest.isCurrent()) return false;
@@ -86,6 +93,7 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 
 	async function loadBinsForZone(zoneId: number | null, page = 1) {
 		if (!includeBins) return false;
+		if (zoneId != null && includeZones) assertZoneBelongsToWarehouse(zoneId, warehouseId, zones);
 		selectedZoneId = zoneId;
 		const requestVersion = ++binsRequestVersion;
 		const scopedRequest = beginWarehouseScopedRequest();
@@ -97,8 +105,8 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 				...(binSearch.trim() ? { q: binSearch.trim() } : {})
 			});
 			if (requestVersion !== binsRequestVersion || !scopedRequest.isCurrent()) return false;
-			if (result.items.some((bin) => bin.warehouseId !== warehouseId)) {
-				throw new Error('The bins response contains a bin from another warehouse');
+			if (result.items.some((bin) => bin.warehouseId !== warehouseId || (zoneId != null && bin.zoneId !== zoneId))) {
+				throw new Error('The bins response contains a bin outside the active warehouse or zone');
 			}
 			bins = result.items; binPage = result.page; binPages = result.pages;
 			binTotal = result.total; binPerPage = result.perPage;
@@ -120,19 +128,19 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 		return loadBinsForZone(selectedZoneId, 1);
 	}
 	async function createZone(input: Omit<CreateZoneInput, 'warehouseId'>) {
-		return mutate(async () => { await deps.createZone.execute({ ...input, warehouseId }); zones = await deps.listZones.execute(warehouseId); }, 'No se pudo crear la zona');
+		return mutate(async () => { await deps.createZone.execute({ ...input, warehouseId }); await refreshZones(); }, 'No se pudo crear la zona');
 	}
 	async function updateZone(input: UpdateZoneInput) {
 		return mutate(async () => {
 			assertZoneBelongsToWarehouse(input.id, warehouseId, zones);
 			await deps.updateZone.execute(input);
-			zones = await deps.listZones.execute(warehouseId);
+			await refreshZones();
 		}, 'No se pudo actualizar la zona');
 	}
 	async function removeZone(id: number) {
 		return mutate(async () => {
 			assertZoneBelongsToWarehouse(id, warehouseId, zones);
-			await deps.deleteZone.execute(id); zones = await deps.listZones.execute(warehouseId);
+			await deps.deleteZone.execute(id); await refreshZones();
 			if (selectedZoneId === id && includeBins) await loadBinsForZone(null, 1);
 		}, 'No se pudo eliminar la zona');
 	}
