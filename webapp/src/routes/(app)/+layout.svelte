@@ -10,7 +10,7 @@
 	import type { I18nState } from '../../lib/i18n/i18n.svelte';
 	import { createAuthGuardState } from '../../core/feature/auth/ui/state/authGuardState.svelte';
 	import { createWarehouseSelectionState } from '../../core/feature/warehouses/ui/state/warehouseSelectionState.svelte';
-	import { canAccessPages, requiredPageKeysForPath } from '../../core/feature/auth/domain/policy/AccessPolicy';
+	import { canAccessAnyPages, canAccessPages, routeAccessPolicyForPath } from '../../core/feature/auth/domain/policy/AccessPolicy';
 
 	const i18n = getContext<I18nState>('i18n');
 	let { children } = $props();
@@ -94,11 +94,15 @@
 		]}
 	]);
 
-	const requiredKeys = $derived(requiredPageKeysForPath(page.url.pathname));
-	const hasRouteAccess = $derived(
-		!requiredKeys.length ||
-			canAccessPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], requiredKeys)
-	);
+	const routeAccess = $derived(routeAccessPolicyForPath(page.url.pathname));
+	const hasRouteAccess = $derived.by(() => {
+		if (!routeAccess) return false;
+		if (routeAccess.kind === 'authenticated') return true;
+		if (routeAccess.kind === 'all') {
+			return canAccessPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], routeAccess.pageKeys);
+		}
+		return canAccessAnyPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], routeAccess.pageKeys);
+	});
 
 	function canSeeNavItem(item: NavItem) {
 		if (item.pageKey) return canAccessPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], [item.pageKey]);
