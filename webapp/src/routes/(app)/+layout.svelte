@@ -194,10 +194,6 @@
 
 	async function bootstrap() {
 		await guard.verify();
-		if (guard.status === 'authenticated' && guard.user?.mustChangePassword && page.url.pathname !== '/change-password') {
-			await goto('/change-password', { replaceState: true });
-			return;
-		}
 		if (guard.status === 'authenticated' && !guard.user?.mustChangePassword && guard.user) {
 			await warehouseSelection.load(toWarehouseAuthUser(guard.user));
 		}
