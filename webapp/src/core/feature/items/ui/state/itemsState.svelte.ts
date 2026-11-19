@@ -74,6 +74,10 @@ export function createItemsState(dependencies: ItemsDependencies = createItemsDe
 	let saving = $state(false);
 	let error = $state<string | null>(null);
 	let detail = $state<ItemDetail | null>(null);
+	let detailLoading = $state(false);
+	let detailError = $state<string | null>(null);
+	let detailRequestId = 0;
+	let archivingIds = $state<number[]>([]);
 	let form = $state<ItemFormModel>(emptyForm());
 	let editId = $state<number | null>(null);
 	let showForm = $state(false);
@@ -124,12 +128,19 @@ export function createItemsState(dependencies: ItemsDependencies = createItemsDe
 	}
 
 	async function openDetail(id: number) {
-		error = null;
+		const requestId = ++detailRequestId;
+		detail = null;
+		detailError = null;
+		detailLoading = true;
 		try {
-			detail = await dependencies.getItemDetail.execute(id);
+			const result = await dependencies.getItemDetail.execute(id);
+			if (requestId !== detailRequestId) return;
+			detail = result;
 		} catch (err) {
-			error = toUserMessage(err, 'No se pudo cargar el detalle del producto');
-			detail = null;
+			if (requestId !== detailRequestId) return;
+			detailError = toUserMessage(err, 'No se pudo cargar el detalle del producto');
+		} finally {
+			if (requestId === detailRequestId) detailLoading = false;
 		}
 	}
 
@@ -182,13 +193,21 @@ export function createItemsState(dependencies: ItemsDependencies = createItemsDe
 	}
 
 	async function toggleArchive(item: Item) {
+		if (archivingIds.includes(item.id)) return false;
+		archivingIds = [...archivingIds, item.id];
 		error = null;
 		try {
-			await dependencies.archiveItem.execute(item.id);
+			const result = await dependencies.archiveItem.execute(item.id);
 			await load(page);
-			if (detail?.item.id === item.id) await openDetail(item.id);
+			if (detail?.item.id === item.id && result.active === detail.item.active) {
+				await openDetail(item.id);
+			}
+			return true;
 		} catch (err) {
 			error = toUserMessage(err, 'No se pudo archivar/restaurar el producto');
+			return false;
+		} finally {
+			archivingIds = archivingIds.filter((id) => id !== item.id);
 		}
 	}
 
@@ -199,7 +218,7 @@ export function createItemsState(dependencies: ItemsDependencies = createItemsDe
 		try {
 			await dependencies.deleteItem.execute(deleteId);
 			deleteId = null;
-			detail = null;
+			closeDetail();
 			await load(page);
 			return true;
 		} catch (err) {
@@ -244,6 +263,15 @@ export function createItemsState(dependencies: ItemsDependencies = createItemsDe
 		get detail() {
 			return detail;
 		},
+		get detailLoading() {
+			return detailLoading;
+		},
+		get detailError() {
+			return detailError;
+		},
+		isArchiving(id: number) {
+			return archivingIds.includes(id);
+		},
 		get form() {
 			return form;
 		},
@@ -277,7 +305,10 @@ export function createItemsState(dependencies: ItemsDependencies = createItemsDe
 			editId = null;
 		},
 		closeDetail() {
+			detailRequestId += 1;
 			detail = null;
+			detailLoading = false;
+			detailError = null;
 		},
 		load,
 		cancelLoad,
