@@ -4,7 +4,7 @@ import type { AuthUser } from '../../../../infrastructure/auth/AuthSession';
 import {
 	assertWarehouseAuthorized,
 	canSelectWarehouseContext,
-	authorizedWarehouseIds,
+	resolveSelectableWarehouseIds,
 	resolveActiveWarehouseId
 } from '../../domain/context/WarehouseContext';
 import {
@@ -29,15 +29,8 @@ function persistId(id: number | null) {
 	else sessionStorage.setItem(STORAGE_KEY, String(id));
 }
 
-function placeholderWarehouse(id: number): Warehouse {
-	return {
-		id,
-		code: `WH-${id}`,
-		name: `Almacén ${id}`,
-		address: null,
-		active: true,
-		createdAt: null
-	};
+function sameIds(a: readonly number[], b: readonly number[]): boolean {
+	return a.length === b.length && a.every((id, index) => id === b[index]);
 }
 
 export function createWarehouseSelectionState() {
@@ -64,60 +57,56 @@ export function createWarehouseSelectionState() {
 		}
 	}
 
+	function buildAuthority(user: AuthUser | null) {
+		return {
+			role: user?.role ?? 'USER',
+			assignedWarehouseIds: [...(user?.warehouseIds ?? [])],
+			allowedPages: user?.allowedPages ?? []
+		};
+	}
+
 	async function load(user: AuthUser | null) {
 		const epoch = ++loadEpoch;
 		loading = true;
 		error = null;
 		const savedId = readSavedId();
-		authorityRole = user?.role ?? 'USER';
-		assignedIds = [...(user?.warehouseIds ?? [])];
-		const canBrowseAll = user?.role === 'ADMIN' || (user?.allowedPages ?? []).includes('warehouses');
-		const authority = {
-			role: authorityRole,
-			assignedWarehouseIds: assignedIds,
-			allowedPages: user?.allowedPages ?? []
-		};
+		const authority = buildAuthority(user);
+		authorityRole = authority.role;
+		assignedIds = [...authority.assignedWarehouseIds];
 		canSelect = canSelectWarehouseContext(authority);
 
 		try {
-			let catalog: Warehouse[] = [];
-			if (canBrowseAll) {
-				try {
-					catalog = await deps.listAdminWarehouses.execute();
-				} catch {
-					catalog = [];
-				}
-			}
+			// Operational list is authenticated and warehouse-scoped by Flask.
+			// It returns labels only for active warehouses the caller can access;
+			// do not substitute fabricated WH-{id} entries when this request fails.
+			const catalog = await deps.listWarehouses.execute();
 			if (epoch !== loadEpoch) return;
 
-			const catalogIds = catalog.map((w) => w.id);
-			selectableIds = authorizedWarehouseIds(authority, catalogIds);
-
-			if (user?.role === 'ADMIN') {
-				warehouses = catalog.length > 0 ? catalog : selectableIds.map(placeholderWarehouse);
-			} else {
-				const byId = new Map(catalog.map((w) => [w.id, w]));
-				warehouses = selectableIds.map((id) => byId.get(id) ?? placeholderWarehouse(id));
-			}
-
+			warehouses = catalog;
+			selectableIds = resolveSelectableWarehouseIds(
+				authority,
+				catalog.map((warehouse) => warehouse.id)
+			);
 			const next = resolveActiveWarehouseId({
 				authorizedIds: selectableIds,
 				savedId,
 				previousId: warehouseId
 			});
 			applyActiveId(next, { silent: !initialized });
+			if (next == null) {
+				error = authority.role === 'ADMIN'
+					? 'No hay almacenes activos disponibles.'
+					: 'No tienes almacenes activos asignados.';
+			}
 			initialized = true;
 		} catch (err) {
 			if (epoch !== loadEpoch) return;
-			error = err instanceof Error ? err.message : 'No se pudo cargar el almacén seleccionado';
-			selectableIds = authorizedWarehouseIds(authority, []);
-			warehouses = selectableIds.map(placeholderWarehouse);
-			const next = resolveActiveWarehouseId({
-				authorizedIds: selectableIds,
-				savedId,
-				previousId: null
-			});
-			applyActiveId(next, { silent: !initialized });
+			warehouses = [];
+			selectableIds = [];
+			applyActiveId(null);
+			error = err instanceof Error
+				? 'No se pudo validar el catálogo de almacenes: ' + err.message
+				: 'No se pudo validar el catálogo de almacenes.';
 			initialized = true;
 		} finally {
 			if (epoch === loadEpoch) loading = false;
@@ -130,22 +119,25 @@ export function createWarehouseSelectionState() {
 			selectableIds = [];
 			applyActiveId(null);
 			initialized = false;
+			error = null;
 			return;
 		}
-		if (!initialized) {
+		const nextAuthority = buildAuthority(user);
+		const scopeChanged =
+			nextAuthority.role !== authorityRole ||
+			!sameIds(nextAuthority.assignedWarehouseIds, assignedIds);
+		if (!initialized || scopeChanged) {
 			await load(user);
 			return;
 		}
-		authorityRole = user.role;
-		assignedIds = [...(user.warehouseIds ?? [])];
-		const authority = {
-			role: authorityRole,
-			assignedWarehouseIds: assignedIds,
-			allowedPages: user.allowedPages ?? []
-		};
-		canSelect = canSelectWarehouseContext(authority);
-		const catalogIds = warehouses.map((w) => w.id);
-		selectableIds = authorizedWarehouseIds(authority, catalogIds);
+
+		authorityRole = nextAuthority.role;
+		assignedIds = [...nextAuthority.assignedWarehouseIds];
+		canSelect = canSelectWarehouseContext(nextAuthority);
+		selectableIds = resolveSelectableWarehouseIds(
+			nextAuthority,
+			warehouses.map((warehouse) => warehouse.id)
+		);
 		if (warehouseId != null && !selectableIds.includes(warehouseId)) {
 			const next = resolveActiveWarehouseId({
 				authorizedIds: selectableIds,
@@ -155,6 +147,11 @@ export function createWarehouseSelectionState() {
 			applyActiveId(next);
 		} else {
 			persistId(warehouseId);
+		}
+		if (warehouseId == null && selectableIds.length === 0) {
+			error = 'No tienes almacenes activos asignados.';
+		} else {
+			error = null;
 		}
 	}
 
@@ -187,7 +184,7 @@ export function createWarehouseSelectionState() {
 	}
 
 	function requireWarehouseId(): number {
-		if (warehouseId == null) throw new Error('No hay almacén activo');
+		if (warehouseId == null) throw new Error(error ?? 'No hay almacén activo');
 		assertWarehouseAuthorized(
 			{
 				role: authorityRole,
