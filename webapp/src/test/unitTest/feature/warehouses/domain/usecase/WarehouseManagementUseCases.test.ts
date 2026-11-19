@@ -66,19 +66,17 @@ describe('Warehouse management use cases', () => {
 		vi.mocked(repository.createBin).mockResolvedValue({
 			id: 12, warehouseId: 8, zoneId: 4, zoneName: 'Picking', code: 'A-01', barcode: 'BC-01',
 			binType: 'Pickable', aisle: null, rowNumber: null, levelNumber: null, positionNumber: null,
-			pickSequence: 0, putawaySequence: 0, active: true, maxWeightLbs: null, maxVolumeCuft: null,
+			pickSequence: 0, putawaySequence: 0, active: true,
 			quantityOnHand: 0, quantityAllocated: 0, inventoryLines: 0
 		});
 		await new CreateBinUseCase(repository).execute({ warehouseId: 8, zoneId: 4, code: 'A-01', barcode: 'BC-01', binType: 'Pickable' });
 		expect(repository.createBin).toHaveBeenCalledWith(expect.objectContaining({ warehouseId: 8, zoneId: 4, code: 'A-01', barcode: 'BC-01' }));
 	});
-	it('validates bin capacity updates and rejects empty patches', async () => {
+	it('rejects empty bin patches and validates supported fields', async () => {
 		const repository = createRepository();
 		const useCase = new UpdateBinUseCase(repository);
 		await expect(useCase.execute({ id: 12 })).rejects.toThrow(/at least one/);
-		await expect(useCase.execute({ id: 12, maxWeightLbs: -0.5 })).rejects.toThrow(/maxWeightLbs/);
-		await expect(useCase.execute({ id: 12, maxVolumeCuft: Number.POSITIVE_INFINITY })).rejects.toThrow(/maxVolumeCuft/);
-		await expect(useCase.execute({ id: 12, maxWeightLbs: 12.345 })).rejects.toThrow(/two decimal places/);
+		await expect(useCase.execute({ id: 12, pickSequence: -1 })).rejects.toThrow(/non-negative integer/);
 		await expect(useCase.execute({ id: 12, barcode: ' ' })).rejects.toThrow(/1 to 100/);
 		expect(repository.updateBin).not.toHaveBeenCalled();
 	});
@@ -112,15 +110,13 @@ describe('Warehouse management use cases', () => {
 		})).rejects.toThrow(/zone type/);
 		expect(repository.createZone).not.toHaveBeenCalled();
 	});
-	it('validates bin capacities and aisle storage limits before creating', async () => {
+	it('validates supported bin fields and aisle storage limits before creating', async () => {
 		const repository = createRepository();
 		const useCase = new CreateBinUseCase(repository);
 		const base = { warehouseId: 1, zoneId: 2, code: 'A-1', barcode: 'BC-1', binType: 'Pickable' as const };
 		await expect(useCase.execute({ ...base, aisle: 'A'.repeat(11) })).rejects.toThrow(/aisle cannot exceed 10/);
-		await expect(useCase.execute({ ...base, maxWeightLbs: -1 })).rejects.toThrow(/maxWeightLbs/);
-		await expect(useCase.execute({ ...base, maxVolumeCuft: Number.NaN })).rejects.toThrow(/maxVolumeCuft/);
 		expect(repository.createBin).not.toHaveBeenCalled();
-		await expect(useCase.execute({ ...base, maxWeightLbs: 12.345 })).rejects.toThrow(/two decimal places/);
+		await expect(useCase.execute({ ...base, rowNumber: -1 })).rejects.toThrow(/non-negative integer/);
 		await expect(useCase.execute({ ...base, code: 'C'.repeat(51) })).rejects.toThrow(/1 to 50/);
 		await expect(useCase.execute({ ...base, barcode: 'B'.repeat(101) })).rejects.toThrow(/1 to 100/);
 	});
