@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 
-	export type UiStateKind = 'forbidden' | 'not-supported' | 'empty' | 'loading' | 'error' | 'conflict';
+	type UiStateKind = 'forbidden' | 'not-supported' | 'empty' | 'loading' | 'error' | 'conflict';
 
 	type Props = {
 		kind: UiStateKind;
