@@ -47,17 +47,23 @@ function createStack(fetchMock: ReturnType<typeof vi.fn>) {
 
 describe('Auth HTTP integration', () => {
 	it('POST /api/auth/login maps user and stores session snapshot', async () => {
-		const fetchMock = vi.fn().mockResolvedValue(
-			jsonResponse({ token: 'opaque', user: sampleUserDto })
-		);
+		const fetchMock = vi.fn()
+			.mockResolvedValueOnce(jsonResponse({ token: 'opaque', user: sampleUserDto }))
+			.mockResolvedValueOnce(jsonResponse(sampleUserDto));
 		const { repo } = createStack(fetchMock);
 		const result = await new LoginUseCase(repo).execute({
 			username: 'op1',
 			password: 'secret12'
 		});
-		expect(fetchMock).toHaveBeenCalledWith(
+		expect(fetchMock).toHaveBeenNthCalledWith(
+			1,
 			'https://wms.test/api/auth/login',
 			expect.objectContaining({ method: 'POST', credentials: 'include' })
+		);
+		expect(fetchMock).toHaveBeenNthCalledWith(
+			2,
+			'https://wms.test/api/auth/me',
+			expect.objectContaining({ method: 'GET', credentials: 'include' })
 		);
 		expect(result.user.userId).toBe(7);
 		expect(result.user.allowedPages).toEqual(['inventory', 'receiving']);
