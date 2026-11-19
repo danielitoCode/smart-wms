@@ -158,6 +158,7 @@ export function createWarehouseSelectionState() {
 	}
 
 	function select(id: number) {
+		if (!canSelect) return;
 		try {
 			assertWarehouseAuthorized(
 				{
