@@ -58,7 +58,7 @@
 		if (deleteZoneTarget && await vm.removeZone(deleteZoneTarget.id)) deleteZoneTarget = null;
 	}
 	function openCreateBin() {
-		editingBin = null; binForm = { zoneId: vm.zones[0]?.id ?? null, code: '', barcode: '', binType: 'Pickable', aisle: '', rowNumber: null, levelNumber: null, positionNumber: null, pickSequence: 0, putawaySequence: 0, maxWeightLbs: null, maxVolumeCuft: null, active: true };
+		editingBin = null; binForm = { zoneId: vm.zones[0]?.id ?? null, code: '', barcode: '', binType: 'Pickable', aisle: '', rowNumber: null, levelNumber: null, positionNumber: null, pickSequence: 0, putawaySequence: 0, active: true };
 		vm.clearError(); showBinForm = true;
 	}
 	function openEditBin(bin: Bin) {
@@ -71,7 +71,7 @@
 		if (editingBin && canViewZones && binForm.zoneId == null) return;
 		const ok = editingBin
 			? await vm.updateBin({ id: editingBin.id, ...(canViewZones && binForm.zoneId != null ? { zoneId: binForm.zoneId } : {}), code: binForm.code, barcode: binForm.barcode, binType: binForm.binType, aisle: binForm.aisle || null, rowNumber: binForm.rowNumber, levelNumber: binForm.levelNumber, positionNumber: binForm.positionNumber, pickSequence: binForm.pickSequence, putawaySequence: binForm.putawaySequence, active: binForm.active })
-			: await vm.createBin({ zoneId: binForm.zoneId!, code: binForm.code, barcode: binForm.barcode, binType: binForm.binType, aisle: binForm.aisle || null, rowNumber: binForm.rowNumber, levelNumber: binForm.levelNumber, positionNumber: binForm.positionNumber, pickSequence: binForm.pickSequence, putawaySequence: binForm.putawaySequence, maxWeightLbs: binForm.maxWeightLbs, maxVolumeCuft: binForm.maxVolumeCuft });
+			: await vm.createBin({ zoneId: binForm.zoneId!, code: binForm.code, barcode: binForm.barcode, binType: binForm.binType, aisle: binForm.aisle || null, rowNumber: binForm.rowNumber, levelNumber: binForm.levelNumber, positionNumber: binForm.positionNumber, pickSequence: binForm.pickSequence, putawaySequence: binForm.putawaySequence });
 		if (ok) showBinForm = false;
 	}
 	async function deleteBin() {
@@ -91,11 +91,11 @@
 				const raw = String(value);
 				return /[,"\r\n]/.test(raw) ? '"' + raw.replace(/"/g, '""') + '"' : raw;
 			};
-			const csv = '\\uFEFF' + [columns.join(','), ...rows.map(bin => [
+			const csv = '\uFEFF' + [columns.join(','), ...rows.map(bin => [
 				bin.id, bin.warehouseId, bin.zoneId, bin.zoneName, bin.code, bin.barcode, bin.binType,
 				bin.aisle, bin.rowNumber, bin.levelNumber, bin.positionNumber, bin.pickSequence,
 				bin.putawaySequence, bin.active
-			].map(csvCell).join(','))].join('\\r\\n');
+			].map(csvCell).join(','))].join('\r\n');
 			const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
 			const link = document.createElement('a'); link.href = url; link.download = 'ubicaciones_almacen' + warehouseId + '_' + new Date().toISOString().slice(0,10) + '.csv'; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
 		} catch { vm.setError('No se pudo exportar el listado de ubicaciones.'); }
