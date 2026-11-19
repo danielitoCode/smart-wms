@@ -1,0 +1,294 @@
+/* LandingScreen — extracted styles (lp-* namespace) */
+.lp {
+	--lp-ease: cubic-bezier(0.22, 1, 0.36, 1);
+	--lp-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+	--lp-line: color-mix(in srgb, var(--line, #d9e2ec) 88%, transparent);
+	--lp-hair: color-mix(in srgb, var(--line, #d9e2ec) 55%, transparent);
+	min-height: 100dvh;
+	background: var(--bg, #edf2f8);
+	color: var(--ink, #132234);
+	font-family: var(--body, Inter, system-ui, sans-serif);
+	overflow-x: clip;
+}
+
+.lp-progress {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 1.5px;
+	z-index: 60;
+	transform-origin: 0 50%;
+	background: linear-gradient(90deg, var(--navy, #004c8b), var(--gold, #c9a227));
+	pointer-events: none;
+	will-change: transform;
+	box-shadow: 0 0 12px color-mix(in srgb, var(--gold, #c9a227) 35%, transparent);
+}
+
+.lp-nav {
+	position: sticky;
+	top: 0;
+	z-index: 50;
+	border-bottom: 1px solid transparent;
+	background: color-mix(in srgb, var(--bg, #edf2f8) 68%, transparent);
+	backdrop-filter: blur(16px) saturate(1.25);
+	-webkit-backdrop-filter: blur(16px) saturate(1.25);
+	transition:
+		background 0.4s var(--lp-ease),
+		border-color 0.35s var(--lp-ease),
+		box-shadow 0.4s var(--lp-ease);
+}
+
+.lp-nav--solid {
+	background: color-mix(in srgb, var(--card, #fff) 86%, transparent);
+	border-bottom-color: var(--lp-hair);
+	box-shadow: 0 8px 28px rgba(15, 23, 42, 0.04);
+}
+
+.lp-nav__inner {
+	max-width: 1120px;
+	margin: 0 auto;
+	padding: 0.7rem 1.25rem;
+	display: flex;
+	align-items: center;
+	gap: 0.85rem;
+}
+
+.lp-brand {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.6rem;
+	text-decoration: none;
+	color: inherit;
+}
+
+.lp-brand__mark {
+	display: block;
+	width: 34px;
+	height: 34px;
+	border-radius: 9px;
+	object-fit: contain;
+	flex-shrink: 0;
+}
+
+.lp-brand__mark--sm {
+	width: 26px;
+	height: 26px;
+}
+
+.lp-brand__text {
+	display: flex;
+	flex-direction: column;
+	line-height: 1.12;
+}
+
+.lp-brand__name {
+	font-family: var(--disp, 'Space Grotesk', system-ui, sans-serif);
+	font-weight: 700;
+	font-size: 0.92rem;
+	letter-spacing: -0.02em;
+	color: var(--head-ink, #012a50);
+}
+
+.lp-brand__sub {
+	font-size: 0.65rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--slate, #5c6b7d);
+}
+
+.lp-nav__links {
+	display: none;
+	flex: 1;
+	justify-content: center;
+	gap: 0.1rem;
+}
+
+.lp-nav__links a {
+	font-size: 0.8125rem;
+	font-weight: 500;
+	color: var(--slate, #5c6b7d);
+	text-decoration: none;
+	padding: 0.38rem 0.72rem;
+	border-radius: 999px;
+	border: 1px solid transparent;
+	transition:
+		color 0.22s ease,
+		background 0.22s ease,
+		border-color 0.22s ease;
+}
+
+.lp-nav__links a:hover {
+	color: var(--navy, #004c8b);
+	background: color-mix(in srgb, var(--navy, #004c8b) 7%, transparent);
+	border-color: var(--lp-hair);
+}
+
+.lp-nav__actions {
+	margin-left: auto;
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+}
+
+.lp-tool {
+	display: flex;
+	align-items: center;
+	padding: 0.15rem;
+	border-radius: 10px;
+	border: 1px solid var(--lp-hair);
+	background: color-mix(in srgb, var(--card, #fff) 55%, transparent);
+	transform: scale(0.94);
+	transform-origin: center;
+	transition:
+		border-color 0.2s ease,
+		box-shadow 0.2s ease;
+}
+
+.lp-tool:hover {
+	border-color: color-mix(in srgb, var(--navy, #004c8b) 22%, transparent);
+	box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+}
+
+.lp-menu-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.25rem;
+	height: 2.25rem;
+	border-radius: 10px;
+	border: 1px solid var(--lp-hair);
+	background: color-mix(in srgb, var(--surface-2, #f5f8fc) 80%, transparent);
+	color: var(--head-ink, #012a50);
+	cursor: pointer;
+	transition:
+		background 0.2s ease,
+		border-color 0.2s ease;
+}
+
+.lp-menu-btn:hover {
+	border-color: color-mix(in srgb, var(--navy, #004c8b) 25%, transparent);
+}
+
+.lp-drawer {
+	display: flex;
+	flex-direction: column;
+	gap: 0.2rem;
+	padding: 0.4rem 1.25rem 1.1rem;
+	border-top: 1px solid var(--lp-hair);
+	animation: lp-drawer-in 0.28s var(--lp-ease) both;
+}
+
+@keyframes lp-drawer-in {
+	from {
+		opacity: 0;
+		transform: translateY(-6px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.lp-drawer a:not(.lp-btn) {
+	padding: 0.55rem 0.25rem;
+	text-decoration: none;
+	color: var(--head-ink, #012a50);
+	font-weight: 600;
+	font-size: 0.92rem;
+}
+
+.lp-drawer__tools {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem 0.75rem;
+	padding: 0.55rem 0 0.85rem;
+	border-bottom: 1px solid var(--lp-hair);
+	margin-bottom: 0.55rem;
+}
+
+.lp-drawer__label {
+	font-size: 0.65rem;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--slate, #5c6b7d);
+}
+
+@media (min-width: 920px) {
+	.lp-nav__links {
+		display: flex;
+	}
+	.lp-menu-btn,
+	.lp-drawer {
+		display: none;
+	}
+}
+
+@media (max-width: 640px) {
+	.lp-hide-sm {
+		display: none;
+	}
+}
+
+.lp-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 999px;
+	font-weight: 650;
+	font-family: var(--disp, 'Space Grotesk', system-ui, sans-serif);
+	text-decoration: none;
+	border: 1px solid transparent;
+	cursor: pointer;
+	letter-spacing: -0.01em;
+	transition:
+		transform 0.28s var(--lp-spring),
+		box-shadow 0.28s var(--lp-ease),
+		background 0.2s ease,
+		border-color 0.2s ease;
+}
+
+.lp-btn:hover {
+	transform: translateY(-1.5px);
+}
+
+.lp-btn:active {
+	transform: translateY(0) scale(0.98);
+}
+
+.lp-btn--sm {
+	padding: 0.42rem 0.9rem;
+	font-size: 0.78rem;
+}
+
+.lp-btn--lg {
+	padding: 0.8rem 1.35rem;
+	font-size: 0.92rem;
+}
+
+.lp-btn--primary {
+	background: var(--navy, #004c8b);
+	color: #fff;
+	box-shadow: 0 8px 22px color-mix(in srgb, var(--navy, #004c8b) 28%, transparent);
+}
+
+.lp-btn--secondary {
+	background: color-mix(in srgb, var(--card, #fff) 90%, transparent);
+	border-color: var(--lp-line);
+	color: var(--head-ink, #012a50);
+}
+
+.lp-btn--ghost {
+	background: transparent;
+	color: var(--slate, #5c6b7d);
+}
+
+.lp-btn--gold {
+	background: linear-gradient(135deg, #c9a227, #e8c547);
+	color: #1a1508;
+	box-shadow: 0 10px 28px rgba(201, 162, 39, 0.28);
+}
+
+/* CSS_PART_2_CONTINUES */
