@@ -108,7 +108,9 @@
 	function canSeeNavItem(item: NavItem) {
 		if (item.pageKey) return canAccessPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], [item.pageKey]);
 		if (item.href === '/data') {
-			return canAccessPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], ['preferred-bins']);
+			return canAccessAnyPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], [
+				'warehouses', 'bins', 'zones', 'preferred-bins'
+			]);
 		}
 		return true;
 	}
