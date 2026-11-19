@@ -1,5 +1,17 @@
 <script lang="ts">
-	import SplashScreen from '../core/feature/auth/ui/screens/SplashScreen.svelte';
+	/**
+	 * Carga en frío (`/`) → landing de presentación Smart WMS.
+	 * Auth / splash siguen disponibles vía /login y el shell (app).
+	 */
+	import LandingScreen from '../lib/components/LandingScreen.svelte';
 </script>
 
-<SplashScreen />
+<svelte:head>
+	<title>Smart WMS · Abellis</title>
+	<meta
+		name="description"
+		content="Smart WMS — núcleo operativo multi-almacén: recepción, picking, packing y expedición."
+	/>
+</svelte:head>
+
+<LandingScreen />
