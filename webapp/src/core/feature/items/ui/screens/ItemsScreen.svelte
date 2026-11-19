@@ -264,7 +264,7 @@
 				</div>
 			{/if}
 			<h3>{i18n.t('Inventario')}</h3>
-			<p class="status inventory-scope-warning">{i18n.t('El inventario mostrado es el devuelto por el servidor y no incluye identificación del almacén. No debe interpretarse como inventario exclusivo del almacén seleccionado.')}</p>
+			<p class="status inventory-scope-warning">{i18n.t('Los registros de inventario recibidos no identifican su almacén. No pueden atribuirse al almacén seleccionado ni interpretarse como sus existencias exclusivas.')}</p>
 			{#if vm.detail.inventory.length}
 				<table>
 					<thead>
