@@ -299,6 +299,7 @@ export function createItemsState(dependencies: ItemsDependencies = createItemsDe
 		},
 		setDeleteId(id: number | null) {
 			deleteId = id;
+			if (id == null) error = null;
 		},
 		closeForm() {
 			showForm = false;
