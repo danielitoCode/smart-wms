@@ -72,7 +72,7 @@ describe('WarehouseRemoteDataSource Flask contract', () => {
 
 	it('uses the admin bin collection and canonical bin_id detail/mutation endpoints', async () => {
 		const api = createApi();
-		const bin = { bin_id: 3, warehouse_id: 1, zone_id: 2, bin_code: 'A-01', bin_barcode: 'BC-01', bin_type: 'Pickable' };
+		const bin = { bin_id: 3, warehouse_id: 1, zone_id: 2, bin_code: 'A-01', bin_barcode: 'BC-01', bin_type: 'Pickable', is_active: true, pick_sequence: 0, putaway_sequence: 0, max_weight_lbs: null, max_volume_cuft: null };
 		vi.mocked(api.post).mockResolvedValue(bin);
 		vi.mocked(api.get).mockResolvedValue({ bin, inventory: [] });
 		vi.mocked(api.put).mockResolvedValue(bin);
