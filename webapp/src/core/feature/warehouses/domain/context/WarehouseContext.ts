@@ -38,6 +38,20 @@ export function authorizedWarehouseIds(
 	return [...authority.assignedWarehouseIds];
 }
 
+/**
+ * Operational picker options must exist in the server-returned active catalog.
+ * For non-admin users this is intersected with /me assignments; the catalog
+ * endpoint is already warehouse-scoped by Flask.
+ */
+export function resolveSelectableWarehouseIds(
+	authority: WarehouseAuthority,
+	activeCatalogIds: readonly number[]
+): number[] {
+	if (isAdmin(authority.role)) return [...activeCatalogIds];
+	const assigned = new Set(authority.assignedWarehouseIds);
+	return activeCatalogIds.filter((id) => assigned.has(id));
+}
+
 /** P-11: drop persisted ids no longer authorized. */
 export function resolveActiveWarehouseId(input: {
 	authorizedIds: readonly number[];
