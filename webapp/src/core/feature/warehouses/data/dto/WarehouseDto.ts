@@ -22,7 +22,6 @@ export type BinDto = {
 	zone_name?: string | null; aisle?: string | null; row_num?: number | null;
 	level_num?: number | null; position_num?: number | null;
 	pick_sequence: number; putaway_sequence: number;
-	max_weight_lbs?: number | null; max_volume_cuft?: number | null;
 	quantity_on_hand?: number; quantity_allocated?: number; inventory_lines?: number;
 };
 export type BinListResponseDto = {
