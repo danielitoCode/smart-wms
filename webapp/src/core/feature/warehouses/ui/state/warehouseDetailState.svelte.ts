@@ -30,7 +30,7 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 
 	function assertBinBelongsToWarehouse(bin: Bin, label = 'bin'): void {
 		if (bin.warehouseId !== warehouseId) {
-			throw new Error(`The ${label} does not belong to the active warehouse`);
+			throw new Error(`The ${label} belongs to another warehouse`);
 		}
 	}
 
