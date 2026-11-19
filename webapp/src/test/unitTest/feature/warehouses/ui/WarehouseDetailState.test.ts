@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const auth = vi.hoisted(() => ({ user: { role: 'ADMIN', allowedPages: ['warehouses', 'zones', 'bins'] } }));
+
 const deps = vi.hoisted(() => ({
 	getWarehouse: { execute: vi.fn() },
 	listZones: { execute: vi.fn() },
@@ -17,17 +19,19 @@ vi.mock('../../../../../core/feature/warehouses/di/warehouses.dependencies', () 
 	createWarehousesDependencies: () => deps
 }));
 vi.mock('../../../../../core/infrastructure/auth/AuthSession', () => ({
-	authSession: { getUser: () => ({ role: 'ADMIN', allowedPages: ['warehouses', 'zones', 'bins'] }) }
+	authSession: { getUser: () => auth.user }
 }));
 
 import { createWarehouseDetailState } from '../../../../../core/feature/warehouses/ui/state/warehouseDetailState.svelte';
 
 const zone = { id: 11, warehouseId: 1, code: 'PICK', name: 'Picking', zoneType: 'PICKING' as const, active: true, binsCount: 2 };
-const binPage = { items: [], total: 0, page: 1, pages: 1, perPage: 50 };
+const bin = { id: 3, warehouseId: 1, zoneId: 11, zoneName: 'Picking', code: 'A-01', barcode: 'BC-01', binType: 'Pickable' as const, aisle: 'A', rowNumber: 1, levelNumber: 1, positionNumber: 1, pickSequence: 1, putawaySequence: 1, active: true, maxWeightLbs: 100, maxVolumeCuft: 20, quantityOnHand: 0, quantityAllocated: 0, inventoryLines: 0 };
+const binPage = { items: [bin], total: 1, page: 1, pages: 1, perPage: 50 };
 
 describe('WarehouseDetailState zone and bins interactions', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		auth.user = { role: 'ADMIN', allowedPages: ['warehouses', 'zones', 'bins'] };
 		deps.getWarehouse.execute.mockResolvedValue({ id: 1, code: 'WH-01', name: 'Central', address: null, active: true, createdAt: null });
 		deps.listZones.execute.mockResolvedValue([zone]);
 		deps.listBins.execute.mockResolvedValue(binPage);
@@ -107,7 +111,7 @@ describe('WarehouseDetailState zone and bins interactions', () => {
 	});
 
 	it('loads bin detail and exposes the inventory projection', async () => {
-		const detail = { bin: { id: 3, warehouseId: 1, zoneId: 11, code: 'A-01', binType: 'Pickable' }, inventory: [], occupancy: { quantityOnHand: 0, quantityAllocated: 0, quantityAvailable: 0, inventoryLines: 0 } };
+		const detail = { bin: { ...bin }, inventory: [], occupancy: { quantityOnHand: 0, quantityAllocated: 0, quantityAvailable: 0, inventoryLines: 0 } };
 		deps.getBinDetail.execute.mockResolvedValueOnce(detail);
 		const state = createWarehouseDetailState(1, true);
 		await state.load();
@@ -143,6 +147,77 @@ describe('WarehouseDetailState zone and bins interactions', () => {
 		await state.load();
 		expect(await state.removeBin(3)).toBe(false);
 		expect(state.error).toContain('inventory remains');
+	});
+
+
+	it('supports the Bins grant without requiring the Zones grant', async () => {
+		auth.user = { role: 'USER', allowedPages: ['bins'] };
+		const state = createWarehouseDetailState(1, true, false);
+		expect(await state.load()).toBe(true);
+		expect(deps.listZones.execute).not.toHaveBeenCalled();
+		expect(deps.listBins.execute).toHaveBeenCalledWith({ warehouseId: 1, page: 1, perPage: 50 });
+		expect(await state.updateBin({ id: 3, pickSequence: 4 })).toBe(true);
+		expect(deps.updateBin.execute).toHaveBeenCalledWith({ id: 3, pickSequence: 4 });
+	});
+
+	it('supports the Zones grant without requiring the Bins grant', async () => {
+		auth.user = { role: 'USER', allowedPages: ['zones'] };
+		const state = createWarehouseDetailState(1, false, true);
+		expect(await state.load()).toBe(true);
+		expect(deps.listZones.execute).toHaveBeenCalledWith(1);
+		expect(deps.listBins.execute).not.toHaveBeenCalled();
+	});
+
+	it('rejects a bins response containing a different warehouse', async () => {
+		deps.listBins.execute.mockResolvedValueOnce({ ...binPage, items: [{ ...bin, warehouseId: 2 }] });
+		const state = createWarehouseDetailState(1, true);
+		expect(await state.load()).toBe(false);
+		expect(state.error).toContain('another warehouse');
+		expect(state.bins).toEqual([]);
+	});
+
+	it('rejects a bin detail from another warehouse and clears the selected detail', async () => {
+		deps.getBinDetail.execute.mockResolvedValueOnce({
+			bin: { ...bin, warehouseId: 2 }, inventory: [],
+			occupancy: { quantityOnHand: 0, quantityAllocated: 0, quantityAvailable: 0, inventoryLines: 0 }
+		});
+		const state = createWarehouseDetailState(1, true);
+		await state.load();
+		expect(await state.viewBin(3)).toBe(false);
+		expect(state.selectedBinDetail).toBeNull();
+		expect(state.error).toContain('another warehouse');
+	});
+
+	it('does not mutate a bin absent from the active warehouse result', async () => {
+		const state = createWarehouseDetailState(1, true);
+		await state.load();
+		expect(await state.removeBin(999)).toBe(false);
+		expect(deps.deleteBin.execute).not.toHaveBeenCalled();
+		expect(await state.updateBin({ id: 999, pickSequence: 8 })).toBe(false);
+		expect(deps.updateBin.execute).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		[400, 'duplicate bin_code'],
+		[404, 'Bin not found'],
+		[409, 'Bin cannot be deleted because preferred-bin references exist']
+	])('preserves Flask %s errors for bin mutations', async (status, message) => {
+		deps.deleteBin.execute.mockRejectedValueOnce(Object.assign(new Error(message), { status }));
+		const state = createWarehouseDetailState(1, true);
+		await state.load();
+		expect(await state.removeBin(3)).toBe(false);
+		expect(state.error).toContain(message);
+	});
+
+	it('preserves Flask 400 and 404 errors for zone mutations and lookup', async () => {
+		const state = createWarehouseDetailState(1, true);
+		await state.load();
+		deps.createZone.execute.mockRejectedValueOnce(Object.assign(new Error('Duplicate zone_code'), { status: 400 }));
+		expect(await state.createZone({ code: 'PICK', name: 'Duplicate', zoneType: 'PICKING' })).toBe(false);
+		expect(state.error).toContain('Duplicate zone_code');
+		deps.getBinDetail.execute.mockRejectedValueOnce(Object.assign(new Error('Bin not found'), { status: 404 }));
+		expect(await state.viewBin(404)).toBe(false);
+		expect(state.error).toContain('Bin not found');
 	});
 
 });
