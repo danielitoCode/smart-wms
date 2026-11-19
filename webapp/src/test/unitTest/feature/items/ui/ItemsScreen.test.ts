@@ -101,6 +101,29 @@ describe('ItemsScreen UI', () => {
 		}
 	});
 
+
+	it('shows reorder controls only while editing an existing item', () => {
+		const original = { showForm: vm.showForm, editId: vm.editId, form: vm.form };
+		const i18n = { t: (message: string) => message };
+		try {
+			vm.showForm = true;
+			vm.editId = 7;
+			vm.form = { sku: 'SKU-7', itemName: 'Caja', reorderPoint: '4', reorderQty: '12' };
+			const editView = render(ItemsScreen, { context: new Map([['i18n', i18n]]) });
+			expect(editView.body).toContain('Punto de reposición');
+			expect(editView.body).toContain('Cantidad de reposición');
+
+			vm.editId = null;
+			const createView = render(ItemsScreen, { context: new Map([['i18n', i18n]]) });
+			expect(createView.body).not.toContain('Punto de reposición');
+			expect(createView.body).not.toContain('Cantidad de reposición');
+		} finally {
+			vm.showForm = original.showForm;
+			vm.editId = original.editId;
+			vm.form = original.form;
+		}
+	});
+
 	it('preserves React detail attributes, preferred bins and inventory locations', () => {
 		const i18n = { t: (message: string) => message };
 		const { body } = render(ItemsScreen, {
