@@ -73,58 +73,62 @@ export function resolveHomePath(input: {
  * Route → required page keys (AND).
  * Aligned to Flask gates; discrepancies documented in PermissionMatrix.
  */
+function isPathOrChild(pathname: string, prefix: string): boolean {
+	return pathname === prefix || pathname.startsWith(prefix + '/');
+}
+
 export function requiredPageKeysForPath(pathname: string): string[] {
-	if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) return ['dashboard'];
-	if (pathname === '/sales-orders' || pathname.startsWith('/sales-orders/')) return ['sales-orders'];
-	if (pathname === '/customers' || pathname.startsWith('/customers/')) return ['sales-orders'];
-	if (pathname === '/inventory' || pathname.startsWith('/inventory/')) return ['inventory'];
-	if (pathname === '/cycle-count' || pathname.startsWith('/cycle-count/')) return ['cycle-counts'];
-	if (pathname === '/receiving' || pathname.startsWith('/receiving/')) return ['receiving'];
-	if (pathname === '/putaway' || pathname.startsWith('/putaway/')) return ['putaway'];
-	if (pathname === '/items' || pathname.startsWith('/items/')) return ['items'];
-	if (pathname === '/picking-tickets' || pathname.startsWith('/picking-tickets/')) return ['picking-tickets'];
-	if (pathname === '/picking-batches' || pathname.startsWith('/picking-batches/')) return ['picking-batches'];
+	if (isPathOrChild(pathname, '/dashboard')) return ['dashboard'];
+	if (isPathOrChild(pathname, '/sales-orders')) return ['sales-orders'];
+	if (isPathOrChild(pathname, '/customers')) return ['sales-orders'];
+	if (isPathOrChild(pathname, '/inventory')) return ['inventory'];
+	if (isPathOrChild(pathname, '/cycle-count')) return ['cycle-counts'];
+	if (isPathOrChild(pathname, '/receiving')) return ['receiving'];
+	if (isPathOrChild(pathname, '/putaway')) return ['putaway'];
+	if (isPathOrChild(pathname, '/items')) return ['items'];
+	if (isPathOrChild(pathname, '/picking-tickets')) return ['picking-tickets'];
+	if (isPathOrChild(pathname, '/picking-batches')) return ['picking-batches'];
 	if (pathname === '/picking' || pathname.startsWith('/picking/')) return []; // mobile flow; not in ALL_PAGE_KEYS
 	if (pathname === '/packing' || pathname.startsWith('/packing/')) return [];
 	if (pathname === '/shipping' || pathname.startsWith('/shipping/')) return [];
 
 	// Gestión operativa
-	if (pathname.startsWith('/management/backorders')) return ['backorders'];
+	if (isPathOrChild(pathname, '/management/backorders')) return ['backorders'];
 	// Page open: count-approvals. Approve APIs still need adjustments (matrix).
-	if (pathname.startsWith('/management/count-approvals')) return ['count-approvals'];
+	if (isPathOrChild(pathname, '/management/count-approvals')) return ['count-approvals'];
 	// FIX F0.2: fraud routes are gated by fraud in Flask, not sales-orders
-	if (pathname.startsWith('/management/fraud')) return ['fraud'];
-	if (pathname.startsWith('/management/sales-orders')) return ['sales-orders'];
-	if (pathname.startsWith('/management/customers')) return ['sales-orders'];
-	if (pathname.startsWith('/management/inter-warehouse-transfers')) return ['transfer-orders'];
-	if (pathname.startsWith('/management/adjustments')) return ['adjustments'];
-	if (pathname.startsWith('/management/pos-activity')) return ['pos-activity'];
-	if (pathname.startsWith('/management/purchase-orders')) return ['purchase-orders'];
-	if (pathname.startsWith('/management/refunds')) return ['sales-orders'];
-	if (pathname.startsWith('/management/returns')) return ['sales-orders'];
-	if (pathname.startsWith('/management/transfer-orders')) return ['transfer-orders'];
-	if (pathname.startsWith('/management/users')) return ['users'];
-	if (pathname.startsWith('/management/vendors')) return ['vendors'];
-	if (pathname.startsWith('/management/preferred-bins')) return ['preferred-bins'];
+	if (isPathOrChild(pathname, '/management/fraud')) return ['fraud'];
+	if (isPathOrChild(pathname, '/management/sales-orders')) return ['sales-orders'];
+	if (isPathOrChild(pathname, '/management/customers')) return ['sales-orders'];
+	if (isPathOrChild(pathname, '/management/inter-warehouse-transfers')) return ['transfer-orders'];
+	if (isPathOrChild(pathname, '/management/adjustments')) return ['adjustments'];
+	if (isPathOrChild(pathname, '/management/pos-activity')) return ['pos-activity'];
+	if (isPathOrChild(pathname, '/management/purchase-orders')) return ['purchase-orders'];
+	if (isPathOrChild(pathname, '/management/refunds')) return ['sales-orders'];
+	if (isPathOrChild(pathname, '/management/returns')) return ['sales-orders'];
+	if (isPathOrChild(pathname, '/management/transfer-orders')) return ['transfer-orders'];
+	if (isPathOrChild(pathname, '/management/users')) return ['users'];
+	if (isPathOrChild(pathname, '/management/vendors')) return ['vendors'];
+	if (isPathOrChild(pathname, '/management/preferred-bins')) return ['preferred-bins'];
 
 	// Plataforma
-	if (pathname.startsWith('/management/settings')) return ['settings'];
-	if (pathname.startsWith('/management/api-tokens')) return ['api-tokens'];
-	if (pathname.startsWith('/management/channels')) return ['channels'];
-	if (pathname.startsWith('/management/webhooks')) return ['webhooks'];
-	if (pathname.startsWith('/management/notifications')) return ['notifications'];
-	if (pathname.startsWith('/management/integrations')) return ['integrations'];
-	if (pathname.startsWith('/management/consumer-groups')) return ['consumer-groups'];
-	if (pathname.startsWith('/management/inbound-activity')) return ['inbound'];
-	if (pathname.startsWith('/management/imports')) return ['imports'];
-	if (pathname.startsWith('/management/audit-log')) return ['audit-log'];
+	if (isPathOrChild(pathname, '/management/settings')) return ['settings'];
+	if (isPathOrChild(pathname, '/management/api-tokens')) return ['api-tokens'];
+	if (isPathOrChild(pathname, '/management/channels')) return ['channels'];
+	if (isPathOrChild(pathname, '/management/webhooks')) return ['webhooks'];
+	if (isPathOrChild(pathname, '/management/notifications')) return ['notifications'];
+	if (isPathOrChild(pathname, '/management/integrations')) return ['integrations'];
+	if (isPathOrChild(pathname, '/management/consumer-groups')) return ['consumer-groups'];
+	if (isPathOrChild(pathname, '/management/inbound-activity')) return ['inbound'];
+	if (isPathOrChild(pathname, '/management/imports')) return ['imports'];
+	if (isPathOrChild(pathname, '/management/audit-log')) return ['audit-log'];
 
 	// Datos maestros
-	if (pathname === '/warehouses' || pathname.startsWith('/data/warehouses')) return ['warehouses'];
-	if (pathname.startsWith('/data/zones')) return ['zones'];
-	if (pathname.startsWith('/data/bins')) return ['bins'];
-	if (pathname.startsWith('/data/preferred-bins')) return ['preferred-bins'];
-	if (pathname.startsWith('/warehouses/')) return ['warehouses'];
+	if (pathname === '/warehouses' || isPathOrChild(pathname, '/data/warehouses')) return ['warehouses'];
+	if (isPathOrChild(pathname, '/data/zones')) return ['zones'];
+	if (isPathOrChild(pathname, '/data/bins')) return ['bins'];
+	if (isPathOrChild(pathname, '/data/preferred-bins')) return ['preferred-bins'];
+	if (isPathOrChild(pathname, '/warehouses')) return ['warehouses'];
 
 	return [];
 }
