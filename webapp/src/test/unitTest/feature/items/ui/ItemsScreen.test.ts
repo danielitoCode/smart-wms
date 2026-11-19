@@ -107,7 +107,7 @@ describe('ItemsScreen UI', () => {
 			context: new Map([['i18n', i18n]])
 		});
 
-		for (const value of ['Detalles del producto', 'SKU', 'UPC', 'MPN', 'Descripción', 'Códigos de barras alternativos', 'ALT-7, ALT-8', 'Categoría', 'Peso (lb)', 'Largo (in)', 'Ancho (in)', 'Alto (in)', 'Punto de reposición', 'Cantidad de reposición', 'Control por lote', 'Control por número de serie', 'Creado', 'Última actualización', 'Ubicaciones preferidas', 'Prioridad', 'Inventario', 'no incluye identificación del almacén', 'Cantidad', 'Asignado', 'Picking', '20', '5']) {
+		for (const value of ['Detalles del producto', 'SKU', 'UPC', 'MPN', 'Descripción', 'Códigos de barras alternativos', 'ALT-7, ALT-8', 'Categoría', 'Peso (lb)', 'Largo (in)', 'Ancho (in)', 'Alto (in)', 'Punto de reposición', 'Cantidad de reposición', 'Control por lote', 'Control por número de serie', 'Creado', 'Última actualización', 'Ubicaciones preferidas', 'Prioridad', 'Inventario', 'no identifican su almacén', 'Cantidad', 'Asignado', 'Picking', '20', '5']) {
 			expect(body).toContain(value);
 		}
 	});
