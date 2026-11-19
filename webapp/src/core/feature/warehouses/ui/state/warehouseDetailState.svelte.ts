@@ -93,13 +93,13 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 
 	async function loadBinsForZone(zoneId: number | null, page = 1) {
 		if (!includeBins) return false;
-		if (zoneId != null && includeZones) assertZoneBelongsToWarehouse(zoneId, warehouseId, zones);
 		selectedZoneId = zoneId;
 		const requestVersion = ++binsRequestVersion;
 		const scopedRequest = beginWarehouseScopedRequest();
 		binsLoading = true;
 		error = null;
 		try {
+			if (zoneId != null && includeZones) assertZoneBelongsToWarehouse(zoneId, warehouseId, zones);
 			const result: BinPage = await deps.listBins.execute({
 				warehouseId, ...(zoneId != null ? { zoneId } : {}), ...(binTypeFilter ? { binType: binTypeFilter } : {}), page, perPage: binPerPage,
 				...(binSearch.trim() ? { q: binSearch.trim() } : {})
@@ -181,18 +181,21 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 	}
 	async function exportAllBins(): Promise<Bin[]> {
 		const all: Bin[] = []; let page = 1; let pages = 1;
-		do {
+		const scopedRequest = beginWarehouseScopedRequest();
+		try { do {
 			const result = await deps.listBins.execute({
 				warehouseId, ...(selectedZoneId != null ? { zoneId: selectedZoneId } : {}),
 				...(binTypeFilter ? { binType: binTypeFilter } : {}),
 				page, perPage: 50, ...(binSearch.trim() ? { q: binSearch.trim() } : {})
 			});
-			if (result.items.some((bin) => bin.warehouseId !== warehouseId)) {
-				throw new Error('The bins export contains a bin from another warehouse');
+			if (!scopedRequest.isCurrent()) throw new Error('Warehouse context changed during bin export');
+			if (result.items.some((bin) => bin.warehouseId !== warehouseId || (selectedZoneId != null && bin.zoneId !== selectedZoneId))) {
+				throw new Error('The bins export contains a bin outside the active warehouse or zone');
 			}
 			all.push(...result.items); pages = result.pages; page += 1;
 		} while (page <= pages && page <= 200);
 		return all;
+		} finally { scopedRequest.release(); }
 	}
 	async function mutate(action: () => Promise<void>, fallback: string) {
 		if (mutating) return false;
