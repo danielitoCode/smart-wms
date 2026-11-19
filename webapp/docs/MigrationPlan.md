@@ -2,9 +2,12 @@
 
 > **Documento rector de ejecución.** Este plan sustituye la migración por fases de módulos aislados por una migración de capacidades y recorridos de negocio completos. Todo trabajo nuevo en `webapp/` debe seguir este documento. La rama objetivo es `svelte-webapp`.
 
-- **Ámbito:** frontend SvelteKit en `webapp/`, comparado con el frontend React original y con los contratos reales de Flask.
-- **Objetivo:** alcanzar paridad funcional verificable con React, conservar las reglas y restricciones reales de Flask, y dejar diseñadas/implementadas en frontend las capacidades futuras que aún no expone el servidor, sin simular que funcionan.
-- **Regla de seguridad:** no cambiar ni ampliar Flask como parte de una tarea frontend salvo petición expresa. Si el servidor carece de una operación, documentarla, modelarla y presentar su indisponibilidad con claridad.
+- **Ámbito exclusivo de implementación y aceptación:** frontend SvelteKit en `webapp/`. Se compara con el frontend React original y se integra contra los contratos observados de Flask.
+- **Objetivo:** alcanzar paridad funcional verificable con React dentro de `webapp/`, respetar los contratos y restricciones que Flask expone y dejar diseñadas/implementadas en frontend las capacidades futuras que el servidor aún no ofrece, sin simular que funcionan.
+- **Límite de responsabilidad:** este proyecto NO modifica, corrige, amplía ni implementa Flask. Tampoco ejecuta ni exige que pasen las suites de pruebas del backend. Los fallos backend se registran como limitaciones/dependencias del servidor, no como defectos de la migración Svelte.
+- **Uso de Flask como referencia:** sí se inspeccionan rutas, schemas, middleware, permisos, DTO, respuestas y comportamiento existente para alinear los adaptadores frontend. Esa inspección no autoriza cambios backend ni convierte sus pruebas en criterios de aceptación frontend.
+- **Capacidades ausentes o incompletas en Flask:** documentar el gap y el contrato requerido; modelar en frontend dominio, casos de uso, puertos, DTO futuro y UI cuando corresponda; marcar la acción como no soportada/parcial, deshabilitar su ejecución y no inventar endpoints, persistencia, seguridad ni resultados. El frontend no debe afirmar que sustituye el enforcement del servidor.
+- **Criterio de verificación:** solo cuentan para la aceptación los comandos y workflows de `webapp/` (Node 26, dependencias, check/typecheck, build, suites unitarias/de integración/UI/i18n y regresión frontend). Un workflow mixto solo cuenta por sus jobs identificados como frontend; un fallo de backend no se atribuye a Svelte.
 - **Estado inicial de referencia:** HEAD auditado `9191bd8fd8cc62a38608f9db23202efdc3cf7687`. La medición porcentual anterior (55%) es una línea base histórica, no una certificación nueva de todos los recorridos.
 
 ---
@@ -59,6 +62,17 @@ Cuando React contenga una función que Flask todavía no soporta, o se diseñe u
 
 Mensaje recomendado: **“Esta operación todavía no está disponible en el servidor. Puedes consultar la información, pero no ejecutar ni confirmar este cambio hasta que el backend incorpore esta capacidad.”** El mensaje debe localizarse mediante i18n y no sustituir el detalle técnico para soporte.
 
+### 1.6 Separación obligatoria de responsabilidades frontend/backend
+
+La migración se ejecuta y se acepta exclusivamente en `webapp/`. Se permite inspeccionar Flask para conocer el contrato real, pero no modificarlo ni exigir que sus pruebas pasen. Clasificar cada hallazgo en una de estas categorías:
+
+- `FRONTEND_DEFECT`: discrepancia o funcionalidad incompleta en React/Svelte, arquitectura, DTO/mappers, estado, navegación, permisos UX, contexto, cancelación o pruebas de `webapp`. Es responsabilidad de esta migración.
+- `BACKEND_LIMITATION`: endpoint ausente, contrato parcial, permiso no aplicado por Flask, scope insuficiente, persistencia/transacción no disponible o defecto demostrado del servidor. Se documenta con evidencia; no se corrige aquí.
+- `FRONTEND_GUARD_REQUIRED`: comportamiento frontend necesario para no invocar capacidades inexistentes, no enviar datos fuera del contexto seleccionado, no mostrar éxito ficticio y comunicar una respuesta/limitación del servidor. Sí es responsabilidad de `webapp`, pero no sustituye seguridad backend.
+- `UNVERIFIED_CONTRACT`: evidencia insuficiente del comportamiento Flask. El frontend no debe inventar el contrato; mantenerlo explícito como no verificado y solicitar evidencia antes de integrar.
+
+Los workflows pueden ejecutar suites de backend por separado o en paralelo. Sus resultados se informan como contexto del repositorio, pero no se usan para declarar fallida la migración frontend. Para el estado de R0/R1 se registran exclusivamente los jobs y comandos que validan `webapp`. Si una prueba de frontend falla porque el test esperaba una capacidad que Flask no ofrece, corregir el test para expresar el contrato real y el comportamiento frontend seguro; no implementar un backend ficticio ni debilitar una protección frontend válida.
+
 ### 1.5 Definición de terminado (DoD) obligatoria
 
 Un recorrido solo se cierra si todos los puntos aplicables están demostrados:
@@ -69,10 +83,10 @@ Un recorrido solo se cierra si todos los puntos aplicables están demostrados:
 - [ ] Data/Infrastructure: contratos Flask verificados, DTO y mappers probados, cancelación/timeouts y errores normalizados.
 - [ ] UI: estados loading/empty/error/forbidden/not-supported/success; controles coherentes con permisos; sin éxito ficticio.
 - [ ] Warehouse context: lectura y escritura restringidas al almacén correcto; cambio de almacén invalida consultas y selecciones dependientes.
-- [ ] Consistencia: transacciones, concurrencia, idempotencia y protección frente a doble envío donde corresponda.
-- [ ] Auditoría: actor, almacén, entidad, motivo y resultado cuando el backend lo soporte; si no, registrar el gap.
-- [ ] Pruebas unitarias de dominio/aplicación, contrato de datos, integración y UI/regresión.
-- [ ] `npm run check`, pruebas pertinentes y `npm run build` ejecutados sobre el HEAD definitivo; resultados y comandos anotados. No afirmar que se ejecutaron si no se ejecutaron.
+- [ ] Consistencia en frontend: estados, validaciones, prevención de doble envío, cancelación y tratamiento explícito de conflictos conforme a lo que el contrato permita verificar. No se exige implementar ni certificar transacciones/concurrencia internas de Flask.
+- [ ] Auditoría: representar y consultar los datos de auditoría que el servidor exponga; si no los expone, documentar el gap y preparar la integración futura sin inventar registros.
+- [ ] Pruebas frontend unitarias de dominio/aplicación, mappers/DTO, repositorios con HTTP simulado, integración y UI/regresión. Las pruebas de Flask/backend quedan expresamente fuera de este DoD.
+- [ ] Ejecutar los comandos de verificación de `webapp/` (Node 26, `npm run check`, suites frontend y `npm run build`, según scripts reales) sobre el HEAD definitivo; anotar resultados. No ejecutar ni exigir suites backend.
 - [ ] No hay regresiones en recorridos previamente cerrados ni cambios silenciosos en contratos compartidos.
 - [ ] Documentación actualizada: estado, rutas, permisos, gaps Flask, evidencias y commit.
 
@@ -216,7 +230,11 @@ Aceptación:
 - El cambio de almacén no deja datos del almacén anterior en pantalla.
 - Catálogo de capacidades y evidencia actualizado.
 
-**Seguimiento 2026-11-19:** `IN_PROGRESS`, no `VERIFIED`. Se verificaron los contratos transversales de sesión, page grants y listado operativo de almacenes; se corrigieron la recuperación de sesión tras 401, la carga de grants después del login, la selección de almacén sin datos ficticios y el fail-closed de rutas sin política. Se añadió el primer Capability Registry, el componente común `UiStatePanel` (Forbidden/Not supported/Empty/Loading/Error/Conflict) y pruebas unitarias para los contratos revisados. El panel ya cubre el layout. La auditoría ampliada encontró brechas críticas de warehouse scope en `GET /api/admin/inventory`, `GET /api/picking/active-batch`, rutas de Purchase Orders y mutaciones por ID de Sales Orders, además de discrepancias entre rutas anunciadas y wrappers Svelte, el grant de Bins y mutaciones operativas sin enforcement general de `allowed_functions`. `warehouse.request-scope` y `authorization.allowed-functions` permanecen `PARTIAL`; evidencia y plan de resolución: [R0-Routes-Authorization-Warehouse-Audit.md](./R0-Routes-Authorization-Warehouse-Audit.md). La cobertura exhaustiva de todos los componentes/casos de uso y la ejecución de check/test/build siguen pendientes. Evidencia detallada: [R0-Platform-Contracts.md](./R0-Platform-Contracts.md).
+**Seguimiento 2026-11-19:** estado de referencia `IN_PROGRESS` para la base frontend. Se verificaron los contratos transversales de sesión, page grants y listado operativo de almacenes; se corrigieron la recuperación de sesión tras 401, la carga de grants después del login, la selección de almacén sin datos ficticios y el fail-closed de rutas sin política. Se añadió el Capability Registry, `UiStatePanel` y pruebas frontend de sesión/almacén. La adopción de `UiStatePanel` se amplió a las pantallas operativas, administrativas y de plataforma; ver [R0-Session-Grants-Integration.md](./R0-Session-Grants-Integration.md).
+ 
+La auditoría de Flask registró gaps de warehouse scope, ausencia de enforcement general de `allowed_functions` y otras limitaciones del servidor. **Estos hallazgos son dependencias documentadas, no tareas de implementación ni bloqueos automáticos para avanzar con R1.** No se deben corregir en Flask dentro de esta migración. El frontend debe respetar lo que el servidor realmente ofrece, evitar prometer garantías que no existen y dejar documentadas las capacidades pendientes.
+ 
+Siguen siendo criterios de R0 únicamente los pendientes del frontend: correspondencia completa de rutas React/Svelte, verificación de que la UI no realiza HTTP directamente, uso coherente del contexto de almacén, pruebas frontend y verificación de los workflows de `webapp` sobre el HEAD definitivo. Las suites backend no forman parte de la aceptación. Evidencia de contratos y limitaciones: [R0-Routes-Authorization-Warehouse-Audit.md](./R0-Routes-Authorization-Warehouse-Audit.md), [R0-Platform-Contracts.md](./R0-Platform-Contracts.md) y [R0-Session-Grants-Integration.md](./R0-Session-Grants-Integration.md).
 
 ### R1 — Preparar catálogo y estructura física del almacén
 **Trazabilidad:** F1 Items, Bins, Zones, Warehouses; partes de F2 Inventory.
