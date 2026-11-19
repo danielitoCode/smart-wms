@@ -23,13 +23,13 @@ describe('WarehouseMapper', () => {
 			bin_code: 'A-01', bin_barcode: 'BC-01', bin_type: 'Pickable',
 			aisle: 'A', row_num: 2, level_num: 3, position_num: 4,
 			pick_sequence: 5, putaway_sequence: 6, is_active: true,
-			max_weight_lbs: 125.5, max_volume_cuft: 32, quantity_on_hand: 20, quantity_allocated: 3, inventory_lines: 2
+			quantity_on_hand: 20, quantity_allocated: 3, inventory_lines: 2
 		})).toEqual({
 			id: 12, warehouseId: 8, zoneId: 4, zoneName: 'Picking',
 			code: 'A-01', barcode: 'BC-01', binType: 'Pickable', aisle: 'A',
 			rowNumber: 2, levelNumber: 3, positionNumber: 4,
 			pickSequence: 5, putawaySequence: 6, active: true,
-			maxWeightLbs: 125.5, maxVolumeCuft: 32, quantityOnHand: 20, quantityAllocated: 3, inventoryLines: 2
+			quantityOnHand: 20, quantityAllocated: 3, inventoryLines: 2
 		});
 	});
 	it('maps the bin inventory projection and rejects malformed identifiers', () => {
