@@ -105,4 +105,4 @@ La paridad debe incluir los flujos y errores, no solo la existencia de pantallas
 
 ## 7. Criterio de cierre R1
 
-R1 no se cierra hasta demostrar paridad React donde Flask soporta la operación, contratos DTO/mappers correctos, filtros/paginación, guards de permisos, aislamiento por almacén para zonas/bins, tratamiento explícito del catálogo global de Items, errores de dependencias y pruebas frontend de regresión. No se exige ni se realiza implementación o certificación de backend.
+R1 no se cierra hasta demostrar paridad React donde Flask soporta la operación, contratos DTO/mappers correctos, filtros/paginación, guards de permisos, aislamiento de estado y de presentación por almacén en frontend, tratamiento explícito del catálogo global de Items, errores de dependencias y pruebas frontend de regresión. La autorización/aislamiento server-side de las rutas administrativas Zones/Bins y la persistencia de capacidades físicas son `BACKEND_LIMITATION`; no pueden certificarse ni resolverse desde esta migración frontend.
