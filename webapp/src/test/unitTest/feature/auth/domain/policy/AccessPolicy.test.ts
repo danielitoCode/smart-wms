@@ -170,3 +170,15 @@ describe('explicit app route access policies', () => {
 		expect(routeAccessPolicyForPath('/unregistered-admin-page')).toBeNull();
 	});
 });
+
+
+describe('warehouse master-data route grants', () => {
+	it('uses the bins grant alone for bin routes, matching Flask', () => {
+		expect(requiredPageKeysForPath('/data/bins')).toEqual(['bins']);
+		expect(requiredPageKeysForPath('/data/bins/42')).toEqual(['bins']);
+	});
+
+	it('uses the warehouses grant alone for warehouse detail routes', () => {
+		expect(requiredPageKeysForPath('/warehouses/7')).toEqual(['warehouses']);
+	});
+});
