@@ -190,6 +190,59 @@ describe('WarehouseDetailState zone and bins interactions', () => {
 		expect(state.error).toContain('another warehouse');
 	});
 
+	it('keeps only the newest bin detail request when users select rows quickly', async () => {
+		let resolveFirst!: (value: any) => void;
+		let resolveSecond!: (value: any) => void;
+		deps.getBinDetail.execute
+			.mockReturnValueOnce(new Promise((resolve) => { resolveFirst = resolve; }))
+			.mockReturnValueOnce(new Promise((resolve) => { resolveSecond = resolve; }));
+		const state = createWarehouseDetailState(1, true);
+		await state.load();
+		const first = state.viewBin(3);
+		const second = state.viewBin(4);
+		const secondDetail = {
+			bin: { ...bin, id: 4, code: 'A-02' }, inventory: [],
+			occupancy: { quantityOnHand: 0, quantityAllocated: 0, quantityAvailable: 0, inventoryLines: 0 }
+		};
+		resolveSecond(secondDetail);
+		expect(await second).toBe(true);
+		resolveFirst({ ...secondDetail, bin: { ...bin, id: 3, code: 'A-01' } });
+		expect(await first).toBe(false);
+		expect(state.selectedBinDetail?.bin.id).toBe(4);
+	});
+
+	it('invalidates a pending bin detail request when its dialog closes', async () => {
+		let resolveDetail!: (value: any) => void;
+		deps.getBinDetail.execute.mockReturnValueOnce(new Promise((resolve) => { resolveDetail = resolve; }));
+		const state = createWarehouseDetailState(1, true);
+		await state.load();
+		const pending = state.viewBin(3);
+		state.closeBinDetail();
+		resolveDetail({
+			bin: { ...bin }, inventory: [],
+			occupancy: { quantityOnHand: 0, quantityAllocated: 0, quantityAvailable: 0, inventoryLines: 0 }
+		});
+		expect(await pending).toBe(false);
+		expect(state.selectedBinDetail).toBeNull();
+	});
+
+	it('exports every filtered page using Flask maximum page size', async () => {
+		const state = createWarehouseDetailState(1, true);
+		await state.load(11);
+		deps.listBins.execute.mockReset();
+		deps.listBins.execute
+			.mockResolvedValueOnce({ ...binPage, total: 1001, page: 1, pages: 2, perPage: 1000 })
+			.mockResolvedValueOnce({ ...binPage, items: [{ ...bin, id: 4, code: 'A-02' }], total: 1001, page: 2, pages: 2, perPage: 1000 });
+		const rows = await state.exportAllBins();
+		expect(deps.listBins.execute).toHaveBeenNthCalledWith(1, {
+			warehouseId: 1, zoneId: 11, page: 1, perPage: 1000
+		});
+		expect(deps.listBins.execute).toHaveBeenNthCalledWith(2, {
+			warehouseId: 1, zoneId: 11, page: 2, perPage: 1000
+		});
+		expect(rows).toHaveLength(2);
+	});
+
 	it('does not mutate a bin absent from the active warehouse result', async () => {
 		const state = createWarehouseDetailState(1, true);
 		await state.load();
