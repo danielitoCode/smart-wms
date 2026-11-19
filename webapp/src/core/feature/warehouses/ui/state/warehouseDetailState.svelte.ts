@@ -113,7 +113,7 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 				try { assertBinBelongsToWarehouse(bin); return zoneId != null && bin.zoneId !== zoneId; }
 				catch { return true; }
 			})) {
-				throw new Error('The bins response contains a bin from another warehouse or outside the selected zone');
+				throw new Error('The bins response contains a bin outside the active warehouse or zone');
 			}
 			bins = result.items; binPage = result.page; binPages = result.pages;
 			binTotal = result.total; binPerPage = result.perPage;
