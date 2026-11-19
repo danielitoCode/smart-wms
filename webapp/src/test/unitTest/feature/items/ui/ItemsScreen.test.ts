@@ -127,6 +127,40 @@ describe('ItemsScreen UI', () => {
 		}
 	});
 
+
+	it('renders the detail loading and failure states', () => {
+		const original = { detail: vm.detail, detailLoading: vm.detailLoading, detailError: vm.detailError };
+		const i18n = { t: (message: string) => message };
+		try {
+			vm.detail = null;
+			vm.detailLoading = true;
+			vm.detailError = null;
+			expect(render(ItemsScreen, { context: new Map([['i18n', i18n]]) }).body).toContain('Cargando detalle');
+			vm.detailLoading = false;
+			vm.detailError = 'No se pudo cargar el detalle';
+			expect(render(ItemsScreen, { context: new Map([['i18n', i18n]]) }).body).toContain('No se pudo cargar el detalle');
+		} finally {
+			vm.detail = original.detail;
+			vm.detailLoading = original.detailLoading;
+			vm.detailError = original.detailError;
+		}
+	});
+
+	it('shows the real server deletion constraint inside the confirmation dialog', () => {
+		const original = { deleteId: vm.deleteId, error: vm.error };
+		const i18n = { t: (message: string) => message };
+		try {
+			vm.deleteId = 7;
+			vm.error = 'No se puede eliminar: existe inventario positivo';
+			const { body } = render(ItemsScreen, { context: new Map([['i18n', i18n]]) });
+			expect(body).toContain('No se puede eliminar: existe inventario positivo');
+			expect(body).toContain('No se puede eliminar si tiene inventario o historial de pedidos');
+		} finally {
+			vm.deleteId = original.deleteId;
+			vm.error = original.error;
+		}
+	});
+
 	it('preserves React detail attributes, preferred bins and inventory locations', () => {
 		const i18n = { t: (message: string) => message };
 		const { body } = render(ItemsScreen, {
