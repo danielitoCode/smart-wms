@@ -182,3 +182,11 @@ describe('warehouse master-data route grants', () => {
 		expect(requiredPageKeysForPath('/warehouses/7')).toEqual(['warehouses']);
 	});
 });
+
+
+describe('route matcher boundaries', () => {
+	it('does not treat a similarly prefixed but unknown path as a granted feature route', () => {
+		expect(routeAccessPolicyForPath('/management/fraudulent')).toBeNull();
+		expect(routeAccessPolicyForPath('/data/bins-archive')).toBeNull();
+	});
+});
