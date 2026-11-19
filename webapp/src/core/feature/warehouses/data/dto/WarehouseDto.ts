@@ -18,7 +18,7 @@ export type ZoneListResponseDto = {
 };
 export type BinDto = {
 	bin_id: number; warehouse_id: number; zone_id: number; bin_code: string;
-	bin_barcode: string; bin_type: string; is_active: boolean;
+	bin_barcode: string | null; bin_type: string; is_active: boolean;
 	zone_name?: string | null; aisle?: string | null; row_num?: number | null;
 	level_num?: number | null; position_num?: number | null;
 	pick_sequence: number; putaway_sequence: number;
