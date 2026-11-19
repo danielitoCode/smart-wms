@@ -20,7 +20,7 @@ describe('platform server capability registry', () => {
 		expect(refresh.status).toBe('PARTIAL');
 		expect(refresh.notes).toContain('cannot recover an expired session');
 		expect(isServerCapabilitySupported('auth.refresh')).toBe(false);
-		 expect(isServerCapabilitySupported('auth.me')).toBe(true);
+		expect(isServerCapabilitySupported('auth.me')).toBe(true);
 	});
 
 	it('keeps page grants and warehouse scope as independent controls', () => {
