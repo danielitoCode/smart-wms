@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
 	import { getContext } from 'svelte';
 	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
 	import PageHeader from '../../../../../lib/components/PageHeader.svelte';
@@ -65,7 +66,9 @@
 		<UiBanner tone="error" message={vm.error} />
 	{/if}
 
-	{#if vm.detail}
+	{#if vm.loading}
+		<UiStatePanel kind="loading" title={i18n.t('Buscando orden de compra')} message={i18n.t('Estamos consultando la orden y sus líneas de recepción.')} />
+	{:else if vm.detail}
 		<section class="po">
 			<h2>{vm.detail.purchaseOrder.poNumber}</h2>
 			<p class="meta">
@@ -146,7 +149,7 @@
 			</form>
 		</section>
 	{:else if !vm.loading && !vm.error}
-		<p class="empty">{i18n.t('Busca una orden de compra para comenzar la recepción.')}</p>
+		<UiStatePanel kind="empty" title={i18n.t('Orden de compra requerida')} message={i18n.t('Busca una orden de compra para comenzar la recepción.')} />
 	{/if}
 </section>
 

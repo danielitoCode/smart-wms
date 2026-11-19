@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
 	import { getContext, onDestroy, onMount } from 'svelte';
 	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
 	import { createWarehouseDetailState } from '../state/warehouseDetailState.svelte';
@@ -101,8 +102,8 @@
 		{#if vm.warehouse}<h1>{vm.warehouse.name}</h1><p class="subtitle">{vm.warehouse.code} · {vm.warehouse.active ? i18n.t('Activo') : i18n.t('Inactivo')}</p>{#if vm.warehouse.address}<p class="subtitle">{vm.warehouse.address}</p>{/if}
 		{:else}<h1>{i18n.t('Almacén')} #{warehouseId}</h1>{/if}
 	</header>
-	{#if vm.loading && !vm.warehouse}<p class="status">{i18n.t('Cargando…')}</p>
-	{:else if vm.error && !vm.warehouse}<p class="error" role="alert">{vm.error}</p><button type="button" onclick={() => vm.load()}>{i18n.t('Reintentar')}</button>
+	{#if vm.loading && !vm.warehouse}<UiStatePanel kind="loading" title={i18n.t('Cargando almacén')} message={i18n.t('Estamos recuperando la estructura del almacén.')} />
+	{:else if vm.error && !vm.warehouse}<UiStatePanel kind="error" title={i18n.t('No se pudo cargar el almacén')} message={vm.error} retry={() => vm.load()} />
 	{:else}
 		{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
 		{#if showZones}<section class="panel">
@@ -118,7 +119,7 @@
 			{#if vm.selectedZoneId != null}<p class="filter-hint">{i18n.t('Filtrando por zona')} #{vm.selectedZoneId} <button class="linkish" type="button" onclick={() => vm.loadBinsForZone(null,1)}>{i18n.t('Quitar filtro')}</button></p>{/if}
 			<div class="section-header bin-heading"><h2>{i18n.t('Ubicaciones')}</h2><div class="bin-tools"><select aria-label={i18n.t('Filtrar por zona')} value={vm.selectedZoneId ?? ''} onchange={(e) => vm.loadBinsForZone(e.currentTarget.value ? Number(e.currentTarget.value) : null, 1)}><option value="">{i18n.t('Todas las zonas')}</option>{#each vm.zones as zone}<option value={zone.id}>{zone.code} — {zone.name}</option>{/each}</select><select aria-label={i18n.t('Filtrar por tipo')} value={vm.binTypeFilter ?? ''} onchange={(e) => vm.filterBinsByType(e.currentTarget.value)}><option value="">{i18n.t('Todos los tipos')}</option>{#each ['Staging','PickableStaging','Pickable'] as type}<option value={type}>{binTypeLabel(type as BinType)}</option>{/each}</select><input aria-label={i18n.t('Buscar código o código de barras')} placeholder={i18n.t('Buscar código o código de barras')} value={vm.binSearch} oninput={(e) => onSearch(e.currentTarget.value)} /><button class="quiet" type="button" onclick={exportCsv} disabled={exporting || vm.binTotal === 0}>{exporting ? i18n.t('Exportando…') : i18n.t('Exportar CSV')}</button><button class="accent" type="button" onclick={openCreateBin} disabled={vm.zones.length === 0}>{i18n.t('Nueva ubicación')}</button></div></div>
 			{#if vm.binsLoading}<p class="status">{i18n.t('Actualizando ubicaciones…')}</p>
-			{:else if vm.bins.length === 0}<p class="status">{i18n.t('No hay ubicaciones para este filtro.')}</p>
+			{:else if vm.bins.length === 0}<UiStatePanel kind="empty" title={i18n.t('Sin ubicaciones')} message={i18n.t('No hay ubicaciones para este filtro.')} />
 			{:else}<div class="table-wrap"><table><thead><tr><th>{i18n.t('Código')}</th><th>{i18n.t('Código de barras')}</th><th>{i18n.t('Tipo')}</th><th>{i18n.t("Zona")}</th><th>{i18n.t('Pasillo')}</th><th>{i18n.t('Orden de preparación')}</th><th>{i18n.t('Existencias')}</th><th>{i18n.t('Capacidad')}</th><th>{i18n.t('Estado')}</th><th>{i18n.t('Acciones')}</th></tr></thead><tbody>
 				{#each vm.bins as bin (bin.id)}<tr><td><button class="linkish mono" type="button" onclick={() => vm.viewBin(bin.id)}>{bin.code}</button></td><td class="mono">{bin.barcode ?? '—'}</td><td>{binTypeLabel(bin.binType)}</td><td>{bin.zoneName ?? bin.zoneId ?? '—'}</td><td>{bin.aisle ?? '—'}</td><td>{bin.pickSequence}</td><td>{bin.quantityOnHand} ({bin.quantityAllocated} {i18n.t('asignadas')})</td><td>{bin.maxWeightLbs == null && bin.maxVolumeCuft == null ? '—' : [bin.maxWeightLbs != null ? bin.maxWeightLbs + ' lb' : '', bin.maxVolumeCuft != null ? bin.maxVolumeCuft + ' ft³' : ''].filter(Boolean).join(' · ')}</td><td>{bin.active ? i18n.t('Activo') : i18n.t('Inactivo')}</td><td class="actions"><button class="quiet" type="button" onclick={() => openEditBin(bin)}>{i18n.t('Editar')}</button><button class="danger" type="button" onclick={() => deleteBinTarget = bin}>{i18n.t('Eliminar')}</button></td></tr>{/each}
 			</tbody></table></div>

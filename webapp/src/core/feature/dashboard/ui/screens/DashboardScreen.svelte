@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
  import {getContext,onMount} from 'svelte';
  import type {I18nState} from '../../../../../lib/i18n/i18n.svelte';
  import type {WarehouseSelectionState} from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
@@ -41,8 +42,8 @@
   {#if vm.activeTab==='productivity'}<div class="view-toggle"><button class:active={vm.view==='charts'} onclick={()=>vm.view='charts'}>Charts</button><button class:active={vm.view==='table'} onclick={()=>vm.view='table'}>Table</button>{#if vm.view==='table'}<button onclick={csv} disabled={!vm.productivity}>Export CSV</button>{/if}<button onclick={()=>showSettings=true} aria-label="Dashboard settings">⚙</button></div>{/if}
  </div>
  {/if}
- {#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
- {#if vm.loading}<div class="loading" aria-live="polite">{i18n.t('Cargando datos…')}</div>{/if}
+ {#if vm.error}<UiStatePanel kind="error" title={i18n.t('No se pudieron cargar los datos del dashboard')} message={vm.error} />{/if}
+ {#if vm.loading}<UiStatePanel kind="loading" title={i18n.t('Cargando dashboard')} message={i18n.t('Estamos recuperando los indicadores del almacén y período seleccionados.')} />{/if}
  {#if vm.activeTab==='productivity'}
   {#if !isAdmin}<p class="notice">Productivity is available to administrators only.</p>
   {:else if vm.productivity}
