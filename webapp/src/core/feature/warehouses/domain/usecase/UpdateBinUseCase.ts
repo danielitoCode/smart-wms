@@ -42,11 +42,6 @@ export class UpdateBinUseCase {
 		if (input.pickSequence !== undefined) update.pickSequence = input.pickSequence;
 		if (input.putawaySequence !== undefined) update.putawaySequence = input.putawaySequence;
 		if (input.active !== undefined) update.active = input.active;
-		for (const [value, name] of [[input.maxWeightLbs, 'maxWeightLbs'], [input.maxVolumeCuft, 'maxVolumeCuft']] as const) {
-			if (value !== undefined && value !== null && (!Number.isFinite(value) || value < 0 || value > 99999999.99 || Math.abs(value * 100 - Math.round(value * 100)) > 0.000001)) throw new Error(name + ' must be a non-negative number with at most two decimal places');
-		}
-		if (input.maxWeightLbs !== undefined) update.maxWeightLbs = input.maxWeightLbs;
-		if (input.maxVolumeCuft !== undefined) update.maxVolumeCuft = input.maxVolumeCuft;
 		if (Object.keys(update).length === 1) throw new Error('at least one bin field is required');
 		return this.repository.updateBin(update);
 	}
