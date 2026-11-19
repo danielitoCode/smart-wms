@@ -7,7 +7,7 @@ export type WarehouseAuthority = {
 	role: string;
 	/** From /api/auth/me warehouse_ids */
 	assignedWarehouseIds: readonly number[];
-	/** Page grants; 'warehouses' unlocks admin list labels for ADMIN only selection expands */
+	/** Page grants control master-data UI access, never warehouse assignment scope. */
 	allowedPages: readonly string[];
 };
 
