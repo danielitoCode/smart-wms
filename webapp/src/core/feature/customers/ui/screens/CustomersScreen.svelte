@@ -1,16 +1,16 @@
 <script lang="ts">
 	import UiStatePanel from '#lib/components/UiStatePanel.svelte';
 	import { getContext } from 'svelte';
-	import { createAuthGuardState } from '../../../auth/ui/vm/authGuardState.svelte';
-	import type { WarehouseSelectionState } from '../../../warehouses/ui/vm/warehouseSelectionState.svelte';
+	import { createAuthGuardState } from '../../../auth/ui/state/authGuardState.svelte';
+	import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
 	import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
-	import { createCustomersState } from '../vm/customersState.svelte';
+	import { createCustomersState } from '../state/customersState.svelte';
 
 	const i18n = getContext<I18nState>('i18n');
 	const vm = createCustomersState((source) => i18n.t(source));
 	const authGuard = getContext<ReturnType<typeof createAuthGuardState>>('authGuard');
 	const warehouseSelection = getContext<WarehouseSelectionState>('warehouseSelection');
-	let searchScopeError = $vm<string | null>(null);
+	let searchScopeError = $state<string | null>(null);
 	let lastWarehouseId: number | null | undefined = undefined;
 	$effect(() => {
 		if (!warehouseSelection.initialized) return;

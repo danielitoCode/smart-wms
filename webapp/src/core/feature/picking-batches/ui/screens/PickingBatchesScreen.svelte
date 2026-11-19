@@ -1,5 +1,5 @@
 <script lang="ts">
-	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
+	import UiStatePanel from '#lib/components/UiStatePanel.svelte';
 import {getContext} from 'svelte';import PageHeader from '#lib/components/PageHeader.svelte';import UiBanner from '#lib/components/UiBanner.svelte';import {createPickingBatchesState} from '../state/pickingBatchesState.svelte';import type {PickingBatch} from '../../domain/entity/PickingBatch';
 const vm=createPickingBatchesState();const warehouse=getContext<{warehouseId:number|null}>('warehouseSelection');let search=$state(''),target=$state<PickingBatch|null>(null),actionError=$state(''),success=$state('');
 const rows=$derived.by(()=>{const q=search.trim().toLowerCase();return vm.rows.filter(x=>!q||[x.batchNumber,x.assignedTo??'',x.transferOrderNumber??'',...x.orders].some(v=>v.toLowerCase().includes(q)));});
