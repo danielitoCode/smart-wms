@@ -96,6 +96,7 @@
 
 	const routeAccess = $derived(routeAccessPolicyForPath(page.url.pathname));
 	const hasRouteAccess = $derived.by(() => {
+		if (guard.user?.mustChangePassword) return page.url.pathname === '/change-password';
 		if (!routeAccess) return false;
 		if (routeAccess.kind === 'authenticated') return true;
 		if (routeAccess.kind === 'all') {
@@ -144,22 +145,59 @@
 		}
 	}
 
+	let previousPathname = page.url.pathname;
+
+	function toWarehouseAuthUser(user: NonNullable<typeof guard.user>) {
+		return {
+			userId: user.userId,
+			username: user.username,
+			fullName: user.fullName,
+			role: user.role,
+			warehouseIds: user.warehouseIds,
+			allowedPages: user.allowedPages,
+			allowedFunctions: user.allowedFunctions,
+			mustChangePassword: user.mustChangePassword,
+			allowedOverrides: user.allowedOverrides ?? []
+		};
+	}
+
+	async function revalidateAccessAndWarehouse() {
+		await guard.revalidatePermissions();
+		if (guard.status === 'authenticated' && guard.user && !guard.user.mustChangePassword) {
+			await warehouseSelection.syncFromUser(toWarehouseAuthUser(guard.user));
+			return;
+		}
+		if (guard.status === 'anonymous') {
+			await warehouseSelection.syncFromUser(null);
+			const redirect = encodeURIComponent(page.url.pathname + page.url.search);
+			await goto('/login?redirect=' + redirect, { replaceState: true });
+		}
+	}
+
 	$effect(() => {
-		void page.url.pathname;
+		const pathname = page.url.pathname;
+		if (pathname !== previousPathname) {
+			previousPathname = pathname;
+			if (untrack(() => guard.status) === 'authenticated') {
+				void revalidateAccessAndWarehouse();
+			}
+		}
 		if (guard.status !== 'authenticated') return;
+		if (guard.user?.mustChangePassword && pathname !== '/change-password') {
+			queueMicrotask(() => void goto('/change-password', { replaceState: true }));
+			return;
+		}
 		queueMicrotask(() => scrollActiveNavIntoView());
 	});
 
 	async function bootstrap() {
 		await guard.verify();
-		if (guard.status === 'authenticated' && !guard.user?.mustChangePassword) {
-			await warehouseSelection.load(guard.user ? {
-				userId: guard.user.userId, username: guard.user.username, fullName: guard.user.fullName,
-				role: guard.user.role, warehouseIds: guard.user.warehouseIds,
-				allowedPages: guard.user.allowedPages, allowedFunctions: guard.user.allowedFunctions,
-				mustChangePassword: guard.user.mustChangePassword,
-				allowedOverrides: guard.user.allowedOverrides ?? []
-			} : null);
+		if (guard.status === 'authenticated' && guard.user?.mustChangePassword && page.url.pathname !== '/change-password') {
+			await goto('/change-password', { replaceState: true });
+			return;
+		}
+		if (guard.status === 'authenticated' && !guard.user?.mustChangePassword && guard.user) {
+			await warehouseSelection.load(toWarehouseAuthUser(guard.user));
 		}
 		if (guard.status === 'anonymous') {
 			const redirect = encodeURIComponent(page.url.pathname + page.url.search);
@@ -170,6 +208,7 @@
 	async function logout() {
 		sidebarOpen = false;
 		await guard.logout();
+		await warehouseSelection.syncFromUser(null);
 		await goto('/login');
 	}
 
@@ -276,6 +315,11 @@
 				</div>
 			</header>
 			<main class="content">
+				{#if warehouseSelection.error}
+					<section class="denied" role="alert">
+						<p>{warehouseSelection.error}</p>
+					</section>
+				{/if}
 				{#if !hasRouteAccess}
 					<section class="denied" role="alert">
 						<p>{i18n.t('No tienes permiso para ver esta página.')}</p>
