@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
 	import { getContext, onMount } from 'svelte';
 	import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
 	import { createWarehousesState } from '../state/warehousesState.svelte';
@@ -50,11 +51,11 @@
 		<button class="accent" type="button" onclick={openCreate}>{i18n.t('Nuevo almacén')}</button>
 	</header>
 	{#if vm.loading}
-		<p class="status">{i18n.t('Cargando almacenes…')}</p>
+		<UiStatePanel kind="loading" title={i18n.t('Cargando almacenes')} message={i18n.t('Estamos recuperando el catálogo de almacenes.')} />
 	{:else if vm.error && !vm.loadedOnce}
-		<p class="error" role="alert">{vm.error}</p><button type="button" onclick={() => vm.load()}>{i18n.t('Reintentar')}</button>
+		<UiStatePanel kind="error" title={i18n.t('No se pudieron cargar los almacenes')} message={vm.error} retry={() => vm.load()} />
 	{:else if vm.warehouses.length === 0}
-		<p class="empty">{i18n.t('No hay almacenes registrados.')}</p>
+		<UiStatePanel kind="empty" title={i18n.t('Sin almacenes')} message={i18n.t('No hay almacenes registrados.')} />
 	{:else}
 		<div class="table-wrap"><table>
 			<thead><tr><th>{i18n.t('Código')}</th><th>{i18n.t('Nombre')}</th><th>{i18n.t('Dirección')}</th><th>{i18n.t('Estado')}</th><th>{i18n.t('Acciones')}</th></tr></thead>

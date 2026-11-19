@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
   import UiLoader from '../../../../../lib/components/UiLoader.svelte';
   import { getContext, onMount } from 'svelte';
   import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
@@ -47,11 +48,11 @@
   </div>
 
   {#if vm.error}
-    <p class="error" role="alert">{vm.error}</p>
+    <UiStatePanel kind="error" title={i18n.t('No se pudieron cargar los reembolsos')} message={vm.error} retry={() => vm.load()} />
   {/if}
 
   {#if vm.loading}
-    <UiLoader label={i18n.t('Cargando…')} />
+    <UiStatePanel kind="loading" title={i18n.t('Cargando reembolsos')} message={i18n.t('Estamos recuperando las notas de crédito y sus líneas.')} />
   {:else}
     <div class="table-wrap">
       <table>

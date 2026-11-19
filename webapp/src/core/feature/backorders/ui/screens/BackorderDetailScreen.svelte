@@ -105,7 +105,7 @@
   {:else if vm.detailLoading}
     <UiStatePanel kind="loading" title={i18n.t('Cargando backorder')} message={i18n.t('Estamos recuperando el pedido pendiente y sus líneas.')} />
   {:else if vm.detailError}
-    <UiStatePanel kind="error" title={i18n.t('No se pudo cargar el backorder')} message={vm.detailError} retry={() => vm.load()} />
+    <UiStatePanel kind="error" title={i18n.t('No se pudo cargar el backorder')} message={vm.detailError} retry={() => vm.loadDetail(backorderId)} />
   {:else if order && !hasOrderWarehouseAccess}
     <UiStatePanel kind="forbidden" title={i18n.t('Almacén no autorizado')} message={i18n.t('No tienes acceso al almacén de este pedido.')} />
   {:else if order}

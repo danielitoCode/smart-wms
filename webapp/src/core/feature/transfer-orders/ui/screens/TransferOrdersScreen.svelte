@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
   import { onMount, getContext } from 'svelte';
   import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
   import { createTransferOrdersState } from '../state/transferOrdersState.svelte';
@@ -168,7 +169,7 @@
     <button class="primary" onclick={() => createOpen = !createOpen}>{i18n.t('Nueva transferencia')}</button>
   </header>
 
-  {#if vm.error}<p class="alert error" role="alert">{vm.error}</p>{/if}
+  {#if vm.error}<UiStatePanel kind="error" title={i18n.t('No se pudieron cargar las transferencias')} message={vm.error} retry={() => vm.load()} />{/if}
   {#if vm.notice}<p class="alert success" role="status">{vm.notice}</p>{/if}
 
   {#if vm.created}
@@ -251,8 +252,8 @@
 
   <section class="list-panel">
     <div class="list-heading"><div><h2>{i18n.t('Órdenes de traslado')}</h2><p>{vm.total} {i18n.t('registros')}</p></div><span class="muted">{i18n.t('Página')} {vm.page} / {vm.pages}</span></div>
-    {#if vm.loading}<p class="empty">{i18n.t('Cargando transferencias…')}</p>
-    {:else if !vm.rows.length}<p class="empty">{i18n.t('No hay transferencias para estos filtros.')}</p>
+    {#if vm.loading}<UiStatePanel kind="loading" title={i18n.t('Cargando transferencias')} message={i18n.t('Estamos consultando los movimientos entre almacenes.')} />
+    {:else if !vm.rows.length}<UiStatePanel kind="empty" title={i18n.t('Sin transferencias')} message={i18n.t('No hay transferencias para los filtros seleccionados.')} />
     {:else}
       <div class="table-wrap"><table><thead><tr><th>{i18n.t('Orden')}</th><th>{i18n.t('Origen')}</th><th>{i18n.t('Destino')}</th><th>{i18n.t('Estado')}</th><th>{i18n.t('Creada por')}</th><th>{i18n.t('Fecha')}</th></tr></thead><tbody>
         {#each vm.rows as order (order.transferOrderId)}

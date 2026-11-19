@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
 	import { getContext } from 'svelte';
 	import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
 	import WarehouseDetailScreen from './WarehouseDetailScreen.svelte';
@@ -19,9 +20,9 @@
 			<p class="selected">{i18n.t('Almacén seleccionado:')} #{selection.warehouseId}</p>
 		{/if}
 	</header>
-	{#if selection.loading || !selection.initialized}<p class="status">{i18n.t('Cargando almacén seleccionado…')}</p>
+	{#if selection.loading || !selection.initialized}<UiStatePanel kind="loading" title={i18n.t('Validando almacén')} message={i18n.t('Estamos comprobando el contexto operativo seleccionado.')} />
 	{:else if selection.error && selection.warehouseId == null}<p class="error" role="alert">{selection.error}</p>
-	{:else if selection.warehouseId == null}<p class="error" role="alert">{i18n.t('No hay un almacén seleccionado. Un usuario con permiso de Almacenes debe establecer la selección primero.')}</p>
+	{:else if selection.warehouseId == null}<UiStatePanel kind="forbidden" title={i18n.t('Almacén no disponible')} message={i18n.t('No hay un almacén seleccionado. Un usuario con permiso de Almacenes debe establecer la selección primero.')} />
 	{:else}
 		{#key selection.warehouseId + ':' + (mode === 'bins' ? initialZoneId ?? '' : '')}
 			<WarehouseDetailScreen warehouseId={selection.warehouseId} showZones={mode === 'zones'} showBins={mode === 'bins'} includeBins={mode === 'bins'} initialZoneId={mode === 'bins' ? initialZoneId : null} backHref={mode === 'zones' ? '/data/zones' : '/data/bins'} />

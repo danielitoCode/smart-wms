@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
   import { getContext } from 'svelte';
   import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
   import type { ReturnLine } from '../../domain/entity/Return';
@@ -103,9 +104,9 @@
     <button onclick={() => void vm.load()}>{i18n.t('Buscar')}</button>
   </div>
 
-  {#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
+  {#if vm.error}<UiStatePanel kind="error" title={i18n.t('No se pudieron cargar las devoluciones')} message={vm.error} retry={() => vm.load()} />{/if}
   {#if vm.loading}
-    <p>{i18n.t('Cargando…')}</p>
+    <UiStatePanel kind="loading" title={i18n.t('Cargando devoluciones')} message={i18n.t('Estamos consultando las devoluciones registradas.')} />
   {:else}
     <div class="table-wrap">
       <table>
