@@ -11,6 +11,8 @@ export type ItemFormModel = {
 	category: string;
 	weightLbs: string;
 	defaultBinId: string;
+	reorderPoint: string;
+	reorderQty: string;
 };
 
 function emptyForm(): ItemFormModel {
@@ -22,11 +24,26 @@ function emptyForm(): ItemFormModel {
 		mpn: '',
 		category: '',
 		weightLbs: '',
-		defaultBinId: ''
+		defaultBinId: '',
+		reorderPoint: '',
+		reorderQty: ''
 	};
 }
 
-function formToWrite(form: ItemFormModel): ItemWriteInput {
+function parseOptionalNonNegativeInteger(value: string, field: string): number | null {
+	const normalized = value.trim();
+	if (normalized === '') return null;
+	if (!/^\\d+$/.test(normalized)) {
+		throw new Error(`${field} debe ser un número entero mayor o igual que cero`);
+	}
+	const parsed = Number(normalized);
+	if (!Number.isSafeInteger(parsed) || parsed < 0) {
+		throw new Error(`${field} debe ser un número entero mayor o igual que cero`);
+	}
+	return parsed;
+}
+
+function formToWrite(form: ItemFormModel, includeReorderFields: boolean): ItemWriteInput {
 	const weight = form.weightLbs.trim() === '' ? null : Number(form.weightLbs);
 	const bin = form.defaultBinId.trim() === '' ? null : Number(form.defaultBinId);
 	return {
@@ -37,7 +54,11 @@ function formToWrite(form: ItemFormModel): ItemWriteInput {
 		mpn: form.mpn || null,
 		category: form.category || null,
 		weightLbs: weight != null && Number.isFinite(weight) ? weight : null,
-		defaultBinId: bin != null && Number.isInteger(bin) ? bin : null
+		defaultBinId: bin != null && Number.isInteger(bin) ? bin : null,
+		...(includeReorderFields ? {
+			reorderPoint: parseOptionalNonNegativeInteger(form.reorderPoint, 'Punto de reposición'),
+			reorderQty: parseOptionalNonNegativeInteger(form.reorderQty, 'Cantidad de reposición')
+		} : {})
 	};
 }
 
@@ -129,7 +150,9 @@ export function createItemsState(dependencies: ItemsDependencies = createItemsDe
 			mpn: item.mpn ?? '',
 			category: item.category ?? '',
 			weightLbs: item.weightLbs != null ? String(item.weightLbs) : '',
-			defaultBinId: item.defaultBinId != null ? String(item.defaultBinId) : ''
+			defaultBinId: item.defaultBinId != null ? String(item.defaultBinId) : '',
+			reorderPoint: item.reorderPoint != null ? String(item.reorderPoint) : '',
+			reorderQty: item.reorderQty != null ? String(item.reorderQty) : ''
 		};
 		showForm = true;
 		error = null;
@@ -140,7 +163,7 @@ export function createItemsState(dependencies: ItemsDependencies = createItemsDe
 		saving = true;
 		error = null;
 		try {
-			const body = formToWrite(form);
+			const body = formToWrite(form, editId != null);
 			if (editId != null) {
 				await dependencies.updateItem.execute(editId, body);
 			} else {
