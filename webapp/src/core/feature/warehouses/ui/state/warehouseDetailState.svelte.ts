@@ -106,7 +106,7 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 			});
 			if (requestVersion !== binsRequestVersion || !scopedRequest.isCurrent()) return false;
 			if (result.items.some((bin) => bin.warehouseId !== warehouseId || (zoneId != null && bin.zoneId !== zoneId))) {
-				throw new Error('The bins response contains a bin outside the active warehouse or zone');
+				throw new Error('The bins response contains a bin from another warehouse or outside the selected zone');
 			}
 			bins = result.items; binPage = result.page; binPages = result.pages;
 			binTotal = result.total; binPerPage = result.perPage;
