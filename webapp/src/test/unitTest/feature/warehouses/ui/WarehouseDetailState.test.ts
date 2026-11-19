@@ -183,7 +183,7 @@ describe('WarehouseDetailState zone and bins interactions', () => {
 		deps.listBins.execute.mockResolvedValueOnce({ ...binPage, items: [{ ...bin, warehouseId: 2 }] });
 		const state = createWarehouseDetailState(1, true);
 		expect(await state.load()).toBe(false);
-		expect(state.error).toContain('another warehouse');
+		expect(state.error).toContain('outside the active warehouse or zone');
 		expect(state.bins).toEqual([]);
 	});
 
@@ -302,7 +302,7 @@ describe('WarehouseDetailState zone and bins interactions', () => {
 		deps.listBins.execute.mockResolvedValueOnce({ ...binPage, items: [{ ...bin, zoneId: 12 }] });
 		const state = createWarehouseDetailState(1, true, true);
 		expect(await state.load(11)).toBe(false);
-		expect(state.error).toContain('selected zone');
+		expect(state.error).toContain('outside the active warehouse or zone');
 		expect(state.bins).toEqual([]);
 	});
 
