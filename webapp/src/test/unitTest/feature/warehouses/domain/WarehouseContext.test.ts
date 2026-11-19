@@ -74,4 +74,13 @@ describe('WarehouseContext F0.3 / P-06..P-11', () => {
 	it('P-11 keeps valid saved id', () => {
 		expect(resolveActiveWarehouseId({ authorizedIds: [4, 8], savedId: 8 })).toBe(8);
 	});
+
+	it('bins-only grant allows selecting only assigned active warehouses', () => {
+		const authority = { role: 'USER', assignedWarehouseIds: [3, 7], allowedPages: ['bins'] };
+		expect(canSelectWarehouseContext(authority)).toBe(true);
+		expect(resolveSelectableWarehouseIds(authority, [1, 3, 5, 7])).toEqual([3, 7]);
+		expect(() => assertWarehouseAuthorized(authority, 5, [1, 3, 5, 7])).toThrow(/not authorized/i);
+		expect(() => assertWarehouseAuthorized(authority, 7, [1, 3, 5, 7])).not.toThrow();
+	});
+
 });
