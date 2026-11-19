@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { ApiError } from '../../../../../core/infrastructure/errors/ApiError';
 import { ItemRepositoryImpl } from '../../../../../core/feature/items/data/repository/ItemRepositoryImpl';
 import type { ItemRemoteDataSource } from '../../../../../core/feature/items/data/datasource/ItemRemoteDataSource';
 
@@ -125,6 +126,19 @@ describe('ItemRepositoryImpl', () => {
 		});
 		expect(result.inventory[0]).toMatchObject({ inventoryId: 1, binCode: 'A-01', quantityOnHand: 8 });
 		expect(result.preferredBins).toEqual([]);
+	});
+
+
+	it('preserves Flask HTTP 400 deletion constraints for the UI', async () => {
+		const datasource = createDatasource();
+		datasource.delete = vi.fn().mockRejectedValue(
+			new ApiError(400, 'No se puede eliminar: existe inventario positivo', 'bad_request')
+		);
+		const repository = new ItemRepositoryImpl(datasource);
+		await expect(repository.delete(7)).rejects.toMatchObject({
+			status: 400,
+			message: 'No se puede eliminar: existe inventario positivo'
+		});
 	});
 
 	it('maps archive response and forwards deletion', async () => {
