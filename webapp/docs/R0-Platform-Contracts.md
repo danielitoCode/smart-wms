@@ -4,7 +4,7 @@
 - **Fecha de revisión:** 2026-11-19
 - **Rama:** `svelte-webapp`
 - **Alcance:** frontend `webapp/`, frontend React `admin/` y contratos Flask `api/`.
-- **Último commit de código de esta intervención:** `a9cd3b986b8ae046bdd4049b474697caa562bc03`
+- **Último commit de código de esta intervención:** `c4c0535fa1d5c290768936ffeb68abf3390d378d`
 - **Regla:** no se modificó Flask ni se cambió la semántica de autorización del servidor.
 
 Este documento registra evidencia comprobada y cambios realizados para R0. No certifica todavía el cierre del recorrido completo.
@@ -80,7 +80,7 @@ Este documento registra evidencia comprobada y cambios realizados para R0. No ce
 
 Se creó `src/core/infrastructure/capabilities/CapabilityRegistry.ts` con estados `SUPPORTED`, `PARTIAL`, `NOT_SUPPORTED` y `UNVERIFIED`. En esta primera entrega registra contratos transversales de login, `/me`, refresh, logout, page grants, catálogo operativo de almacenes y scope de almacén, con permisos, DTO, efectos, idempotencia y referencias de evidencia.
 
-El catálogo es todavía parcial: debe ampliarse con los contratos de cada recorrido R1–R10 y conectarse a los estados UI de cada feature. No se deben inferir capacidades de un 404 aislado.
+El catálogo es todavía parcial: debe ampliarse con los contratos de cada recorrido R1–R10 y conectarse a los estados UI de cada feature. La capacidad `warehouse.request-scope` está marcada `PARTIAL` porque el middleware valida IDs explícitos, pero la protección de listados depende de que cada handler aplique `warehouse_scope_clause`; falta auditar todas las consultas. No se deben inferir capacidades de un 404 aislado.
 
 ---
 
