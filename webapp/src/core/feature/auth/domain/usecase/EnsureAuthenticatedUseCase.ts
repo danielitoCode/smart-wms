@@ -1,5 +1,5 @@
 import type { AuthRepository } from '../repository/AuthRepository';
-import type { EnsureAuthenticatedResult, User } from '../entity/User';
+import type { EnsureAuthenticatedResult } from '../entity/User';
 import { authSession } from '#core/infrastructure/auth/AuthSession.ts';
 import { ApiError } from '#core/infrastructure/errors/ApiError.ts';
 
