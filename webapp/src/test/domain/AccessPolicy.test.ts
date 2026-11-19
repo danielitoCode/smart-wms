@@ -8,8 +8,9 @@ describe('AccessPolicy', () => {
 		expect(canAccessPages('USER', ['bins', 'zones'], ['bins', 'zones'])).toBe(true);
 	});
 	it('maps protected routes to their page keys', () => {
-		expect(requiredPageKeysForPath('/warehouses/12')).toEqual(['warehouses', 'zones', 'bins']);
-		expect(requiredPageKeysForPath('/data/bins')).toEqual(['bins', 'zones']);
+		expect(requiredPageKeysForPath('/warehouses/12')).toEqual(['warehouses']);
+		expect(requiredPageKeysForPath('/data/bins')).toEqual(['bins']);
+		expect(requiredPageKeysForPath('/data/zones')).toEqual(['zones']);
 		expect(requiredPageKeysForPath('/data/preferred-bins')).toEqual(['preferred-bins']);
 		expect(requiredPageKeysForPath('/management/vendors')).toEqual(['vendors']);
 		expect(canAccessPages('USER', [], requiredPageKeysForPath('/management/vendors'))).toBe(false);
