@@ -251,4 +251,5 @@ export const gapEn: Record<string, string> = {
 
   'Reintentar': 'Retry',
   'de': 'of',
+  'La validación de capacidad física no está disponible en el servidor.': 'Physical capacity validation is not available on the server.',
 };
