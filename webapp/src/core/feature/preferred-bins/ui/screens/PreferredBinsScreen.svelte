@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '#lib/components/UiStatePanel.svelte';
 	import { onMount, getContext } from 'svelte';
 	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
 	import { createPreferredBinsState } from '../state/preferredBinsState.svelte';
@@ -71,7 +72,7 @@
 	</header>
 
 	{#if vm.error}
-		<div class="alert" role="alert">{vm.error}</div>
+		<UiStatePanel kind="error" title={i18n.t('No se pudieron cargar las ubicaciones preferidas')} message={vm.error ?? ''} />
 	{/if}
 
 	<section class="panel assignment" aria-labelledby="assignment-title">
@@ -158,9 +159,9 @@
 		</div>
 
 		{#if vm.loading || vm.loadingCatalogs}
-			<div class="empty" aria-live="polite">{i18n.t('Cargando ubicaciones preferidas…')}</div>
+			<UiStatePanel kind="loading" title={i18n.t('Cargando ubicaciones preferidas')} message={i18n.t('Estamos recuperando las asignaciones y el catálogo de ubicaciones.')} />
 		{:else if vm.rows.length === 0}
-			<div class="empty"><strong>{i18n.t('No hay ubicaciones preferidas para estos filtros')}</strong><p>{i18n.t('Añade una ubicación Pickable para definir la prioridad de un producto.')}</p></div>
+			<UiStatePanel kind="empty" title={i18n.t('Sin ubicaciones preferidas')} message={i18n.t('Añade una ubicación Pickable para definir la prioridad de un producto.')} />
 		{:else}
 			<div class="table-wrap">
 				<table>
