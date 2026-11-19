@@ -4,7 +4,7 @@
 - **Fecha de revisión:** 2026-11-19
 - **Rama:** `svelte-webapp`
 - **Alcance:** frontend `webapp/`, frontend React `admin/` y contratos Flask `api/`.
-- **Último commit de esta intervención:** `1fb16e6c3b4cb620805990a40643fe0f65e564f7`
+- **Último commit de código de esta intervención:** `a9cd3b986b8ae046bdd4049b474697caa562bc03`
 - **Regla:** no se modificó Flask ni se cambió la semántica de autorización del servidor.
 
 Este documento registra evidencia comprobada y cambios realizados para R0. No certifica todavía el cierre del recorrido completo.
@@ -64,6 +64,7 @@ Este documento registra evidencia comprobada y cambios realizados para R0. No ce
 - `WarehouseSelectionState` consulta el catálogo operativo autorizado, no crea etiquetas sintéticas como `WH-{id}` y falla cerrado si el servidor no puede validar el catálogo.
 - El ID guardado en sessionStorage se acepta únicamente si está en el conjunto de almacenes autorizados y activos.
 - El cambio de almacén continúa incrementando la generación y abortando peticiones registradas en `WarehouseRequestScope`.
+- Los usuarios sin permiso para cambiar el contexto conservan una etiqueta de almacén activo de solo lectura; la operación de selección también se bloquea en el estado, no solo en el botón UI.
 - Al cerrar sesión se limpia el almacén seleccionado y se invalidan las peticiones asociadas.
 - Cuando una revalidación detecta cambios de rol o de almacenes asignados, se vuelve a cargar el catálogo y se resuelve de nuevo el almacén activo.
 
