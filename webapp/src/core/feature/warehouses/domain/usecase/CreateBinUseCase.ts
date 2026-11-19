@@ -9,12 +9,6 @@ function validateNonNegativeInteger(value: number | null | undefined, name: stri
 	}
 }
 
-function validateCapacity(value: number | null | undefined, name: string): void {
-	if (value != null && (!Number.isFinite(value) || value < 0 || value > 99999999.99 || Math.abs(value * 100 - Math.round(value * 100)) > 0.000001)) {
-		throw new Error(name + ' must be a non-negative number with at most two decimal places');
-	}
-}
-
 export class CreateBinUseCase {
 	constructor(private readonly repository: WarehouseManagementRepository) {}
 
@@ -41,8 +35,6 @@ export class CreateBinUseCase {
 		const putawaySequence = input.putawaySequence ?? 0;
 		validateNonNegativeInteger(pickSequence, 'pickSequence');
 		validateNonNegativeInteger(putawaySequence, 'putawaySequence');
-		validateCapacity(input.maxWeightLbs, 'maxWeightLbs');
-		validateCapacity(input.maxVolumeCuft, 'maxVolumeCuft');
 
 		return this.repository.createBin({
 			...input,
@@ -50,9 +42,7 @@ export class CreateBinUseCase {
 			barcode,
 			aisle: input.aisle?.trim() || null,
 			pickSequence,
-			putawaySequence,
-			maxWeightLbs: input.maxWeightLbs ?? null,
-			maxVolumeCuft: input.maxVolumeCuft ?? null
+			putawaySequence
 		});
 	}
 }
