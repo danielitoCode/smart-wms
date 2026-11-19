@@ -42,7 +42,15 @@ func ConfigFromEnv() Config {
 	}
 	httpAddr := strings.TrimSpace(os.Getenv("WMS_TWIN_HTTP_ADDR"))
 	if httpAddr == "" {
-		httpAddr = ":5001"
+		// Render (and most PaaS) inject PORT; bind all interfaces.
+		if port := strings.TrimSpace(os.Getenv("PORT")); port != "" {
+			if !strings.HasPrefix(port, ":") {
+				port = ":" + port
+			}
+			httpAddr = port
+		} else {
+			httpAddr = ":5001"
+		}
 	}
 	aipAddr := strings.TrimSpace(os.Getenv("WMS_TWIN_AIP_ADDR"))
 	if aipAddr == "" {

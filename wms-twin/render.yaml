@@ -1,0 +1,27 @@
+# Blueprint opcional: servicio web del gemelo WMS
+services:
+  - type: web
+    name: smart-wms-twin
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: feat/wms-prismatec-genesis
+    rootDir: wms-twin
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    envVars:
+      - key: WMS_TWIN_ALLOW_DEMO_BOOTSTRAP
+        value: "true"
+      - key: WMS_TWIN_HEALTH_SERVICE
+        value: sentry-wms
+      - key: WMS_TWIN_DATA_DIR
+        value: /data
+      - key: WMS_TWIN_NODE_NAME
+        value: smart-wms-twin-render
+      - key: JWT_SECRET
+        generateValue: true
+      - key: WMS_TWIN_API_TOKEN
+        generateValue: true
+      - key: GITHUB_TOKEN
+        sync: false
