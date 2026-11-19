@@ -9,6 +9,7 @@ describe('platform server capability registry', () => {
 	it('records the auth and operational warehouse contracts with evidence', () => {
 		expect(getServerCapability('auth.login').path).toBe('/api/auth/login');
 		expect(getServerCapability('auth.me').responseDto).toContain('allowed_pages');
+		expect(getServerCapability('auth.change-password').path).toBe('/api/auth/change-password');
 		expect(getServerCapability('warehouse.active-list').path).toBe('/api/warehouses/list');
 		for (const capability of Object.values(SERVER_CAPABILITIES)) {
 			expect(capability.evidence.length).toBeGreaterThan(0);
@@ -21,6 +22,8 @@ describe('platform server capability registry', () => {
 		expect(refresh.notes).toContain('cannot recover an expired session');
 		expect(isServerCapabilitySupported('auth.refresh')).toBe(false);
 		expect(isServerCapabilitySupported('auth.me')).toBe(true);
+		expect(getServerCapability('warehouse.request-scope').status).toBe('PARTIAL');
+		expect(isServerCapabilitySupported('warehouse.request-scope')).toBe(false);
 	});
 
 	it('keeps page grants and warehouse scope as independent controls', () => {
