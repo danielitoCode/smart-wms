@@ -317,6 +317,20 @@ describe('Items UI state', () => {
 		expect(state.saving).toBe(false);
 	});
 
+	it('prevents duplicate delete submissions while the first request is pending', async () => {
+		let resolveDelete!: () => void;
+		vi.mocked(dependencies.deleteItem.execute).mockReturnValueOnce(
+			new Promise<void>((resolve) => { resolveDelete = resolve; })
+		);
+		const state = createItemsState(dependencies);
+		state.setDeleteId(item.id);
+		const first = state.confirmDelete();
+		await expect(state.confirmDelete()).resolves.toBe(false);
+		expect(dependencies.deleteItem.execute).toHaveBeenCalledTimes(1);
+		resolveDelete();
+		await expect(first).resolves.toBe(true);
+	});
+
 	it('keeps the delete confirmation open when the server rejects deletion', async () => {
 		vi.mocked(dependencies.deleteItem.execute).mockRejectedValueOnce(
 			new ApiError(400, 'No se puede eliminar: el producto tiene inventario positivo o líneas de pedidos asociadas', 'bad_request')
