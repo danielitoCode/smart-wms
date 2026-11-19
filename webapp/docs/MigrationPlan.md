@@ -216,7 +216,7 @@ Aceptación:
 - El cambio de almacén no deja datos del almacén anterior en pantalla.
 - Catálogo de capacidades y evidencia actualizado.
 
-**Seguimiento 2026-11-19:** `IN_PROGRESS`, no `VERIFIED`. Se verificaron los contratos transversales de sesión, page grants y listado operativo de almacenes; se corrigieron la recuperación de sesión tras 401, la carga de grants después del login, la selección de almacén sin datos ficticios y el fail-closed de rutas sin política. Se añadió el primer Capability Registry y pruebas unitarias para esos contratos. La auditoría exhaustiva de rutas/componentes/casos de uso y la ejecución de check/test/build siguen pendientes. Evidencia detallada: [R0-Platform-Contracts.md](./R0-Platform-Contracts.md).
+**Seguimiento 2026-11-19:** `IN_PROGRESS`, no `VERIFIED`. Se verificaron los contratos transversales de sesión, page grants y listado operativo de almacenes; se corrigieron la recuperación de sesión tras 401, la carga de grants después del login, la selección de almacén sin datos ficticios y el fail-closed de rutas sin política. Se añadió el primer Capability Registry, el componente común `UiStatePanel` (Forbidden/Not supported/Empty/Loading/Error/Conflict) y pruebas unitarias para los contratos revisados. El panel ya cubre el layout; la adopción homogénea en todas las features, la auditoría exhaustiva de rutas/componentes/casos de uso y la ejecución de check/test/build siguen pendientes. Evidencia detallada: [R0-Platform-Contracts.md](./R0-Platform-Contracts.md).
 
 ### R1 — Preparar catálogo y estructura física del almacén
 **Trazabilidad:** F1 Items, Bins, Zones, Warehouses; partes de F2 Inventory.
