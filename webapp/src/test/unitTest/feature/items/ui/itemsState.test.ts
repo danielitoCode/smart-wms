@@ -259,7 +259,7 @@ describe('Items UI state', () => {
 		const row = { ...item, active: initialActive };
 		vi.mocked(dependencies.listItems.execute)
 			.mockResolvedValueOnce({ ...firstPage, items: [row] })
-			.mockRejectedValueOnce(new ApiError(503, 'No se pudo actualizar el listado', 'unavailable'));
+			.mockRejectedValueOnce(new ApiError(503, 'No se pudo actualizar el listado', 'server_error'));
 		vi.mocked(dependencies.archiveItem.execute).mockResolvedValueOnce({
 			message: 'updated',
 			active: resultingActive
