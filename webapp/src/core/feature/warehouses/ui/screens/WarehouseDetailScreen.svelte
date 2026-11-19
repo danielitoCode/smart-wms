@@ -67,10 +67,11 @@
 	}
 	async function saveBin(event: SubmitEvent) {
 		event.preventDefault();
-		if (canViewZones && binForm.zoneId == null) return;
+		if (!editingBin && binForm.zoneId == null) return;
+		if (editingBin && canViewZones && binForm.zoneId == null) return;
 		const ok = editingBin
 			? await vm.updateBin({ id: editingBin.id, ...(canViewZones && binForm.zoneId != null ? { zoneId: binForm.zoneId } : {}), code: binForm.code, barcode: binForm.barcode, binType: binForm.binType, aisle: binForm.aisle || null, rowNumber: binForm.rowNumber, levelNumber: binForm.levelNumber, positionNumber: binForm.positionNumber, pickSequence: binForm.pickSequence, putawaySequence: binForm.putawaySequence, maxWeightLbs: binForm.maxWeightLbs, maxVolumeCuft: binForm.maxVolumeCuft, active: binForm.active })
-			: await vm.createBin({ zoneId: binForm.zoneId, code: binForm.code, barcode: binForm.barcode, binType: binForm.binType, aisle: binForm.aisle || null, rowNumber: binForm.rowNumber, levelNumber: binForm.levelNumber, positionNumber: binForm.positionNumber, pickSequence: binForm.pickSequence, putawaySequence: binForm.putawaySequence, maxWeightLbs: binForm.maxWeightLbs, maxVolumeCuft: binForm.maxVolumeCuft });
+			: await vm.createBin({ zoneId: binForm.zoneId!, code: binForm.code, barcode: binForm.barcode, binType: binForm.binType, aisle: binForm.aisle || null, rowNumber: binForm.rowNumber, levelNumber: binForm.levelNumber, positionNumber: binForm.positionNumber, pickSequence: binForm.pickSequence, putawaySequence: binForm.putawaySequence, maxWeightLbs: binForm.maxWeightLbs, maxVolumeCuft: binForm.maxVolumeCuft });
 		if (ok) showBinForm = false;
 	}
 	async function deleteBin() {
