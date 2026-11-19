@@ -120,7 +120,7 @@
     <button class="primary" onclick={() => createOpen = !createOpen}>{i18n.t('Nueva orden')}</button>
   </header>
 
-  {#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
+  {#if vm.error}<UiStatePanel kind="error" title={i18n.t('No se pudieron cargar las órdenes de compra')} message={vm.error ?? ''} />{/if}
 
   {#if createOpen}
     <form class="panel editor" onsubmit={createOrder}>

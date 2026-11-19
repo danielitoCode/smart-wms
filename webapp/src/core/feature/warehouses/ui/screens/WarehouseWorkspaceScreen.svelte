@@ -21,7 +21,7 @@
 		{/if}
 	</header>
 	{#if selection.loading || !selection.initialized}<UiStatePanel kind="loading" title={i18n.t('Validando almacén')} message={i18n.t('Estamos comprobando el contexto operativo seleccionado.')} />
-	{:else if selection.error && selection.warehouseId == null}<p class="error" role="alert">{selection.error}</p>
+	{:else if selection.error && selection.warehouseId == null}<UiStatePanel kind="error" title={i18n.t('No se pudo validar el almacén')} message={selection.error ?? ''} />
 	{:else if selection.warehouseId == null}<UiStatePanel kind="forbidden" title={i18n.t('Almacén no disponible')} message={i18n.t('No hay un almacén seleccionado. Un usuario con permiso de Almacenes debe establecer la selección primero.')} />
 	{:else}
 		{#key selection.warehouseId + ':' + (mode === 'bins' ? initialZoneId ?? '' : '')}
