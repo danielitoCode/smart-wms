@@ -107,7 +107,7 @@
 	}
 	.ui-state[data-kind='forbidden'],
 	.ui-state[data-kind='error'],
-	.ui-state[data-kind='conflict'] { border-color: color-mix(in srgb, var(--danger, #b3322b) 30%, var(--line)); }
+	.ui-state[data-kind='conflict'] { border-color: color-mix(in srgb, var(--danger, #b3322b) 30%, var(--line, #d9e2ec)); }
 	.ui-state[data-kind='forbidden'] .marker,
 	.ui-state[data-kind='error'] .marker,
 	.ui-state[data-kind='conflict'] .marker {
