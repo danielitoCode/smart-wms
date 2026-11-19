@@ -197,9 +197,9 @@ export function createItemsState(dependencies: ItemsDependencies = createItemsDe
 		archivingIds = [...archivingIds, item.id];
 		error = null;
 		try {
-			const result = await dependencies.archiveItem.execute(item.id);
+			await dependencies.archiveItem.execute(item.id);
 			await load(page);
-			if (detail?.item.id === item.id && result.active === detail.item.active) {
+			if (detail?.item.id === item.id) {
 				await openDetail(item.id);
 			}
 			return true;
