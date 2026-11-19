@@ -63,8 +63,7 @@ export class WarehouseRepositoryImpl implements WarehouseManagementRepository {
 			warehouse_id: input.warehouseId, zone_id: input.zoneId, bin_code: input.code,
 			bin_barcode: input.barcode, bin_type: input.binType, aisle: input.aisle,
 			row_num: input.rowNumber, level_num: input.levelNumber, position_num: input.positionNumber,
-			pick_sequence: input.pickSequence, putaway_sequence: input.putawaySequence,
-			max_weight_lbs: input.maxWeightLbs, max_volume_cuft: input.maxVolumeCuft
+			pick_sequence: input.pickSequence, putaway_sequence: input.putawaySequence
 		}));
 	}
 	async updateBin(input: UpdateBinInput): Promise<Bin> {
@@ -79,8 +78,6 @@ export class WarehouseRepositoryImpl implements WarehouseManagementRepository {
 			...(input.positionNumber !== undefined ? { position_num: input.positionNumber } : {}),
 			...(input.pickSequence !== undefined ? { pick_sequence: input.pickSequence } : {}),
 			...(input.putawaySequence !== undefined ? { putaway_sequence: input.putawaySequence } : {}),
-			...(input.maxWeightLbs !== undefined ? { max_weight_lbs: input.maxWeightLbs } : {}),
-			...(input.maxVolumeCuft !== undefined ? { max_volume_cuft: input.maxVolumeCuft } : {}),
 			...(input.active !== undefined ? { is_active: input.active } : {})
 		}));
 	}
