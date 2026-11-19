@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
 	import { getContext } from 'svelte';
 	import { page } from '$app/state';
 	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
@@ -114,7 +115,7 @@
 	</header>
 
 	{#if vm.error}
-		<p class="error" role="alert">{vm.error}</p>
+		<UiStatePanel kind="error" title={i18n.t('No se pudieron cargar los ajustes')} message={vm.error} />
 	{/if}
 	{#if approvals && !canReview()}
 		<p class="error" role="alert">{i18n.t('Necesitas el permiso Ajustes para consultar y decidir aprobaciones.')}</p>
@@ -179,11 +180,10 @@
 	</div>
 
 	{#if vm.loading}
-		<div class="loading" aria-live="polite">{i18n.t('Cargando ajustes…')}</div>
+		<UiStatePanel kind="loading" title={i18n.t('Cargando ajustes')} message={i18n.t('Estamos recuperando el historial de ajustes del almacén.')} />
 	{:else if vm.rows.length === 0}
 		<div class="empty">
-			<strong>{i18n.t('No hay ajustes para mostrar')}</strong>
-			<p>{approvals ? i18n.t('No existen ajustes pendientes en este almacén.') : i18n.t('Prueba otro estado o registra un ajuste directo.')}</p>
+			<UiStatePanel kind="empty" title={i18n.t('Sin ajustes')} message={approvals ? i18n.t('No existen ajustes pendientes en este almacén.') : i18n.t('Prueba otro estado o registra un ajuste directo.')} />
 		</div>
 	{:else}
 		<div class="table-wrap">

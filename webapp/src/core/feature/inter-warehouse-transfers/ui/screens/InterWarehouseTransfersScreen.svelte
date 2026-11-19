@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
   import { onDestroy, onMount, getContext } from 'svelte';
   import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
   import { createInterWarehouseTransfersState } from '../state/interWarehouseTransfersState.svelte';
@@ -135,7 +136,7 @@
       <p>{i18n.t('Transfiere existencias entre almacenes autorizados con registro transaccional e idempotente.')}</p></div>
     <button class="primary" onclick={() => open = !open}>{open ? i18n.t('Cerrar') : i18n.t('Nueva transferencia')}</button>
   </header>
-  {#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
+  {#if vm.error}<UiStatePanel kind="error" title={i18n.t('No se pudieron cargar los movimientos')} message={vm.error} />{/if}
 
   {#if open}
     <form class="editor" onsubmit={event => { event.preventDefault(); void create(); }}>
@@ -212,8 +213,8 @@
     </label>
     <button type="button" onclick={() => { vm.setFromWarehouseFilter(''); vm.setToWarehouseFilter(''); }}>{i18n.t('Limpiar filtros')}</button>
   </div>
-  {#if vm.loading}<p>{i18n.t('Cargando…')}</p>
-  {:else if vm.rows.length === 0}<p class="empty">{i18n.t('No hay movimientos que coincidan con los filtros.')}</p>
+  {#if vm.loading}<UiStatePanel kind="loading" title={i18n.t('Cargando movimientos')} message={i18n.t('Estamos consultando los movimientos entre almacenes.')} />
+  {:else if vm.rows.length === 0}<UiStatePanel kind="empty" title={i18n.t('Sin movimientos')} message={i18n.t('No hay movimientos que coincidan con los filtros.')} />
   {:else}
     <div class="table-wrap"><table><thead><tr><th>{i18n.t('Fecha')}</th><th>SKU</th><th>{i18n.t('Producto')}</th><th>{i18n.t('Origen')}</th><th>{i18n.t('Destino')}</th><th>{i18n.t('Cantidad')}</th><th>{i18n.t('Responsable')}</th><th>{i18n.t('Estado')}</th></tr></thead>
       <tbody>{#each vm.rows as row (row.transferId)}<tr>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
 	import { onMount, getContext } from 'svelte';
 	import type { I18nState } from '#lib/i18n/i18n.svelte';
 	import { createNotificationsState } from '../state/notificationsState.svelte';
@@ -22,7 +23,7 @@
 		</div>
 		<button class="primary" type="button" onclick={() => (showForm = !showForm)}>{i18n.t('Nueva notificación')}</button>
 	</header>
-	{#if vm.error}<p class="error" role="alert">{vm.error}</p>{/if}
+	{#if vm.error}<UiStatePanel kind="error" title={i18n.t('No se pudieron cargar las notificaciones')} message={vm.error} />{/if}
 	{#if vm.message}<p class="success" role="status">{i18n.t(vm.message)}</p>{/if}
 	{#if showForm}
 		<form class="form" onsubmit={(e) => { e.preventDefault(); void onCreate(); }}>
@@ -34,8 +35,8 @@
 			</div>
 		</form>
 	{/if}
-	{#if vm.loading}<p>{i18n.t('Cargando…')}</p>
-	{:else if vm.rows.length === 0}<p class="empty">{i18n.t('No hay notificaciones.')}</p>
+	{#if vm.loading}<UiStatePanel kind="loading" title={i18n.t('Cargando notificaciones')} message={i18n.t('Estamos recuperando las notificaciones.')} />
+	{:else if vm.rows.length === 0}<UiStatePanel kind="empty" title={i18n.t('Sin notificaciones')} message={i18n.t('No hay notificaciones para mostrar.')} />
 	{:else}
 		<div class="table-wrap"><table>
 			<thead><tr><th>{i18n.t('Nombre')}</th><th>{i18n.t('URL')}</th><th>{i18n.t('Activo')}</th><th>{i18n.t('Acciones')}</th></tr></thead>

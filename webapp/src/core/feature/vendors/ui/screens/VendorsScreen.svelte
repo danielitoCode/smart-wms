@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
 	import { onMount } from 'svelte';
 	import { page as route } from '$app/state';
 	import { getContext } from 'svelte';
@@ -146,7 +147,7 @@
 	</header>
 
 	{#if vm.error}
-		<div class="error" role="alert">{vm.error}<button type="button" class="link" onclick={() => vm.load()}>{i18n.t('Reintentar')}</button></div>
+		<UiStatePanel kind="error" title={i18n.t('No se pudieron cargar los proveedores')} message={vm.error} retry={() => vm.load()} />
 	{/if}
 
 	{#if showForm}
@@ -188,9 +189,9 @@
 	</form>
 
 	{#if vm.loading}
-		<p class="status" role="status">{i18n.t('Cargando proveedores…')}</p>
+		<UiStatePanel kind="loading" title={i18n.t('Cargando proveedores')} message={i18n.t('Estamos consultando el directorio de proveedores.')} />
 	{:else if vm.vendors.length === 0}
-		<p class="empty">{i18n.t('No hay proveedores con estos criterios.')}</p>
+		<UiStatePanel kind="empty" title={i18n.t('Sin proveedores')} message={i18n.t('No hay proveedores con estos criterios.')} />
 	{:else}
 		<div class="table-wrap">
 			<table>

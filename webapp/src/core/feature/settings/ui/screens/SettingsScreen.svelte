@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
 	import { getContext, onMount } from 'svelte';
 	import type { I18nState } from '#lib/i18n/i18n.svelte';
 	import { createSettingsState } from '../state/settingsState.svelte';
@@ -157,7 +158,7 @@
 	{#if vm.saved}<p class="alert success" role="status">{i18n.t('Ajustes guardados correctamente.')}</p>{/if}
 
 	{#if vm.loading}
-		<div class="loading" aria-live="polite">{i18n.t('Cargando configuración…')}</div>
+		<UiStatePanel kind="loading" title={i18n.t('Cargando configuración')} message={i18n.t('Estamos recuperando la configuración del sistema.')} />
 	{:else}
 		<div class="category-list">
 			{#each categories as category}
