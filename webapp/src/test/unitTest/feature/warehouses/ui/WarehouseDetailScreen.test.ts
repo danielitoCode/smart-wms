@@ -61,7 +61,7 @@ describe('WarehouseDetailScreen zones workspace', () => {
 		expect(body).toContain('Todos los tipos');
 		expect(body).toContain('Picking');
 		expect(body).toContain('11 (3 asignadas)');
-		expect(body).not.toContain('Capacidad');
+		expect(body).toContain('La validación de capacidad física no está disponible en el servidor.');
 		expect(body).not.toContain('Peso máximo');
 		expect(body).toContain('A-01-01');
 	});
