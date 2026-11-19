@@ -138,3 +138,33 @@ describe('Preferred Bins route access', () => {
 		expect(resolveHomePath({ role: 'USER', allowedPages: ['preferred-bins'] })).toBe('/data/preferred-bins');
 	});
 });
+
+
+describe('explicit app route access policies', () => {
+	it('requires an explicit page grant for protected feature routes', () => {
+		expect(routeAccessPolicyForPath('/management/fraud')).toEqual({
+			kind: 'all',
+			pageKeys: ['fraud']
+		});
+	});
+
+	it('allows only one of the data-area grants on the Data landing page', () => {
+		const policy = routeAccessPolicyForPath('/data');
+		expect(policy).toEqual({
+			kind: 'any',
+			pageKeys: ['warehouses', 'bins', 'zones', 'preferred-bins']
+		});
+		expect(canAccessAnyPages('USER', ['bins'], policy?.kind === 'any' ? policy.pageKeys : [])).toBe(true);
+		expect(canAccessAnyPages('USER', ['inventory'], policy?.kind === 'any' ? policy.pageKeys : [])).toBe(false);
+	});
+
+	it('keeps scanner workflows authenticated and defers operational grants to Flask', () => {
+		expect(routeAccessPolicyForPath('/picking')).toEqual({ kind: 'authenticated' });
+		expect(routeAccessPolicyForPath('/packing/scan')).toEqual({ kind: 'authenticated' });
+		expect(routeAccessPolicyForPath('/shipping')).toEqual({ kind: 'authenticated' });
+	});
+
+	it('fails closed for an unregistered route instead of treating an empty grant list as public', () => {
+		expect(routeAccessPolicyForPath('/unregistered-admin-page')).toBeNull();
+	});
+});
