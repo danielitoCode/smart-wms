@@ -5,7 +5,7 @@ import WarehouseDetailScreen from '../../../../../core/feature/warehouses/ui/scr
 const vm = vi.hoisted(() => ({
 	warehouse: { id: 1, code: 'WH-01', name: 'Central', address: null, active: true },
 	zones: [{ id: 11, warehouseId: 1, code: 'PICK', name: 'Picking', zoneType: 'PICKING', active: true, binsCount: 4 }],
-	bins: [{ id: 3, warehouseId: 1, zoneId: 11, zoneName: 'Picking', code: 'A-01-01', barcode: 'BC-01', binType: 'Pickable', aisle: 'A', rowNumber: 1, levelNumber: 1, positionNumber: 1, pickSequence: 4, putawaySequence: 0, active: true, maxWeightLbs: 125, maxVolumeCuft: 32, quantityOnHand: 11, quantityAllocated: 3, inventoryLines: 2 }], binSearch: '', binTotal: 1, binPage: 1, binPages: 1,
+	bins: [{ id: 3, warehouseId: 1, zoneId: 11, zoneName: 'Picking', code: 'A-01-01', barcode: 'BC-01', binType: 'Pickable', aisle: 'A', rowNumber: 1, levelNumber: 1, positionNumber: 1, pickSequence: 4, putawaySequence: 0, active: true, quantityOnHand: 11, quantityAllocated: 3, inventoryLines: 2 }], binSearch: '', binTotal: 1, binPage: 1, binPages: 1,
 	selectedZoneId: null, selectedBinDetail: null, loading: false, binsLoading: false,
 	mutating: false, error: null,
 	load: vi.fn(), loadBinsForZone: vi.fn(), searchBins: vi.fn(), createZone: vi.fn(),
@@ -48,7 +48,7 @@ describe('WarehouseDetailScreen zones workspace', () => {
 		expect(body).toContain('href="/data/bins?zone_id=11"');
 		expect(body).toContain('Ver ubicaciones');
 	});
-	it('renders stock occupancy and configured capacities in the bins catalogue', () => {
+	it('renders stock occupancy without claiming unsupported capacity fields', () => {
 		const i18n = { t: (message: string) => message };
 		const { body } = render(WarehouseDetailScreen, {
 			props: { warehouseId: 1, showZones: false, showBins: true, includeBins: true },
@@ -61,7 +61,8 @@ describe('WarehouseDetailScreen zones workspace', () => {
 		expect(body).toContain('Todos los tipos');
 		expect(body).toContain('Picking');
 		expect(body).toContain('11 (3 asignadas)');
-		expect(body).toContain('125 lb · 32 ft³');
+		expect(body).not.toContain('Capacidad');
+		expect(body).not.toContain('Peso máximo');
 		expect(body).toContain('A-01-01');
 	});
 
