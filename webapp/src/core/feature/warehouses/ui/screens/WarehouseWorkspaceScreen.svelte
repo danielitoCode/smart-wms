@@ -24,7 +24,7 @@
 	{:else if selection.error && selection.warehouseId == null}<UiStatePanel kind="error" title={i18n.t('No se pudo validar el almacén')} message={selection.error ?? ''} />
 	{:else if selection.warehouseId == null}<UiStatePanel kind="forbidden" title={i18n.t('Almacén no disponible')} message={i18n.t('No hay un almacén activo asignado para este usuario.')} />
 	{:else}
-		{#key selection.warehouseId + ':' + (mode === 'bins' ? initialZoneId ?? '' : '')}
+		{#key mode + ':' + selection.warehouseId + ':' + (mode === 'bins' ? initialZoneId ?? '' : '')}
 			<WarehouseDetailScreen warehouseId={selection.warehouseId} showZones={mode === 'zones'} showBins={mode === 'bins'} includeBins={mode === 'bins'} initialZoneId={mode === 'bins' ? initialZoneId : null} backHref={mode === 'zones' ? '/data/zones' : '/data/bins'} />
 		{/key}
 	{/if}
