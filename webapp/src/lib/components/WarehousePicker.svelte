@@ -48,8 +48,8 @@
 		aria-haspopup="listbox"
 		aria-expanded={open}
 		aria-label={i18n.t('Almacén activo')}
-		disabled={warehouseSelection.loading || warehouseSelection.warehouses.length === 0}
-		onclick={() => (open = !open)}
+		disabled={warehouseSelection.loading || !warehouseSelection.canSelect || warehouseSelection.warehouses.length === 0}
+		onclick={() => { if (warehouseSelection.canSelect) open = !open; }}
 	>
 		<span class="caption">{i18n.t('Almacén activo')}</span>
 		<span class="value" title={currentLabel}>{currentLabel}</span>
@@ -112,7 +112,7 @@
 
 	.trigger:disabled {
 		opacity: 0.65;
-		cursor: wait;
+		cursor: not-allowed;
 	}
 
 	.caption {
