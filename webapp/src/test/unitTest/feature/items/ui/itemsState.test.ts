@@ -184,6 +184,54 @@ describe('Items UI state', () => {
 		expect(payload).not.toHaveProperty('reorderQty');
 	});
 
+
+	it('keeps only the newest detail response when users switch products quickly', async () => {
+		let resolveFirst!: (value: ItemDetail) => void;
+		let resolveSecond!: (value: ItemDetail) => void;
+		vi.mocked(dependencies.getItemDetail.execute)
+			.mockReturnValueOnce(new Promise((resolve) => (resolveFirst = resolve)))
+			.mockReturnValueOnce(new Promise((resolve) => (resolveSecond = resolve)));
+		const state = createItemsState(dependencies);
+		const first = state.openDetail(7);
+		const second = state.openDetail(8);
+		resolveSecond({ ...detail, item: { ...item, id: 8, sku: 'SKU-8' } });
+		await second;
+		resolveFirst(detail);
+		await first;
+		expect(state.detail?.item.id).toBe(8);
+		expect(state.detailLoading).toBe(false);
+	});
+
+	it('ignores a detail response after the dialog is closed', async () => {
+		let resolveDetail!: (value: ItemDetail) => void;
+		vi.mocked(dependencies.getItemDetail.execute).mockReturnValueOnce(
+			new Promise((resolve) => (resolveDetail = resolve))
+		);
+		const state = createItemsState(dependencies);
+		const request = state.openDetail(item.id);
+		expect(state.detailLoading).toBe(true);
+		state.closeDetail();
+		resolveDetail(detail);
+		await request;
+		expect(state.detail).toBeNull();
+		expect(state.detailLoading).toBe(false);
+	});
+
+	it('prevents duplicate archive requests for the same item', async () => {
+		let resolveArchive!: (value: { message: string; active: boolean }) => void;
+		vi.mocked(dependencies.archiveItem.execute).mockReturnValueOnce(
+			new Promise((resolve) => (resolveArchive = resolve))
+		);
+		const state = createItemsState(dependencies);
+		const first = state.toggleArchive(item);
+		await state.toggleArchive(item);
+		expect(dependencies.archiveItem.execute).toHaveBeenCalledTimes(1);
+		expect(state.isArchiving(item.id)).toBe(true);
+		resolveArchive({ message: 'updated', active: false });
+		await first;
+		expect(state.isArchiving(item.id)).toBe(false);
+	});
+
 	it('loads and exposes item detail', async () => {
 		const state = createItemsState(dependencies);
 		await state.openDetail(item.id);
@@ -240,7 +288,7 @@ describe('Items UI state', () => {
 
 	it('keeps the delete confirmation open when the server rejects deletion', async () => {
 		vi.mocked(dependencies.deleteItem.execute).mockRejectedValueOnce(
-			new ApiError(409, 'El producto tiene movimientos asociados', 'conflict')
+			new ApiError(400, 'No se puede eliminar: el producto tiene inventario positivo o líneas de pedidos asociadas', 'bad_request')
 		);
 		const state = createItemsState(dependencies);
 		state.setDeleteId(item.id);
@@ -248,7 +296,7 @@ describe('Items UI state', () => {
 		await expect(state.confirmDelete()).resolves.toBe(false);
 
 		expect(state.deleteId).toBe(item.id);
-		expect(state.error).toBe('El producto tiene movimientos asociados');
+		expect(state.error).toBe('No se puede eliminar: el producto tiene inventario positivo o líneas de pedidos asociadas');
 		expect(state.saving).toBe(false);
 	});
 
