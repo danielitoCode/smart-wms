@@ -1,5 +1,5 @@
 <script lang="ts">
-	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
+	import UiStatePanel from '#lib/components/UiStatePanel.svelte';
 	import { getContext, onDestroy, onMount } from 'svelte';
 	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
 	import { createWarehouseDetailState } from '../state/warehouseDetailState.svelte';
