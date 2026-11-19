@@ -8,7 +8,7 @@ export class EnsureAuthenticatedUseCase {
 
 	async execute(): Promise<EnsureAuthenticatedResult> {
 		try {
-			const user = await this.loadUserWithOptionalRefresh();
+			const user = await this.repository.getCurrentUser();
 			if (!user.isActive) {
 				authSession.clear();
 				return {
@@ -19,8 +19,7 @@ export class EnsureAuthenticatedUseCase {
 			}
 			return { ok: true, user };
 		} catch (err) {
-			// Tokens / cookie inválidos: limpia siempre y trata como no autenticado
-			if (err instanceof ApiError && (err.isAuth)) {
+			if (err instanceof ApiError && err.isAuth) {
 				authSession.clear();
 				return {
 					ok: false,
@@ -30,36 +29,13 @@ export class EnsureAuthenticatedUseCase {
 						: 'Sesión expirada o no válida'
 				};
 			}
-			// Red / timeout: no borra sesión en memoria (revalidate soft en app),
-			// el splash decidirá redirigir a login si no hay usuario en memoria.
+			// A network/5xx failure must not erase a previously validated
+			// in-memory identity. Flask remains authoritative on every request.
 			return {
 				ok: false,
 				reason: 'unavailable',
 				message: this.describeUnavailable(err)
 			};
-		}
-	}
-
-	/**
-	 * 1) /me
-	 * 2) on 401 → refresh once → /me again
-	 * Network/5xx leave in-memory user intact (caller sees unavailable).
-	 */
-	private async loadUserWithOptionalRefresh(): Promise<User> {
-		try {
-			return await this.repository.getCurrentUser();
-		} catch (err) {
-			if (!(err instanceof ApiError) || err.status !== 401) throw err;
-			try {
-				await this.repository.refreshToken();
-			} catch (refreshErr) {
-				if (refreshErr instanceof ApiError && refreshErr.status === 401) throw refreshErr;
-				if (refreshErr instanceof ApiError && (refreshErr.isNetwork || refreshErr.code === 'timeout')) {
-					throw refreshErr;
-				}
-				throw err;
-			}
-			return await this.repository.getCurrentUser();
 		}
 	}
 
