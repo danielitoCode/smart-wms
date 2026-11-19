@@ -8,11 +8,11 @@
 
 	const i18n = getContext<I18nState>('i18n');
 	let { warehouseId, showZones = true, showBins = true, includeBins = true, initialZoneId = null, backHref = '/warehouses' }: { warehouseId: number; showZones?: boolean; showBins?: boolean; includeBins?: boolean; initialZoneId?: number | null; backHref?: string } = $props();
-	// svelte-ignore state_referenced_locally
-	const vm = createWarehouseDetailState(warehouseId, includeBins, canViewZones);
 	const currentUser = authSession.getUser();
 	const canViewBins = currentUser?.role === 'ADMIN' || (currentUser?.allowedPages ?? []).includes('bins');
 	const canViewZones = currentUser?.role === 'ADMIN' || (currentUser?.allowedPages ?? []).includes('zones');
+	// svelte-ignore state_referenced_locally
+	const vm = createWarehouseDetailState(warehouseId, includeBins, canViewZones);
 
 	type ZoneForm = { code: string; name: string; zoneType: ZoneType; active: boolean };
 	type BinForm = { zoneId: number | null; code: string; barcode: string; binType: BinType; aisle: string; rowNumber: number | null; levelNumber: number | null; positionNumber: number | null; pickSequence: number; putawaySequence: number; maxWeightLbs: number | null; maxVolumeCuft: number | null; active: boolean };
