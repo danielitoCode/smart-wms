@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
 	import { getContext } from 'svelte';
 	import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
 	const i18n = getContext<I18nState>('i18n');
@@ -76,7 +77,7 @@
 	{/if}
 
 	{#if state.loading}
-		<p class="meta">{i18n.t('Cargando detalle…')}</p>
+		<UiStatePanel kind="loading" title={i18n.t('Cargando conteo')} message={i18n.t('Estamos recuperando el detalle del conteo y sus líneas.')} />
 	{:else if state.detail}
 		<section class="panel detail">
 			<p class="meta">

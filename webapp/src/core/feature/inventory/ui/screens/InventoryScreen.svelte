@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
 	import UiLoader from '../../../../../lib/components/UiLoader.svelte';
 	import { getContext, onMount } from 'svelte';
 	import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
@@ -132,9 +133,9 @@
 			{/snippet}
 		</UiBanner>
 	{:else if vm.loading && !vm.loadedOnce}
-		<UiLoader label={i18n.t('Cargando inventario…')} size="lg" />
+		<UiStatePanel kind="loading" title={i18n.t('Cargando inventario')} message={i18n.t('Estamos consultando las existencias del almacén seleccionado.')} />
 	{:else if sortedItems.length === 0}
-		<p class="empty">{i18n.t('Todavía no hay existencias registradas.')}</p>
+		<UiStatePanel kind="empty" title={i18n.t('Sin existencias')} message={i18n.t('Todavía no hay existencias registradas para los filtros seleccionados.')} />
 	{:else}
 		<div class="table-meta">
 			<span>{i18n.t('Total')}: {vm.total}</span>

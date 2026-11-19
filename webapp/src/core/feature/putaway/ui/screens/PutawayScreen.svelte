@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
 	import { getContext, onMount } from 'svelte';
 	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
 	import { createPutawayState } from '../state/putawayState.svelte';
@@ -27,8 +28,8 @@
 		</div>{/if}
 	</section>
 	<section class="worklist"><h2>{i18n.t('Putaway pendiente')}</h2>
-		{#if state.loading && state.items.length === 0}<p class="status">{i18n.t('Cargando…')}</p>
-		{:else if state.items.length === 0}<p class="status">{i18n.t('No hay productos pendientes de ubicación.')}</p>
+		{#if state.loading && state.items.length === 0}<UiStatePanel kind="loading" title={i18n.t('Cargando putaway')} message={i18n.t('Estamos consultando las tareas pendientes del almacén.')} />
+		{:else if state.items.length === 0}<UiStatePanel kind="empty" title={i18n.t('Sin tareas pendientes')} message={i18n.t('No hay productos pendientes de ubicación en este almacén.')} />
 		{:else}<div class="table-wrap"><table><thead><tr>
 			<th>{i18n.t('SKU')}</th><th>{i18n.t('Nombre')}</th><th>{i18n.t('Cantidad')}</th><th>{i18n.t('Desde')}</th><th>{i18n.t('Lote')}</th><th>{i18n.t('Ubicación sugerida')}</th><th>{i18n.t('Barcode destino')}</th><th>{i18n.t('Acciones')}</th>
 		</tr></thead><tbody>

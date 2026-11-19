@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
 	import { getContext, onMount } from 'svelte';
 	import { page } from '$app/state';
 	import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
@@ -76,9 +77,9 @@
 	{/if}
 
 	{#if vm.loading && vm.items.length === 0}
-		<p class="status">{i18n.t('Cargando…')}</p>
+		<UiStatePanel kind="loading" title={i18n.t('Cargando productos')} message={i18n.t('Estamos recuperando el catálogo de artículos.')} />
 	{:else if vm.items.length === 0}
-		<p class="status">{i18n.t('Todavía no hay productos registrados.')}</p>
+		<UiStatePanel kind="empty" title={i18n.t('Catálogo vacío')} message={i18n.t('Todavía no hay productos registrados.')} />
 	{:else}
 		<div class="table-wrap">
 			<table>

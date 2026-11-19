@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
 	import { getContext } from 'svelte';
 	import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
 	const i18n = getContext<I18nState>('i18n');
@@ -210,7 +211,7 @@
 			</form>
 		</article>
 	{:else if !state.loading}
-		<p class="status">{i18n.t('No hay productos pendientes de recoger.')}</p>
+		<UiStatePanel kind="empty" title={i18n.t('Picking al día')} message={i18n.t('No hay productos pendientes de recoger en el lote activo.')} />
 	{/if}
 </section>
 
