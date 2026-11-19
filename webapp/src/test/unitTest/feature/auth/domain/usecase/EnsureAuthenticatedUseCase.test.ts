@@ -29,34 +29,19 @@ describe('EnsureAuthenticatedUseCase', () => {
 		expect(result).toEqual({ ok: true, user: sampleUser });
 	});
 
-	it('on 401 tries refresh once then clears session if still unauthorized', async () => {
+	it('does not attempt refresh after /me returns 401 because Flask requires a valid token on /refresh', async () => {
 		authSession.setUser({
 			userId: 1, username: 'admin', fullName: 'Admin', role: 'ADMIN',
 			warehouseIds: [1], allowedPages: [], allowedFunctions: [], allowedOverrides: [], mustChangePassword: false
 		});
 		const repo = createRepo({
-			getCurrentUser: vi.fn().mockRejectedValue(new ApiError(401, 'unauthorized')),
-			refreshToken: vi.fn().mockRejectedValue(new ApiError(401, 'refresh failed'))
+			getCurrentUser: vi.fn().mockRejectedValue(new ApiError(401, 'unauthorized'))
 		});
 		const result = await new EnsureAuthenticatedUseCase(repo).execute();
-		expect(repo.refreshToken).toHaveBeenCalledOnce();
+		expect(repo.getCurrentUser).toHaveBeenCalledOnce();
+		expect(repo.refreshToken).not.toHaveBeenCalled();
 		expect(result).toMatchObject({ ok: false, reason: 'unauthorized' });
 		expect(authSession.getUser()).toBeNull();
-	});
-
-	it('recovers session when /me 401 then refresh and /me succeed', async () => {
-		const getCurrentUser = vi
-			.fn()
-			.mockRejectedValueOnce(new ApiError(401, 'unauthorized'))
-			.mockResolvedValueOnce(sampleUser);
-		const repo = createRepo({
-			getCurrentUser,
-			refreshToken: vi.fn().mockResolvedValue(undefined)
-		});
-		const result = await new EnsureAuthenticatedUseCase(repo).execute();
-		expect(repo.refreshToken).toHaveBeenCalledOnce();
-		expect(getCurrentUser).toHaveBeenCalledTimes(2);
-		expect(result).toEqual({ ok: true, user: sampleUser });
 	});
 
 	it('preserves the in-memory user when the API is unavailable', async () => {
@@ -73,7 +58,7 @@ describe('EnsureAuthenticatedUseCase', () => {
 		expect(authSession.getUser()).toEqual(current);
 	});
 
-	it('treats 403 as unauthorized and clears session (strict tokens)', async () => {
+	it('treats 403 as unauthorized and clears session', async () => {
 		authSession.setUser({
 			userId: 1, username: 'admin', fullName: 'Admin', role: 'ADMIN',
 			warehouseIds: [1], allowedPages: [], allowedFunctions: [], allowedOverrides: [], mustChangePassword: false
