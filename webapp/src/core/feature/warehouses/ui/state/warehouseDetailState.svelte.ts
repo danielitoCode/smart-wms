@@ -10,7 +10,7 @@ import { beginWarehouseScopedRequest } from '../../../../infrastructure/warehous
 
 const deps = createWarehousesDependencies();
 
-export function createWarehouseDetailState(warehouseId: number, includeBins = true) {
+export function createWarehouseDetailState(warehouseId: number, includeBins = true, includeZones = true) {
 	let warehouse = $state<Warehouse | null>(null);
 	let zones = $state<Zone[]>([]);
 	let bins = $state<Bin[]>([]);
@@ -64,12 +64,12 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 			warehouse = canReadWarehouse
 				? await deps.getWarehouse.execute(warehouseId)
 				: { id: warehouseId, code: String(warehouseId), name: 'Almacén seleccionado', address: null, active: true, createdAt: null };
-			zones = await deps.listZones.execute(warehouseId);
+			zones = includeZones ? await deps.listZones.execute(warehouseId) : [];
 			if (!scopedRequest.isCurrent()) return false;
 			if (zones.some((zone) => zone.warehouseId !== warehouseId)) {
 				throw new Error('The zones response contains a zone from another warehouse');
 			}
-			if (initialZoneId != null && !zones.some(zone => zone.id === initialZoneId)) {
+			if (initialZoneId != null && includeZones && !zones.some(zone => zone.id === initialZoneId)) {
 				throw new Error('La zona seleccionada no pertenece al almacén activo');
 			}
 			if (includeBins) await loadBinsForZone(initialZoneId, 1);
@@ -146,7 +146,8 @@ export function createWarehouseDetailState(warehouseId: number, includeBins = tr
 	async function updateBin(input: UpdateBinInput) {
 		return mutate(async () => {
 			findLoadedBin(input.id);
-			if (input.zoneId !== undefined) assertZoneBelongsToWarehouse(input.zoneId, warehouseId, zones);
+			if (input.zoneId !== undefined && includeZones) assertZoneBelongsToWarehouse(input.zoneId, warehouseId, zones);
+			else if (input.zoneId !== undefined && !includeZones) throw new Error('Zone changes require the Zones permission');
 			await deps.updateBin.execute(input);
 			await loadBinsForZone(selectedZoneId, binPage);
 		}, 'No se pudo actualizar el bin');
