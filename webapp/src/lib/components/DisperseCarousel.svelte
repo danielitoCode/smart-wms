@@ -174,7 +174,7 @@
 			);
 		});
 
-		const longest = Math.max(...anims.map((a) => a.effect?.getComputedTiming().duration ?? 0), 500);
+		const longest = Math.max(...anims.map((a) => Number(a.effect?.getComputedTiming().duration ?? 0)), 500);
 		const t = setTimeout(() => removeGhost(ghost.id), Number(longest) + 50);
 
 		return {

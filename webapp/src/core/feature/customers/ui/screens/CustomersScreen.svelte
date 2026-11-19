@@ -74,7 +74,7 @@
 			{#if vm.selectedCustomer.addresses.length === 0}<p class="hint">{i18n.t('No hay direcciones disponibles en los pedidos consultados.')}</p>
 			{:else}<div class="addresses">{#each vm.selectedCustomer.addresses as address, i (address.kind + '-' + i)}
 				<article><strong>{address.kind === 'billing' ? i18n.t('Facturación') : address.kind === 'shipping' ? i18n.t('Envío') : i18n.t('Dirección de cliente')}</strong>
-				<p>{[...address.lines, address.city, address.vm, address.postalCode, address.country].filter(Boolean).join(', ')}</p>
+				<p>{[...address.lines, address.city, address.state, address.postalCode, address.country].filter(Boolean).join(', ')}</p>
 				<small>{i18n.t('Almacén')} {address.warehouseId ?? '—'} · {i18n.t('Tel.')} {address.phone ?? '—'}</small></article>
 			{/each}</div>{/if}
 			<h3>{i18n.t('Historial de pedidos')}</h3>
