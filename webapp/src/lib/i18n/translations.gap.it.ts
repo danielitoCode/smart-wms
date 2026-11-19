@@ -251,4 +251,5 @@ export const gapIt: Record<string, string> = {
 
   'Reintentar': 'Riprova',
   'de': 'di',
+  'La validación de capacidad física no está disponible en el servidor.': 'La validazione della capacità fisica non è disponibile sul server.',
 };
