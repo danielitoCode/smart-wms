@@ -1,5 +1,5 @@
 <script lang="ts">
-	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
+	import UiStatePanel from '#lib/components/UiStatePanel.svelte';
   import { getContext, onMount } from 'svelte';
   import { createPickingTicketsDependencies } from '../../di/pickingTickets.dependencies';
   import Code128Barcode from '../components/Code128Barcode.svelte';

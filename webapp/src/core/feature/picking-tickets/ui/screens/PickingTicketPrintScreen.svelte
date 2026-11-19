@@ -1,5 +1,5 @@
 <script lang="ts">
-	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
+	import UiStatePanel from '#lib/components/UiStatePanel.svelte';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { createPickingTicketsDependencies } from '../../di/pickingTickets.dependencies';

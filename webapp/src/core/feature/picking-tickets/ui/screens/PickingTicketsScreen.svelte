@@ -1,5 +1,5 @@
 <script lang="ts">
-	import UiStatePanel from '$lib/components/UiStatePanel.svelte';
+	import UiStatePanel from '#lib/components/UiStatePanel.svelte';
   import { getContext } from 'svelte';
   import { goto } from '$app/navigation';
   import PageHeader from '#lib/components/PageHeader.svelte';
