@@ -106,9 +106,10 @@ describe('ItemsScreen UI', () => {
 
 
 	it('shows reorder controls only while editing an existing item', () => {
-		const original = { showForm: vm.showForm, editId: vm.editId, form: vm.form };
+		const original = { showForm: vm.showForm, editId: vm.editId, form: vm.form, detail: vm.detail };
 		const i18n = { t: (message: string) => message };
 		try {
+			vm.detail = null;
 			vm.showForm = true;
 			vm.editId = 7;
 			vm.form = { sku: 'SKU-7', itemName: 'Caja', reorderPoint: '4', reorderQty: '12' };
@@ -124,6 +125,7 @@ describe('ItemsScreen UI', () => {
 			vm.showForm = original.showForm;
 			vm.editId = original.editId;
 			vm.form = original.form;
+			vm.detail = original.detail;
 		}
 	});
 
