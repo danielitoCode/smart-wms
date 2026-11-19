@@ -4,7 +4,7 @@
 - **Fecha de revisión:** 2026-11-19
 - **Rama:** `svelte-webapp`
 - **Alcance:** frontend `webapp/`, frontend React `admin/` y contratos Flask `api/`.
-- **Último commit de código de esta intervención:** `6915644fa2e147f4626e0d5ffd33f6926c379b8f`
+- **Último commit de código de esta intervención:** `78c860dfa6172baa420f4398aeb9b9d513a26269`
 - **Regla:** no se modificó Flask ni se cambió la semántica de autorización del servidor.
 
 Este documento registra evidencia comprobada y cambios realizados para R0. No certifica todavía el cierre del recorrido completo.
@@ -36,6 +36,8 @@ Este documento registra evidencia comprobada y cambios realizados para R0. No ce
 
 **Decisión aplicada:** tras login, el repositorio Svelte ejecuta `/api/auth/me` antes de devolver el usuario al flujo de navegación. Así el primer destino y las protecciones de rutas se calculan con el conjunto real de grants.
 
+**Diferencia React/Flask que no debe copiarse como contrato:** `admin/src/pages/Login.jsx` todavía rechaza roles distintos de ADMIN, aunque Flask devuelve `allowed_pages` para USER y `admin/src/auth.jsx` documenta que USER es una identidad válida del web-admin. Además, React guarda directamente el objeto de `/login`, que no contiene esos page grants. La migración sigue el contrato vigente de Flask: Svelte acepta los roles que el servidor autentica y obtiene su autorización de `/me`; no replica el filtro obsoleto de React.
+
 ### 1.3 Permisos y almacenes
 
 - Los endpoints administrativos usan `require_admin_or_page_permission(page_key)` donde corresponde. ADMIN omite el grant; los demás roles necesitan la clave exacta.
@@ -45,6 +47,8 @@ Este documento registra evidencia comprobada y cambios realizados para R0. No ce
 - `GET /api/warehouses/list` es un endpoint autenticado, sin grant de administración de almacenes, que devuelve almacenes activos y aplica `warehouse_scope_clause`. ADMIN obtiene el catálogo activo; otros usuarios reciben el subconjunto asignado.
 
 **Decisión aplicada:** el selector/contexto operativo consume `/api/warehouses/list` para todos los roles. Las opciones no administrativas son la intersección entre los IDs asignados por `/me` y el catálogo activo devuelto por Flask. Si no se puede validar el catálogo, no se fabrican almacenes ficticios ni se selecciona un ID sin confirmar.
+
+**Diferencia React/Svelte:** React consulta `/api/admin/warehouses` desde `WarehouseProvider`, por lo que un usuario sin grant de administración de almacenes puede quedarse sin nombres de almacén en la barra superior. Svelte usa el endpoint operacional autenticado y muestra el almacén activo como solo lectura cuando el usuario no tiene grant para cambiar el selector.
 
 ---
 
