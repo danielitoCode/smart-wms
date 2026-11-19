@@ -143,6 +143,19 @@ describe('Items UI state', () => {
 		}));
 	});
 
+
+	it('accepts zero and empty reorder values as valid update values', async () => {
+		const state = createItemsState(dependencies);
+		state.openEdit({ ...item, reorderPoint: null, reorderQty: null });
+		state.setFormField('reorderPoint', '0');
+		state.setFormField('reorderQty', '');
+		await state.save();
+		expect(dependencies.updateItem.execute).toHaveBeenCalledWith(item.id, expect.objectContaining({
+			reorderPoint: 0,
+			reorderQty: null
+		}));
+	});
+
 	it.each([
 		['reorderPoint', '-1'],
 		['reorderPoint', '1.5'],
