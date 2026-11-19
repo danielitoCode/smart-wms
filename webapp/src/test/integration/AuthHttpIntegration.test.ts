@@ -7,10 +7,12 @@ import { EnsureAuthenticatedUseCase } from '../../core/feature/auth/domain/useca
 import { ChangePasswordUseCase } from '../../core/feature/auth/domain/usecase/ChangePasswordUseCase';
 import { LogoutUseCase } from '../../core/feature/auth/domain/usecase/LogoutUseCase';
 import { authSession } from '../../core/infrastructure/auth/AuthSession';
+import { notifyWarehouseChanged, beginWarehouseScopedRequest, resetWarehouseRequestScopeForTests } from '../../core/infrastructure/warehouse/WarehouseRequestScope';
 
 afterEach(() => {
 	vi.unstubAllGlobals();
 	authSession.clear();
+	resetWarehouseRequestScopeForTests();
 });
 
 const sampleUserDto = {
@@ -130,5 +132,49 @@ describe('Auth HTTP integration', () => {
 		await expect(
 			new LoginUseCase(repo).execute({ username: 'op1', password: 'secret12' })
 		).rejects.toThrow(/inactivo/i);
+	});
+});
+
+
+describe('session, grants and request-scope integration', () => {
+	it('refreshes the authorization snapshot from /me after a page grant is revoked', async () => {
+		const before = { ...sampleUserDto, allowed_functions: ['receive', 'putaway'], allowed_pages: ['inventory', 'receiving', 'putaway'] };
+		const after = { ...sampleUserDto, allowed_functions: ['receive'], allowed_pages: ['inventory', 'receiving'] };
+		const fetchMock = vi.fn()
+			.mockResolvedValueOnce(jsonResponse(before))
+			.mockResolvedValueOnce(jsonResponse(after));
+		const { repo } = createStack(fetchMock);
+
+		await repo.getCurrentUser();
+		expect(authSession.getUser()?.allowedPages).toContain('putaway');
+		expect(authSession.getUser()?.allowedFunctions).toContain('putaway');
+
+		await repo.getCurrentUser();
+		expect(authSession.getUser()?.allowedPages).not.toContain('putaway');
+		expect(authSession.getUser()?.allowedFunctions).not.toContain('putaway');
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('cancels an in-flight API request when its caller aborts', async () => {
+		const fetchMock = vi.fn((_url: string, init: RequestInit) =>
+			new Promise<Response>((_resolve, reject) => {
+				init.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+			})
+		);
+		const { repo } = createStack(fetchMock);
+		const controller = new AbortController();
+		const request = new ApiClient('https://wms.test').get('/api/inventory', { signal: controller.signal });
+		controller.abort();
+		await expect(request).rejects.toMatchObject({ code: 'cancelled' });
+		void repo;
+	});
+
+	it('invalidates and aborts warehouse-scoped requests after a warehouse switch', () => {
+		const request = beginWarehouseScopedRequest();
+		expect(request.isCurrent()).toBe(true);
+		notifyWarehouseChanged();
+		expect(request.signal.aborted).toBe(true);
+		expect(request.isCurrent()).toBe(false);
+		request.release();
 	});
 });
