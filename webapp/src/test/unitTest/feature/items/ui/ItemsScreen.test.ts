@@ -128,6 +128,19 @@ describe('ItemsScreen UI', () => {
 	});
 
 
+	it('disables the archive action while its request is in progress', () => {
+		const original = vm.isArchiving;
+		const i18n = { t: (message: string) => message };
+		try {
+			vm.isArchiving = vi.fn(() => true);
+			const { body } = render(ItemsScreen, { context: new Map([['i18n', i18n]]) });
+			expect(body).toContain('Procesando…');
+			expect(body).toMatch(/disabled[^>]*>Procesando…/);
+		} finally {
+			vm.isArchiving = original;
+		}
+	});
+
 	it('renders the detail loading and failure states', () => {
 		const original = { detail: vm.detail, detailLoading: vm.detailLoading, detailError: vm.detailError };
 		const i18n = { t: (message: string) => message };
