@@ -2,7 +2,7 @@
 
 Fecha: 2026-11-19  
 Rama: `svelte-webapp`  
-HEAD auditado: `a747e53572fd8f834d314fd61d518cc3f5512627`  
+HEAD auditado inicialmente: `a747e53572fd8f834d314fd61d518cc3f5512627` (revisión de seguimiento: ver commit más reciente en GitHub)  
 Ámbito: exclusivamente `webapp/`. Flask y React se inspeccionan como referencias; no se modifican.
 
 ## 1. Resultado ejecutivo
@@ -36,8 +36,8 @@ Campos de escritura admitidos: `sku`, `item_name`, `description`, `upc`, `mpn`, 
 
 ### Warehouses — `api/routes/admin/admin_warehouse.py`, `api/routes/warehouses.py`
 
-- GET `/api/admin/warehouses?page=&per_page=`: listado administrativo paginado, grant `warehouses`; incluye activos e inactivos.
-- GET `/api/admin/warehouses/{id}`: detalle `warehouse` + `zones[]`.
+- GET `/api/admin/warehouses?page=&per_page=`: listado administrativo paginado, grant `warehouses`; incluye activos e inactivos y no aplica el scope operativo de almacenes.
+- GET `/api/admin/warehouses/{id}`: detalle `warehouse` + `zones[]`; protegido por grant `warehouses`, no por una comprobación de asignación del usuario al almacén.
 - POST `/api/admin/warehouses`: crear con `warehouse_code`, `warehouse_name`, `address?`.
 - PUT `/api/admin/warehouses/{id}`: actualizar `warehouse_code`, `warehouse_name`, `address`, `is_active`.
 - DELETE `/api/admin/warehouses/{id}`: rechaza si hay inventario con cantidad en mano positiva, bins o zones; responde 400.
@@ -47,29 +47,29 @@ El borrado de almacén no se debe habilitar como operación garantizada por una 
 
 ### Zones — `api/routes/admin/admin_warehouse.py`, `api/schemas/zones.py`
 
-- GET `/api/admin/zones?warehouse_id=&page=&per_page=`: requiere grant `zones`; admite almacén opcional, valida acceso al almacén cuando se indica y aplica scope de almacén; devuelve `zones[]`, `total,page,per_page,pages`, y `bins_count`.
-- POST `/api/admin/zones`: requiere `warehouse_id,zone_code,zone_name,zone_type`; valida existencia y acceso al almacén.
-- PUT `/api/admin/zones/{id}`: actualiza código/nombre/tipo/activo; valida scope y código duplicado.
+- GET `/api/admin/zones?warehouse_id=&page=&per_page=`: requiere grant `zones`; `warehouse_id` es un filtro de consulta, pero el handler no aplica el scope de almacenes asignados al usuario; devuelve `zones[]`, `total,page,per_page,pages`.
+- POST `/api/admin/zones`: requiere `warehouse_id,zone_code,zone_name,zone_type`; el handler no realiza una comprobación explícita de asignación/scope del usuario al almacén.
+- PUT `/api/admin/zones/{id}`: actualiza código/nombre/tipo/activo; comprueba existencia y duplicados, pero no aplica scope de almacén en el handler.
 - DELETE `/api/admin/zones/{id}`: 409 si contiene bins.
 
 Tipos admitidos: `RECEIVING`, `STORAGE`, `PICKING`, `STAGING`, `SHIPPING`.
 
 ### Bins — `api/routes/admin/admin_warehouse.py`, `api/schemas/bins.py`
 
-- GET `/api/admin/bins?warehouse_id=&zone_id=&bin_type=&q=&page=&per_page=`: requiere grant `bins`; valida paginación y aplica warehouse scope. `q` busca `bin_code` y `bin_barcode`. `per_page` máximo 1000.
-- GET `/api/admin/bins/{id}`: detalle de bin e inventario.
-- POST `/api/admin/bins`: requiere `zone_id,warehouse_id,bin_code,bin_barcode,bin_type` y campos opcionales de posición/secuencia/capacidad; valida relación zona/almacén y acceso.
-- PUT `/api/admin/bins/{id}`: actualiza datos, estado, zona y capacidad; aplica warehouse scope y verifica que la zona destino pertenezca al almacén del bin.
-- DELETE `/api/admin/bins/{id}`: aplica warehouse scope; responde 409 si hay inventario con cantidad en mano positiva o preferred-bin mappings. Si pasa, elimina filas de inventario y el bin.
+- GET `/api/admin/bins?warehouse_id=&zone_id=&bin_type=&q=&page=&per_page=`: requiere grant `bins`; `warehouse_id` y `zone_id` filtran resultados, pero el handler no aplica el scope de almacenes asignados al usuario. `q` busca `bin_code` y `bin_barcode`; `per_page` máximo 1000.
+- GET `/api/admin/bins/{id}`: detalle de bin e inventario por ID, sin comprobación explícita de warehouse scope en el handler.
+- POST `/api/admin/bins`: requiere `zone_id,warehouse_id,bin_code,bin_barcode,bin_type` y campos opcionales de posición/secuencia. El schema no define capacidades físicas y el handler no comprueba explícitamente que la zona pertenezca al `warehouse_id` enviado.
+- PUT `/api/admin/bins/{id}`: actualiza código, barcode, tipo, posición, secuencias, activo y `zone_id`; no acepta ni persiste capacidades físicas y no comprueba explícitamente que la zona destino pertenezca al almacén del bin.
+- DELETE `/api/admin/bins/{id}`: por ID, sin comprobación explícita de warehouse scope; responde 409 si hay inventario con cantidad en mano positiva o preferred-bin mappings. Si pasa, elimina filas de inventario y el bin.
 
-Tipos admitidos: `Staging`, `PickableStaging`, `Pickable`. Campos de capacidad reales: `max_weight_lbs`, `max_volume_cuft` (decimal, no negativo, máximo dos decimales). La UI debe distinguir capacidad configurada de ocupación calculada; no inventar validación de compatibilidad item-bin que el servidor no exponga.
+Tipos admitidos: `Staging`, `PickableStaging`, `Pickable`. **No hay contrato Flask para `max_weight_lbs` ni `max_volume_cuft`** en `CreateBinRequest`, `UpdateBinRequest`, los SELECT ni las respuestas de listado/detalle. No se deben enviar ni presentar como persistentes desde el frontend.
 
 ## 3. Paridad React observada
 
 Las páginas React originales están en `admin/src/pages/Items.jsx`, `Bins.jsx`, `Zones.jsx`, `Warehouses.jsx`.
 
 - Items: búsqueda con debounce, filtro activo/archivado/todos, páginas de 50, detalle con inventario y preferred bins, crear/editar, archivar/restaurar y eliminar con confirmación.
-- Bins: depende de almacén activo; búsqueda por código/barcode, páginas de 50, exportación CSV, consulta de zonas, detalle con inventario, alta/edición/borrado.
+- Bins: depende de almacén activo; búsqueda por código/barcode, páginas de 50, exportación CSV, consulta de zonas, detalle con inventario, alta/edición/borrado. La exportación Svelte debe recorrer todas las páginas (hasta 1000 registros por página) y exportar solo columnas reales del contrato.
 - Warehouses: CRUD administrativo, edición de activo/inactivo y borrado con error del servidor.
 - Zones: gestión asociada a almacén, CRUD y restricciones por bins dependientes.
 
@@ -89,8 +89,8 @@ La paridad debe incluir los flujos y errores, no solo la existencia de pantallas
 | UOM no está en el contrato Items inspeccionado | BACKEND_LIMITATION / UNVERIFIED_CONTRACT | No enviar UOM; no mostrar valor inventado |
 | Flask no demuestra chequeo exhaustivo de todas las referencias de Item/Bin | BACKEND_LIMITATION | Tratar respuesta de borrado como autoridad; mostrar 400/409 real; no afirmar que frontend garantiza ausencia de referencias |
 | Items y detalle de inventario son globales, no warehouse-scoped | Contrato observado | Etiquetar catálogo global y hacer explícito el alcance de inventario; no filtrar silenciosamente datos como si fueran del almacén activo |
-| Bins/Zones requieren scope por almacén | Contrato observado | Exigir contexto explícito para workspace; invalidar cargas/selecciones al cambiar almacén; cubrir IDs de otro almacén en pruebas |
-| Capacidad de bin sí está soportada por Flask | Contrato observado | Mantener max_weight/max_volume y distinguirlos de capacidad disponible/ocupación |
+| Las rutas administrativas Zones/Bins no muestran enforcement server-side de warehouse scope en handlers ni en el decorator de grant inspeccionado | BACKEND_LIMITATION + FRONTEND_GUARD_REQUIRED | El frontend fija `warehouse_id`, valida filas/zonas devueltas y bloquea mutaciones sobre entidades no cargadas en el contexto; esto protege la UI, no sustituye autorización backend |
+| Capacidades físicas de bin no están soportadas por los schemas/rutas Flask inspeccionados | BACKEND_LIMITATION | Retirar controles/DTO de escritura del frontend; no simular persistencia; reabrir cuando exista contrato verificable |
 | UOM y compatibilidad Item-Bin no están demostrados | BACKEND_LIMITATION / UNVERIFIED_CONTRACT | No implementar reglas ficticias ni bloquear por datos ausentes |
 
 ## 6. Próximas tareas frontend para cerrar R1
@@ -99,8 +99,8 @@ La paridad debe incluir los flujos y errores, no solo la existencia de pantallas
 2. Auditar `WarehouseWorkspaceScreen`, sus estados y repositorios para garantizar que todas las lecturas y mutaciones de bins/zones llevan el almacén activo y que se descartan respuestas obsoletas al cambiarlo.
 3. Revisar Item detail para que el inventario global se identifique como global o se limite a una vista explícitamente global; nunca inferir pertenencia al almacén activo.
 4. Alinear DTO/mappers estrictamente con payloads reales: eliminar tolerancias a formatos alternativos no usados por Flask cuando no tengan consumidor contractual.
-5. Probar paginación y filtros reales, errores de duplicados, 400/404/409, permisos separados `items`, `warehouses`, `zones`, `bins` y aislamiento entre almacenes.
-6. Confirmar que la UI de bins expone y persiste capacidad física real, sin derivar reglas de compatibilidad no disponibles.
+5. Probar paginación y filtros reales, errores de duplicados, 400/404/409, permisos separados `items`, `warehouses`, `zones`, `bins`, descarte de respuestas cruzadas y bloqueo de mutaciones fuera del contexto activo. El aislamiento de seguridad server-side de Zones/Bins permanece bloqueado por `BACKEND_LIMITATION`.
+6. No exponer capacidad física como editable/persistente: Flask no la acepta ni devuelve. Mantener la ocupación calculada separada de capacidades futuras; registrar como `BACKEND_LIMITATION` hasta que exista contrato server-side.
 7. Ejecutar exclusivamente check, build y suites frontend de `webapp/`; registrar HEAD y resultados.
 
 ## 7. Criterio de cierre R1
