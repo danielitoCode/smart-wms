@@ -10,6 +10,7 @@ describe('platform server capability registry', () => {
 		expect(getServerCapability('auth.login').path).toBe('/api/auth/login');
 		expect(getServerCapability('auth.me').responseDto).toContain('allowed_pages');
 		expect(getServerCapability('auth.change-password').path).toBe('/api/auth/change-password');
+		expect(getServerCapability('authorization.allowed-functions').status).toBe('PARTIAL');
 		expect(getServerCapability('warehouse.active-list').path).toBe('/api/warehouses/list');
 		for (const capability of Object.values(SERVER_CAPABILITIES)) {
 			expect(capability.evidence.length).toBeGreaterThan(0);
