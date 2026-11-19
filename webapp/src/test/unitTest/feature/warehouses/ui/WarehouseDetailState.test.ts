@@ -244,4 +244,13 @@ describe('WarehouseDetailState zone and bins interactions', () => {
 		expect(state.bins).toEqual([]);
 	});
 
+
+	it('rejects a zones response containing a different warehouse', async () => {
+		deps.listZones.execute.mockResolvedValueOnce([zone, { ...zone, id: 21, warehouseId: 2 }]);
+		const state = createWarehouseDetailState(1, false, true);
+		expect(await state.load()).toBe(false);
+		expect(state.error).toContain('another warehouse');
+		expect(state.zones).toEqual([]);
+	});
+
 });
