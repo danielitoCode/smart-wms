@@ -101,7 +101,7 @@ export function createWarehouseSelectionState() {
 					: 'No tienes almacenes activos asignados.';
 			}
 			initialized = true;
-		} catch (err) {
+		} catch {
 			if (epoch !== loadEpoch) return;
 			catalogLoadFailed = true;
 			warehouses = [];
