@@ -92,6 +92,21 @@ export const SERVER_CAPABILITIES = {
 		idempotency: 'Idempotent cleanup',
 		evidence: ['api/routes/auth.py@logout', 'api/services/cookie_auth.py:csrf_token_matches']
 	},
+	'authorization.allowed-functions': {
+		id: 'authorization.allowed-functions',
+		owner: 'auth',
+		status: 'PARTIAL',
+		method: 'GET + route handlers',
+		path: '/api/auth/me; operational endpoints',
+		permission: 'The /me response exposes allowed_functions by role, but the standard require_auth middleware does not attach that field to g.current_user or provide a function-grant decorator',
+		warehouseScope: 'Independent of warehouse assignment and page grants',
+		requestDto: 'No body for /me; route-specific operational requests',
+		responseDto: '/me includes allowed_functions',
+		sideEffects: 'Read-only grant projection; server-side enforcement is not established by the common middleware',
+		idempotency: 'Idempotent read/projection',
+		evidence: ['api/routes/auth.py@me', 'api/middleware/auth_middleware.py@require_auth', 'api/routes/picking.py', 'api/routes/packing.py', 'api/routes/shipping.py'],
+		notes: 'The inspected scanner routes use require_auth without an explicit function-grant check. Do not treat a client-side allowed_functions gate as server security; audit and define the authoritative server policy before relying on it.'
+	},
 	'authorization.page-grants': {
 		id: 'authorization.page-grants',
 		owner: 'auth',
