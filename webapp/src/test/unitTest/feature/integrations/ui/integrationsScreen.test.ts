@@ -15,7 +15,7 @@ describe('Integrations screen accessibility contract', () => {
     expect(screen).toContain('aria-required={schema.required ? \'true\' : undefined}');
   });
   it('announces operation results and failures through live status roles', () => {
-    expect(screen).toContain('role="alert"');
+    expect(screen).toContain('<UiStatePanel kind="error"');
     expect(screen).toContain('role="status"');
   });
   it('does not reveal existing credential values in the form', () => {
