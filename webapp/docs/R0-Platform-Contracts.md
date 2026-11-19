@@ -4,7 +4,7 @@
 - **Fecha de revisión:** 2026-11-19
 - **Rama:** `svelte-webapp`
 - **Alcance:** frontend `webapp/`, frontend React `admin/` y contratos Flask `api/`.
-- **Último commit de código de esta intervención:** `78c860dfa6172baa420f4398aeb9b9d513a26269`
+- **Último commit de código de esta intervención:** `21782ec3a5908cb7640525504dbb510f905ba512`
 - **Regla:** no se modificó Flask ni se cambió la semántica de autorización del servidor.
 
 Este documento registra evidencia comprobada y cambios realizados para R0. No certifica todavía el cierre del recorrido completo.
@@ -42,6 +42,7 @@ Este documento registra evidencia comprobada y cambios realizados para R0. No ce
 
 - Los endpoints administrativos usan `require_admin_or_page_permission(page_key)` donde corresponde. ADMIN omite el grant; los demás roles necesitan la clave exacta.
 - Los overrides se devuelven aparte de `allowed_pages`; no deben confundirse con grants de página.
+- `allowed_functions` también aparece en `/api/auth/me`, pero el `require_auth` común no la carga en `g.current_user` ni ofrece un decorador general de function grants. En las rutas picking/packing/shipping inspeccionadas se observa `require_auth` sin un chequeo explícito de función. Por eso la capacidad `authorization.allowed-functions` está marcada `PARTIAL`: no se debe considerar una comprobación de UI como seguridad de servidor. Falta auditar y definir la política server-side real antes de depender de esos grants.
 - `require_auth` vuelve a cargar `warehouse_ids` desde BD y valida los `warehouse_id` aportados en path, query y JSON body. Si las fuentes discrepan devuelve 400; si el almacén no está asignado devuelve 403.
 - Para lecturas de colección, `warehouse_scope_clause` permite filtrar en SQL y evitar filtrar información de otros almacenes mediante una comprobación posterior.
 - `GET /api/warehouses/list` es un endpoint autenticado, sin grant de administración de almacenes, que devuelve almacenes activos y aplica `warehouse_scope_clause`. ADMIN obtiene el catálogo activo; otros usuarios reciben el subconjunto asignado.
@@ -108,7 +109,7 @@ El catálogo es todavía parcial: debe ampliarse con los contratos de cada recor
 
 1. Completar el inventario exhaustivo React → rutas Svelte → acciones → page keys/overrides → endpoints Flask. Las pruebas actuales cubren rutas representativas, no certifican todas las rutas existentes.
 2. Auditar todos los componentes Svelte para demostrar que ninguno llama directamente a `fetch` ni construye requests fuera de Data/Infrastructure.
-3. Auditar todos los casos de uso mutables y repositorios para verificar que autorización y warehouse scope se resuelven antes de ejecutar; la seguridad final sigue en Flask.
+3. Auditar todos los casos de uso mutables y repositorios para verificar que autorización y warehouse scope se resuelven antes de ejecutar; auditar también `allowed_functions` y definir qué operaciones requieren enforcement server-side explícito. La seguridad final sigue en Flask.
 4. Completar la matriz de DTO/request/response, códigos 400/401/403/404/409/422/5xx, paginación y errores por cada contrato consumido.
 5. Adoptar `UiStatePanel` en todas las pantallas para Forbidden, Not supported, Empty, Loading, Error y Conflict. Ya se usa en el layout para Forbidden/Error; falta migrar y verificar cada feature, evitando duplicar estados locales.
 6. Añadir pruebas de integración para login → /me → grants → almacén activo, revocación de grants, cambio de asignación de almacén, logout y aborto de peticiones del contexto anterior.
