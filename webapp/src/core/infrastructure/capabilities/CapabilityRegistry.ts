@@ -64,6 +64,20 @@ export const SERVER_CAPABILITIES = {
 		evidence: ['api/routes/auth.py@refresh', 'api/middleware/auth_middleware.py@require_auth', 'api/services/auth_service.py@decode_token', 'api/tests/test_auth.py::TestRefresh'],
 		notes: 'This endpoint cannot recover an expired session: require_auth rejects an expired token before the refresh handler runs. A 401 from /me must lead to re-login, not another /refresh attempt.'
 	},
+	'auth.change-password': {
+		id: 'auth.change-password',
+		owner: 'auth',
+		status: 'SUPPORTED',
+		method: 'POST',
+		path: '/api/auth/change-password',
+		permission: 'Authenticated session; forced-change users are explicitly allowed to call this endpoint',
+		warehouseScope: 'None',
+		requestDto: 'ChangePasswordRequest { current_password, new_password }',
+		responseDto: '{ message }',
+		sideEffects: 'Updates password hash, clears must_change_password and writes audit event',
+		idempotency: 'Not idempotent; password update and audit write',
+		evidence: ['api/routes/auth.py@change_password', 'api/schemas/auth.py:ChangePasswordRequest']
+	},
 	'auth.logout': {
 		id: 'auth.logout',
 		owner: 'auth',
@@ -109,7 +123,7 @@ export const SERVER_CAPABILITIES = {
 	'warehouse.request-scope': {
 		id: 'warehouse.request-scope',
 		owner: 'infrastructure',
-		status: 'SUPPORTED',
+		status: 'PARTIAL',
 		method: 'Authentication middleware',
 		path: 'Warehouse-scoped Flask routes',
 		permission: 'Non-admin user must be assigned to the requested warehouse',
@@ -118,7 +132,8 @@ export const SERVER_CAPABILITIES = {
 		responseDto: 'Route-specific; cross-warehouse reads use SQL scope clauses where implemented',
 		sideEffects: 'Rejects unauthorized or mismatched requests before handler execution',
 		idempotency: 'Validation only; does not mutate resources',
-		evidence: ['api/middleware/auth_middleware.py@require_auth', 'api/middleware/auth_middleware.py@check_warehouse_access', 'api/middleware/auth_middleware.py@warehouse_scope_clause']
+		evidence: ['api/middleware/auth_middleware.py@require_auth', 'api/middleware/auth_middleware.py@check_warehouse_access', 'api/middleware/auth_middleware.py@warehouse_scope_clause'],
+		notes: 'Explicit warehouse_id values are validated centrally, but collection queries are isolated only when handlers apply warehouse_scope_clause. Full route/query audit is still required.'
 	}
 } as const satisfies Record<string, ServerCapability>;
 
