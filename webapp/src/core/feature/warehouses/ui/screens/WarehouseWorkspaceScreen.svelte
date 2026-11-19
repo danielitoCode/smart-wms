@@ -22,7 +22,7 @@
 	</header>
 	{#if selection.loading || !selection.initialized}<UiStatePanel kind="loading" title={i18n.t('Validando almacén')} message={i18n.t('Estamos comprobando el contexto operativo seleccionado.')} />
 	{:else if selection.error && selection.warehouseId == null}<UiStatePanel kind="error" title={i18n.t('No se pudo validar el almacén')} message={selection.error ?? ''} />
-	{:else if selection.warehouseId == null}<UiStatePanel kind="forbidden" title={i18n.t('Almacén no disponible')} message={i18n.t('No hay un almacén seleccionado. Un usuario con permiso de Almacenes debe establecer la selección primero.')} />
+	{:else if selection.warehouseId == null}<UiStatePanel kind="forbidden" title={i18n.t('Almacén no disponible')} message={i18n.t('No hay un almacén activo asignado para este usuario.')} />
 	{:else}
 		{#key selection.warehouseId + ':' + (mode === 'bins' ? initialZoneId ?? '' : '')}
 			<WarehouseDetailScreen warehouseId={selection.warehouseId} showZones={mode === 'zones'} showBins={mode === 'bins'} includeBins={mode === 'bins'} initialZoneId={mode === 'bins' ? initialZoneId : null} backHref={mode === 'zones' ? '/data/zones' : '/data/bins'} />
