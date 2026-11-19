@@ -142,12 +142,11 @@ describe('Auth HTTP integration', () => {
 	it('does not restore an authenticated user when /me resolves after logout', async () => {
 		let resolveMe!: (response: Response) => void;
 		const fetchMock = vi.fn()
-			.mockResolvedValueOnce(jsonResponse({ token: 'opaque', user: sampleUserDto }))
 			.mockImplementationOnce(() => new Promise<Response>((resolve) => { resolveMe = resolve; }))
 			.mockResolvedValueOnce(jsonResponse({ message: 'logged out' }));
 		const { repo } = createStack(fetchMock);
 		const pendingMe = repo.getCurrentUser();
-		await Promise.resolve();
+		await vi.waitFor(() => expect(resolveMe).toBeTypeOf('function'));
 		await repo.logout();
 		resolveMe(jsonResponse(sampleUserDto));
 		await expect(pendingMe).rejects.toThrow(/sesión cambió/i);
@@ -162,7 +161,7 @@ describe('Auth HTTP integration', () => {
 			.mockResolvedValueOnce(jsonResponse({ message: 'logged out' }));
 		const { repo } = createStack(fetchMock);
 		const pendingLogin = repo.login({ username: 'op1', password: 'secret12' });
-		await Promise.resolve();
+		await vi.waitFor(() => expect(resolveMe).toBeTypeOf('function'));
 		await repo.logout();
 		resolveMe(jsonResponse(sampleUserDto));
 		await expect(pendingLogin).rejects.toThrow(/sesión cambió/i);
