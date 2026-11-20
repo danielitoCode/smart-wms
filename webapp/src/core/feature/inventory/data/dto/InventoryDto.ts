@@ -98,3 +98,24 @@ export type CycleCountSubmitResponseDto = {
 		}>;
 	};
 };
+
+
+export type ItemBarcodeLookupDto = {
+	item: {
+		item_id: number;
+		sku: string;
+		item_name: string;
+		upc: string | null;
+		[key: string]: unknown;
+	};
+	locations: Array<{
+		bin_id: number;
+		bin_code: string;
+		bin_type: string;
+		zone_name: string | null;
+		quantity_on_hand: number;
+		quantity_allocated: number;
+		quantity_available: number;
+		lot_number: string | null;
+	}>;
+};
