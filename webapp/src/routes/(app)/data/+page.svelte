@@ -2,17 +2,11 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { authSession } from '#core/infrastructure/auth/AuthSession.ts';
+	import { getDataLandingPath } from '#core/feature/warehouses/ui/state/dataNavigationPermissions.ts';
 	let noAccess = $state(false);
 	onMount(() => {
 		const user = authSession.getUser();
-		const pages = user?.allowedPages ?? [];
-		const admin = user?.role === 'ADMIN';
-		const target = admin ? '/data/warehouses'
-			: pages.includes('warehouses') ? '/data/warehouses'
-			: pages.includes('zones') ? '/data/zones'
-			: (pages.includes('bins') && pages.includes('zones')) ? '/data/bins'
-			: pages.includes('preferred-bins') ? '/data/preferred-bins'
-			: null;
+		const target = getDataLandingPath(user?.role, user?.allowedPages ?? []);
 		if (target) void goto(target, { replaceState: true });
 		else noAccess = true;
 	});
