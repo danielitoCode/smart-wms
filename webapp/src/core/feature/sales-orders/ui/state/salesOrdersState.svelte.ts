@@ -99,8 +99,12 @@ export function createSalesOrdersState() {
   }
 
   async function refreshSelected(): Promise<void> {
-    if (selected) {
-      selected = await deps.getSalesOrder.execute(selected.salesOrderId);
+    if (!selected) return;
+    const selectedId = selected.salesOrderId;
+    const requestId = ++detailRequestSequence;
+    const refreshed = await deps.getSalesOrder.execute(selectedId);
+    if (requestId === detailRequestSequence && selected?.salesOrderId === selectedId) {
+      selected = refreshed;
     }
   }
 
