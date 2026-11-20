@@ -39,3 +39,21 @@ export interface CancelBackorderResponseDto {
   cancellation_reason: string;
   audit_log_id: number | null;
 }
+
+
+export interface BackorderAuditEntryDto {
+  log_id: number;
+  action_type: string;
+  username: string | null;
+  warehouse_id: number | null;
+  details: Record<string, unknown> | null;
+  created_at: string | null;
+}
+
+export interface BackorderAuditHistoryDto {
+  entries: BackorderAuditEntryDto[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
+}
