@@ -116,3 +116,60 @@ Sales-order listing can be authorized by \`fraud\` permission as well as \`sales
 - Webapp CI is green on the exact final commit.
 
 **Kickoff decision:** R4 can proceed in the Svelte frontend with documented backend dependencies. The confirmed backorder warehouse-scope gap and the unverified create/mutation scope guarantees must be resolved or explicitly guarded before R4 can be declared operationally verified. No Flask code was changed.
+
+
+## 7. Auditoría de contratos y paridad — pasada 1
+
+**HEAD inspeccionado:** `282a62e50e582cba3c49e9827b100b8575800ba8`.  
+**Fuentes principales:** React `admin/src/pages/SalesOrders.jsx`, `admin/src/pages/Backorders.jsx`, `admin/src/components/SalesOrderModal.jsx`; Flask `api/routes/admin/admin_orders.py`, `api/schemas/sales_orders.py`, `api/services/sales_order_service.py`; Svelte feature modules `sales-orders`, `backorders` y `customers`.
+
+### 7.1 Confirmaciones Flask
+
+| Recorrido | Contrato comprobado | Resultado |
+|---|---|---|
+| Listado SO | GET valida page/per_page, limita per_page a 1000, filtra status (lista separada por coma), warehouse_id, q y flags; aplica warehouse_scope_clause antes del count y de la página | `SUPPORTED` |
+| Detalle SO | GET aplica warehouse_scope_clause y devuelve cabecera, líneas y pick_tasks | `SUPPORTED` |
+| Crear SO | POST requiere permiso sales-orders, valida schema, comprueba existencia de item y número duplicado; crea pedido y asigna stock parcialmente en la transacción | `SUPPORTED` con reserva autoritativa del servidor |
+| Editar cabecera | PUT bloquea fila con FOR UPDATE y restringe por rol/estado; sin override no-admin solo OPEN; con so-full-edit no SHIPPED; ADMIN tiene ruta más amplia | `SUPPORTED`, pero sin scope de almacén visible en el handler |
+| Editar dirección | PATCH bloquea fila y aplica regla de estado, pero no tiene decorador de permiso de página ni warehouse_scope_clause visible | `BACKEND_LIMITATION` / autorización incompleta a verificar en middleware |
+| Líneas | POST/PATCH/DELETE bloquean SO y comprueban estado/consistencia de cantidades; el handler no aplica warehouse_scope_clause | `BACKEND_LIMITATION` |
+| Cancelar SO | POST delega en cancel_sales_order compartido, que registra auditoría y deshace efectos según estado; el handler no aplica warehouse_scope_clause | `BACKEND_LIMITATION` de scope |
+| Cancelar backorder | POST valida reason, parent_so_id y order_type, delega en cancel service, relabela REFUNDED si aplica y devuelve audit_log_id; no se ve scope de almacén | `BACKEND_LIMITATION` de scope |
+| Cola backorders | GET valida tab y filtra por warehouse_id solo si el cliente lo envía; no aplica warehouse_scope_clause | `BACKEND_LIMITATION` confirmada |
+
+**Hallazgo crítico de seguridad:** en los handlers inspeccionados de PUT cabecera, PATCH dirección, edición de líneas, cancelación y cancel-backorder no aparece enforcement explícito del warehouse scope equivalente al GET de detalle. El frontend puede ocultar/deshabilitar acciones fuera del almacén activo, pero eso no impide que un cliente manipule directamente el ID. La aceptación «un pedido de otro almacén no se puede mutar» no puede certificarse hasta que Flask aplique scope en cada mutación. Esto queda fuera del alcance actual `webapp/`; no se modificará Flask en esta fase.
+
+**Creación y almacén:** el handler POST crea usando el `warehouse_id` enviado, pero no se observa comprobación explícita de que el usuario tenga acceso a ese almacén. El item se valida por existencia, no se encontró comprobación de estado activo en este handler. Ambos puntos quedan como `UNVERIFIED_CONTRACT` / posible gap backend, no como validación frontend resuelta.
+
+### 7.2 React ↔ Svelte: diferencias y defectos demostrados
+
+1. **Listado React:** status + búsqueda, 50 por página, `exclude_post_fulfillment=true`, paginación real desde Flask. Svelte ya pasa los mismos filtros base y consume `total/page/per_page/pages`; el datasource soporta filtros adicionales del contrato.
+2. **Carrera en listado Svelte:** `salesOrdersState.load()` retorna inmediatamente si `loading` ya es true y no usa request epoch. Un cambio de filtro/página/almacén durante una petición puede descartarse; si se permite solapamiento desde otros puntos, una respuesta antigua puede reemplazar datos nuevos. Clasificación: `FRONTEND_DEFECT`.
+3. **Carrera al abrir detalle Svelte:** `open(id)` no invalida solicitudes previas mediante secuencia. Dos aperturas rápidas pueden permitir que el detalle anterior termine último y sustituya el seleccionado. Clasificación: `FRONTEND_DEFECT`.
+4. **Creación Svelte:** el use case valida número, warehouse ID, líneas, cantidades y duplicados; el repositorio mapea a POST y recibe el detalle creado. No se debe calcular disponibilidad ni asignación local. El estado actual descarta el objeto devuelto y recarga listado; conviene seleccionar/refrescar el detalle devuelto para confirmar las cantidades realmente asignadas.
+5. **Líneas:** el schema y handler rechazan cantidades no positivas y el backend bloquea reducir por debajo de picked/shipped; al reducir bajo allocated libera la diferencia. No se encontró soporte para líneas duplicadas: el handler add-line las rechaza y el create use case también las rechaza.
+6. **Backorders:** Svelte consulta la cola con warehouse_id, carga detalle mediante endpoint SO separado y calcula pending como ordered − shipped. La lista del backend informa qty ordenada de cada línea de backorder, no un ledger de faltantes calculado por cliente. No sumar faltantes de padre e hijo ni inventar una reserva adicional. La seguridad cross-warehouse de la cola sigue bloqueada por el gap backend.
+7. **Customers:** la feature Svelte deriva clientes de búsqueda global y pedidos; no se encontró API administrativa canónica de CRUD. Se mantiene read-only.
+8. **Fraud:** no se declara evaluación de riesgo en el flujo SO hasta completar la inspección de rutas/DTO de Fraud y confirmar cómo React la muestra. El permiso alternativo de listado no es una evaluación.
+
+### 7.3 Matriz de riesgos actualizada
+
+| ID | Hallazgo | Clasificación | Gate |
+|---|---|---|---|
+| R4-BE-01 | Backorders GET carece de warehouse_scope_clause | `BACKEND_LIMITATION` | No certificar aislamiento de cola |
+| R4-BE-02 | Crear SO no demuestra autorización del warehouse_id recibido ni validación de item activo | `UNVERIFIED_CONTRACT` | No tratar selector/UI como seguridad |
+| R4-BE-03 | PUT cabecera, PATCH address, líneas y cancelación no muestran warehouse scope en handler | `BACKEND_LIMITATION` | No certificar mutación cross-warehouse |
+| R4-BE-04 | Creación reserva parcialmente en transacción y devuelve detalle | `SUPPORTED` | Mostrar cantidades asignadas del servidor |
+| R4-FE-01 | Listado Svelte no protege contra carga concurrente/obsoleta | `FRONTEND_DEFECT` | Añadir epoch/cancelación lógica y pruebas |
+| R4-FE-02 | Apertura de detalle Svelte puede ser sobrescrita por respuesta antigua | `FRONTEND_DEFECT` | Añadir request sequence y pruebas |
+| R4-FE-03 | El estado create descarta el detalle devuelto por POST | `FRONTEND_DEFECT` de confirmación UX | Conservar resultado del servidor y asignaciones |
+| R4-BE-05 | Customers no tiene CRUD canónico demostrado | `BACKEND_LIMITATION` | Read-only |
+| R4-BE-06 | No se ha demostrado assessment de Fraud para el detalle SO | `UNVERIFIED_CONTRACT` | No inventar score/decisión |
+
+### 7.4 Próximo bloque de implementación
+
+1. Corregir R4-FE-01 y R4-FE-02 en `salesOrdersState.svelte.ts`; pruebas de estado para cambios rápidos de filtro/warehouse y aperturas consecutivas.
+2. Preservar el detalle creado devuelto por POST, verificando cómo la pantalla presenta las cantidades `quantity_allocated` y las líneas de faltante.
+3. Completar auditoría de Fraud, historial/audit-history y cancelación/liberación de reservas; verificar cada endpoint y respuesta antes de habilitar acciones.
+4. Reconciliar Backorders con React: tabs, orden, cantidades, open PO derivado, estados, cancelación y recarga posterior.
+5. No cerrar R4 hasta que los gaps backend de warehouse scope estén corregidos fuera de este alcance o aceptados formalmente como bloqueo explícito. Una guard de UI no satisface la aceptación de seguridad.
