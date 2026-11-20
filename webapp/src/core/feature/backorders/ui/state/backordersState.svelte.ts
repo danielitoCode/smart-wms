@@ -14,6 +14,7 @@ export function createBackordersState() {
   let auditPages = $state(1);
   let auditTotal = $state(0);
   let auditLoading = $state(false);
+  let auditError = $state<string | null>(null);
   let tab = $state<BackorderQueueTab>('waiting');
   let loading = $state(false);
   let detailLoading = $state(false);
@@ -33,6 +34,7 @@ export function createBackordersState() {
     auditEntries = [];
     detailLoading = false;
     auditLoading = false;
+    auditError = null;
     rows = [];
     error = null;
     tab = nextTab;
@@ -60,6 +62,7 @@ export function createBackordersState() {
     auditPages = 1;
     auditTotal = 0;
     auditLoading = false;
+    auditError = null;
     try {
       const result = await dependencies.detail.execute(backorderId);
       if (epoch === detailEpoch) detail = result;
@@ -85,7 +88,7 @@ export function createBackordersState() {
       auditTotal = result.total;
       return true;
     } catch (cause) {
-      if (epoch === auditEpoch) detailError = toUserMessage(cause, 'No se pudo cargar el historial del backorder');
+      if (epoch === auditEpoch) auditError = toUserMessage(cause, 'No se pudo cargar el historial del backorder');
       return false;
     } finally {
       if (epoch === auditEpoch) auditLoading = false;
@@ -120,6 +123,7 @@ export function createBackordersState() {
     get auditPages() { return auditPages; },
     get auditTotal() { return auditTotal; },
     get auditLoading() { return auditLoading; },
+    get auditError() { return auditError; },
     get tab() { return tab; },
     get loading() { return loading; },
     get detailLoading() { return detailLoading; },
