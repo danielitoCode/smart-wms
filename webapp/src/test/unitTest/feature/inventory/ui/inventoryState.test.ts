@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
 	listBins: { execute: vi.fn() },
 	lookupOperationalBin: { execute: vi.fn() }
 }));
-const selection = { warehouseId: 1, generation: 0 };
+const selection = { warehouseId: 1, generation: 0, requireWarehouseId: () => selection.warehouseId };
 
 vi.mock('svelte', () => ({ getContext: () => selection }));
 vi.mock('../../../../../core/feature/inventory/di/inventory.dependencies', () => ({
