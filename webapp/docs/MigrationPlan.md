@@ -239,7 +239,7 @@ Siguen siendo criterios de R0 únicamente los pendientes del frontend: correspon
 ### R1 — Preparar catálogo y estructura física del almacén
 **Trazabilidad:** F1 Items, Bins, Zones, Warehouses; partes de F2 Inventory.
 
-**Estado:** `VERIFIED` para el alcance frontend de R1 (2026-11-20). La matriz completa y las evidencias del workflow Webapp CI sobre el HEAD `812837b1d62fc1f73d65b6f2d4d46f1b940c80e2` están registradas en [R1-Catalog-Warehouse-Structure-Audit.md](./R1-Catalog-Warehouse-Structure-Audit.md). Las limitaciones Flask de warehouse scope Zones/Bins y capacidad física permanecen documentadas como `BACKEND_LIMITATION`; no se presentan como capacidades resueltas ni bloquean el DoD frontend, conforme a la política de alcance de esta migración.
+**Estado:** `VERIFIED` para el alcance frontend de R1 (2026-11-20). La evidencia definitiva es Webapp CI [run 44654858421 — SUCCESS](https://github.com/danielitoCode/smart-wms/actions/runs/44654858421), sobre HEAD `bb78f8615e6b5205758b01f7c35f2fc19f9c4213`; la matriz, excepciones y cierre están en [R1-Catalog-Warehouse-Structure-Audit.md](./R1-Catalog-Warehouse-Structure-Audit.md). Las limitaciones Flask de warehouse scope Zones/Bins y capacidad física permanecen documentadas como `BACKEND_LIMITATION`; no se presentan como capacidades resueltas ni bloquean el DoD frontend, conforme a la política de alcance de esta migración.
 
 **Objetivo:** tener los datos maestros y ubicaciones necesarios antes de mover mercancía.
 
@@ -307,6 +307,8 @@ Aceptación:
 
 ### R3 — Consultar stock, localizar y ajustar inventario
 **Trazabilidad:** F2 Inventory, Lookup, Adjustments, Bins, Audit.
+
+**Estado:** `IN_PROGRESS` (2026-11-20). Auditoría inicial de contratos Flask, paridad React y estado SvelteKit en [R3-Inventory-Stock-Lookup-Adjustments-Audit.md](./R3-Inventory-Stock-Lookup-Adjustments-Audit.md). Se han identificado gaps de warehouse scope en el listado de inventario, ausencia de preview de ajuste y falta de un ledger completo; el ajuste directo debe permanecer deshabilitado en UI hasta contar con preview autoritativo. No se modifica Flask.
 
 Recorrido:
 1. Resolver almacén y permiso de lectura.
