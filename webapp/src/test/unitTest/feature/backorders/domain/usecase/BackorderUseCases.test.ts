@@ -166,14 +166,14 @@ describe('CancelBackorderUseCase', () => {
   it('rejects every state outside the backend cancellation lifecycle', async () => {
     for (const status of ['CANCELLED', 'REFUNDED', 'SHIPPED', 'FRAUD_REVIEW'] as const) {
       const repo = repository(makeOrder({ status }));
-      await expect(new CancelBackorderUseCase(repo).execute(41, 'other')).rejects.toThrow(status);
+      await expect(new CancelBackorderUseCase(repo).execute(41, 'other', 3)).rejects.toThrow(status);
       expect(repo.cancel).not.toHaveBeenCalled();
     }
   });
 
   it('does not issue a second cancellation after the first request changed the status', async () => {
     const repo = repository(makeOrder({ status: 'CANCELLED' }));
-    await expect(new CancelBackorderUseCase(repo).execute(41, 'found')).rejects.toThrow(/CANCELLED/);
+    await expect(new CancelBackorderUseCase(repo).execute(41, 'found', 3)).rejects.toThrow(/CANCELLED/);
     expect(repo.cancel).not.toHaveBeenCalled();
   });
 });
