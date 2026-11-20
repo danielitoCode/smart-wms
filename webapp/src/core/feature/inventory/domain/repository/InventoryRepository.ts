@@ -1,4 +1,4 @@
-import type { ItemBarcodeLookupDto } from '../../data/dto/InventoryDto';
+import type { ItemBarcodeLookup } from '../entity/ItemBarcodeLookup';
 import type { InventoryPage, InventoryQuery } from '../entity/InventoryStock';
 import type {
 	CycleCountDetail,
@@ -11,7 +11,7 @@ import type {
 export interface InventoryRepository {
 	/** GET /api/admin/inventory */
 	getOverview(params?: InventoryQuery): Promise<InventoryPage>;
-	lookupBarcode(barcode: string): Promise<ItemBarcodeLookupDto>;
+	lookupBarcode(barcode: string): Promise<ItemBarcodeLookup>;
 	/** Uses the same endpoint's item_id filter; no parallel item-stock API is assumed. */
 	getItemInventory(itemId: number, params?: Omit<InventoryQuery, 'itemId'>): Promise<InventoryPage>;
 	createCycleCounts(warehouseId: number, binIds: number[]): Promise<CycleCountSummary[]>;
