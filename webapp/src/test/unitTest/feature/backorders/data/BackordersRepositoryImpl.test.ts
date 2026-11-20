@@ -34,6 +34,28 @@ describe('BackordersRepositoryImpl', () => {
     expect(detail.totalQuantityResolved).toBe(1);
   });
 
+  it('maps paginated sales-order audit history without changing event details', async () => {
+    const remote = {
+      auditHistory: vi.fn().mockResolvedValue({
+        entries: [{
+          log_id: 7, action_type: 'CANCEL', username: 'operator', warehouse_id: 3,
+          details: { pre_status: 'WAITING_STOCK' }, created_at: '2026-11-19T10:00:00Z'
+        }],
+        total: 1, page: 1, per_page: 20, pages: 1
+      })
+    } as unknown as BackordersRemoteDataSource;
+    const repository = new BackordersRepositoryImpl(remote, {} as SalesOrderRepository);
+    const history = await repository.auditHistory(41, 1);
+    expect(remote.auditHistory).toHaveBeenCalledWith(41, 1);
+    expect(history).toEqual({
+      entries: [{
+        logId: 7, actionType: 'CANCEL', username: 'operator', warehouseId: 3,
+        details: { pre_status: 'WAITING_STOCK' }, createdAt: '2026-11-19T10:00:00Z'
+      }],
+      page: 1, perPage: 20, total: 1, pages: 1
+    });
+  });
+
   it('does not request a parent when sales-order detail has no parent id', async () => {
     const posOrder = { ...backorder, parentSoId: null, orderType: 'sale' } as SalesOrder;
     const salesOrders = { getById: vi.fn().mockResolvedValue(posOrder) } as unknown as SalesOrderRepository;
