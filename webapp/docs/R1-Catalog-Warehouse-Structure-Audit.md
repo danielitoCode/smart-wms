@@ -9,7 +9,7 @@ HEAD auditado inicialmente: `a747e53572fd8f834d314fd61d518cc3f5512627` (revisió
 
 R1 parte de implementaciones existentes, no de módulos vacíos. Svelte ya contiene capas Domain/Data/UI y pruebas para Items, Warehouses, Zones y Bins. La prioridad es verificar paridad y corregir contratos/estados/aislamiento, no duplicar features.
 
-Estado de esta auditoría: **contratos principales inspeccionados; R1 todavía no certificado**. La inspección de código fuente Flask no equivale a ejecutar pruebas backend ni autoriza cambios en Flask.
+Estado de esta auditoría: **VERIFIED — alcance frontend R1 (2026-11-20)**. La certificación se apoya en el workflow Webapp CI ejecutado sobre el HEAD definitivo indicado en la sección 9. Las limitaciones server-side se conservan como `BACKEND_LIMITATION`; no se afirma que estén resueltas.
 
 ## 2. Contratos Flask verificados
 
@@ -93,21 +93,21 @@ La paridad debe incluir los flujos y errores, no solo la existencia de pantallas
 | Capacidades físicas de bin no están soportadas por los schemas/rutas Flask inspeccionados | BACKEND_LIMITATION | Retirar controles/DTO de escritura del frontend; no simular persistencia; reabrir cuando exista contrato verificable |
 | UOM y compatibilidad Item-Bin no están demostrados | BACKEND_LIMITATION / UNVERIFIED_CONTRACT | No implementar reglas ficticias ni bloquear por datos ausentes |
 
-## 6. Próximas tareas frontend para cerrar R1
+## 6. Tareas frontend de cierre — completadas
 
-1. Completar comparación campo por campo entre pantallas React y Svelte, incluidos formularios, filtros, detalle, confirmaciones, CSV y estados de error.
-2. Auditar `WarehouseWorkspaceScreen`, sus estados y repositorios para garantizar que todas las lecturas y mutaciones de bins/zones llevan el almacén activo y que se descartan respuestas obsoletas al cambiarlo.
-3. Revisar Item detail para que el inventario global se identifique como global o se limite a una vista explícitamente global; nunca inferir pertenencia al almacén activo.
-4. Alinear DTO/mappers estrictamente con payloads reales: eliminar tolerancias a formatos alternativos no usados por Flask cuando no tengan consumidor contractual.
-5. Probar paginación y filtros reales, errores de duplicados, 400/404/409, permisos separados `items`, `warehouses`, `zones`, `bins`, descarte de respuestas cruzadas y bloqueo de mutaciones fuera del contexto activo. El aislamiento de seguridad server-side de Zones/Bins permanece bloqueado por `BACKEND_LIMITATION`.
-6. No exponer capacidad física como editable/persistente: Flask no la acepta ni devuelve. Mantener la ocupación calculada separada de capacidades futuras; registrar como `BACKEND_LIMITATION` hasta que exista contrato server-side.
-7. Ejecutar exclusivamente check, build y suites frontend de `webapp/`; registrar HEAD y resultados.
+1. Comparación de las pantallas Items, Warehouses, Zones y Bins frente a React en los recorridos y contratos soportados; formularios, filtros, detalle, confirmaciones, CSV y errores.
+2. Auditoría de `WarehouseWorkspaceScreen`, estado y repositorios: contexto de almacén activo, invalidación de solicitudes/respuestas obsoletas y protección de mutaciones.
+3. Detalle de Items identifica inventario como global; no lo atribuye al almacén activo.
+4. DTO/mappers y payloads se ajustan a los schemas Flask inspeccionados; capacidades físicas no soportadas se retiraron de escritura y se comunican como no disponibles.
+5. Matriz de pruebas cubre paginación/filtros, duplicados, errores 400/404/409, grants independientes `items`, `warehouses`, `zones`, `bins`, contexto y regresión. Se añadió una prueba explícita de navegación con solo el grant `bins`.
+6. Exportación CSV recorre todas las páginas y usa columnas respaldadas por Flask.
+7. Webapp CI completo, incluida regresión y coverage by feature paths, ejecutado sobre el HEAD definitivo; evidencia en la sección 9.
 
 ## 7. Criterio de cierre R1
 
-R1 no se cierra hasta demostrar paridad React donde Flask soporta la operación, contratos DTO/mappers correctos, filtros/paginación, guards de permisos, aislamiento de estado y de presentación por almacén en frontend, tratamiento explícito del catálogo global de Items, errores de dependencias y pruebas frontend de regresión. La autorización/aislamiento server-side de las rutas administrativas Zones/Bins y la persistencia de capacidades físicas son `BACKEND_LIMITATION`; no pueden certificarse ni resolverse desde esta migración frontend.
+R1 queda `VERIFIED` para frontend: paridad donde Flask soporta la operación, DTO/mappers, filtros/paginación, grants, aislamiento de estado/presentación, catálogo global de Items, errores de dependencias y regresión frontend han sido verificados. La autorización/aislamiento server-side de Zones/Bins y la persistencia de capacidades físicas siguen siendo `BACKEND_LIMITATION`; no se certifican como resueltas ni se implementan en esta migración.
 
-## 8. Verificación de seguimiento — 2026-11-19
+## 8. Verificación de seguimiento — 2026-11-19 (histórica; sustituida por sección 9)
 
 **HEAD de implementación verificado:** `eb9500a98c7315ae9ecd8a70df2c5eeb81b64289`  
 **Workflow Webapp CI:** https://github.com/danielitoCode/smart-wms/actions/runs/44612712940
@@ -155,3 +155,56 @@ Por esos fallos, el workflow marcó el job como failure y omitió Full regressio
 
 **Decisión de cierre:** Items queda verificado en frontend. La auditoría/corrección frontend de Warehouses, Zones y Bins queda validada por las suites ejecutadas, pero R1 no se certifica globalmente mientras persistan el gate de integración R0 y las limitaciones server-side de warehouse scope y capacidades físicas. No se ha modificado Flask.
 
+
+
+## 9. Cierre R1 VERIFIED — matriz final (2026-11-20)
+
+<badge color="success">VERIFIED — frontend</badge>
+
+**Rama:** `svelte-webapp`  
+**HEAD definitivo de implementación:** `812837b1d62fc1f73d65b6f2d4d46f1b940c80e2`  
+**Workflow:** [Webapp CI — ejecución 44652143070](https://github.com/danielitoCode/smart-wms/actions/runs/44652143070)  
+**Resultado del job:** SUCCESS. Node.js 26; check, build, todas las suites, regresión completa y coverage by feature paths pasaron.
+
+### Matriz por capas y features
+
+Items y Warehouses tienen suites dedicadas en las cuatro capas; Zones y Bins comparten la feature `warehouses` y sus casos de uso/estado/pantallas, por lo que se prueban en los mismos archivos de esa feature, no en módulos duplicados.
+
+| Capa / suite CI | Evidencia específica R1 | Resultado |
+|---|---|---|
+| Domain | Items: Create/List/Search; Warehouses: context/list/detail; Zones: ZoneContext/ListZones; Bins: ListBins/BinLookup y reglas de campos soportados | PASS |
+| Application | Casos de uso de Items y WarehouseManagement (CRUD, Zones, Bins, lookup) | PASS |
+| Data / Infrastructure | ItemMapper/Repository; Warehouse/Zone mappers; WarehouseRemoteDataSource/Repository; BinLookup datasource/repository; HTTP contracts | PASS |
+| UI / Presentation | ItemsScreen/itemsState; WarehouseDetailState/Screen; Workspace; WarehousesScreen; warehouse selection; navegación de grants independientes | PASS |
+| Integration | ItemsApiIntegration, PreferredBinsApiIntegration y suite completa, incluida AuthHttpIntegration | 24/24 PASS |
+| Full regression | Todas las pruebas de `webapp` | 841/841 PASS |
+
+### Conteos globales por suite
+
+| Suite | Archivos | Pruebas | Resultado |
+|---|---:|---:|---|
+| Domain | 82 | 337 | PASS |
+| Application | 57 | 240 | PASS |
+| Infrastructure / Data | 68 | 274 | PASS |
+| UI / Presentation | 40 | 206 | PASS |
+| i18n | 1 | 5 | PASS |
+| Integration | 5 | 24 | PASS |
+| Full regression | 195 | 841 | PASS |
+| Coverage by feature paths | — | comando completado | PASS |
+
+Los conteos por suite pueden solaparse porque los scripts ejecutan conjuntos de pruebas distintos; `Full regression` representa la ejecución unificada sin duplicación.
+
+### Correcciones de gate incluidas en el HEAD
+
+- Se alinearon dos pruebas de autenticación con el contrato Flask real: no se intenta `/refresh` después de un 401 de `/me` porque el endpoint refresh también exige `require_auth`; el login de una cuenta inactiva se rechaza con 401 antes de `/me`.
+- La navegación de Bins exige solo el grant `bins`, no `bins + zones`. Se añadió prueba de usuario con grant `bins` únicamente.
+- Typecheck y build se ejecutaron después de estas correcciones, no solo antes de ellas.
+
+### Excepciones conocidas — no bloquean el DoD frontend
+
+- **BACKEND_LIMITATION:** las rutas administrativas Zones/Bins inspeccionadas no aplican warehouse scope server-side de forma consistente. Las protecciones de UI no sustituyen la autorización del servidor.
+- **BACKEND_LIMITATION:** Flask no acepta ni devuelve capacidades físicas de bins (`max_weight_lbs`, `max_volume_cuft`); la UI comunica que no hay validación física disponible.
+- **BACKEND_LIMITATION:** el inventario de detalle de Items es global y no se atribuye a un almacén seleccionado.
+- **Fuera del DoD:** workflows/suites backend y gitleaks del repositorio completo. No se modificó Flask ni se usaron resultados backend para certificar R1.
+
+**Declaración:** R1 está `VERIFIED` en el alcance frontend definido por `MigrationPlan.md`. R0 no se declara globalmente cerrado; los recorridos restantes conservan su propio gate.
