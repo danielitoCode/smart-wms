@@ -13,6 +13,8 @@
 	let binInput = $state('');
 	let itemInput = $state('');
 	let searchInput = $state('');
+	let itemBarcodeInput = $state('');
+	let binBarcodeInput = $state('');
 	let sortKey = $state<'sku' | 'itemName' | 'binCode' | 'quantityOnHand' | 'quantityAvailable' | null>(null);
 	let sortDirection = $state<'asc' | 'desc'>('asc');
 
@@ -67,6 +69,7 @@
 		event.preventDefault();
 		const nextWarehouseId = warehouseInput.trim() ? Number(warehouseInput) : undefined;
 		if (nextWarehouseId !== vm.warehouseId) binInput = '';
+		vm.clearLookups();
 		vm.setWarehouseId(nextWarehouseId);
 		vm.setBinId(binInput.trim() ? Number(binInput) : undefined);
 		vm.setItemId(itemInput.trim() ? Number(itemInput) : undefined);
@@ -74,11 +77,22 @@
 		void vm.applyFilters();
 	}
 
+	function submitItemBarcode(event: SubmitEvent) {
+		event.preventDefault();
+		void vm.lookupBarcode(itemBarcodeInput);
+	}
+
+	function submitBinBarcode(event: SubmitEvent) {
+		event.preventDefault();
+		void vm.lookupBinContents(binBarcodeInput);
+}
+
 	function clearFilters() {
 		warehouseInput = '';
 		binInput = '';
 		itemInput = '';
 		searchInput = '';
+		vm.clearLookups();
 		vm.setWarehouseId(undefined);
 		vm.setBinId(undefined);
 		vm.setItemId(undefined);
@@ -125,6 +139,52 @@
 			<button type="button" class="secondary" onclick={clearFilters} disabled={vm.loading}>{i18n.t('Limpiar')}</button>
 		</div>
 	</form>
+
+	<div class="scanner-tools">
+		<form class="scanner-form" onsubmit={submitItemBarcode}>
+			<label for="item-barcode">{i18n.t('Buscar producto por código')}</label>
+			<div class="scanner-control">
+				<input id="item-barcode" bind:value={itemBarcodeInput} autocomplete="off" placeholder={i18n.t('Escanea SKU, UPC o alias')} disabled={vm.lookupLoading || vm.warehouseId == null} />
+				<button type="submit" class="accent" disabled={vm.lookupLoading || vm.warehouseId == null || !itemBarcodeInput.trim()}>{i18n.t('Buscar producto')}</button>
+			</div>
+		</form>
+		<form class="scanner-form" onsubmit={submitBinBarcode}>
+			<label for="bin-barcode">{i18n.t('Consultar contenido de ubicación')}</label>
+			<div class="scanner-control">
+				<input id="bin-barcode" bind:value={binBarcodeInput} autocomplete="off" placeholder={i18n.t('Escanea barcode o código de bin')} disabled={vm.lookupLoading || vm.warehouseId == null} />
+				<button type="submit" class="accent" disabled={vm.lookupLoading || vm.warehouseId == null || !binBarcodeInput.trim()}>{i18n.t('Consultar bin')}</button>
+			</div>
+		</form>
+	</div>
+	{#if vm.lookupLoading}
+		<UiLoader label={i18n.t('Consultando código…')} />
+	{/if}
+	{#if vm.lookupError}
+		<UiBanner tone="error" message={vm.lookupError} />
+	{/if}
+	{#if vm.itemBarcodeResult}
+		<div class="lookup-result" role="status">
+			<strong>{i18n.t('Producto localizado')}: {vm.itemBarcodeResult.sku}</strong>
+			<span>{vm.itemBarcodeResult.itemName} · {i18n.t('Almacén')}: {vm.warehouses.find(wh => wh.id === vm.warehouseId)?.code ?? vm.warehouseId}</span>
+			{#if vm.itemBarcodeResult.upc}<span class="mono">{i18n.t('UPC')}: {vm.itemBarcodeResult.upc}</span>{/if}
+		</div>
+	{/if}
+	{#if vm.binContentsResult}
+		<div class="lookup-result" role="status">
+			<strong>{i18n.t('Contenido de ubicación')}: {vm.binContentsResult.bin.code}</strong>
+			<span>{vm.binContentsResult.bin.zoneName ?? '—'} · {i18n.t('Almacén')}: {vm.warehouses.find(wh => wh.id === vm.binContentsResult?.bin.warehouseId)?.code ?? vm.binContentsResult.bin.warehouseId}</span>
+			<span>{vm.binContentsResult.items.length} {i18n.t('líneas de inventario')}</span>
+			{#if vm.binContentsResult.items.length > 0}
+				<div class="lookup-items">
+					{#each vm.binContentsResult.items as row}
+						<div><span class="mono">{row.sku}</span><span>{row.itemName}</span><span>{i18n.t('En mano')}: {row.quantityOnHand}</span><span>{i18n.t('Asignado')}: {row.quantityAllocated}</span><span>{i18n.t('Disponible')}: {row.quantityAvailable}</span><span>{row.lotNumber ?? '—'}</span></div>
+					{/each}
+				</div>
+			{:else}
+				<p>{i18n.t('La ubicación no contiene existencias.')}</p>
+			{/if}
+		</div>
+	{/if}
 
 	{#if vm.error}
 		<UiBanner tone="error" message={vm.error}>
@@ -192,6 +252,15 @@
 </section>
 
 <style>
+	.scanner-tools { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.8rem; margin:0 0 1rem; }
+	.scanner-form,.lookup-result { display:flex; flex-direction:column; gap:.5rem; padding:.9rem 1rem; border:1px solid var(--line); border-radius:12px; background:var(--card); }
+	.scanner-form label { color:var(--slate); font-size:.8rem; font-weight:600; }
+	.scanner-control { display:flex; gap:.5rem; }
+	.scanner-control input { min-width:0; flex:1; }
+	.lookup-result { margin:.8rem 0; color:var(--slate); font-size:.85rem; }
+	.lookup-result strong { color:var(--ink); }
+	.lookup-items { display:grid; gap:.4rem; margin-top:.35rem; }
+	.lookup-items > div { display:flex; flex-wrap:wrap; gap:.45rem 1rem; padding:.5rem; border:1px solid var(--line); border-radius:8px; }
 	.filters {
 		display: flex;
 		flex-wrap: wrap;
@@ -236,6 +305,8 @@
 	.status.ok { color: var(--success, #24734b); background: color-mix(in srgb, var(--success, #24734b) 12%, transparent); }
 	.pagination { justify-content: center; }
 	@media (max-width: 640px) {
+		.scanner-tools { grid-template-columns:1fr; }
+		.scanner-control { flex-direction:column; }
 		.filters label { flex: 1 1 100%; }
 		.filter-actions { width: 100%; }
 	}
