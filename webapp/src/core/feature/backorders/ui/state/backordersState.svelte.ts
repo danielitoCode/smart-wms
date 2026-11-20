@@ -79,6 +79,7 @@ export function createBackordersState() {
     if (!detail || detail.order.salesOrderId !== id) return false;
     const epoch = ++auditEpoch;
     auditLoading = true;
+    auditError = null;
     try {
       const result = await dependencies.auditHistory.execute(id, requestedPage);
       if (epoch !== auditEpoch || detail?.order.salesOrderId !== id) return false;
