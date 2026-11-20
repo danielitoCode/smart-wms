@@ -4,7 +4,7 @@ import { canAccessDataSection, getDataLandingPath } from '../../../../../core/fe
 describe('data navigation grants', () => {
 	it('allows the bins section with the bins grant alone', () => {
 		expect(canAccessDataSection('bins', ['bins'], false)).toBe(true);
-		expect(canAccessDataSection('bins', ['bins'], false)).toBe(true);
+		expect(canAccessDataSection('bins', [], true)).toBe(true);
 	});
 
 	it('does not require bins grant to expose zones, or zones grant to expose bins', () => {
