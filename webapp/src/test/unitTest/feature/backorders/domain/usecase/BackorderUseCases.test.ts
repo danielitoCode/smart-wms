@@ -36,7 +36,8 @@ function repository(order = makeOrder(), parentSalesOrder: SalesOrder | null = o
     getDetail: vi.fn().mockResolvedValue({
       order, parentSalesOrder, lines: [], totalQuantityPending: 0, totalQuantityResolved: 0
     }),
-    cancel: vi.fn().mockResolvedValue(undefined)
+    cancel: vi.fn().mockResolvedValue(undefined),
+    auditHistory: vi.fn().mockResolvedValue({ entries: [], page: 1, perPage: 20, total: 0, pages: 1 })
   } as unknown as BackordersRepository & {
     list: ReturnType<typeof vi.fn>;
     getDetail: ReturnType<typeof vi.fn>;
@@ -107,22 +108,43 @@ describe('GetBackorderDetailUseCase', () => {
 });
 
 describe('CancelBackorderUseCase', () => {
+  it('validates and retrieves paginated audit history', async () => {
+    const repo = repository();
+    const useCase = new (await import('../../../../../../core/feature/backorders/domain/usecase/BackorderUseCases')).GetBackorderAuditHistoryUseCase(repo);
+    await useCase.execute(41, 2);
+    expect(repo.auditHistory).toHaveBeenCalledWith(41, 2);
+    expect(() => useCase.execute(0, 1)).toThrow(/Pedido no válido/);
+    expect(() => useCase.execute(41, 0)).toThrow(/Página de historial/);
+  });
+
   it('cancels only a child backorder with a resolved parent and valid reason', async () => {
     const repo = repository();
-    await new CancelBackorderUseCase(repo).execute(41, 'found');
+    await new CancelBackorderUseCase(repo).execute(41, 'found', 3);
     expect(repo.getDetail).toHaveBeenCalledWith(41);
     expect(repo.cancel).toHaveBeenCalledWith(41, 'found');
   });
 
   it('allows refund reason and keeps it distinct from ordinary cancellation', async () => {
     const repo = repository();
-    await new CancelBackorderUseCase(repo).execute(41, 'refunded');
+    await new CancelBackorderUseCase(repo).execute(41, 'refunded', 3);
     expect(repo.cancel).toHaveBeenCalledWith(41, 'refunded');
+  });
+
+  it('rejects cancellation when the fetched order belongs to another warehouse', async () => {
+    const repo = repository(makeOrder({ warehouseId: 4 }));
+    await expect(new CancelBackorderUseCase(repo).execute(41, 'other', 3)).rejects.toThrow(/no pertenece al almacén/);
+    expect(repo.cancel).not.toHaveBeenCalled();
+  });
+
+  it('rejects cancellation without a valid selected warehouse', async () => {
+    const repo = repository();
+    await expect(new CancelBackorderUseCase(repo).execute(41, 'other', 0)).rejects.toThrow(/almacén autorizado/);
+    expect(repo.getDetail).not.toHaveBeenCalled();
   });
 
   it('rejects a POS shortage row that is not order_type=backorder with a parent', async () => {
     const repo = repository(makeOrder({ orderType: 'sale', parentSoId: null }));
-    await expect(new CancelBackorderUseCase(repo).execute(41, 'other')).rejects.toThrow(/no es un backorder/);
+    await expect(new CancelBackorderUseCase(repo).execute(41, 'other', 3)).rejects.toThrow(/no es un backorder/);
     expect(repo.cancel).not.toHaveBeenCalled();
   });
 
