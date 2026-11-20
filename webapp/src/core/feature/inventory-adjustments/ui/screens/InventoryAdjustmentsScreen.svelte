@@ -17,13 +17,7 @@
 	const selection = getContext<{ warehouseId: number | null }>('warehouseSelection');
 	const vm = createInventoryAdjustmentsState();
 	const approvals = $derived(page.params.feature === 'count-approvals');
-	let editorOpen = $state(false);
 	let detail = $state<InventoryAdjustment | null>(null);
-	let itemId = $state('');
-	let binId = $state('');
-	let quantity = $state('1');
-	let reason = $state('');
-	let type = $state<'ADD' | 'REMOVE'>('ADD');
 	let status = $state<InventoryAdjustmentStatus | 'ALL'>('ALL');
 
 	$effect(() => {
@@ -47,24 +41,6 @@
 
 	async function openDetail(row: InventoryAdjustment) {
 		detail = await vm.getDetail(row.adjustmentId, selection?.warehouseId ?? null);
-	}
-
-	async function create() {
-		const input: CreateInventoryAdjustment = {
-			itemId: Number(itemId),
-			binId: Number(binId),
-			warehouseId: selection?.warehouseId ?? 0,
-			type,
-			quantity: Number(quantity),
-			reason
-		};
-		if (await vm.createDirect(input, selection?.warehouseId ?? null)) {
-			editorOpen = false;
-			itemId = '';
-			binId = '';
-			quantity = '1';
-			reason = '';
-		}
 	}
 
 	async function decide(row: InventoryAdjustment, action: 'approve' | 'reject') {
@@ -108,8 +84,8 @@
 				: i18n.t('Consulta el historial por estado y registra correcciones directas.')}</p>
 		</div>
 		{#if !approvals}
-			<button class="primary" onclick={() => (editorOpen = !editorOpen)}>
-				{editorOpen ? i18n.t('Cerrar formulario') : i18n.t('Nuevo ajuste directo')}
+			<button class="primary" type="button" disabled title={i18n.t('Se requiere preview autoritativo del servidor')}>
+				{i18n.t('Ajuste directo no disponible')}
 			</button>
 		{/if}
 	</header>
@@ -120,44 +96,12 @@
 	{#if approvals && !canReview()}
 		<p class="error" role="alert">{i18n.t('Necesitas el permiso Ajustes para consultar y decidir aprobaciones.')}</p>
 	{/if}
-	{#if approvals && !canReview()}
-		<p class="error" role="alert">{i18n.t('Necesitas el permiso Ajustes para consultar y decidir aprobaciones.')}</p>
-	{/if}
-	{#if approvals && !canReview()}
-		<p class="error" role="alert">{i18n.t('Necesitas el permiso Ajustes para consultar y decidir aprobaciones.')}</p>
-	{/if}
 
-	{#if editorOpen && !approvals}
-		<form class="editor" onsubmit={(event) => { event.preventDefault(); void create(); }}>
-			<div class="editor-heading">
-				<h2>{i18n.t('Registrar ajuste directo')}</h2>
-				<p>{i18n.t('Este ajuste se aplicará inmediatamente al inventario y quedará auditado.')}</p>
-			</div>
-			<label>{i18n.t('ID de producto')}
-				<input type="number" min="1" required bind:value={itemId} />
-			</label>
-			<label>{i18n.t('ID de ubicación')}
-				<input type="number" min="1" required bind:value={binId} />
-			</label>
-			<label>{i18n.t('Tipo de ajuste')}
-				<select bind:value={type}>
-					<option value="ADD">{i18n.t('Añadir existencias')}</option>
-					<option value="REMOVE">{i18n.t('Retirar existencias')}</option>
-				</select>
-			</label>
-			<label>{i18n.t('Cantidad')}
-				<input type="number" min="1" max="1000000" step="1" required bind:value={quantity} />
-			</label>
-			<label class="wide">{i18n.t('Motivo / justificación')}
-				<textarea required maxlength="500" rows="3" bind:value={reason}></textarea>
-			</label>
-			<div class="form-actions">
-				<button type="button" onclick={() => (editorOpen = false)}>{i18n.t('Cancelar')}</button>
-				<button class="primary" disabled={vm.saving || !selection?.warehouseId}>
-					{vm.saving ? i18n.t('Aplicando…') : i18n.t('Confirmar ajuste')}
-				</button>
-			</div>
-		</form>
+	{#if !approvals}
+		<div class="adjustment-notice" role="status">
+			<strong>{i18n.t('Ajuste directo temporalmente deshabilitado')}</strong>
+			<p>{i18n.t('El servidor aplica el ajuste inmediatamente y no ofrece una operación de preview. Para evitar cambios sin revisar su impacto y sin una confirmación respaldada por el servidor, esta acción permanecerá deshabilitada. El historial y la revisión de ajustes de conteo siguen disponibles.')}</p>
+		</div>
 	{/if}
 
 	<div class="toolbar">
@@ -258,6 +202,8 @@
 
 <style>
 	.page{max-width:86rem;margin:1.4rem auto;padding:0 1.1rem;color:var(--ink)}
+	.adjustment-notice{margin:1rem 0 1.4rem;padding:1rem 1.1rem;border:1px solid var(--warning);border-radius:10px;background:color-mix(in srgb,var(--warning) 8%,var(--card));color:var(--ink)}
+	.adjustment-notice p{margin:.45rem 0 0;color:var(--slate);font-size:.86rem;line-height:1.5}
 	.page-header,.toolbar,.detail-header{display:flex;justify-content:space-between;align-items:center;gap:1rem}
 	.page-header{margin-bottom:1.4rem}.page-header h1{margin:0;font:700 1.65rem var(--disp)}.page-header p,.toolbar p,.editor-heading p{margin:.35rem 0 0;color:var(--slate);font-size:.88rem}
 	.eyebrow{font:600 .65rem var(--disp);letter-spacing:.14em;color:var(--slate)}
