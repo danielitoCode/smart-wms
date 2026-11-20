@@ -17,6 +17,12 @@ export class AuthRepositoryImpl implements AuthRepository {
 		await this.datasource.login(credentials.username, credentials.password);
 		const user = AuthMapper.toUser(await this.datasource.me());
 		if (epoch !== this.sessionEpoch) throw new Error('La sesión cambió durante el inicio de sesión.');
+		// Never cache an authenticated identity that Flask reports as inactive.
+		// Login can establish the cookie before /me returns the full account state.
+		if (!user.isActive) {
+			authSession.clear();
+			throw new Error('Usuario inactivo. Contacta al administrador.');
+		}
 		this.storeSessionUser(user);
 		return { user };
 	}
