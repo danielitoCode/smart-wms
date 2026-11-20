@@ -1,5 +1,5 @@
 import type {
-  Backorder, BackorderDetail, BackorderQueueTab, CancelBackorderReason
+  Backorder, BackorderAuditHistoryPage, BackorderDetail, BackorderQueueTab, CancelBackorderReason
 } from '../../domain/entity/Backorder';
 import { projectBackorderLineProgress } from '../../domain/entity/Backorder';
 import type { BackordersRepository } from '../../domain/repository/BackordersRepository';
@@ -30,6 +30,24 @@ export class BackordersRepositoryImpl implements BackordersRepository {
       lines,
       totalQuantityPending: lines.reduce((total, line) => total + line.quantityPending, 0),
       totalQuantityResolved: lines.reduce((total, line) => total + line.quantityResolved, 0)
+    };
+  }
+
+  async auditHistory(backorderId: number, page: number): Promise<BackorderAuditHistoryPage> {
+    const result = await this.remote.auditHistory(backorderId, page);
+    return {
+      entries: (result.entries ?? []).map((entry) => ({
+        logId: entry.log_id,
+        actionType: entry.action_type,
+        username: entry.username,
+        warehouseId: entry.warehouse_id,
+        details: entry.details,
+        createdAt: entry.created_at
+      })),
+      page: result.page,
+      perPage: result.per_page,
+      total: result.total,
+      pages: result.pages
     };
   }
 
