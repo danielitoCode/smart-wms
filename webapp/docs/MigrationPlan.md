@@ -796,3 +796,33 @@ La creación conserva el detalle autoritativo devuelto por Flask, incluyendo las
 
 Corregir las carreras de listado/detalle y preservar el resultado de creación en Svelte; añadir pruebas de estado/UI. Después completar la auditoría de Fraud, historial y liberación/cancelación, y la reconciliación detallada de Backorders. No habilitar controles que dependan de autorización server-side ausente. R4 no puede declararse cerrado mientras el aislamiento cross-warehouse de lecturas/mutaciones siga sin garantía backend.
 
+
+
+## 16. R4 — reconciliación Backorders, cancelación, historial y Fraud (pasada 2)
+
+**Estado:** `IN_PROGRESS`; la reconciliación funcional se completó y la implementación frontend de historial/guardas se añadió. No cerrar R4 por la existencia de limitaciones de seguridad backend.
+
+### Implementado en `webapp/`
+
+- Backorders mantiene paridad con React en tabs `waiting` / `ready-to-ship`, estados, orden de antigüedad, cantidades por línea, fechas y PO abierto derivado. La PO se identifica por artículo/almacén y no se presenta como vínculo persistido al backorder.
+- La cancelación frontend vuelve a leer el detalle SO autoritativo y compara su warehouse ID con el almacén de la fila antes de permitir el POST. El use case verifica padre, almacén y estados permitidos; el state bloquea doble submit.
+- Se incorporó historial por SO mediante `GET /api/admin/sales-orders/{id}/audit-history`, con mapeo Domain/Data y paginación. La pantalla de detalle solo lo solicita/muestra para ADMIN o usuarios con grant `fraud` / `audit-log`.
+- Fraud se trata como revisión manual de pedidos en estado `FRAUD_REVIEW`. Se verificaron listado, detalle, memo con `expected_memo` y conflicto 409, push-to-queue con transición `FRAUD_REVIEW → OPEN`, y audit-history. No se crea ni muestra un score inexistente.
+- Se añadieron pruebas de contrato del datasource y casos de dominio para auditoría por pedido y warehouse guard.
+
+### Limitaciones backend que siguen bloqueando aceptación operativa completa
+
+1. `GET /api/admin/backorders` no aplica warehouse scope del usuario; `warehouse_id` es un filtro controlado por el cliente.
+2. `POST /api/admin/sales-orders/{id}/cancel-backorder` no verifica warehouse scope en el wrapper. La guarda frontend no impide llamadas directas.
+3. El wrapper actualiza `cancellation_reason` antes de que el servicio compartido obtenga su lock; el servicio evita una segunda transición, pero se necesita prueba/fix backend para evitar sobrescritura de motivo bajo llamadas concurrentes.
+4. El historial por pedido es audit log de la SO, no un ledger completo de movimientos de stock.
+5. No hay Fraud assessment/scoring contract; solo existe la bandeja de revisión manual y la transición a preparación.
+
+### Criterios de aceptación pendientes de verificación
+
+- Webapp typecheck, build, suites Domain/Application/Infrastructure/UI/i18n/Integration, regresión completa y coverage by feature paths en un único HEAD final.
+- Verificar CI por SHA exacto, no reutilizar el resultado de commits intermedios.
+- Pruebas backend/concurrencia para cross-warehouse Backorders GET/cancel y carrera de `cancellation_reason`; fuera del alcance frontend actual.
+- Revalidar los contratos de creación y demás mutaciones SO registrados en las secciones anteriores.
+
+La evidencia detallada y la matriz de R4 se mantienen en [R4-Sales-Orders-Backorders-Audit.md](./R4-Sales-Orders-Backorders-Audit.md).
