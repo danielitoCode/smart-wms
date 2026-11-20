@@ -4,7 +4,9 @@ import { BackordersRemoteDataSource } from '../../../../../core/feature/backorde
 
 function createApi() {
   return {
-    get: vi.fn().mockResolvedValue({ backorders: [] }),
+    get: vi.fn().mockImplementation((path: string) => path.includes('audit-history')
+      ? Promise.resolve({ entries: [], total: 0, page: 1, per_page: 20, pages: 1 })
+      : Promise.resolve({ backorders: [] })),
     post: vi.fn().mockResolvedValue({
       message: 'Backorder cancelled', bo_so_id: 41, cancellation_reason: 'refunded', audit_log_id: 8
     })
@@ -22,6 +24,12 @@ describe('BackordersRemoteDataSource', () => {
     const api = createApi();
     await new BackordersRemoteDataSource(api).list(null, 'ready-to-ship');
     expect(api.get).toHaveBeenCalledWith('/api/admin/backorders?tab=ready-to-ship');
+  });
+
+  it('requests paginated audit history through the warehouse-scoped sales-order endpoint', async () => {
+    const api = createApi();
+    await new BackordersRemoteDataSource(api).auditHistory(41, 2);
+    expect(api.get).toHaveBeenCalledWith('/api/admin/sales-orders/41/audit-history?page=2&per_page=20');
   });
 
   it('posts the backend cancellation reason to the dedicated backorder route', async () => {
