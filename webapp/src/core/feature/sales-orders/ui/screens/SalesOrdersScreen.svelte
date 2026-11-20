@@ -183,7 +183,12 @@
     const ok = await vm.create(createPayload());
     if (ok) {
       showCreate = false;
-      pushToast(i18n.t('Pedido creado correctamente.'), 'success');
+      if (vm.selected) {
+        beginEdit(vm.selected);
+        editMode = false;
+        void vm.loadRelated();
+      }
+      pushToast(i18n.t('Pedido creado. Se muestran las cantidades asignadas por el servidor.'), 'success');
     } else if (vm.error) pushToast(vm.error, 'error');
   }
 
@@ -230,8 +235,8 @@
 
   async function openOrder(orderId: number): Promise<void> {
     relatedTrail = [];
-    await vm.open(orderId);
-    if (vm.selected) {
+    const opened = await vm.open(orderId);
+    if (opened && vm.selected) {
       beginEdit(vm.selected);
       editMode = false;
       void vm.loadRelated();
@@ -774,16 +779,16 @@
       <section class="so-section">
         <h3>{i18n.t('Líneas')}</h3>
         <div class="so-table-wrap"><table>
-          <thead><tr><th>#</th><th>SKU</th><th>{i18n.t('Artículo')}</th><th>{i18n.t('Pedida')}</th><th>{i18n.t('Asignada')}</th><th>{i18n.t('Recogida')}</th><th>{i18n.t('Empacada')}</th><th>{i18n.t('Enviada')}</th><th>{i18n.t('Acciones')}</th></tr></thead>
+          <thead><tr><th>#</th><th>SKU</th><th>{i18n.t('Artículo')}</th><th>{i18n.t('Pedida')}</th><th>{i18n.t('Asignada')}</th><th>{i18n.t('Pendiente de asignar')}</th><th>{i18n.t('Recogida')}</th><th>{i18n.t('Empacada')}</th><th>{i18n.t('Enviada')}</th><th>{i18n.t('Acciones')}</th></tr></thead>
           <tbody>{#each order.lines as line (line.soLineId)}
             <tr>
               <td>{line.lineNumber ?? '—'}</td><td>{line.sku}</td><td>{line.itemName}</td>
               <td>{#if editMode && canEditLines(order)}<input class="so-qty" type="number" min={Math.max(1, line.quantityPicked)} max="1000000" value={lineQuantity[line.soLineId] ?? String(line.quantityOrdered)} oninput={(event) => lineQuantity[line.soLineId] = event.currentTarget.value} /><button type="button" onclick={() => void updateLine(line.soLineId)}>✓</button>{:else}{line.quantityOrdered}{/if}</td>
-              <td>{line.quantityAllocated}</td><td>{line.quantityPicked}</td><td>{line.quantityPacked}</td><td>{line.quantityShipped}</td>
+              <td>{line.quantityAllocated}</td><td>{Math.max(0, line.quantityOrdered - line.quantityAllocated)}</td><td>{line.quantityPicked}</td><td>{line.quantityPacked}</td><td>{line.quantityShipped}</td>
               <td>{#if editMode && canEditLines(order)}<button type="button" disabled={vm.saving || line.quantityAllocated >= line.quantityOrdered} onclick={() => void applyAllocation(line.soLineId, 1)} title={i18n.t('Reservar una unidad')}>+A</button><button type="button" disabled={vm.saving || line.quantityAllocated <= line.quantityPicked} onclick={() => void applyAllocation(line.soLineId, -1)} title={i18n.t('Liberar una unidad')}>−A</button><button class="so-danger" type="button" disabled={!canRemoveLine(order, line)} onclick={() => void removeLine(line.soLineId)}>×</button>{/if}<button type="button" onclick={() => void vm.loadAvailableBins(line.soLineId)}>{i18n.t('Bins')}</button></td>
             </tr>
             {#if vm.availableBinsByLine[line.soLineId]}
-              <tr><td colspan="9"><div class="so-bin-list">{#each vm.availableBinsByLine[line.soLineId] as bin}<span>{bin.binCode} · {bin.quantityAvailable}{bin.preferredPriority !== null ? ' ★' : ''}</span>{:else}<span>{i18n.t('No hay stock disponible en ubicaciones de este almacén.')}</span>{/each}</div></td></tr>
+              <tr><td colspan="10"><div class="so-bin-list">{#each vm.availableBinsByLine[line.soLineId] as bin}<span>{bin.binCode} · {bin.quantityAvailable}{bin.preferredPriority !== null ? ' ★' : ''}</span>{:else}<span>{i18n.t('No hay stock disponible en ubicaciones de este almacén.')}</span>{/each}</div></td></tr>
             {/if}
           {/each}</tbody>
         </table></div>
