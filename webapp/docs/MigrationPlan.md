@@ -784,6 +784,14 @@ R4 parte de módulos Svelte ya existentes en Sales Orders, Backorders y Customer
 - **FRONTEND_DEFECT:** `salesOrdersState.load()` descarta llamadas mientras ya está cargando y no invalida respuestas antiguas; `open(id)` tampoco protege frente a aperturas rápidas.
 - **FRONTEND_DEFECT de confirmación:** el estado de creación descarta el detalle autoritativo devuelto por POST y recarga el listado sin conservar la asignación real del servidor.
 
+### Implementación frontend completada — concurrencia y creación
+
+Se corrigieron las cargas concurrentes del listado y el detalle mediante secuencias de solicitud; las respuestas antiguas ya no reemplazan el resultado más reciente ni alteran el indicador de carga. También se invalida una apertura pendiente al cerrar el detalle y se protege la recarga del pedido seleccionado después de mutaciones.
+
+La creación conserva el detalle autoritativo devuelto por Flask, incluyendo las cantidades asignadas por la transacción. La UI abre ese pedido y presenta las columnas `Asignada` y `Pendiente de asignar`; esta última es solo la diferencia entre cantidad pedida y asignada, no una medida de stock disponible. Se añadieron pruebas de estado para carreras, cierre y creación con asignación parcial.
+
+**Pendiente de verificación:** Webapp CI del HEAD final, revisión de resultados y regresión. No cerrar R4.
+
 ### Siguiente ejecución
 
 Corregir las carreras de listado/detalle y preservar el resultado de creación en Svelte; añadir pruebas de estado/UI. Después completar la auditoría de Fraud, historial y liberación/cancelación, y la reconciliación detallada de Backorders. No habilitar controles que dependan de autorización server-side ausente. R4 no puede declararse cerrado mientras el aislamiento cross-warehouse de lecturas/mutaciones siga sin garantía backend.
