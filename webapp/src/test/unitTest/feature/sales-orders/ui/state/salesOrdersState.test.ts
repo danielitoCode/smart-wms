@@ -6,12 +6,12 @@ const deps = vi.hoisted(() => ({
   createSalesOrder: { execute: vi.fn() }
 }));
 
-vi.mock('../../../../../core/feature/sales-orders/di/sales-orders.dependencies', () => ({
+vi.mock('../../../../../../core/feature/sales-orders/di/sales-orders.dependencies', () => ({
   createSalesOrdersDependencies: () => deps
 }));
 
-import { createSalesOrdersState } from '../../../../../core/feature/sales-orders/ui/state/salesOrdersState.svelte';
-import type { SalesOrder, SalesOrderPage } from '../../../../../core/feature/sales-orders/domain/entity/SalesOrder';
+import { createSalesOrdersState } from '../../../../../../core/feature/sales-orders/ui/state/salesOrdersState.svelte';
+import type { SalesOrder, SalesOrderPage } from '../../../../../../core/feature/sales-orders/domain/entity/SalesOrder';
 
 const deferred = <T,>() => {
   let resolve!: (value: T) => void;
