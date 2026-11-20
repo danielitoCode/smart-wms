@@ -159,7 +159,7 @@ describe('CancelBackorderUseCase', () => {
     const cancelledParent = makeParent();
     cancelledParent.status = 'CANCELLED';
     const repo = repository(makeOrder({ status: 'WAITING_STOCK' }), cancelledParent);
-    await expect(new CancelBackorderUseCase(repo).execute(41, 'other')).rejects.toThrow(/pedido original ya está cancelado/);
+    await expect(new CancelBackorderUseCase(repo).execute(41, 'other', 3)).rejects.toThrow(/pedido original ya está cancelado/);
     expect(repo.cancel).not.toHaveBeenCalled();
   });
 
