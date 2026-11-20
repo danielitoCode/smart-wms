@@ -5,7 +5,8 @@ import type {
 	CycleCountDetailDto,
 	CycleCountSubmitLineDto,
 	CycleCountSubmitResponseDto,
-	InventoryOverviewDto
+	InventoryOverviewDto,
+	ItemBarcodeLookupDto
 } from '../dto/InventoryDto';
 
 export type InventoryRequestParams = {
@@ -30,6 +31,10 @@ export class InventoryRemoteDataSource {
 		query.set('per_page', String(params.perPage ?? 50));
 
 		return this.api.get<InventoryOverviewDto>(`/api/admin/inventory?${query.toString()}`);
+	}
+
+	lookupBarcode(barcode: string): Promise<ItemBarcodeLookupDto> {
+		return this.api.get<ItemBarcodeLookupDto>('/api/lookup/item/' + encodeURIComponent(barcode));
 	}
 
 	async createCycleCounts(warehouseId: number, binIds: number[]): Promise<CreateCycleCountResponseDto> {
