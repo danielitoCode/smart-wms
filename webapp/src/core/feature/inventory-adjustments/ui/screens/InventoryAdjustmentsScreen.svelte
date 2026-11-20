@@ -8,7 +8,6 @@
 	import { canPerform } from '../../../auth/domain/policy/AccessPolicy';
 	import { AdjustmentApprovalPolicy } from '../../domain/policy/AdjustmentApprovalPolicy';
 	import type {
-		CreateInventoryAdjustment,
 		InventoryAdjustment,
 		InventoryAdjustmentStatus
 	} from '../../domain/entity/InventoryAdjustment';
@@ -81,7 +80,7 @@
 			<h1>{approvals ? i18n.t('Revisión de ajustes') : i18n.t('Ajustes de inventario')}</h1>
 			<p>{approvals
 				? i18n.t('Revisa las diferencias pendientes antes de modificar las existencias.')
-				: i18n.t('Consulta el historial por estado y registra correcciones directas.')}</p>
+				: i18n.t('Consulta el historial de ajustes y las decisiones de conteo del almacén.')}</p>
 		</div>
 		{#if !approvals}
 			<button class="primary" type="button" disabled title={i18n.t('Se requiere preview autoritativo del servidor')}>
