@@ -66,29 +66,35 @@ export function createSalesOrdersState() {
   let availableBinsByLine = $state<Record<number, AvailableSalesOrderBin[]>>({});
   let loadingBinsByLine = $state<Record<number, boolean>>({});
   let binsRequestSequence = 0;
+  let listRequestSequence = 0;
+  let detailRequestSequence = 0;
   let binsRequestByLine: Record<number, number> = {};
 
   async function load(): Promise<boolean> {
-    if (loading) return false;
+    const requestId = ++listRequestSequence;
+    const params = {
+      status: status || undefined,
+      warehouseId: warehouseId ?? undefined,
+      q: search || undefined,
+      page,
+      perPage: 50,
+      excludePostFulfillment: true
+    };
     loading = true;
     error = null;
     try {
-      pageData = await deps.listSalesOrders.execute({
-        status: status || undefined,
-        warehouseId: warehouseId ?? undefined,
-        q: search || undefined,
-        page,
-        perPage: 50,
-        excludePostFulfillment: true
-      });
+      const result = await deps.listSalesOrders.execute(params);
+      if (requestId !== listRequestSequence) return false;
+      pageData = result;
       loadedOnce = true;
       return true;
     } catch (err) {
+      if (requestId !== listRequestSequence) return false;
       error = toUserMessage(err, 'No se pudieron cargar los pedidos de venta');
       pageData = emptyPage();
       return false;
     } finally {
-      loading = false;
+      if (requestId === listRequestSequence) loading = false;
     }
   }
 
@@ -120,8 +126,11 @@ export function createSalesOrdersState() {
     saving = true;
     error = null;
     try {
-      await deps.createSalesOrder.execute(toCreateInput(input));
-      selected = null;
+      const created = await deps.createSalesOrder.execute(toCreateInput(input));
+      // The POST response is the authoritative creation result, including
+      // the quantities Flask actually allocated inside its transaction.
+      detailRequestSequence += 1;
+      selected = created;
       page = 1;
       await load();
       return true;
@@ -134,16 +143,21 @@ export function createSalesOrdersState() {
   }
 
   async function open(id: number): Promise<boolean> {
+    const requestId = ++detailRequestSequence;
     error = null;
+    selected = null;
     relatedOrders = [];
     availableBinsByLine = {};
     loadingBinsByLine = {};
     binsRequestByLine = {};
     binsRequestSequence += 1;
     try {
-      selected = await deps.getSalesOrder.execute(id);
+      const result = await deps.getSalesOrder.execute(id);
+      if (requestId !== detailRequestSequence) return false;
+      selected = result;
       return true;
     } catch (err) {
+      if (requestId !== detailRequestSequence) return false;
       error = toUserMessage(err, 'No se pudo cargar el pedido');
       selected = null;
       return false;
@@ -151,6 +165,7 @@ export function createSalesOrdersState() {
   }
 
   function close(): void {
+    detailRequestSequence += 1;
     selected = null;
     relatedOrders = [];
     availableBinsByLine = {};
