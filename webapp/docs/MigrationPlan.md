@@ -717,3 +717,41 @@ La política observada de `allowed_functions`, el alcance real de `allowed_pages
 - Los tests/suites backend y el workflow de escaneo histórico de secretos no forman parte del DoD frontend R1. Sus resultados se registran aparte y no se usan para atribuir éxito o fallo a `webapp`.
 
 **Conclusión operativa:** R1 queda `VERIFIED` para frontend. R0 no se declara globalmente cerrado; los pendientes ajenos a R1 siguen bajo su propio gate. No se modificó Flask.
+
+
+## 14. Cierre R1 — verificación final en HEAD actualizado (2026-11-20)
+
+**Estado:** `VERIFIED` — alcance frontend SvelteKit.  
+**Rama:** `svelte-webapp`  
+**HEAD validado por CI:** `bb78f8615e6b5205758b01f7c35f2fc19f9c4213`  
+**Webapp CI:** [ejecución 44654858421 — SUCCESS](https://github.com/danielitoCode/smart-wms/actions/runs/44654858421)
+
+La ejecución Webapp CI correspondiente exactamente al HEAD indicado terminó correctamente. El job único `Typecheck · Build · Test` completó con éxito todos estos pasos:
+
+| Paso | Resultado |
+|---|---|
+| Setup Node.js / instalación / sincronización SvelteKit | PASS |
+| Typecheck (`svelte-check + TypeScript`) | PASS |
+| Build de producción (SvelteKit / Vite) | PASS |
+| Domain | PASS |
+| Application | PASS |
+| Infrastructure / Data | PASS |
+| UI / Presentation | PASS |
+| i18n | PASS |
+| Integration | PASS |
+| Full regression | PASS |
+| Coverage by feature paths | PASS |
+
+Esta ejecución posterior confirma la regresión frontend sobre el HEAD actual y sustituye como evidencia de cierre a la ejecución histórica de R1 registrada en la sección 13. No se trasladan conteos de pruebas de ejecuciones anteriores como si fueran mediciones de este run.
+
+### Separación de workflows no frontend
+
+En el mismo HEAD, el workflow independiente **Tests** (run [44654858367](https://github.com/danielitoCode/smart-wms/actions/runs/44654858367)) terminó en `FAILURE` en el paso `Run tests`, dentro del job Python/backend. Ese resultado se registra como incidencia del backend y queda fuera del DoD de migración SvelteKit, según el límite de responsabilidad de este plan. No se modifica Flask ni se declara que sus pruebas hayan pasado.
+
+El workflow independiente **gitleaks** (run [44654858470](https://github.com/danielitoCode/smart-wms/actions/runs/44654858470)) también terminó en `FAILURE`; es un control de secretos del repositorio, no una suite de pruebas SvelteKit. Se mantiene como revisión de seguridad separada y no se oculta ni se atribuye a la regresión funcional de R1.
+
+### Decisión
+
+R1 queda formalmente cerrado como `VERIFIED` para `webapp/`: el HEAD `bb78f8615e6b5205758b01f7c35f2fc19f9c4213` tiene Webapp CI verde, con check, build, suites por capas, integración, regresión global y coverage by feature paths completados. Los fallos Python/backend y gitleaks permanecen visibles como resultados independientes; no se consideran aprobados ni se usan para invalidar el resultado específico de Webapp CI.
+
+Se mantienen las limitaciones Flask ya documentadas en R1 (warehouse scope server-side de Zones/Bins, capacidades físicas de bins y alcance global del inventario de Items). La verificación frontend no certifica ni sustituye esas garantías backend. R0 no se declara globalmente cerrado.
