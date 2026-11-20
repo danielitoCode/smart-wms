@@ -37,118 +37,24 @@
 	];
 
 	const components = [
-		{
-			id: 'task-widget',
-			name: 'TaskWidget',
-			status: 'ready',
-			href: '/lab/task-widget',
-			description: 'Tarjeta expandible de tarea con progreso, subtasks, priority/status y assignees.'
-		},
-		{
-			id: 'hover-expand',
-			name: 'HoverExpand',
-			status: 'ready',
-			href: '/lab/hover-expand',
-			description: 'Franja de imágenes: el panel activo se ensancha al hover o click (CSS, sin Framer).'
-		},
-		{
-			id: 'onboarding',
-			name: 'OnboardingScreen',
-			status: 'ready',
-			href: '/lab/onboarding',
-			description: 'Card multi-paso de alta de negocio/workspace con progress y preview panel.'
-		},
-		{
-			id: 'form-two-column',
-			name: 'FormTwoColumn',
-			status: 'ready',
-			href: '/lab/form-two-column',
-			description: 'Formulario de contacto marketing a dos columnas (copy + card).'
-		},
-		{
-			id: 'product-detail',
-			name: 'ProductDetail',
-			status: 'ready',
-			href: '/lab/product-detail',
-			description: 'PDP: galería, info sticky, opciones glaze/finish, cantidad y acordeones.'
-		},
-		{
-			id: 'order-detail',
-			name: 'OrderDetail',
-			status: 'ready',
-			href: '/lab/order-detail',
-			description: 'Detalle de pedido: items, invoice, timeline y panel lateral.'
-		},
-		{
-			id: 'blob-card',
-			name: 'BlobCard',
-			status: 'ready',
-			href: '/lab/blob-card',
-			description: 'Card con blob orgánico que sigue el cursor (lerp + rAF, sin GSAP).'
-		},
-		{
-			id: 'testimonial',
-			name: 'PremiumTestimonial',
-			status: 'ready',
-			href: '/lab/testimonial',
-			description: 'Carrusel de testimonios con autoplay, dots y stats (CSS, sin Framer).'
-		},
-		{
-			id: 'byobu',
-			name: 'ByobuCarousel',
-			status: 'ready',
-			href: '/lab/byobu',
-			description: 'Carrusel 3D tipo biombo: paneles plegados, drag e inercia (RAF).'
-		},
-		{
-			id: 'disperse',
-			name: 'DisperseCarousel',
-			status: 'ready',
-			href: '/lab/disperse',
-			description: 'Carrusel con salida en fragmentos (WAAPI) y entrada suave (sin GSAP).'
-		},
-		{
-			id: 'sticky-cards',
-			name: 'StickyCardStack',
-			status: 'ready',
-			href: '/lab/sticky-cards',
-			description: 'Stack sticky de cards que escalan con el scroll (sin Framer/Lenis).'
-		},
-		{
-			id: 'inline-table',
-			name: 'InlineTableControl',
-			status: 'ready',
-			href: '/lab/inline-table',
-			description: 'Tabla de gastos con edición inline por fila (CSS, sin Motion).'
-		},
-		{
-			id: 'view-on-map',
-			name: 'ViewOnMap',
-			status: 'ready',
-			href: '/lab/view-on-map',
-			description: 'Pill que se expande a mapa embebido (CSS, sin Motion).'
-		},
-		{
-			id: 'option-picker',
-			name: 'OptionPicker',
-			status: 'ready',
-			href: '/lab/option-picker',
-			description: 'Selector Private/Public compacto con menú emergente (CSS, sin Motion).'
-		},
-		{
-			id: 'shared-tooltip',
-			name: 'SharedTooltipAvatars',
-			status: 'ready',
-			href: '/lab/shared-tooltip',
-			description: 'Stack de avatares con tooltip flotante compartido (CSS, sin Framer).'
-		},
-		{
-			id: 'tags',
-			name: 'Tags',
-			status: 'ready',
-			href: '/lab/tags',
-			description: 'Multi-select de chips pool → seleccionados (CSS, sin Motion).'
-		}
+		{ id: 'task-widget', name: 'TaskWidget', status: 'ready', href: '/lab/task-widget', description: 'Tarjeta expandible de tarea con progreso, subtasks, priority/status y assignees.' },
+		{ id: 'hover-expand', name: 'HoverExpand', status: 'ready', href: '/lab/hover-expand', description: 'Franja de imágenes: el panel activo se ensancha al hover o click (CSS, sin Framer).' },
+		{ id: 'onboarding', name: 'OnboardingScreen', status: 'ready', href: '/lab/onboarding', description: 'Card multi-paso de alta de negocio/workspace con progress y preview panel.' },
+		{ id: 'form-two-column', name: 'FormTwoColumn', status: 'ready', href: '/lab/form-two-column', description: 'Formulario de contacto marketing a dos columnas (copy + card).' },
+		{ id: 'product-detail', name: 'ProductDetail', status: 'ready', href: '/lab/product-detail', description: 'PDP: galería, info sticky, opciones glaze/finish, cantidad y acordeones.' },
+		{ id: 'order-detail', name: 'OrderDetail', status: 'ready', href: '/lab/order-detail', description: 'Detalle de pedido: items, invoice, timeline y panel lateral.' },
+		{ id: 'blob-card', name: 'BlobCard', status: 'ready', href: '/lab/blob-card', description: 'Card con blob orgánico que sigue el cursor (lerp + rAF, sin GSAP).' },
+		{ id: 'testimonial', name: 'PremiumTestimonial', status: 'ready', href: '/lab/testimonial', description: 'Carrusel de testimonios con autoplay, dots y stats (CSS, sin Framer).' },
+		{ id: 'byobu', name: 'ByobuCarousel', status: 'ready', href: '/lab/byobu', description: 'Carrusel 3D tipo biombo: paneles plegados, drag e inercia (RAF).' },
+		{ id: 'disperse', name: 'DisperseCarousel', status: 'ready', href: '/lab/disperse', description: 'Carrusel con salida en fragmentos (WAAPI) y entrada suave (sin GSAP).' },
+		{ id: 'sticky-cards', name: 'StickyCardStack', status: 'ready', href: '/lab/sticky-cards', description: 'Stack sticky de cards que escalan con el scroll (sin Framer/Lenis).' },
+		{ id: 'inline-table', name: 'InlineTableControl', status: 'ready', href: '/lab/inline-table', description: 'Tabla de gastos con edición inline por fila (CSS, sin Motion).' },
+		{ id: 'view-on-map', name: 'ViewOnMap', status: 'ready', href: '/lab/view-on-map', description: 'Pill que se expande a mapa embebido (CSS, sin Motion).' },
+		{ id: 'option-picker', name: 'OptionPicker', status: 'ready', href: '/lab/option-picker', description: 'Selector Private/Public compacto con menú emergente (CSS, sin Motion).' },
+		{ id: 'shared-tooltip', name: 'SharedTooltipAvatars', status: 'ready', href: '/lab/shared-tooltip', description: 'Stack de avatares con tooltip flotante compartido (CSS, sin Framer).' },
+		{ id: 'tags', name: 'Tags', status: 'ready', href: '/lab/tags', description: 'Multi-select de chips pool → seleccionados (CSS, sin Motion).' },
+		{ id: 'popover-form', name: 'PopoverForm', status: 'ready', href: '/lab/popover-form', description: 'Panel flotante con idle/loading/success, cutouts y ejemplos feedback/contacto/tema.' },
+		{ id: 'sidebar', name: 'AppSidebar', status: 'ready', href: '/lab/sidebar', description: 'Shell colapsable a iconos: almacén, nav grupos, en curso y usuario (shadcn-style).' }
 	] as const;
 </script>
 
@@ -167,93 +73,50 @@
 
 <section class="lab-grid">
 	{#each components as c}
-		<a class="lab-card" href={c.href}>
-			<div class="lab-card__top">
-				<span class="lab-card__name">{c.name}</span>
-				<span class="lab-card__status" data-status={c.status}>{c.status}</span>
-			</div>
+		<a class="lab-card" href={c.href} data-status={c.status}>
+			<span class="lab-card__name">{c.name}</span>
+			<span class="lab-card__status">{c.status}</span>
 			<p class="lab-card__desc">{c.description}</p>
 		</a>
 	{/each}
 </section>
 
-<section class="lab-preview">
-	<div class="lab-preview__head">
-		<h2>TaskWidget</h2>
-		<a href="/lab/task-widget">Ver detalle →</a>
-	</div>
-	<div class="lab-preview__stage">
-		<TaskWidget data={MOCK_TASK} />
-	</div>
-</section>
-
-<section class="lab-preview">
-	<div class="lab-preview__head">
-		<h2>HoverExpand</h2>
-		<a href="/lab/hover-expand">Ver detalle →</a>
-	</div>
-	<div class="lab-preview__stage lab-preview__stage--scroll">
-		<HoverExpand images={DEMO_IMAGES} />
-	</div>
-</section>
-
 <style>
-	.lab-intro { margin-bottom: 2rem; }
+	.lab-intro { margin-bottom: 1.75rem; }
 	.lab-kicker {
-		margin: 0 0 0.35rem; font-size: 0.72rem; font-weight: 600;
+		margin: 0 0 0.35rem; font-size: 0.68rem; font-weight: 700;
 		letter-spacing: 0.12em; text-transform: uppercase; color: var(--navy, #004c8b);
 	}
 	.lab-title {
 		margin: 0 0 0.5rem; font-family: var(--disp, 'Space Grotesk', system-ui, sans-serif);
-		font-size: clamp(1.6rem, 3vw, 2rem); font-weight: 700; letter-spacing: -0.025em;
+		font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; letter-spacing: -0.03em;
 		color: var(--head-ink, #012a50);
 	}
-	.lab-lead {
-		margin: 0; max-width: 42rem; font-size: 0.95rem; line-height: 1.55; color: var(--slate, #5c6b7d);
-	}
+	.lab-lead { margin: 0; max-width: 36rem; font-size: 0.95rem; line-height: 1.55; color: var(--slate, #5c6b7d); }
 	.lab-grid {
-		display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-		gap: 0.85rem; margin-bottom: 2.5rem;
+		display: grid; gap: 0.85rem;
+		grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
 	}
 	.lab-card {
-		display: block; padding: 1rem 1.1rem; border-radius: var(--radius-card, 16px);
-		border: 1.5px solid var(--line, #d9e2ec); background: var(--card, #fff);
-		box-shadow: var(--shadow-1); text-decoration: none; color: inherit;
-		transition: box-shadow 160ms ease, border-color 160ms ease;
+		display: flex; flex-direction: column; gap: 0.35rem; padding: 1rem 1.1rem;
+		border-radius: 12px; border: 1px solid color-mix(in srgb, var(--line, #d9e2ec) 88%, transparent);
+		background: color-mix(in srgb, var(--card, #fff) 88%, transparent);
+		text-decoration: none; color: inherit;
+		transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 	}
 	.lab-card:hover {
-		border-color: color-mix(in srgb, var(--navy, #004c8b) 35%, var(--line));
-		box-shadow: var(--shadow-2);
+		border-color: color-mix(in srgb, var(--navy, #004c8b) 28%, transparent);
+		box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+		transform: translateY(-1px);
 	}
-	.lab-card__top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.4rem; }
 	.lab-card__name {
-		font-family: var(--disp, 'Space Grotesk', system-ui, sans-serif); font-weight: 600;
-		font-size: 1rem; color: var(--head-ink, #012a50);
+		font-family: var(--disp, 'Space Grotesk', system-ui, sans-serif);
+		font-weight: 700; font-size: 0.95rem; color: var(--head-ink, #012a50);
 	}
 	.lab-card__status {
-		font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
-		padding: 0.2rem 0.45rem; border-radius: 6px;
-		background: var(--success-bg, #eaf5ee); color: var(--success, #1e7a46);
+		width: fit-content; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.06em;
+		text-transform: uppercase; padding: 0.15rem 0.45rem; border-radius: 999px;
+		background: color-mix(in srgb, #16a34a 12%, transparent); color: #15803d;
 	}
-	.lab-card__desc { margin: 0; font-size: 0.8125rem; line-height: 1.45; color: var(--slate, #5c6b7d); }
-	.lab-preview {
-		border-radius: var(--radius-card, 22px); border: 1.5px solid var(--line, #d9e2ec);
-		background: var(--card, #fff); padding: 1.25rem; box-shadow: var(--shadow-1); margin-bottom: 1.5rem;
-	}
-	.lab-preview__head {
-		display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 1.25rem;
-	}
-	.lab-preview__head h2 {
-		margin: 0; font-family: var(--disp, 'Space Grotesk', system-ui, sans-serif);
-		font-size: 1.1rem; font-weight: 600; color: var(--head-ink, #012a50);
-	}
-	.lab-preview__head a { font-size: 0.8125rem; font-weight: 500; color: var(--link, #004c8b); text-decoration: none; }
-	.lab-preview__head a:hover { text-decoration: underline; }
-	.lab-preview__stage {
-		display: flex; justify-content: center; padding: 1.5rem 0.5rem 1rem;
-		background: var(--surface-2, #f5f8fc); border-radius: 16px; border: 1px solid var(--line-soft, #e4eaf1);
-	}
-	.lab-preview__stage--scroll {
-		overflow-x: auto; justify-content: flex-start; padding-block: 2rem;
-	}
+	.lab-card__desc { margin: 0.15rem 0 0; font-size: 0.8rem; line-height: 1.45; color: var(--slate, #5c6b7d); }
 </style>
