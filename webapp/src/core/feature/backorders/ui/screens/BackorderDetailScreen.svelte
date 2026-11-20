@@ -23,6 +23,11 @@
   const hasSalesOrderPermission = $derived(
     guard.user?.role === 'ADMIN' || guard.user?.allowedPages.includes('sales-orders') === true
   );
+  const canViewAuditHistory = $derived(
+    guard.user?.role === 'ADMIN' ||
+    guard.user?.allowedPages.includes('fraud') === true ||
+    guard.user?.allowedPages.includes('audit-log') === true
+  );
   const order = $derived(vm.detail?.order ?? null);
   const parentSalesOrder = $derived(vm.detail?.parentSalesOrder ?? null);
   const lineProgress = $derived(vm.detail?.lines ?? []);
@@ -60,6 +65,11 @@
     }
   });
 
+  $effect(() => {
+    const id = vm.detail?.order.salesOrderId;
+    if (id !== undefined && canViewAuditHistory) void vm.loadAuditHistory(id, 1);
+  });
+
   function formatTimestamp(value: string | null | undefined): string {
     if (!value) return '—';
     const parsed = new Date(value);
@@ -79,7 +89,7 @@
       cancelError = cause instanceof Error ? cause.message : i18n.t('No tienes acceso al almacén seleccionado.');
       return;
     }
-    const ok = await vm.cancel(order.salesOrderId, reason);
+    const ok = await vm.cancel(order.salesOrderId, reason, order.warehouseId);
     if (!ok) {
       cancelError = vm.error;
       return;
@@ -189,6 +199,39 @@
       {/if}
     </article>
 
+    {#if canViewAuditHistory}
+      <article class="panel history-panel">
+        <header class="history-header">
+          <h2>{i18n.t('Historial de auditoría')}</h2>
+          <span>{vm.auditTotal} {i18n.t('eventos')}</span>
+        </header>
+        {#if vm.auditLoading}
+          <p class="hint">{i18n.t('Cargando historial…')}</p>
+        {:else if vm.detailError}
+          <p class="message error" role="alert">{vm.detailError}</p>
+          <button type="button" onclick={() => void vm.loadAuditHistory(order.salesOrderId, vm.auditPage)}>{i18n.t('Reintentar historial')}</button>
+        {:else if vm.auditEntries.length === 0}
+          <p class="hint">{i18n.t('No hay eventos de auditoría para este pedido.')}</p>
+        {:else}
+          <ol class="history-list">
+            {#each vm.auditEntries as entry (entry.logId)}
+              <li>
+                <div><strong>{entry.actionType}</strong><small>{entry.username ?? '—'} · {formatTimestamp(entry.createdAt)}</small></div>
+                {#if entry.details}<pre>{JSON.stringify(entry.details, null, 2)}</pre>{/if}
+              </li>
+            {/each}
+          </ol>
+          <nav class="history-pagination" aria-label={i18n.t('Paginación del historial')}>
+            <button type="button" disabled={vm.auditLoading || vm.auditPage <= 1} onclick={() => void vm.loadAuditHistory(order.salesOrderId, vm.auditPage - 1)}>{i18n.t('Anterior')}</button>
+            <span>{i18n.t('Página')} {vm.auditPage} / {vm.auditPages}</span>
+            <button type="button" disabled={vm.auditLoading || vm.auditPage >= vm.auditPages} onclick={() => void vm.loadAuditHistory(order.salesOrderId, vm.auditPage + 1)}>{i18n.t('Siguiente')}</button>
+          </nav>
+        {/if}
+      </article>
+    {:else}
+      <p class="hint">{i18n.t('El historial de auditoría requiere el permiso Auditoría o Revisión de fraude.')}</p>
+    {/if}
+
     {#if order.orderType !== 'backorder' && order.backorderOpenedAt !== null}
       <p class="message warning">{i18n.t('Este pedido aparece en la cola por falta de inventario, pero no es una orden de tipo backorder con pedido padre. El endpoint de cancelación específica no lo admite.')}</p>
     {/if}
@@ -259,6 +302,14 @@
   a{color:var(--accent)}
   .hint{color:var(--slate);font-size:.78rem;line-height:1.5}
   .lines-panel{margin-top:.9rem}
+  .history-panel{margin-top:.9rem}
+  .history-header,.history-pagination{display:flex;align-items:center;justify-content:space-between;gap:.75rem}
+  .history-header span,.history-list small{color:var(--slate);font-size:.75rem}
+  .history-list{display:grid;gap:.7rem;padding-left:1.25rem}
+  .history-list li{padding:.55rem 0;border-bottom:1px solid var(--line)}
+  .history-list small{display:block;margin-top:.2rem}
+  .history-list pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.72rem;background:var(--surface);padding:.55rem;border-radius:6px}
+  .history-pagination{margin-top:.75rem}
   .progress-summary{display:flex;gap:1rem;flex-wrap:wrap;margin:0 0 .8rem}
   .progress-summary>div{display:grid;gap:.15rem;padding:.55rem .7rem;border:1px solid var(--line);border-radius:8px}
   .progress-summary span{font-size:.72rem;color:var(--slate)}
