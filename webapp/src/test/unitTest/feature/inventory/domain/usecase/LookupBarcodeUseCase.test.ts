@@ -12,8 +12,8 @@ describe('LookupBarcodeUseCase', () => {
 	it('rejects empty and oversized codes without calling the repository', async () => {
 		const repository = { lookupBarcode: vi.fn() } as unknown as InventoryRepository;
 		const useCase = new LookupBarcodeUseCase(repository);
-		await expect(useCase.execute('  ')).rejects.toThrow(/required/);
-		await expect(useCase.execute('x'.repeat(129))).rejects.toThrow(/128/);
+		expect(() => useCase.execute('  ')).toThrow(/required/);
+		expect(() => useCase.execute('x'.repeat(129))).toThrow(/128/);
 		expect(repository.lookupBarcode).not.toHaveBeenCalled();
 	});
 });
