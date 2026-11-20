@@ -5,17 +5,18 @@
 	import type { I18nState } from '../../../lib/i18n/i18n.svelte';
 	const i18n = getContext<I18nState>('i18n');
 	import { authSession } from '#core/infrastructure/auth/AuthSession.ts';
+	import { canAccessDataSection } from '#core/feature/warehouses/ui/state/dataNavigationPermissions.ts';
 	let { children } = $props();
 	const user = authSession.getUser();
 	const admin = user?.role === 'ADMIN';
 	const pages = user?.allowedPages ?? [];
 	const tabs = $derived([
-		{ href: '/data/warehouses', label: i18n.t('Almacenes'), icon: 'warehouse', keys: ['warehouses'] },
-		{ href: '/data/zones', label: i18n.t('Zonas'), icon: 'map-pin', keys: ['zones'] },
-		{ href: '/data/bins', label: i18n.t('Ubicaciones'), icon: 'boxes', keys: ['bins', 'zones'] },
-		{ href: '/data/preferred-bins', label: i18n.t('Ubicaciones preferidas'), icon: 'package-check', keys: ['preferred-bins'] }
+		{ href: '/data/warehouses', label: i18n.t('Almacenes'), icon: 'warehouse', permission: 'warehouses' },
+		{ href: '/data/zones', label: i18n.t('Zonas'), icon: 'map-pin', permission: 'zones' },
+		{ href: '/data/bins', label: i18n.t('Ubicaciones'), icon: 'boxes', permission: 'bins' },
+		{ href: '/data/preferred-bins', label: i18n.t('Ubicaciones preferidas'), icon: 'package-check', permission: 'preferred-bins' }
 	] as const);
-	const visibleTabs = $derived(tabs.filter(tab => admin || tab.keys.every(key => pages.includes(key))));
+	const visibleTabs = $derived(tabs.filter(tab => canAccessDataSection(tab.permission, pages, admin)));
 	function isActive(href: string) { return page.url.pathname === href || page.url.pathname.startsWith(href + '/'); }
 </script>
 
