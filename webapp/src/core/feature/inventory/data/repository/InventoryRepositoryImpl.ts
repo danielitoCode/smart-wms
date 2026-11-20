@@ -1,3 +1,4 @@
+import type { ItemBarcodeLookup } from '../../domain/entity/ItemBarcodeLookup';
 import type { InventoryRepository } from '../../domain/repository/InventoryRepository';
 import type { InventoryPage, InventoryQuery } from '../../domain/entity/InventoryStock';
 import type {
@@ -12,8 +13,9 @@ import { InventoryMapper } from '../mapper/InventoryMapper';
 export class InventoryRepositoryImpl implements InventoryRepository {
 	constructor(private readonly datasource: InventoryRemoteDataSource) {}
 
-	lookupBarcode(barcode: string) {
-		return this.datasource.lookupBarcode(barcode);
+	async lookupBarcode(barcode: string): Promise<ItemBarcodeLookup> {
+		const dto = await this.datasource.lookupBarcode(barcode);
+		return { itemId: dto.item.item_id, sku: dto.item.sku, itemName: dto.item.item_name, upc: dto.item.upc ?? null };
 	}
 
 	async getOverview(params: InventoryQuery = {}): Promise<InventoryPage> {
