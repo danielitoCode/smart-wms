@@ -3,6 +3,14 @@ export type Locale = 'it' | 'es' | 'en';
 // Spanish is the source key to keep translations auditable alongside the current UI copy.
 export const translations: Record<Locale, Record<string, string>> = {
 	it: {
+		'Historial de auditoría': 'Cronologia di audit',
+		'eventos': 'eventi',
+		'Reintentar historial': 'Riprova cronologia',
+		'Paginación del historial': 'Paginazione cronologia',
+		'Cargando historial…': 'Caricamento cronologia…',
+		'No hay eventos de auditoría para este pedido.': 'Non ci sono eventi di audit per questo ordine.',
+		'No se pudo cargar el historial del backorder': 'Impossibile caricare la cronologia del backorder',
+
 		'Actividad entrante': 'Attività in ingresso', 'Consulta los eventos inbound aceptados, su origen, estado y registro canónico asociado.': 'Consulta gli eventi inbound accettati, la loro origine, lo stato e il record canonico associato.', 'Sistema origen': 'Sistema di origine', 'ID externo': 'ID esterno', 'Versión': 'Versione', 'Procesado': 'Elaborato', 'Sustituido': 'Sostituito', 'Recibido desde': 'Ricevuto dal', 'Recibido hasta': 'Ricevuto fino al', 'Aplicar filtros': 'Applica filtri', 'No hay actividad entrante para estos filtros.': 'Nessuna attività inbound corrisponde ai filtri.', 'Ver detalle': 'Visualizza dettagli', 'registros': 'record', 'Página': 'Pagina', 'Detalle del evento': 'Dettaglio evento', 'ID canónico': 'ID canonico', 'Token de ingesta': 'Token di acquisizione', 'Registro relacionado': 'Record correlato', 'Abrir módulo': 'Apri modulo', 'El payload de origen fue eliminado por la política de retención.': 'Il payload di origine è stato eliminato dalla politica di conservazione.', 'Payload de origen': 'Payload di origine', 'Payload canónico': 'Payload canonico', 'Los campos sensibles se ocultan en el servidor. Esta vista es de solo lectura; los intentos rechazados no generan filas de staging.': 'I campi sensibili vengono oscurati sul server. Questa vista è di sola lettura; i tentativi rifiutati non generano righe di staging.', 'Cargando detalle…': 'Caricamento dettagli…', 'No disponible (retención o payload vacío)': 'Non disponibile (conservazione o payload vuoto)',
 		'Filtrar por zona': 'Filtra per zona', 'Filtrar por tipo': 'Filtra per tipo', 'Todos los tipos': 'Tutti i tipi', 'Fila': 'Fila', 'Nivel': 'Livello', 'Posición': 'Posizione', 'Orden de ubicación': 'Sequenza di stoccaggio', 'Todas las zonas': 'Tutte le zone', 'Existencias': 'Giacenze', 'asignadas': 'assegnate', 'Capacidad': 'Capacità',
 		'Peso máximo': 'Peso massimo', 'Volumen máximo': 'Volume massimo',
@@ -116,6 +124,14 @@ export const translations: Record<Locale, Record<string, string>> = {
 	},
 	es: {},
 	en: {
+		'Historial de auditoría': 'Audit history',
+		'eventos': 'events',
+		'Reintentar historial': 'Retry history',
+		'Paginación del historial': 'History pagination',
+		'Cargando historial…': 'Loading history…',
+		'No hay eventos de auditoría para este pedido.': 'There are no audit events for this order.',
+		'No se pudo cargar el historial del backorder': 'Could not load backorder history',
+
 		'No disponible (retención o payload vacío)': 'Unavailable (retained payload expired or empty)',
 		'Actividad entrante': 'Inbound activity', 'Consulta los eventos inbound aceptados, su origen, estado y registro canónico asociado.': 'Review accepted inbound events, their source, status and canonical record.', 'Sistema origen': 'Source system', 'ID externo': 'External ID', 'Versión': 'Version', 'Procesado': 'Applied', 'Sustituido': 'Superseded', 'Recibido desde': 'Received from', 'Recibido hasta': 'Received until', 'Aplicar filtros': 'Apply filters', 'No hay actividad entrante para estos filtros.': 'No inbound activity matches these filters.', 'Ver detalle': 'View details', 'registros': 'records', 'Página': 'Page', 'Detalle del evento': 'Event detail', 'ID canónico': 'Canonical ID', 'Token de ingesta': 'Ingest token', 'Registro relacionado': 'Related record', 'Abrir módulo': 'Open module', 'El payload de origen fue eliminado por la política de retención.': 'The source payload was removed by the retention policy.', 'Payload de origen': 'Source payload', 'Payload canónico': 'Canonical payload', 'Los campos sensibles se ocultan en el servidor. Esta vista es de solo lectura; los intentos rechazados no generan filas de staging.': 'Sensitive fields are redacted server-side. This view is read-only; rejected attempts do not create staging rows.', 'Cargando detalle…': 'Loading detail…', 'Todos': 'All', 'Recurso': 'Resource', 'Estado': 'Status', 'Recibido': 'Received', 'Acciones': 'Actions', 'Cerrar': 'Close',
 		'Filtrar por zona': 'Filter by zone', 'Filtrar por tipo': 'Filter by type', 'Todos los tipos': 'All types', 'Fila': 'Row', 'Nivel': 'Level', 'Posición': 'Position', 'Orden de ubicación': 'Putaway sequence', 'Todas las zonas': 'All zones', 'Existencias': 'Stock', 'asignadas': 'allocated', 'Capacidad': 'Capacity',
