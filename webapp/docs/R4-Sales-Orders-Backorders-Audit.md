@@ -187,3 +187,96 @@ Sales-order listing can be authorized by \`fraud\` permission as well as \`sales
 6. Pruebas de estado nuevas: respuesta de listado fuera de orden, loading con dos solicitudes, aperturas rápidas, error de detalle obsoleto, cierre con solicitud pendiente y conservación de asignaciones reales tras crear.
 
 **Verificación:** Webapp CI se debe evaluar sobre el HEAD final de esta implementación. Los workflows iniciados por commits intermedios no se consideran evidencia de aceptación final.
+
+
+## 9. Reconciliación Backorders, cancelaciones, historial y Fraud — pasada 2
+
+**HEAD de partida:** `f52ef7fc6e29fa6f7207e2703d02b37c8d331228`.  
+**Alcance:** comparación de React `admin/src/pages/Backorders.jsx` / `Fraud.jsx`, Flask `api/routes/admin/admin_orders.py` y `api/services/sales_order_service.py`, y módulos Svelte `backorders`, `fraud` y `audit-log`.
+
+### 9.1 Backorders: paridad y reglas confirmadas
+
+| Criterio | Contrato React/Flask | Svelte | Resultado |
+|---|---|---|---|
+| Waiting | `status=WAITING_STOCK`; orden ascendente por `backorder_opened_at` (más antiguo primero) | Misma tab y orden del servidor | `SUPPORTED` |
+| Ready to ship | `status IN (OPEN, PICKED, PACKED)` y `backorder_opened_at IS NOT NULL` | Misma tab y estados | `SUPPORTED` |
+| Líneas de cola | `quantity_ordered`, SKU/nombre; no es una suma de faltantes del padre | Muestra cantidad del BO, no vuelve a sumar faltantes del SO padre | `SUPPORTED` |
+| Open PO | PO abierto/parcial más próximo por artículo y almacén; es una relación derivada, no un vínculo BO→PO | Muestra número, pendiente y fecha estimada; null se representa como ausencia de PO | `SUPPORTED` |
+| Tiempo | `days_waiting` desde `backorder_opened_at`; ready expone `fulfillable_since` | Presenta ambos datos y fecha date-only sin desfase UTC | `SUPPORTED` |
+| Búsqueda | React no consulta búsqueda servidor; la cola cargada se filtra en cliente | Filtra pedido, padre, cliente, SKU, nombre y número PO | `SUPPORTED` (ampliación local) |
+| Paginación | GET no expone metadatos de paginación; devuelve la cola completa | No simula paginación | `BACKEND_LIMITATION` si el volumen exige paginar |
+
+No existe una relación de base de datos entre un backorder y una PO que lo satisfaga. La etiqueta de PO debe seguir comunicando que se trata de una coincidencia derivada por artículo/almacén; no debe prometer que esa compra fue creada para ese BO.
+
+### 9.2 Cancelación y liberación de inventario
+
+El endpoint `POST /api/admin/sales-orders/{id}/cancel-backorder` exige permiso `sales-orders`, valida los motivos `found`, `customer_asked`, `refunded` y `other`, verifica que exista un hijo `order_type=backorder` y delega en `cancel_sales_order`.
+
+El servicio compartido bloquea la fila SO con `FOR UPDATE` y aplica la regla según estado:
+
+- `WAITING_STOCK`: no tiene reserva de inventario que liberar; se cambia el estado y se registra auditoría.
+- `OPEN`: libera `quantity_allocated` y elimina tareas/relaciones pendientes del batch.
+- `PICKED/PACKED`: devuelve las cantidades recogidas al bin de recepción predeterminado y limpia cantidades picked/packed y estado de línea.
+- `SHIPPED`: rechaza cancelación; el camino correcto es void-ship.
+- `CANCELLED`: el servicio compartido es idempotente. El wrapper específico rechaza un pedido ya cancelado cuando lo observa antes de delegar.
+- Motivo `refunded`: después del unwind se etiqueta el BO como `REFUNDED`.
+
+La cancelación registra `CANCEL` en `audit_log`, emite `backorder.cancelled` al outbox y genera notificación diferida tras commit. Cancelar el pedido padre hace cascade sobre sus backorders hijos no terminales. La operación específica no cancela el pedido padre.
+
+**Limitaciones backend que siguen abiertas:**
+
+- El GET `/admin/backorders` solo filtra por el `warehouse_id` suministrado; no aplica `warehouse_scope_clause`. Un filtro enviado por Svelte no es autorización.
+- El POST `cancel-backorder` no aplica warehouse scope al leer/estampar el motivo antes de invocar el servicio. El servicio sí bloquea la fila para la transición, pero eso no sustituye autorización por almacén. Un cliente puede invocar directamente el endpoint con un ID ajeno.
+- El wrapper comprueba el estado antes de delegar y actualiza `cancellation_reason` antes del bloqueo del servicio. En llamadas concurrentes, el servicio evita una segunda transición/auditoría, pero el wrapper puede haber actualizado el motivo antes de que el servicio detecte el estado terminal. Requiere prueba/fix backend para certificar idempotencia completa del motivo.
+- No existe un endpoint separado de preview/release. La liberación se ejecuta como parte transaccional de cancelación en el servicio compartido; el frontend no recalcula inventario.
+
+**Guardas frontend añadidas en esta pasada:** la cancelación vuelve a recuperar el detalle autoritativo (GET detalle SO con warehouse scope), compara el almacén real con el almacén autorizado de la fila, valida padre/estado y bloquea doble submit en el estado. Esto reduce errores y acciones obsoletas desde la UI, pero queda clasificado como `FRONTEND_GUARD_REQUIRED`; no soluciona el bypass directo del endpoint Flask.
+
+### 9.3 Historial de backorder
+
+Se integró en el feature Backorders el endpoint existente `GET /api/admin/sales-orders/{id}/audit-history?page=&per_page=`:
+
+- Requiere permiso `fraud` o `audit-log`; no se debe asumir que `backorders` o `sales-orders` por sí solos conceden acceso.
+- Verifica warehouse scope del SO antes de consultar eventos.
+- Filtra por `entity_type='SO'`, `entity_id` y `warehouse_id` del pedido.
+- Ordena `created_at DESC, log_id DESC`; permite `per_page` de 1 a 100.
+- La UI Svelte muestra eventos, actor, fecha, detalles y paginación cuando el usuario tiene uno de esos permisos.
+
+Este historial es la auditoría asociada al pedido; no es un ledger completo de movimientos de inventario. No se reconstruyen movimientos a partir de snapshots ni de eventos incompletos.
+
+### 9.4 Fraud: contrato real frente a interpretación
+
+La página React `Fraud.jsx` es una **bandeja de revisión manual de pedidos retenidos**, no un motor de scoring:
+
+| Operación | Contrato Flask | Permiso/scope | Resultado |
+|---|---|---|---|
+| Listar | `GET /api/admin/sales-orders?status=FRAUD_REVIEW&warehouse_id=…`; respuesta `sales_orders` + paginación | `fraud` o `sales-orders`; warehouse scope en listado | `SUPPORTED` |
+| Detalle | `GET /api/admin/sales-orders/{id}`; cabecera, líneas y tareas | Permiso de pedidos/fraude y warehouse scope | `SUPPORTED` |
+| Leer historial | `GET /api/admin/sales-orders/{id}/audit-history`; entradas paginadas | `fraud` o `audit-log`; warehouse scope | `SUPPORTED` |
+| Guardar memo | `PATCH /api/admin/sales-orders/{id}/memo`; `memo` y `expected_memo` opcional | `fraud`; warehouse scope; 409 si cambió el memo esperado | `SUPPORTED` |
+| Liberar a preparación | `POST /api/admin/sales-orders/{id}/push-to-queue`; solo acepta `FRAUD_REVIEW`, cambia a `OPEN` y escribe auditoría | `fraud`; warehouse scope y bloqueo de fila; 409 para otro estado | `SUPPORTED` |
+
+React carga hasta 100 filas y permite editar memo y enviar a cola; Svelte usa páginas de 50, detalle, historial y control optimista `expected_memo`. No hay contrato de score, modelo, explicación de riesgo ni decisión automatizada en las rutas inspeccionadas. Por tanto:
+
+- `FraudReview` significa revisión manual/estado de retención.
+- No mostrar porcentaje, nivel, reason code ni recomendación de riesgo no devueltos por Flask.
+- `push-to-queue` es una transición explícita de `FRAUD_REVIEW` a `OPEN`, no un cálculo de riesgo ni un despacho inmediato.
+
+### 9.5 Matriz de aceptación actualizada
+
+| Criterio | Estado | Evidencia / pendiente |
+|---|---|---|
+| Tabs, estados, orden y cantidades de backorders | `SUPPORTED` | React + Flask contrastados |
+| Open PO derivado y fechas | `SUPPORTED` | Consulta Flask por item/warehouse; no vínculo BO→PO |
+| Detalle BO, padre y progreso por línea | `SUPPORTED` | Detalle SO y mapper existente |
+| Cancelación por motivo, estado y release | `SUPPORTED` con guardas FE | Servicio transaccional; probar concurrency real |
+| Doble submit en UI | `IMPLEMENTED_UNVERIFIED` | Estado FE rechaza segunda llamada |
+| Historial por pedido | `IMPLEMENTED_UNVERIFIED` | Endpoint y permisos verificados; nueva UI + pruebas pendientes de CI |
+| Fraud manual list/detail/memo/push | `SUPPORTED` | Rutas y comportamiento React/Flask contrastados |
+| Fraud score/assessment | `NOT_SUPPORTED` | No existe contrato probado; no inventar |
+| Warehouse scope de GET Backorders | `BACKEND_LIMITATION` | Falta enforcement server-side |
+| Warehouse scope de cancel-backorder | `BACKEND_LIMITATION` | Falta enforcement server-side |
+| Historial global de inventario | `NOT_SUPPORTED` en este endpoint | El historial SO no sustituye ledger de inventario |
+| Regresión y criterios completos | `PENDING_CI` | Debe ejecutarse en el HEAD final de esta entrega |
+
+**Decisión:** reconciliación funcional y contratos de Fraud documentados; historial por pedido y guardas de cancelación implementados en frontend. R4 permanece `IN_PROGRESS` hasta verificar CI final y resolver/aceptar formalmente los gaps backend de warehouse scope y concurrencia del wrapper de cancelación.
