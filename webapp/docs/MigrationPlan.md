@@ -308,7 +308,7 @@ Aceptación:
 ### R3 — Consultar stock, localizar y ajustar inventario
 **Trazabilidad:** F2 Inventory, Lookup, Adjustments, Bins, Audit.
 
-**Estado:** `IN_PROGRESS` (2026-11-20). `LookupBarcode` y `GetBinContents` integrados en `InventoryScreen.svelte`, con validación de almacén autorizado, rechazo de bins de otro almacén, normalización de errores y descarte de respuestas obsoletas. Pruebas de datasource/use case/estado añadidas; CI del HEAD final pendiente. Persisten gaps de warehouse scope en el endpoint de listado, ausencia de preview de ajuste y falta de ledger completo; el ajuste directo permanece deshabilitado. Detalle y evidencias: [R3-Inventory-Stock-Lookup-Adjustments-Audit.md](./R3-Inventory-Stock-Lookup-Adjustments-Audit.md). No se modifica Flask.
+**Estado:** `IN_PROGRESS` (2026-11-20). `LookupBarcode` y `GetBinContents` integrados en `InventoryScreen.svelte`, con contexto de almacén y descarte de respuestas obsoletas. El contrato Flask de ajuste directo está verificado: transacción atómica por item/bin, retirada limitada al stock no asignado y conflicto `409`; no existe preview server-side, por lo que el CTA de ajuste sigue deshabilitado. `GET /api/admin/audit-log` no aplica warehouse scope y no hay endpoint de ledger completo; no se presentan como capacidades soportadas. Se corrigieron los errores de Typecheck detectados en los tests de lookup; falta validar CI/regresión sobre el HEAD definitivo. Detalle: [R3-Inventory-Stock-Lookup-Adjustments-Audit.md](./R3-Inventory-Stock-Lookup-Adjustments-Audit.md). No se modifica Flask.
 
 Recorrido:
 1. Resolver almacén y permiso de lectura.
