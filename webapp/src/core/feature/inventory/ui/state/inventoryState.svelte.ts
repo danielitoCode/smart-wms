@@ -3,6 +3,8 @@ import { createInventoryDependencies } from '../../di/inventory.dependencies';
 import { createWarehousesDependencies } from '../../../warehouses/di/warehouses.dependencies';
 import type { Bin, Warehouse } from '../../../warehouses/domain/entity/Warehouse';
 import type { InventoryPage, InventoryStock } from '../../domain/entity/InventoryStock';
+import type { ItemBarcodeLookup } from '../../domain/entity/ItemBarcodeLookup';
+import type { OperationalBinLookup } from '../../../warehouses/domain/entity/Warehouse';
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 import { beginWarehouseScopedRequest } from '../../../../infrastructure/warehouse/WarehouseRequestScope';
 import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
@@ -34,6 +36,10 @@ export function createInventoryOverviewState() {
 	let loadingOptions = $state(false);
 	let error = $state<string | null>(null);
 	let loadedOnce = $state(false);
+	let itemBarcodeResult = $state<ItemBarcodeLookup | null>(null);
+	let binContentsResult = $state<OperationalBinLookup | null>(null);
+	let lookupLoading = $state(false);
+	let lookupError = $state<string | null>(null);
 	let requestVersion = 0;
 
 	async function refreshBins() {
@@ -119,6 +125,104 @@ export function createInventoryOverviewState() {
 		}
 	}
 
+	async function lookupBarcode(barcode: string): Promise<boolean> {
+		const normalized = barcode.trim();
+		if (!normalized) {
+			lookupError = 'Introduce o escanea un código de producto.';
+			return false;
+		}
+		if (warehouseId == null) {
+			lookupError = 'Selecciona un almacén autorizado antes de buscar un producto.';
+			return false;
+		}
+		const version = ++requestVersion;
+		const selectedWarehouseId = warehouseId;
+		const scope = beginWarehouseScopedRequest();
+		lookupLoading = true;
+		lookupError = null;
+		itemBarcodeResult = null;
+		binContentsResult = null;
+		try {
+			const item = await deps.lookupBarcode.execute(normalized);
+			if (!scope.isCurrent() || version !== requestVersion || warehouseId !== selectedWarehouseId) return false;
+			const stock = await deps.getItemInventory.execute(item.itemId, {
+				warehouseId: selectedWarehouseId,
+				page: 1,
+				perPage: PAGE_SIZE
+			});
+			if (!scope.isCurrent() || version !== requestVersion || warehouseId !== selectedWarehouseId) return false;
+			itemBarcodeResult = item;
+			result = { ...stock, items: stock.items.filter(row => row.warehouseId == null || row.warehouseId === selectedWarehouseId) };
+			page = 1;
+			loadedOnce = true;
+			return true;
+		} catch (err) {
+			if (!scope.isCurrent() || version !== requestVersion || warehouseId !== selectedWarehouseId) return false;
+			lookupError = toUserMessage(err, 'No se pudo localizar el código del producto');
+			return false;
+		} finally {
+			scope.release();
+			if (scope.isCurrent() && version === requestVersion) lookupLoading = false;
+		}
+	}
+
+	async function lookupBinContents(barcode: string): Promise<boolean> {
+		const normalized = barcode.trim();
+		if (!normalized) {
+			lookupError = 'Introduce o escanea un código de ubicación.';
+			return false;
+		}
+		if (warehouseId == null) {
+			lookupError = 'Selecciona un almacén autorizado antes de buscar una ubicación.';
+			return false;
+		}
+		const version = ++requestVersion;
+		const selectedWarehouseId = warehouseId;
+		const scope = beginWarehouseScopedRequest();
+		lookupLoading = true;
+		lookupError = null;
+		itemBarcodeResult = null;
+		binContentsResult = null;
+		try {
+			const contents = await warehouseDeps.lookupOperationalBin.execute(normalized);
+			if (!scope.isCurrent() || version !== requestVersion || warehouseId !== selectedWarehouseId) return false;
+			if (contents.bin.warehouseId !== selectedWarehouseId) {
+				lookupError = 'La ubicación encontrada no pertenece al almacén seleccionado.';
+				return false;
+			}
+			binContentsResult = contents;
+			binId = contents.bin.id;
+			itemId = undefined;
+			query = '';
+			page = 1;
+			const stock = await deps.getInventoryOverview.execute({
+				warehouseId: selectedWarehouseId,
+				binId: contents.bin.id,
+				page: 1,
+				perPage: PAGE_SIZE
+			});
+			if (!scope.isCurrent() || version !== requestVersion || warehouseId !== selectedWarehouseId) return false;
+			result = stock;
+			loadedOnce = true;
+			return true;
+		} catch (err) {
+			if (!scope.isCurrent() || version !== requestVersion || warehouseId !== selectedWarehouseId) return false;
+			lookupError = toUserMessage(err, 'No se pudo consultar el contenido de la ubicación');
+			return false;
+		} finally {
+			scope.release();
+			if (scope.isCurrent() && version === requestVersion) lookupLoading = false;
+		}
+	}
+
+	function clearLookups() {
+		itemBarcodeResult = null;
+		binContentsResult = null;
+		lookupError = null;
+		lookupLoading = false;
+		requestVersion++;
+	}
+
 	function applyFilters() {
 		page = 1;
 		return load({ warehouseId, page: 1 });
@@ -127,6 +231,7 @@ export function createInventoryOverviewState() {
 	function setWarehouseId(value: number | undefined) {
 		if (value !== warehouseId) {
 			warehouseId = value;
+			clearLookups();
 			binId = undefined;
 			binsWarehouseId = undefined;
 			bins = [];
@@ -157,6 +262,7 @@ export function createInventoryOverviewState() {
 	}
 
 	function invalidate() {
+		clearLookups();
 		result = { ...result, items: [] };
 		loadedOnce = false;
 		error = null;
@@ -208,6 +314,10 @@ export function createInventoryOverviewState() {
 		get loadedOnce() {
 			return loadedOnce;
 		},
+		get itemBarcodeResult() { return itemBarcodeResult; },
+		get binContentsResult() { return binContentsResult; },
+		get lookupLoading() { return lookupLoading; },
+		get lookupError() { return lookupError; },
 		get generation() {
 			return warehouseSelection?.generation ?? 0;
 		},
@@ -217,6 +327,9 @@ export function createInventoryOverviewState() {
 		setQuery,
 		setPage,
 		applyFilters,
+		lookupBarcode,
+		lookupBinContents,
+		clearLookups,
 		initialize,
 		load,
 		invalidate
