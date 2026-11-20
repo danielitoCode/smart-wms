@@ -125,18 +125,25 @@ export function createInventoryOverviewState() {
 		}
 	}
 
+	function requireSelectedWarehouse(): number {
+		if (!warehouseSelection) throw new Error('No se pudo validar el contexto del almacén.');
+		const authorizedId = warehouseSelection.requireWarehouseId();
+		if (warehouseId == null || authorizedId !== warehouseId) {
+			throw new Error('El almacén seleccionado no está autorizado o ha cambiado.');
+		}
+		return authorizedId;
+	}
+
 	async function lookupBarcode(barcode: string): Promise<boolean> {
 		const normalized = barcode.trim();
 		if (!normalized) {
 			lookupError = 'Introduce o escanea un código de producto.';
 			return false;
 		}
-		if (warehouseId == null) {
-			lookupError = 'Selecciona un almacén autorizado antes de buscar un producto.';
-			return false;
-		}
+		let selectedWarehouseId: number;
+		try { selectedWarehouseId = requireSelectedWarehouse(); }
+		catch (err) { lookupError = toUserMessage(err, 'Selecciona un almacén autorizado antes de buscar un producto.'); return false; }
 		const version = ++requestVersion;
-		const selectedWarehouseId = warehouseId;
 		const scope = beginWarehouseScopedRequest();
 		lookupLoading = true;
 		lookupError = null;
@@ -172,12 +179,10 @@ export function createInventoryOverviewState() {
 			lookupError = 'Introduce o escanea un código de ubicación.';
 			return false;
 		}
-		if (warehouseId == null) {
-			lookupError = 'Selecciona un almacén autorizado antes de buscar una ubicación.';
-			return false;
-		}
+		let selectedWarehouseId: number;
+		try { selectedWarehouseId = requireSelectedWarehouse(); }
+		catch (err) { lookupError = toUserMessage(err, 'Selecciona un almacén autorizado antes de buscar una ubicación.'); return false; }
 		const version = ++requestVersion;
-		const selectedWarehouseId = warehouseId;
 		const scope = beginWarehouseScopedRequest();
 		lookupLoading = true;
 		lookupError = null;
