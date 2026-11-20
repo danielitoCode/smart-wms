@@ -102,11 +102,17 @@ describe('Auth HTTP integration', () => {
 		expect(authSession.getUser()).toBeNull();
 	});
 
-	it('does not establish a session when Flask rejects an inactive account at login', async () => {
-		const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ error: 'Invalid username or password' }, 401));
+	it('rejects an inactive account returned by /me after a successful cookie login', async () => {
+		const inactiveUser = { ...sampleUserDto, is_active: false };
+		const fetchMock = vi.fn()
+			.mockResolvedValueOnce(jsonResponse({ token: 'opaque', user: inactiveUser }))
+			.mockResolvedValueOnce(jsonResponse(inactiveUser));
 		const { repo } = createStack(fetchMock);
-		await expect(new LoginUseCase(repo).execute({ username: 'op1', password: 'secret12' })).rejects.toThrow(/Invalid username or password/i);
-		expect(fetchMock).toHaveBeenCalledTimes(1);
+		await expect(new LoginUseCase(repo).execute({ username: 'op1', password: 'secret12' })).rejects.toThrow(/inactivo/i);
+		expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+			'https://wms.test/api/auth/login',
+			'https://wms.test/api/auth/me'
+		]);
 		expect(authSession.getUser()).toBeNull();
 	});
 
