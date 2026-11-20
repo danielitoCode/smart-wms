@@ -12,6 +12,10 @@ import { InventoryMapper } from '../mapper/InventoryMapper';
 export class InventoryRepositoryImpl implements InventoryRepository {
 	constructor(private readonly datasource: InventoryRemoteDataSource) {}
 
+	lookupBarcode(barcode: string) {
+		return this.datasource.lookupBarcode(barcode);
+	}
+
 	async getOverview(params: InventoryQuery = {}): Promise<InventoryPage> {
 		const response = await this.datasource.getOverview({
 			warehouseId: params.warehouseId,
