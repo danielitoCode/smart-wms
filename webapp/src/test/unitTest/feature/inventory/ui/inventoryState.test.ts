@@ -23,6 +23,17 @@ import { notifyWarehouseChanged, resetWarehouseRequestScopeForTests } from '../.
 
 const page = (items: Array<Record<string, unknown>> = []) => ({
 	items, page: 1, perPage: 50, total: items.length, pages: 1
+	it('clears previous lookup results immediately when the selected warehouse changes', async () => {
+		mocks.lookupBarcode.execute.mockResolvedValue({ itemId: 12, sku: 'SKU-12', itemName: 'Bearing', upc: '0012' });
+		const state = createInventoryOverviewState();
+		await state.initialize();
+		await state.lookupBarcode('0012');
+		expect(state.itemBarcodeResult).not.toBeNull();
+		state.setWarehouseId(2);
+		expect(state.itemBarcodeResult).toBeNull();
+		expect(state.binContentsResult).toBeNull();
+	});
+
 });
 const deferred = <T,>() => {
 	let resolve!: (value: T) => void;
@@ -82,6 +93,7 @@ describe('inventory lookup state', () => {
 		mocks.getInventoryOverview.execute.mockReturnValueOnce(pending.promise);
 		const state = createInventoryOverviewState();
 		const loading = state.load({ warehouseId: 1 });
+		await vi.waitFor(() => expect(mocks.getInventoryOverview.execute).toHaveBeenCalledTimes(1));
 		selection.warehouseId = 2;
 		selection.generation = notifyWarehouseChanged();
 		pending.resolve(page([{ inventoryId: 99, itemId: 9 }]));
