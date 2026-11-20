@@ -72,19 +72,14 @@ describe('Auth HTTP integration', () => {
 		if (result.ok) expect(result.user.username).toBe('op1');
 	});
 
-	it('refreshes the cookie and retries /me after a 401', async () => {
-		const fetchMock = vi.fn()
-			.mockResolvedValueOnce(jsonResponse({ error: 'unauthorized' }, 401))
-			.mockResolvedValueOnce(jsonResponse({ token: 'new' }))
-			.mockResolvedValueOnce(jsonResponse(sampleUserDto));
+	it('does not attempt refresh when /me rejects an expired cookie session', async () => {
+		const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ error: 'Token expired' }, 401));
 		const { repo } = createStack(fetchMock);
 		const result = await new EnsureAuthenticatedUseCase(repo).execute();
 		expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
-			'https://wms.test/api/auth/me',
-			'https://wms.test/api/auth/refresh',
 			'https://wms.test/api/auth/me'
 		]);
-		expect(result.ok).toBe(true);
+		expect(result).toMatchObject({ ok: false, reason: 'unauthorized' });
 	});
 
 	it('sends change-password fields in the Flask snake_case contract', async () => {
@@ -107,10 +102,12 @@ describe('Auth HTTP integration', () => {
 		expect(authSession.getUser()).toBeNull();
 	});
 
-	it('rejects an inactive account even when login returns HTTP 200', async () => {
-		const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ token: 't', user: { ...sampleUserDto, is_active: false } }));
+	it('does not establish a session when Flask rejects an inactive account at login', async () => {
+		const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ error: 'Invalid username or password' }, 401));
 		const { repo } = createStack(fetchMock);
-		await expect(new LoginUseCase(repo).execute({ username: 'op1', password: 'secret12' })).rejects.toThrow(/inactivo/i);
+		await expect(new LoginUseCase(repo).execute({ username: 'op1', password: 'secret12' })).rejects.toThrow(/Invalid username or password/i);
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(authSession.getUser()).toBeNull();
 	});
 
 	it('does not restore a user when /me resolves after logout', async () => {
