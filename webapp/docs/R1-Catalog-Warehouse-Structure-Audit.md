@@ -208,3 +208,43 @@ Los conteos por suite pueden solaparse porque los scripts ejecutan conjuntos de 
 - **Fuera del DoD:** workflows/suites backend y gitleaks del repositorio completo. No se modificó Flask ni se usaron resultados backend para certificar R1.
 
 **Declaración:** R1 está `VERIFIED` en el alcance frontend definido por `MigrationPlan.md`. R0 no se declara globalmente cerrado; los recorridos restantes conservan su propio gate.
+
+
+## 10. Cierre definitivo R1 — Webapp CI verde (2026-11-20)
+
+<badge color="success">VERIFIED — frontend</badge>
+
+**Rama:** `svelte-webapp`  
+**HEAD de código validado:** `bb78f8615e6b5205758b01f7c35f2fc19f9c4213`  
+**Webapp CI:** [run 44654858421 — SUCCESS](https://github.com/danielitoCode/smart-wms/actions/runs/44654858421)
+
+La ejecución corresponde exactamente al HEAD indicado. El job `Typecheck · Build · Test` completó correctamente:
+
+- Typecheck (`svelte-check + TypeScript`).
+- Build de producción SvelteKit/Vite.
+- Suites Domain, Application, Infrastructure/Data, UI/Presentation e i18n.
+- Integration.
+- Full regression.
+- Coverage by feature paths.
+
+Todos los pasos del job terminaron en `success`. Esta es la evidencia de cierre frontend más reciente y sustituye la referencia histórica al HEAD `812837b1d62fc1f73d65b6f2d4d46f1b940c80e2` de la sección 9. Los conteos de aquella ejecución no se presentan como conteos de este run.
+
+### Resultado de workflows independientes
+
+| Workflow | Run / resultado | Interpretación para R1 |
+|---|---|---|
+| Webapp CI | [44654858421 — SUCCESS](https://github.com/danielitoCode/smart-wms/actions/runs/44654858421) | Aceptación frontend satisfecha |
+| Tests (Python/backend) | [44654858367 — FAILURE](https://github.com/danielitoCode/smart-wms/actions/runs/44654858367) | Fallo en el paso `Run tests`; fuera del DoD frontend, registrar y tratar por separado |
+| gitleaks | [44654858470 — FAILURE](https://github.com/danielitoCode/smart-wms/actions/runs/44654858470) | Control de secretos independiente; requiere revisión separada, no es regresión SvelteKit |
+
+No se afirma que las pruebas Python ni el control gitleaks hayan pasado. Tampoco se modificó Flask como parte de este cierre.
+
+### Excepciones backend que permanecen abiertas
+
+- **BACKEND_LIMITATION:** las rutas administrativas Zones/Bins inspeccionadas no aplican warehouse scope server-side de forma consistente. Las protecciones de UI no sustituyen autorización del servidor.
+- **BACKEND_LIMITATION:** Flask no acepta ni devuelve capacidades físicas de bins (`max_weight_lbs`, `max_volume_cuft`); la UI comunica que no hay validación física disponible.
+- **BACKEND_LIMITATION:** el inventario de detalle de Items es global y no se atribuye a un almacén seleccionado.
+
+### Declaración de cierre
+
+R1 queda **formalmente VERIFIED para el frontend SvelteKit** en el HEAD `bb78f8615e6b5205758b01f7c35f2fc19f9c4213`, respaldado por Webapp CI verde y ejecución completa de las suites frontend, integración, regresión y coverage. Los fallos de Python/backend y gitleaks quedan explícitamente separados y no se ocultan ni se consideran aprobados. Las limitaciones server-side descritas siguen sin resolverse y no forman parte de la aceptación frontend. Este cierre de R1 no declara R0 globalmente cerrado.
