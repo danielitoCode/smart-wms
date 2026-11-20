@@ -54,7 +54,9 @@
 		{ id: 'shared-tooltip', name: 'SharedTooltipAvatars', status: 'ready', href: '/lab/shared-tooltip', description: 'Stack de avatares con tooltip flotante compartido (CSS, sin Framer).' },
 		{ id: 'tags', name: 'Tags', status: 'ready', href: '/lab/tags', description: 'Multi-select de chips pool → seleccionados (CSS, sin Motion).' },
 		{ id: 'popover-form', name: 'PopoverForm', status: 'ready', href: '/lab/popover-form', description: 'Panel flotante con idle/loading/success, cutouts y ejemplos feedback/contacto/tema.' },
-		{ id: 'sidebar', name: 'AppSidebar', status: 'ready', href: '/lab/sidebar', description: 'Shell colapsable a iconos: almacén, nav grupos, en curso y usuario (shadcn-style).' }
+		{ id: 'sidebar', name: 'AppSidebar', status: 'ready', href: '/lab/sidebar', description: 'Shell colapsable a iconos: almacén, nav grupos, en curso y usuario (shadcn-style).' },
+		{ id: 'about3', name: 'About3', status: 'ready', href: '/lab/about3', description: 'Bloque About: grid de imágenes, breakout, marquee de logos, logros y secciones de visión.' },
+		{ id: 'stacked-bars', name: 'StackedBars', status: 'ready', href: '/lab/stacked-bars', description: 'Barras apiladas con scrub/tooltip y categorías WMS (día/semana).' }
 	] as const;
 </script>
 
