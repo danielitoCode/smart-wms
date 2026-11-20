@@ -173,3 +173,17 @@ Sales-order listing can be authorized by \`fraud\` permission as well as \`sales
 3. Completar auditoría de Fraud, historial/audit-history y cancelación/liberación de reservas; verificar cada endpoint y respuesta antes de habilitar acciones.
 4. Reconciliar Backorders con React: tabs, orden, cantidades, open PO derivado, estados, cancelación y recarga posterior.
 5. No cerrar R4 hasta que los gaps backend de warehouse scope estén corregidos fuera de este alcance o aceptados formalmente como bloqueo explícito. Una guard de UI no satisface la aceptación de seguridad.
+
+
+## 8. Implementación frontend — concurrencia y resultado de creación
+
+**Implementado en `webapp/`:**
+
+1. Listado: cada carga recibe una secuencia monotónica; se permite iniciar una carga nueva aunque otra siga pendiente. Solo la última respuesta puede cambiar filas, error, loadedOnce o loading.
+2. Detalle: `open(id)` invalida solicitudes previas y `close()` invalida cualquier apertura pendiente. Las respuestas y errores obsoletos no sustituyen ni limpian el pedido seleccionado más reciente.
+3. Refresh de detalle: la recarga tras mutaciones también usa la misma secuencia; una recarga antigua no puede pisar otro pedido abierto después.
+4. Creación: el estado conserva el `SalesOrder` completo devuelto por POST, incluido `quantity_allocated`; reinicia la página a 1 y actualiza el listado sin descartar el detalle creado.
+5. UI: al completar la creación se abre el detalle devuelto por Flask. La tabla muestra `Asignada` y `Pendiente de asignar` (ordered − allocated), sin presentar esa diferencia como stock disponible. La pantalla ya muestra cantidades recogidas, empacadas y enviadas por separado.
+6. Pruebas de estado nuevas: respuesta de listado fuera de orden, loading con dos solicitudes, aperturas rápidas, error de detalle obsoleto, cierre con solicitud pendiente y conservación de asignaciones reales tras crear.
+
+**Verificación:** Webapp CI se debe evaluar sobre el HEAD final de esta implementación. Los workflows iniciados por commits intermedios no se consideran evidencia de aceptación final.
