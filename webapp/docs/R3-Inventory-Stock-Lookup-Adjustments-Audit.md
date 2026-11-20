@@ -1,15 +1,15 @@
 # R3 — Auditoría de stock, lookup, ajustes y movimientos
 
-**Estado:** `IN_PROGRESS` — auditoría de contratos y brechas inicial completada; implementación/cobertura pendiente.  
+**Estado:** `IN_PROGRESS` — lookup de item y contenido de bin integrados en la pantalla de inventario; cobertura añadida, validación CI del HEAD final pendiente.  
 **Rama auditada:** `svelte-webapp`  
-**HEAD auditado:** `f3ea0f44377ac9724aae55619c2307e5e64875e4`  
+**HEAD de implementación:** `a001e4f0f260831212d8473766771385bef6b08d`  
 **Alcance:** exclusivamente `webapp/`. Flask se inspecciona como fuente de contratos; no se modifica ni se exige que sus suites pasen.
 
 ## 1. Resumen ejecutivo
 
 R3 tiene una base parcial en SvelteKit: listado de inventario, consulta por `item_id`, paginación/filtros, ciclo de conteo y un módulo de ajustes con historial, aprobación y ajuste directo. También existen endpoints Flask de lookup de item/bin y detalle de bin.
 
-No está completo el recorrido solicitado. Faltan la composición UI de búsqueda por SKU/nombre/barcode, detalle de stock por item, contenido de bin desde la pantalla de inventario, actualización coordinada de consultas tras cambios, y una consulta de movimientos/ledger que pueda presentarse como historial de movimientos de stock. El ajuste directo actual no ofrece preview server-side y la UI lo ejecuta inmediatamente; no cumple el requisito de mostrar impacto y confirmar antes de mutar. Debe quedar deshabilitado hasta disponer de preview autoritativo, o de un contrato equivalente que permita confirmar de forma segura.
+La pantalla de inventario ya integra lookup exacto de item por SKU/UPC/alias y consulta de contenido de bin por barcode/código. Ambos flujos exigen almacén activo autorizado, comprueban el contexto antes y después de cada respuesta y descartan resultados obsoletos al cambiar de almacén o iniciar otra consulta. El lookup de item usa su `item_id` para consultar el stock filtrado por el almacén seleccionado; el lookup de bin valida el `warehouse_id` devuelto por Flask antes de mostrar contenido. Sigue pendiente la validación CI del HEAD final. R3 no está completo: no hay preview de ajuste server-side ni ledger completo, y el ajuste directo permanece deshabilitado.
 
 ## 2. Contratos Flask observados
 
@@ -87,10 +87,10 @@ El endpoint de review bloquea cada ajuste con `FOR UPDATE`, rechaza decisiones r
 
 | Capacidad | Implementación localizada | Evaluación inicial |
 |---|---|---|
-| Listado/consulta stock | `core/feature/inventory`: entidad, DTO, mapper, datasource, repository, SearchInventory/GetItemInventory/GetInventoryOverview y pantalla | Parcial: usa el endpoint real, pero la pantalla solo filtra por ID y texto; no integra barcode/detail/bin contents |
+| Listado/consulta stock | `core/feature/inventory`: entidad, DTO, mapper, datasource, repository, SearchInventory/GetItemInventory/GetInventoryOverview y pantalla | Parcial: búsqueda de texto e item barcode integrados; stock consultado con `item_id` y warehouse activo |
 | Warehouse context | `inventoryState.svelte.ts` toma `warehouseSelection`, carga bins y cancela resultados obsoletos por generación | Parcial: debe revisarse el listado admin de almacenes y el scope real del endpoint |
-| Bin barcode | `core/feature/warehouses`: BinLookupRemoteDataSource, repository y LookupBinByBarcodeUseCase | Implementado en capa de datos/dominio; falta integración con pantalla R3 y pruebas de flujo |
-| Ajustes | `core/feature/inventory-adjustments`: entidad, policy, use cases, DTO, datasource, repository, estado y pantalla | Parcial: historial y review; formulario directo ejecuta mutación inmediata sin preview/confirmación |
+| Bin barcode | `core/feature/warehouses`: BinLookupRemoteDataSource, repository y LookupBinByBarcodeUseCase | Integrado en pantalla; valida warehouse_id y muestra líneas/stock devueltos por Flask |
+| Ajustes | `core/feature/inventory-adjustments`: entidad, policy, use cases, DTO, datasource, repository, estado y pantalla | Parcial: historial/review disponibles; CTA de ajuste directo deshabilitada por ausencia de preview server-side |
 | Movimientos | No se localizó caso de uso/endpoint de feed completo | No soportado por el contrato observado |
 | Auditoría | endpoint de audit log existe, pero no aplica warehouse scope en el handler inspeccionado | No consumir como historial scoped de R3 hasta resolver contrato seguro |
 
@@ -109,17 +109,31 @@ La pantalla `InventoryScreen.svelte` presenta en mano/disponible/lote/estado y p
 | No hay ledger completo / GetInventoryMovements | BACKEND_LIMITATION / UNVERIFIED_CONTRACT | Documentar endpoint futuro; no reconstruir desde audit log |
 | Audit log no aplica warehouse scope | BACKEND_LIMITATION | No integrarlo como feed de R3 para usuarios scoped |
 | Estados staging/en tránsito no están separados en DTO de inventario | BACKEND_LIMITATION | Mostrar solo estados/cantidades entregados por Flask |
-| Falta integración UI de bin barcode/content | FRONTEND_DEFECT | Integrar lookup existente y verificar invalidación por warehouse |
+| Integración UI de item/bin barcode y contenido de bin | FRONTEND_DEFECT | Implementada en `InventoryScreen.svelte`; pruebas de warehouse scope, errores y respuestas obsoletas añadidas |
 
+## 5.1 Implementación completada en la iteración de lookup
+
+- **LookupBarcode:** `LookupBarcodeUseCase` → `InventoryRepository` → `InventoryRemoteDataSource` → `GET /api/lookup/item/<barcode>`. El mapper expone solo identidad del item al dominio; las ubicaciones globales de la respuesta de lookup no se atribuyen directamente al almacén activo.
+- **GetBinContents:** `LookupBinByBarcodeUseCase` existente → `BinLookupRepository` → `GET /api/lookup/bin/<barcode>`. La respuesta incluye `bin.warehouse_id` y `items[]`; se compara el almacén devuelto con el almacén seleccionado antes de presentar los contenidos.
+- **Contexto:** los dos flujos llaman `warehouseSelection.requireWarehouseId()`, exigen coincidencia con el contexto local, y consultan stock del item con `warehouse_id` y del bin con `warehouse_id` + `bin_id`.
+- **Respuestas obsoletas:** usan `beginWarehouseScopedRequest`, generación de almacén y `requestVersion`; al cambiar de almacén o comenzar una consulta posterior, la respuesta anterior no puede sobrescribir el estado visible.
+- **Errores:** los 400/403/404/409 se normalizan mediante `toUserMessage`; se bloquea la búsqueda sin almacén autorizado y se rechaza un bin cuyo `warehouse_id` no coincide.
+- **UI:** dos controles de escaneo/búsqueda en `InventoryScreen.svelte`; muestra identidad del producto y stock filtrado por almacén, o contenido de bin con SKU, cantidades reales y lote. No sintetiza staging ni tránsito.
+
+**Pruebas añadidas:**
+- `feature/inventory/data/ItemBarcodeLookup.test.ts`: ruta exacta, encoding y mapping.
+- `feature/inventory/domain/usecase/LookupBarcodeUseCase.test.ts`: normalización y validación de códigos.
+- `feature/inventory/ui/inventoryState.test.ts`: almacén enviado al caso de uso, bin fuera del almacén rechazado, error de lookup, descarte de respuestas tardías y limpieza de resultados al cambiar de almacén.
+- Se reutilizan las pruebas existentes de `BinLookupRemoteDataSource`, `BinLookupRepositoryImpl`, `BinLookupUseCases` y `WarehouseRequestScope`.
 ## 5. Plan de implementación R3
 
 1. **Domain:** consolidar SearchInventory, GetItemStock, GetBinContents y LookupBarcode con modelos que distingan campos presentes/ausentes; no representar cantidades no expuestas como cero. Definir resultado de movimientos como no soportado hasta contrato verificable.
 2. **Application:** validar warehouse context, permisos `inventory`/ `bins`/ `adjustments`, cancelar/inutilizar respuestas de contexto anterior y normalizar 400/403/404/409.
 3. **Data:** contrastar DTO/mappers con las rutas anteriores; implementar item lookup exacto, bin lookup y contenido con los endpoints existentes. No asumir warehouse_id donde Flask no lo devuelve.
-4. **UI:** búsqueda por SKU/nombre/barcode; detalle de item con filas por bin/lote; escaneo/lookup de bin y su contenido; estados de stock solo con datos reales; motivo/ajuste directo deshabilitado mientras no exista preview; mostrar el gap de ledger/auditoría scoped.
-5. **Consistencia:** tras una mutación confirmada por Flask, invalidar y volver a consultar inventario, detalle, bin y ajustes; no hacer optimistic stock update. Tratar 409 como conflicto y recargar.
+4. **UI:** búsqueda por SKU/nombre y barcode exacto de item; detalle de item con filas por bin/lote; escaneo/lookup de bin y su contenido; estados de stock solo con datos reales; motivo/ajuste directo deshabilitado mientras no exista preview; mostrar el gap de ledger/auditoría scoped.
+5. **Consistencia:** tras una mutación confirmada por Flask, invalidar y volver a consultar inventario, detalle, bin y ajustes; no hacer optimistic stock update. Tratar 409 como conflicto y recargar. En consultas de lookup, descartar cualquier respuesta de generación anterior.
 6. **Pruebas:** Domain/Application/Data/Integration/UI para query, barcode exacto y alias, scope/cambio de almacén, múltiples lotes por bin, estados ausentes, paginación, permisos, errores 400/403/404/409, motivo y límites, doble envío/review concurrente y controles deshabilitados cuando preview/ledger no existen.
-7. **Verificación:** ejecutar exclusivamente `webapp` (check, build, suites por capas, integración, regresión y coverage) sobre el HEAD definitivo. Las suites Python quedan fuera del DoD de frontend.
+7. **Verificación:** ejecutar exclusivamente `webapp` (check, build, suites por capas, integración, regresión y coverage) sobre el HEAD definitivo. Las suites Python quedan fuera del DoD de frontend. En esta iteración la ejecución CI correspondiente al HEAD de implementación sigue pendiente de resultado.
 
 ## 6. Criterio de cierre R3
 
