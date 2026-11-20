@@ -87,7 +87,7 @@
     }
 
     const target = cancelTarget;
-    const ok = await vm.cancel(target.salesOrderId, cancelReason);
+    const ok = await vm.cancel(target.salesOrderId, cancelReason, target.warehouseId);
     if (!ok) {
       cancelError = vm.error || i18n.t('No se pudo cancelar el backorder.');
       return;
