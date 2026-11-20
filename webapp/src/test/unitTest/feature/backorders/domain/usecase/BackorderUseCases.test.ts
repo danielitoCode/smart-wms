@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  CancelBackorderUseCase, GetBackorderDetailUseCase, ListBackordersUseCase
+  CancelBackorderUseCase, GetBackorderAuditHistoryUseCase, GetBackorderDetailUseCase, ListBackordersUseCase
 } from '../../../../../../core/feature/backorders/domain/usecase/BackorderUseCases';
 import type { BackordersRepository } from '../../../../../../core/feature/backorders/domain/repository/BackordersRepository';
 import type { SalesOrder } from '../../../../../../core/feature/sales-orders/domain/entity/SalesOrder';
@@ -42,6 +42,7 @@ function repository(order = makeOrder(), parentSalesOrder: SalesOrder | null = o
     list: ReturnType<typeof vi.fn>;
     getDetail: ReturnType<typeof vi.fn>;
     cancel: ReturnType<typeof vi.fn>;
+    auditHistory: ReturnType<typeof vi.fn>;
   };
 }
 
@@ -110,7 +111,7 @@ describe('GetBackorderDetailUseCase', () => {
 describe('CancelBackorderUseCase', () => {
   it('validates and retrieves paginated audit history', async () => {
     const repo = repository();
-    const useCase = new (await import('../../../../../../core/feature/backorders/domain/usecase/BackorderUseCases')).GetBackorderAuditHistoryUseCase(repo);
+    const useCase = new GetBackorderAuditHistoryUseCase(repo);
     await useCase.execute(41, 2);
     expect(repo.auditHistory).toHaveBeenCalledWith(41, 2);
     expect(() => useCase.execute(0, 1)).toThrow(/Pedido no válido/);
@@ -150,7 +151,7 @@ describe('CancelBackorderUseCase', () => {
 
   it('rejects a missing or mismatched parent before posting cancellation', async () => {
     const repo = repository(makeOrder(), null);
-    await expect(new CancelBackorderUseCase(repo).execute(41, 'other')).rejects.toThrow(/pedido original/);
+    await expect(new CancelBackorderUseCase(repo).execute(41, 'other', 3)).rejects.toThrow(/pedido original/);
     expect(repo.cancel).not.toHaveBeenCalled();
   });
 
