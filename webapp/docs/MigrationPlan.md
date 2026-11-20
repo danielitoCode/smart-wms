@@ -308,7 +308,7 @@ Aceptación:
 ### R3 — Consultar stock, localizar y ajustar inventario
 **Trazabilidad:** F2 Inventory, Lookup, Adjustments, Bins, Audit.
 
-**Estado:** `IN_PROGRESS` (2026-11-20). Auditoría inicial de contratos Flask, paridad React y estado SvelteKit en [R3-Inventory-Stock-Lookup-Adjustments-Audit.md](./R3-Inventory-Stock-Lookup-Adjustments-Audit.md). Se han identificado gaps de warehouse scope en el listado de inventario, ausencia de preview de ajuste y falta de un ledger completo; el ajuste directo debe permanecer deshabilitado en UI hasta contar con preview autoritativo. No se modifica Flask.
+**Estado:** `IN_PROGRESS` (2026-11-20). `LookupBarcode` y `GetBinContents` integrados en `InventoryScreen.svelte`, con validación de almacén autorizado, rechazo de bins de otro almacén, normalización de errores y descarte de respuestas obsoletas. Pruebas de datasource/use case/estado añadidas; CI del HEAD final pendiente. Persisten gaps de warehouse scope en el endpoint de listado, ausencia de preview de ajuste y falta de ledger completo; el ajuste directo permanece deshabilitado. Detalle y evidencias: [R3-Inventory-Stock-Lookup-Adjustments-Audit.md](./R3-Inventory-Stock-Lookup-Adjustments-Audit.md). No se modifica Flask.
 
 Recorrido:
 1. Resolver almacén y permiso de lectura.
