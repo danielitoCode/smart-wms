@@ -114,8 +114,8 @@
     </div>
   {:else if vm.detailLoading}
     <UiStatePanel kind="loading" title={i18n.t('Cargando backorder')} message={i18n.t('Estamos recuperando el pedido pendiente y sus líneas.')} />
-  {:else if vm.detailError}
-    <UiStatePanel kind="error" title={i18n.t('No se pudo cargar el backorder')} message={vm.detailError} retry={() => vm.loadDetail(backorderId)} />
+  {:else if vm.auditError}
+    <UiStatePanel kind="error" title={i18n.t('No se pudo cargar el backorder')} message={vm.auditError} retry={() => vm.loadDetail(backorderId)} />
   {:else if order && !hasOrderWarehouseAccess}
     <UiStatePanel kind="forbidden" title={i18n.t('Almacén no autorizado')} message={i18n.t('No tienes acceso al almacén de este pedido.')} />
   {:else if order}
@@ -207,8 +207,8 @@
         </header>
         {#if vm.auditLoading}
           <p class="hint">{i18n.t('Cargando historial…')}</p>
-        {:else if vm.detailError}
-          <p class="message error" role="alert">{vm.detailError}</p>
+        {:else if vm.auditError}
+          <p class="message error" role="alert">{vm.auditError}</p>
           <button type="button" onclick={() => void vm.loadAuditHistory(order.salesOrderId, vm.auditPage)}>{i18n.t('Reintentar historial')}</button>
         {:else if vm.auditEntries.length === 0}
           <p class="hint">{i18n.t('No hay eventos de auditoría para este pedido.')}</p>
