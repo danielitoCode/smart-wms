@@ -757,3 +757,26 @@ El workflow independiente **gitleaks** (run [44654858470](https://github.com/dan
 R1 queda formalmente cerrado como `VERIFIED` para `webapp/`: el HEAD `bb78f8615e6b5205758b01f7c35f2fc19f9c4213` tiene Webapp CI verde, con check, build, suites por capas, integración, regresión global y coverage by feature paths completados. Los fallos Python/backend y gitleaks permanecen visibles como resultados independientes; no se consideran aprobados ni se usan para invalidar el resultado específico de Webapp CI.
 
 Se mantienen las limitaciones Flask ya documentadas en R1 (warehouse scope server-side de Zones/Bins, capacidades físicas de bins y alcance global del inventario de Items). La verificación frontend no certifica ni sustituye esas garantías backend. R0 no se declara globalmente cerrado.
+
+
+## 15. Inicio R4 — Sales Orders, disponibilidad, reservas y backorders
+
+**Estado:** \`IN_PROGRESS\` — kickoff de auditoría y contratos.  
+**Rama:** \`svelte-webapp\`  
+**HEAD de inicio:** \`944d24982ce08432d2fb66f2a9f3ef04e6f25083\`  
+**Auditoría:** [R4-Sales-Orders-Backorders-Audit.md](./R4-Sales-Orders-Backorders-Audit.md)
+
+R4 puede avanzar en \`webapp/\` sin modificar Flask. El repositorio ya contiene módulos Svelte de Sales Orders, Backorders y Customers; el trabajo debe partir de la comparación con React y de la verificación de los contratos reales, no de reconstruirlos desde cero.
+
+### Hallazgos iniciales
+
+1. \`GET /api/admin/sales-orders\` y \`GET /api/admin/sales-orders/{id}\` aplican \`warehouse_scope_clause\`; el listado tiene paginación real y filtros adicionales.
+2. \`POST /api/admin/sales-orders\` crea el pedido y reserva parcialmente stock disponible dentro de la misma transacción, bloqueando filas de inventario. Svelte debe aceptar como autoridad las cantidades asignadas que devuelve Flask; no simular reservas ni calcular disponibilidad oficial en el cliente.
+3. \`GET /api/admin/backorders\` aplica el filtro \`warehouse_id\` solicitado, pero el handler inspeccionado no aplica explícitamente warehouse scope del usuario. Es una \`BACKEND_LIMITATION\`: el parámetro de filtro no es autorización.
+4. La autorización por almacén en creación y en cada mutación de Sales Orders (header, líneas, allocation, cancel y cancel-backorder) debe verificarse individualmente; no inferirla de los GET.
+5. Customers permanece read-only como proyección de pedidos mientras no exista API canónica de clientes.
+6. El permiso \`fraud\` sobre el listado de pedidos no demuestra por sí solo que exista un contrato de evaluación de fraude consumible.
+
+### Primera puerta de trabajo
+
+Completar la matriz React ↔ Svelte ↔ Flask de Sales Orders, Backorders y Customers; verificar scopes/estados/side effects de todas las mutaciones; corregir los defectos frontend demostrados y mantener bloqueadas las capacidades cuyo contrato servidor no sea suficiente. No modificar Flask ni presentar los gaps como resueltos por guards de UI.
