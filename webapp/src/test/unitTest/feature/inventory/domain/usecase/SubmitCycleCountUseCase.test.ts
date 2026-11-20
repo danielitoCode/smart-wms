@@ -16,6 +16,7 @@ const submittedResult: CycleCountSubmitResult = {
 function createRepo(overrides: Partial<InventoryRepository> = {}): InventoryRepository {
 	return {
 		getOverview: vi.fn(),
+		lookupBarcode: vi.fn(),
 		getItemInventory: vi.fn(),
 		createCycleCounts: vi.fn(),
 		getCycleCount: vi.fn().mockResolvedValue(openDetail),
