@@ -46,6 +46,23 @@ export type Backorder = {
 };
 
 export type BackorderQueueTab = 'waiting' | 'ready-to-ship';
+
+export type BackorderAuditEntry = {
+  logId: number;
+  actionType: string;
+  username: string | null;
+  warehouseId: number | null;
+  details: Record<string, unknown> | null;
+  createdAt: string | null;
+};
+
+export type BackorderAuditHistoryPage = {
+  entries: BackorderAuditEntry[];
+  page: number;
+  perPage: number;
+  total: number;
+  pages: number;
+};
 export type CancelBackorderReason = 'found' | 'customer_asked' | 'refunded' | 'other';
 
 export type CancelBackorderInput = {
