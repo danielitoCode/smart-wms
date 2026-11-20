@@ -761,22 +761,30 @@ Se mantienen las limitaciones Flask ya documentadas en R1 (warehouse scope serve
 
 ## 15. Inicio R4 — Sales Orders, disponibilidad, reservas y backorders
 
-**Estado:** \`IN_PROGRESS\` — kickoff de auditoría y contratos.  
-**Rama:** \`svelte-webapp\`  
-**HEAD de inicio:** \`944d24982ce08432d2fb66f2a9f3ef04e6f25083\`  
+**Estado:** `IN_PROGRESS` — auditoría de contratos y paridad completada en primera pasada; implementación frontend pendiente.  
+**Rama:** `svelte-webapp`  
+**HEAD inspeccionado:** `282a62e50e582cba3c49e9827b100b8575800ba8`  
 **Auditoría:** [R4-Sales-Orders-Backorders-Audit.md](./R4-Sales-Orders-Backorders-Audit.md)
 
-R4 puede avanzar en \`webapp/\` sin modificar Flask. El repositorio ya contiene módulos Svelte de Sales Orders, Backorders y Customers; el trabajo debe partir de la comparación con React y de la verificación de los contratos reales, no de reconstruirlos desde cero.
+R4 parte de módulos Svelte ya existentes en Sales Orders, Backorders y Customers. Se inspeccionaron React, rutas Flask, schemas y capas Svelte. No se modificó código funcional ni Flask en esta pasada.
 
-### Hallazgos iniciales
+### Confirmado
 
-1. \`GET /api/admin/sales-orders\` y \`GET /api/admin/sales-orders/{id}\` aplican \`warehouse_scope_clause\`; el listado tiene paginación real y filtros adicionales.
-2. \`POST /api/admin/sales-orders\` crea el pedido y reserva parcialmente stock disponible dentro de la misma transacción, bloqueando filas de inventario. Svelte debe aceptar como autoridad las cantidades asignadas que devuelve Flask; no simular reservas ni calcular disponibilidad oficial en el cliente.
-3. \`GET /api/admin/backorders\` aplica el filtro \`warehouse_id\` solicitado, pero el handler inspeccionado no aplica explícitamente warehouse scope del usuario. Es una \`BACKEND_LIMITATION\`: el parámetro de filtro no es autorización.
-4. La autorización por almacén en creación y en cada mutación de Sales Orders (header, líneas, allocation, cancel y cancel-backorder) debe verificarse individualmente; no inferirla de los GET.
-5. Customers permanece read-only como proyección de pedidos mientras no exista API canónica de clientes.
-6. El permiso \`fraud\` sobre el listado de pedidos no demuestra por sí solo que exista un contrato de evaluación de fraude consumible.
+1. GET Sales Orders aplica warehouse scope, filtros y paginación real; GET detalle aplica scope y devuelve cabecera, líneas y pick tasks.
+2. POST Sales Orders valida el schema, comprueba existencia de item y duplica número, y reserva parcialmente stock dentro de la transacción mediante bloqueo de filas. Svelte debe confiar únicamente en `quantity_allocated` devuelto por Flask.
+3. React lista con status/búsqueda y 50 filas por página; Svelte ya utiliza paginación real y `exclude_post_fulfillment=true`.
+4. Backorders tiene tabs waiting/ready-to-ship, cantidades de líneas y PO abierto derivado. El GET no aplica warehouse scope del usuario.
+5. Customers sigue siendo una proyección read-only; no se ha demostrado API CRUD canónica.
+6. El permiso `fraud` para listar SO no acredita un assessment de fraude en el detalle.
 
-### Primera puerta de trabajo
+### Bloqueos y defectos
 
-Completar la matriz React ↔ Svelte ↔ Flask de Sales Orders, Backorders y Customers; verificar scopes/estados/side effects de todas las mutaciones; corregir los defectos frontend demostrados y mantener bloqueadas las capacidades cuyo contrato servidor no sea suficiente. No modificar Flask ni presentar los gaps como resueltos por guards de UI.
+- **BACKEND_LIMITATION:** los handlers auditados de edición de cabecera, dirección, líneas, cancelación y cancel-backorder no muestran enforcement explícito de warehouse scope. La cola Backorders tampoco. La UI no puede garantizar protección frente a manipulación directa de IDs.
+- **UNVERIFIED_CONTRACT:** creación no demuestra autorización del `warehouse_id` recibido ni validación de item activo.
+- **FRONTEND_DEFECT:** `salesOrdersState.load()` descarta llamadas mientras ya está cargando y no invalida respuestas antiguas; `open(id)` tampoco protege frente a aperturas rápidas.
+- **FRONTEND_DEFECT de confirmación:** el estado de creación descarta el detalle autoritativo devuelto por POST y recarga el listado sin conservar la asignación real del servidor.
+
+### Siguiente ejecución
+
+Corregir las carreras de listado/detalle y preservar el resultado de creación en Svelte; añadir pruebas de estado/UI. Después completar la auditoría de Fraud, historial y liberación/cancelación, y la reconciliación detallada de Backorders. No habilitar controles que dependan de autorización server-side ausente. R4 no puede declararse cerrado mientras el aislamiento cross-warehouse de lecturas/mutaciones siga sin garantía backend.
+
