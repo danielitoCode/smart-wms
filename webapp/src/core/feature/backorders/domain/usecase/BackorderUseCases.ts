@@ -1,5 +1,5 @@
 import type {
-  Backorder, BackorderDetail, BackorderQueueTab, CancelBackorderReason
+  Backorder, BackorderAuditHistoryPage, BackorderDetail, BackorderQueueTab, CancelBackorderReason
 } from '../entity/Backorder';
 import type { BackordersRepository } from '../repository/BackordersRepository';
 
@@ -42,18 +42,36 @@ export class GetBackorderDetailUseCase {
   }
 }
 
+export class GetBackorderAuditHistoryUseCase {
+  constructor(private readonly repository: BackordersRepository) {}
+
+  execute(backorderId: number, page = 1): Promise<BackorderAuditHistoryPage> {
+    if (!Number.isSafeInteger(backorderId) || backorderId <= 0) {
+      throw new Error('Pedido no válido');
+    }
+    if (!Number.isSafeInteger(page) || page < 1) throw new Error('Página de historial no válida');
+    return this.repository.auditHistory(backorderId, page);
+  }
+}
+
 export class CancelBackorderUseCase {
   constructor(private readonly repository: BackordersRepository) {}
 
-  async execute(backorderId: number, reason: CancelBackorderReason): Promise<void> {
+  async execute(backorderId: number, reason: CancelBackorderReason, expectedWarehouseId: number): Promise<void> {
     if (!Number.isInteger(backorderId) || backorderId < 1) {
       throw new Error('backorderId must be an integer >= 1');
     }
     const allowed: readonly CancelBackorderReason[] = ['found', 'customer_asked', 'refunded', 'other'];
     if (!allowed.includes(reason)) throw new Error('Motivo de cancelación no válido');
 
+    if (!Number.isSafeInteger(expectedWarehouseId) || expectedWarehouseId <= 0) {
+      throw new Error('Selecciona un almacén autorizado antes de cancelar');
+    }
     const detail = await this.repository.getDetail(backorderId);
     const { order } = detail;
+    if (order.warehouseId !== expectedWarehouseId) {
+      throw new Error('El backorder no pertenece al almacén autorizado seleccionado');
+    }
     if (order.orderType !== 'backorder' || order.parentSoId === null) {
       throw new Error('Este pedido no es un backorder cancelable mediante esta operación');
     }
