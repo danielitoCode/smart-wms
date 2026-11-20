@@ -189,7 +189,11 @@ describe('salesOrdersState request ordering and create confirmation', () => {
   it('retains the created detail and the server allocation quantities', async () => {
     const created = order(99, 5);
     deps.createSalesOrder.execute.mockResolvedValueOnce(created);
+    deps.listSalesOrders.execute
+      .mockResolvedValueOnce({ ...page(), pages: 4 })
+      .mockResolvedValueOnce(page());
     const state = createSalesOrdersState();
+    await state.load();
     state.setPage(3);
 
     const result = await state.create({
@@ -202,6 +206,6 @@ describe('salesOrdersState request ordering and create confirmation', () => {
     expect(state.page).toBe(1);
     expect(state.selected).toBe(created);
     expect(state.selected?.lines[0].quantityAllocated).toBe(5);
-    expect(deps.listSalesOrders.execute).toHaveBeenCalledTimes(1);
+    expect(deps.listSalesOrders.execute).toHaveBeenCalledTimes(2);
   });
 });
