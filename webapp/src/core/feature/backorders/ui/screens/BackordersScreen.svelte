@@ -18,6 +18,8 @@
   let scopeError = $state(false);
   let scopeErrorMessage = $state('');
   let cancelTarget = $state<Backorder | null>(null);
+  let cancelScopeWarehouseId = $state<number | null>(null);
+  let cancelScopeTab = $state<BackorderQueueTab>('waiting');
   let cancelReason = $state<CancelBackorderReason>('other');
   let cancelError = $state('');
   let successMessage = $state('');
@@ -67,9 +69,11 @@
 
   $effect(() => {
     const selectedWarehouseId = selection?.warehouseId ?? null;
-    if (cancelTarget && guard.user?.role !== 'ADMIN' && cancelTarget.warehouseId !== selectedWarehouseId) {
+    const selectedTab = activeTab;
+    if (cancelTarget && (cancelScopeWarehouseId !== selectedWarehouseId || cancelScopeTab !== selectedTab)) {
       cancelTarget = null;
-      cancelError = i18n.t('El almacén seleccionado cambió. Vuelve a abrir la cancelación desde la cola actual.');
+      cancelScopeWarehouseId = null;
+      cancelError = i18n.t('El almacén o la cola seleccionada cambió. Vuelve a abrir la cancelación desde la cola actual.');
     }
   });
 
@@ -108,6 +112,8 @@
   function openCancel(row: Backorder): void {
     if (!canCancelRow(row)) return;
     cancelTarget = row;
+    cancelScopeWarehouseId = selection?.warehouseId ?? null;
+    cancelScopeTab = activeTab;
     cancelReason = 'other';
     cancelError = '';
   }
@@ -115,9 +121,10 @@
   async function submitCancel(): Promise<void> {
     if (!cancelTarget || vm.saving) return;
     cancelError = '';
-    if (!canCancelRow(cancelTarget)) {
+    if (cancelScopeWarehouseId !== (selection?.warehouseId ?? null) || cancelScopeTab !== activeTab || !canCancelRow(cancelTarget)) {
       cancelTarget = null;
-      cancelError = i18n.t('El backorder ya no pertenece al almacén seleccionado o su estado no permite cancelarlo.');
+      cancelScopeWarehouseId = null;
+      cancelError = i18n.t('El almacén o la cola cambió, o el backorder ya no pertenece al contexto actual o su estado no permite cancelarlo.');
       return;
     }
 
@@ -129,6 +136,7 @@
     }
 
     cancelTarget = null;
+    cancelScopeWarehouseId = null;
     successMessage = cancelReason === 'refunded'
       ? i18n.t('Backorder marcado como reembolsado. El pedido original no fue cancelado.')
       : i18n.t('Backorder cancelado. El pedido original no fue modificado.');
@@ -274,7 +282,7 @@
           <p class="message error" role="alert">{cancelError}</p>
         {/if}
         <footer>
-          <button type="button" disabled={vm.saving} onclick={() => cancelTarget = null}>
+          <button type="button" disabled={vm.saving} onclick={() => { cancelTarget = null; cancelScopeWarehouseId = null; }}>
             {i18n.t('Conservar backorder')}
           </button>
           <button class="danger" type="button" disabled={vm.saving} onclick={() => void submitCancel()}>
