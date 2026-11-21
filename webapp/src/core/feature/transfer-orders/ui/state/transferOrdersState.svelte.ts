@@ -1,6 +1,6 @@
 import { createTransferOrdersDependencies } from '../../di/transferOrders.dependencies';
 import type { CreateTransferOrder, TransferOrder, TransferOrderImportResult, TransferOrderQuery, TransferOrderWarehouse } from '../../domain/entity/TransferOrder';
-import { ApiError, toUserMessage } from '../../../../infrastructure/errors/ApiError';
+import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 import { canAccessTransferWarehouses } from '../../domain/policy/TransferWarehouseScopePolicy';
 import { TransferLifecycleNotSupportedError } from '../../domain/contract/TransferLifecycleContract';
 
@@ -104,55 +104,12 @@ export function createTransferOrdersState(dependencies = createTransferOrdersDep
     if (saving) return false;
     error = new TransferLifecycleNotSupportedError('dispatchTransfer').message;
     return false;
-    /* Enabled only after Flask provides exact reservation, dispatch, in-transit and receive contracts. */
-    /* istanbul ignore next */
-    saving = true;
-    error = null;
-    notice = null;
-    try {
-      const result = await action();
-      notice = successMessage(result);
-      await refreshSelected();
-      return true;
-    } catch (cause) {
-      error = toUserMessage(cause, 'No se pudo completar la operación');
-      return false;
-    } finally {
-      saving = false;
-    }
   }
 
   async function create(_input: CreateTransferOrder) {
     if (saving) return false;
     error = new TransferLifecycleNotSupportedError('reserveTransferStock').message;
     return false;
-    /* No unsafe aggregate-only reservation from the browser. */
-    /* istanbul ignore next */
-    saving = true;
-    error = null;
-    notice = null;
-    created = null;
-    importErrors = [];
-    try {
-      created = await dependencies.create.execute(input);
-      notice = `Transferencia ${created.toNumber} creada`;
-      await load();
-      return true;
-    } catch (cause) {
-      error = toUserMessage(cause, 'No se pudo crear la transferencia');
-      if (cause instanceof ApiError && cause.details && typeof cause.details === 'object') {
-        const rows = (cause.details as { rows?: unknown }).rows;
-        if (Array.isArray(rows)) {
-          importErrors = rows.map(value => {
-            const row = value as { row_index?: number; error_kind?: string; sku?: string };
-            return { rowIndex: Number(row.row_index ?? 0), errorKind: row.error_kind ?? 'validation_error', sku: row.sku };
-          });
-        }
-      }
-      return false;
-    } finally {
-      saving = false;
-    }
   }
 
   return {
@@ -191,24 +148,6 @@ export function createTransferOrdersState(dependencies = createTransferOrdersDep
       if (saving) return false;
       error = new TransferLifecycleNotSupportedError('cancelTransfer').message;
       return false;
-      /* Deletion/cancellation may release ambiguous aggregate reservations. */
-      /* istanbul ignore next */
-      saving = true;
-      error = null;
-      notice = null;
-      try {
-        await dependencies.remove.execute(id);
-        if (selected?.transferOrderId === id) selected = null;
-        pickerSnapshot = null;
-        notice = 'Transferencia eliminada';
-        await load();
-        return true;
-      } catch (cause) {
-        error = toUserMessage(cause, 'No se pudo eliminar la transferencia');
-        return false;
-      } finally {
-        saving = false;
-      }
     },
     shortClose: (id: number, lineId: number) => act(() => dependencies.shortClose.execute(id, lineId), () => 'Línea cerrada por faltante'),
     clearSelected() { selected = null; pickerSnapshot = null; },
