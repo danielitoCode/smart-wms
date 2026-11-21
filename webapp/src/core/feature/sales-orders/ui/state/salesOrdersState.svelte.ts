@@ -118,9 +118,11 @@ export function createSalesOrdersState() {
       refreshError = 'La operación se confirmó, pero no se pudo actualizar el detalle. Recarga el pedido.';
     }
     if (!listRefreshed) {
+      const listMessage = error;
+      error = null;
       refreshError = refreshError
-        ? refreshError + ' La lista tampoco pudo actualizarse.'
-        : 'La operación se confirmó, pero no se pudo actualizar la lista. Recarga los pedidos.';
+        ? refreshError + ' ' + (listMessage ?? 'La lista tampoco pudo actualizarse.')
+        : (listMessage ?? 'La operación se confirmó, pero no se pudo actualizar la lista. Recarga los pedidos.');
     }
   }
 
@@ -254,19 +256,17 @@ export function createSalesOrdersState() {
     if (cancellingId !== null) return false;
     cancellingId = id;
     error = null;
+    refreshError = null;
     try {
       await deps.cancelSalesOrder.execute(id);
-      await load();
-      if (selected?.salesOrderId === id) {
-        selected = await deps.getSalesOrder.execute(id);
-      }
-      return true;
     } catch (err) {
       error = toUserMessage(err, 'No se pudo cancelar el pedido');
-      return false;
-    } finally {
       cancellingId = null;
+      return false;
     }
+    await refreshAfterConfirmedMutation();
+    cancellingId = null;
+    return true;
   }
 
   async function adminShip(acknowledgeShortfall = false): Promise<boolean> {
