@@ -50,6 +50,7 @@
   );
   const cancelable = $derived(
     order !== null &&
+    order.warehouseId !== null &&
     hasSalesOrderPermission &&
     hasOrderWarehouseAccess &&
     order.orderType === 'backorder' &&
@@ -78,6 +79,10 @@
 
   async function submitCancel(): Promise<void> {
     if (!order || !cancelable) return;
+    if (order.warehouseId === null) {
+      cancelError = i18n.t('No se puede cancelar el backorder porque el pedido no tiene un almacén asociado.');
+      return;
+    }
     cancelError = null;
     try {
       resolveBackorderWarehouseScope({
@@ -244,6 +249,8 @@
           {i18n.t('Cancelar backorder')}
         </button>
       </div>
+    {:else if order.warehouseId === null}
+      <p class="hint">{i18n.t('No se puede cancelar este backorder porque el pedido no tiene un almacén asociado.')}</p>
     {:else if order.status === 'SHIPPED'}
       <p class="hint">{i18n.t('Un backorder enviado no puede cancelarse por esta operación.')}</p>
     {/if}
