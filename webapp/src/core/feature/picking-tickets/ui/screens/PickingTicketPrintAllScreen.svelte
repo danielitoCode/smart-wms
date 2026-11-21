@@ -1,6 +1,8 @@
 <script lang="ts">
 	import UiStatePanel from '#lib/components/UiStatePanel.svelte';
   import { getContext, onMount } from 'svelte';
+  import { authSession } from '#core/infrastructure/auth/AuthSession.ts';
+  import { canViewPickingTicketInWarehouse } from '../../domain/policy/PickingTicketWarehouseScopePolicy';
   import { createPickingTicketsDependencies } from '../../di/pickingTickets.dependencies';
   import Code128Barcode from '../components/Code128Barcode.svelte';
   import { createPickingQueueDependencies } from '../../di/pickingQueue.dependencies';
@@ -8,7 +10,7 @@
   import { groupOrdersByAddress } from '../../domain/policy/pickingGroups';
   const deps = createPickingTicketsDependencies();
   const queue = createPickingQueueDependencies();
-  const warehouse = getContext<{ warehouseId: number | null }>('warehouseSelection');
+  const warehouse = getContext<{ warehouseId: number | null; generation?: number }>('warehouseSelection');
   let { salesOrderIds, status, warehouseId, combine = false }: { salesOrderIds: number[]; status: string; warehouseId?: number; combine?: boolean } = $props();
   let tickets = $state<PickingTicket[]>([]);
   let loading = $state(true);
@@ -17,6 +19,17 @@
   let marking = $state(false);
   const limit = 200;
   let failedCount = $state(0);
+  let requestEpoch = 0;
+  let ticketsGeneration = -1;
+  let observedGeneration = warehouse.generation ?? 0;
+  $effect(() => {
+    const generation = warehouse.generation ?? 0;
+    if (generation === observedGeneration) return;
+    observedGeneration = generation;
+    requestEpoch++;
+    tickets = []; loading = false; error = ''; markFailed = false;
+    ticketsGeneration = -1;
+  });
   const combineBySalesOrderId = $derived.by(() => {
     const result = new Map<number, string[]>();
     if (!combine) return result;
@@ -38,25 +51,43 @@
   });
   onMount(() => { void load(); });
   async function load() {
-    loading = true; error = ''; markFailed = false;
+    const epoch = ++requestEpoch;
+    const generation = warehouse.generation ?? 0;
+    const selectedWarehouseId = warehouse.warehouseId;
+    const role = authSession.getUser()?.role ?? null;
+    loading = true; error = ''; markFailed = false; tickets = []; ticketsGeneration = -1;
     try {
       let ids = [...new Set(salesOrderIds)].slice(0, limit);
+      if (role !== 'ADMIN' && selectedWarehouseId == null) throw new Error('Select a warehouse before loading tickets.');
+      if (role !== 'ADMIN' && warehouseId != null && warehouseId !== selectedWarehouseId) {
+        throw new Error('The print batch does not belong to the selected warehouse.');
+      }
       if (!ids.length) {
-        const selectedWarehouseId = warehouseId ?? warehouse?.warehouseId ?? undefined;
-        if (selectedWarehouseId == null) throw new Error('Select a warehouse before loading the print queue.');
-        const page = await queue.getAllPrintableTickets.execute({ status: status === 'ALL' ? 'ALL' : status === 'PICKED' ? 'PICKED' : 'OPEN', hidePrinted: false, warehouseId: selectedWarehouseId });
+        const queryWarehouseId = role === 'ADMIN' ? (warehouseId ?? selectedWarehouseId ?? undefined) : selectedWarehouseId ?? undefined;
+        if (queryWarehouseId == null) throw new Error('Select a warehouse before loading the print queue.');
+        const page = await queue.getAllPrintableTickets.execute({ status: status === 'ALL' ? 'ALL' : status === 'PICKED' ? 'PICKED' : 'OPEN', hidePrinted: false, warehouseId: queryWarehouseId });
+        if (epoch !== requestEpoch || generation !== (warehouse.generation ?? 0)) return;
         ids = page.items.slice(0, limit).map((order) => order.salesOrderId);
       }
       const results = await Promise.allSettled(ids.map((id) => deps.getTicket.execute(id)));
-      tickets = results.filter((result): result is PromiseFulfilledResult<PickingTicket> => result.status === 'fulfilled').map((result) => result.value);
+      if (epoch !== requestEpoch || generation !== (warehouse.generation ?? 0)) return;
+      const loaded = results.filter((result): result is PromiseFulfilledResult<PickingTicket> => result.status === 'fulfilled').map((result) => result.value);
       failedCount = results.filter((result) => result.status === 'rejected').length;
+      if (role !== 'ADMIN' && loaded.some((ticket) => !canViewPickingTicketInWarehouse({
+        role, selectedWarehouseId: warehouse.warehouseId, ticketWarehouseId: ticket.order.warehouseId
+      }))) throw new Error('One or more tickets do not belong to the selected warehouse. Nothing was printed or marked.');
+      tickets = loaded;
+      ticketsGeneration = generation;
       if (!tickets.length && ids.length) throw new Error('No tickets could be loaded.');
       if (tickets.length) await markPrinted();
-    } catch (cause) { error = cause instanceof Error ? cause.message : 'Could not load tickets.'; }
-    finally { loading = false; }
+    } catch (cause) {
+      if (epoch === requestEpoch && generation === (warehouse.generation ?? 0)) error = cause instanceof Error ? cause.message : 'Could not load tickets.';
+    } finally { if (epoch === requestEpoch) loading = false; }
   }
   async function markPrinted() {
     if (!tickets.length) return;
+    const role = authSession.getUser()?.role ?? null;
+    if (ticketsGeneration !== (warehouse.generation ?? 0) || (role !== 'ADMIN' && tickets.some((ticket) => !canViewPickingTicketInWarehouse({ role, selectedWarehouseId: warehouse.warehouseId, ticketWarehouseId: ticket.order.warehouseId })))) { markFailed = true; return; }
     marking = true;
     try {
       let marked = false;
