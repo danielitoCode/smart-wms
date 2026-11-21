@@ -21,6 +21,8 @@ export function createTransferOrdersState(dependencies = createTransferOrdersDep
   let page = $state(1);
   let pages = $state(1);
   let total = $state(0);
+  let listEpoch = 0;
+  let detailEpoch = 0;
 
   const query = (): TransferOrderQuery => ({
     status: status ? status as TransferOrderQuery['status'] : undefined,
@@ -31,23 +33,29 @@ export function createTransferOrdersState(dependencies = createTransferOrdersDep
   });
 
   async function load() {
+    const epoch = ++listEpoch;
+    detailEpoch += 1;
     loading = true;
     error = null;
     try {
       if (warehouses.length === 0) await loadWarehouses();
       const result = await dependencies.list.execute(query());
+      if (epoch !== listEpoch) return;
       const allowedIds = warehouses.map(warehouse => warehouse.warehouseId);
-      rows = result.orders.filter(order => canAccessTransferWarehouses({
+      const scopedRows = result.orders.filter(order => canAccessTransferWarehouses({
         role: 'USER', assignedWarehouseIds: allowedIds,
         sourceWarehouseId: order.sourceWarehouseId, destinationWarehouseId: order.destinationWarehouseId
       }));
-      total = result.total;
-      page = result.page;
-      pages = result.pages;
+      rows = scopedRows;
+      const scopeMismatch = scopedRows.length !== result.orders.length;
+      total = scopeMismatch ? scopedRows.length : result.total;
+      page = scopeMismatch ? 1 : result.page;
+      pages = scopeMismatch ? 1 : result.pages;
+      if (scopeMismatch) error = 'Se ocultaron transferencias fuera del alcance autorizado de ambos almacenes';
     } catch (cause) {
-      error = toUserMessage(cause, 'No se pudieron cargar las transferencias');
+      if (epoch === listEpoch) error = toUserMessage(cause, 'No se pudieron cargar las transferencias');
     } finally {
-      loading = false;
+      if (epoch === listEpoch) loading = false;
     }
   }
 
@@ -60,34 +68,39 @@ export function createTransferOrdersState(dependencies = createTransferOrdersDep
   }
 
   async function detail(id: number) {
+    const epoch = ++detailEpoch;
     loading = true;
     error = null;
     pickerSnapshot = null;
     try {
       if (warehouses.length === 0) await loadWarehouses();
       const result = await dependencies.detail.execute(id);
+      if (epoch !== detailEpoch) return;
       if (!canAccessTransferWarehouses({ role: 'USER', assignedWarehouseIds: warehouses.map(warehouse => warehouse.warehouseId), sourceWarehouseId: result.sourceWarehouseId, destinationWarehouseId: result.destinationWarehouseId })) {
         selected = null;
         throw new Error('No tienes acceso a los almacenes de origen y destino de esta transferencia');
       }
       selected = result;
     } catch (cause) {
-      error = toUserMessage(cause, 'No se pudo cargar el detalle de la transferencia');
+      if (epoch === detailEpoch) error = toUserMessage(cause, 'No se pudo cargar el detalle de la transferencia');
     } finally {
-      loading = false;
+      if (epoch === detailEpoch) loading = false;
     }
   }
 
   async function loadPickerDetail() {
     if (!selected) return;
+    const selectedId = selected.transferOrderId;
+    const epoch = detailEpoch;
     loading = true;
     error = null;
     try {
-      pickerSnapshot = await dependencies.pickerDetail.execute(selected.transferOrderId);
+      const result = await dependencies.pickerDetail.execute(selectedId);
+      if (epoch === detailEpoch && selected?.transferOrderId === selectedId) pickerSnapshot = result;
     } catch (cause) {
-      error = toUserMessage(cause, 'No se pudo cargar el progreso del picker');
+      if (epoch === detailEpoch) error = toUserMessage(cause, 'No se pudo cargar el progreso del picker');
     } finally {
-      loading = false;
+      if (epoch === detailEpoch) loading = false;
     }
   }
 
@@ -150,7 +163,7 @@ export function createTransferOrdersState(dependencies = createTransferOrdersDep
       return false;
     },
     shortClose: (id: number, lineId: number) => act(() => dependencies.shortClose.execute(id, lineId), () => 'Línea cerrada por faltante'),
-    clearSelected() { selected = null; pickerSnapshot = null; },
+    clearSelected() { selected = null; pickerSnapshot = null; detailEpoch += 1; },
     clearCreated() { created = null; }
   };
 }
