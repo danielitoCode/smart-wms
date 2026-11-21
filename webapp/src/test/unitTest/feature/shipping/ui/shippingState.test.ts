@@ -44,7 +44,7 @@ describe('Shipping scanner state warehouse context', () => {
  });
 
  it('prevents two local fulfill submissions from running at once', async () => {
-  let resolveFulfill!: (value: typeof deps.fulfill.execute.mock.results) => void;
+  let resolveFulfill!: (value: Awaited<ReturnType<typeof deps.fulfill.execute>>) => void;
   deps.fulfill.execute.mockReturnValueOnce(new Promise(resolve => { resolveFulfill = resolve; }));
   const state = createShippingState(context as never);
   state.setBarcode('SO-2'); await state.load();
