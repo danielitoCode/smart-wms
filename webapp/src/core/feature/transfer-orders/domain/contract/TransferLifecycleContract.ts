@@ -100,3 +100,25 @@ export class TransferLifecycleNotSupportedError extends Error {
 export function isTransferLifecycleExecutable(): boolean {
   return Object.values(R5_TRANSFER_CAPABILITIES).every(status => status === 'SUPPORTED');
 }
+
+/** Future application port. Implementations must be backed by one server transaction per command. */
+export interface TransferLifecycleRepository {
+  createTransfer(command: CreateTransferCommand): Promise<unknown>;
+  getTransfer(transferId: number): Promise<unknown>;
+  reserveTransferStock(command: ReserveTransferStockCommand): Promise<unknown>;
+  startTransferPicking(transferId: number, expectedVersion: number, idempotencyKey: string): Promise<unknown>;
+  submitPickedQuantities(command: SubmitPickedQuantitiesCommand): Promise<unknown>;
+  shortCloseTransfer(transferId: number, lineId: number, quantityPicked: number, expectedVersion: number, idempotencyKey: string): Promise<unknown>;
+  dispatchTransfer(command: DispatchTransferCommand): Promise<unknown>;
+  receiveTransfer(command: ReceiveTransferCommand): Promise<unknown>;
+  putAwayTransfer(command: PutAwayTransferCommand): Promise<unknown>;
+  cancelTransfer(command: CancelTransferCommand): Promise<unknown>;
+}
+
+/** Application boundary used by future screens; it never fabricates a local success. */
+export class TransferLifecycleContractUseCase {
+  constructor(private readonly operation: keyof typeof R5_TRANSFER_CAPABILITIES) {}
+  execute(_command: unknown): never {
+    throw new TransferLifecycleNotSupportedError(this.operation);
+  }
+}
