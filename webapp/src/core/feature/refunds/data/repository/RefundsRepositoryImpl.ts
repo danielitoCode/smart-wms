@@ -10,11 +10,9 @@ export class RefundsRepositoryImpl implements RefundsRepository {
     return (await this.remote.list(query)).map(dto => RefundMapper.header(dto));
   }
 
-  async detail(id: number): Promise<Refund> {
-    const [detail, family] = await Promise.all([
-      this.remote.detail(id),
-      this.remote.related(id)
-    ]);
+  async detail(id: number, includeRelated = false): Promise<Refund> {
+    const detail = await this.remote.detail(id);
+    const family = includeRelated ? await this.remote.related(id) : { records: [] };
     const related: RefundRelatedRecord[] = family.records
       .filter(record => record.order_type === 'return' || record.order_type === 'refund')
       .map(record => ({
