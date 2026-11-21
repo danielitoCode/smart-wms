@@ -19,10 +19,10 @@ describe('VerifyPackItemUseCase', () => {
 
 	it('trims barcode and defaults quantity to 1', async () => {
 		const repo = {
-			verify: vi.fn().mockResolvedValue({ message: 'ok' })
+			verify: vi.fn().mockResolvedValue({ message: 'ok', item: { sku: 'A', itemName: 'A', quantityVerified: 1, lineComplete: false }, orderProgress: { totalLines: 2, linesVerified: 1, allVerified: false } })
 		} as unknown as PackingRepository;
 		const uc = new VerifyPackItemUseCase(repo);
-		await uc.execute({ soId: 1, warehouseId: 7, scannedBarcode: ' abc ' });
+		await expect(uc.execute({ soId: 1, warehouseId: 7, scannedBarcode: ' abc ' })).resolves.toMatchObject({ orderProgress: { linesVerified: 1, allVerified: false } });
 		expect(repo.verify).toHaveBeenCalledWith({
 			soId: 1,
 			warehouseId: 7,
