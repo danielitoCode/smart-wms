@@ -3,6 +3,7 @@ import type { CreateTransferOrder, TransferOrder, TransferOrderImportResult, Tra
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 import { canAccessTransferWarehouses } from '../../domain/policy/TransferWarehouseScopePolicy';
 import { TransferLifecycleNotSupportedError } from '../../domain/contract/TransferLifecycleContract';
+import { authSession } from '#core/infrastructure/auth/AuthSession.ts';
 
 export function createTransferOrdersState(dependencies = createTransferOrdersDependencies()) {
   let rows = $state<TransferOrder[]>([]);
@@ -41,9 +42,10 @@ export function createTransferOrdersState(dependencies = createTransferOrdersDep
       if (warehouses.length === 0) await loadWarehouses();
       const result = await dependencies.list.execute(query());
       if (epoch !== listEpoch) return;
-      const allowedIds = warehouses.map(warehouse => warehouse.warehouseId);
+      const sessionUser = authSession.getUser();
+      const allowedIds = sessionUser?.warehouseIds ?? [];
       const scopedRows = result.orders.filter(order => canAccessTransferWarehouses({
-        role: 'USER', assignedWarehouseIds: allowedIds,
+        role: sessionUser?.role ?? '', assignedWarehouseIds: allowedIds,
         sourceWarehouseId: order.sourceWarehouseId, destinationWarehouseId: order.destinationWarehouseId
       }));
       rows = scopedRows;
@@ -61,7 +63,9 @@ export function createTransferOrdersState(dependencies = createTransferOrdersDep
 
   async function loadWarehouses() {
     try {
-      warehouses = (await dependencies.warehouses.execute()).filter(warehouse => warehouse.active);
+      const activeWarehouses = (await dependencies.warehouses.execute()).filter(warehouse => warehouse.active);
+      const sessionUser = authSession.getUser();
+      warehouses = activeWarehouses.filter(warehouse => sessionUser?.role === 'ADMIN' || (sessionUser?.warehouseIds ?? []).includes(warehouse.warehouseId));
     } catch (cause) {
       error = toUserMessage(cause, 'No se pudieron cargar los almacenes');
     }
@@ -77,7 +81,8 @@ export function createTransferOrdersState(dependencies = createTransferOrdersDep
       if (warehouses.length === 0) await loadWarehouses();
       const result = await dependencies.detail.execute(id);
       if (epoch !== detailEpoch) return;
-      if (!canAccessTransferWarehouses({ role: 'USER', assignedWarehouseIds: warehouses.map(warehouse => warehouse.warehouseId), sourceWarehouseId: result.sourceWarehouseId, destinationWarehouseId: result.destinationWarehouseId })) {
+      const sessionUser = authSession.getUser();
+      if (!canAccessTransferWarehouses({ role: sessionUser?.role ?? '', assignedWarehouseIds: sessionUser?.warehouseIds ?? [], sourceWarehouseId: result.sourceWarehouseId, destinationWarehouseId: result.destinationWarehouseId })) {
         selected = null;
         throw new Error('No tienes acceso a los almacenes de origen y destino de esta transferencia');
       }
