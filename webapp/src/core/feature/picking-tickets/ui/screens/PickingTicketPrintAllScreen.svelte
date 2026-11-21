@@ -87,13 +87,16 @@
   async function markPrinted() {
     if (!tickets.length) return;
     const role = authSession.getUser()?.role ?? null;
-    if (ticketsGeneration !== (warehouse.generation ?? 0) || (role !== 'ADMIN' && tickets.some((ticket) => !canViewPickingTicketInWarehouse({ role, selectedWarehouseId: warehouse.warehouseId, ticketWarehouseId: ticket.order.warehouseId })))) { markFailed = true; return; }
+    const generation = warehouse.generation ?? 0;
+    const ticketIds = tickets.map((ticket) => ticket.order.salesOrderId);
+    if (ticketsGeneration !== generation || (role !== 'ADMIN' && tickets.some((ticket) => !canViewPickingTicketInWarehouse({ role, selectedWarehouseId: warehouse.warehouseId, ticketWarehouseId: ticket.order.warehouseId })))) { markFailed = true; return; }
     marking = true;
     try {
       let marked = false;
       for (let attempt = 0; attempt < 2; attempt += 1) {
         try {
-          await deps.markPrinted.execute(tickets.map((ticket) => ticket.order.salesOrderId));
+          if (ticketsGeneration !== (warehouse.generation ?? 0) || generation !== (warehouse.generation ?? 0)) { markFailed = true; return; }
+          await deps.markPrinted.execute(ticketIds);
           marked = true;
           break;
         } catch {
