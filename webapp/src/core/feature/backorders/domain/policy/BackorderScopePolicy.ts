@@ -34,3 +34,14 @@ export function resolveBackorderWarehouseScope(input: BackorderScopeInput): numb
   }
   return selected;
 }
+
+
+/** Prevent a confirmation dialog from acting on a row loaded under a stale queue context. */
+export function isBackorderQueueContextCurrent(input: {
+  openedWarehouseId: number | null;
+  openedTab: 'waiting' | 'ready-to-ship';
+  selectedWarehouseId: number | null;
+  activeTab: 'waiting' | 'ready-to-ship';
+}): boolean {
+  return input.openedWarehouseId === input.selectedWarehouseId && input.openedTab === input.activeTab;
+}
