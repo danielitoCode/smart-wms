@@ -30,6 +30,10 @@ describe('RefundMapper', () => {
     expect(missing.signedAmount).toBeNull();
   });
 
+  it('rejects states outside the credit-memo lifecycle', () => {
+    expect(() => RefundMapper.header({ ...header, status: 'OPEN' as RefundHeaderDto['status'] })).toThrow(/Estado de reembolso/);
+  });
+
   it('preserves RMA siblings and signed amounts for family reconciliation', () => {
     const refund = RefundMapper.header(header, [], [{
       salesOrderId: 10, salesOrderNumber: 'SO-3-RMA', orderType: 'return',
