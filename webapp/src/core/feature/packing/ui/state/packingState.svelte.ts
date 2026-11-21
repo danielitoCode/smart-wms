@@ -132,7 +132,7 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 			info = isCurrentContext(warehouseId, generation) ? result.message : `Empaque completado en el almacén #${warehouseId}. El contexto cambió.`;
 			detail = null; detailWarehouseId = null; detailGeneration = -1;
 			return true;
-		} catch (err) { if (isCurrentContext(warehouseId, generation)) error = toUserMessage(err, 'No se pudo completar el packing'); return false; }
+		} catch (err) { if (warehouseId != null && isCurrentContext(warehouseId, generation)) error = toUserMessage(err, 'No se pudo completar el packing'); return false; }
 		finally { busy = false; }
 	}
 
