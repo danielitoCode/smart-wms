@@ -898,3 +898,14 @@ En la reauditoría de R4.2 se detectó un caso residual en `BackordersScreen.sve
 **Commit de implementación:** `c9d7214a2e7b64a3cfade816e0a7489fd3ffaa63`.
 
 **Verificación:** pendiente de la ejecución Webapp CI asociada al HEAD que incorpora esta actualización documental. No se modifica Flask/Python. R4-BE-01/02/03 continúan como limitaciones backend: la protección de contexto del cliente no sustituye el aislamiento server-side ni la atomicidad de la razón de cancelación. La liberación de inventario sigue siendo responsabilidad de la transacción backend.
+
+
+### R5 — estado de ejecución frontend (auditoría 1ebf0053)
+
+**Estado: `FRONTEND_GUARDS_IMPLEMENTED / BLOCKED_BACKEND`.** Se inspeccionaron las rutas Flask de Transfer Orders y de Inter-warehouse Transfers. Las rutas de listado/detalle de Transfer Orders y el historial IWH exigen scope de origen y destino; el frontend ahora aplica una segunda comprobación con la lista de almacenes autorizados. El detalle Transfer Order también se descarta si uno de los dos extremos queda fuera del scope.
+
+La creación/importación, reserva, picking, aprobación/rechazo, short-close, cancelación/eliminación y el movimiento directo IWH quedan deshabilitados en el recorrido R5. Transfer Orders reserva cantidades agregadas sin relación persistida exacta por línea/bin y la aprobación mueve stock directamente al destino. IWH mueve stock inmediatamente, aunque su operación sea atómica/idempotente, sin despacho, saldo en tránsito ni recepción/put-away separados. No se debe usar ninguno como sustituto del ciclo R5.
+
+Se añadieron el contrato futuro tipado `TransferLifecycleContract` (comandos/versiones/idempotencia, puerto y diez casos de uso nombrados), la política de scope dual, guardas en estados/UI y pruebas frontend para permisos cruzados y bloqueo de mutaciones. El historial permanece de solo lectura. **No se modifica Flask/Python.**
+
+Auditoría detallada, matriz de aceptación y requisitos de backend: `webapp/.code-review/R5-Transfer-Lifecycle-and-Scope.md`. CI frontend sobre el HEAD definitivo pendiente; R5 no puede cerrarse hasta que el backend aporte reserva exacta, dispatch, tránsito, receive, put-away y ledger.
