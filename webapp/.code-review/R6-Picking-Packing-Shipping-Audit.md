@@ -114,13 +114,13 @@ Estas pruebas pertenecen al backend y se documentan como dependencia; no se alte
 - Picking scanner: las SO se agregan únicamente después de validar el barcode; se retiró la creación manual legacy de lote de la pantalla operativa. El listado de batch/tarea sigue siendo consulta real.
 - Picking queda fail-closed para crear ola/lote, confirmar, short-pick y completar batch hasta que el servidor garantice replay seguro, validación de bin y transiciones atómicas/idempotentes. No se presenta el bloqueo local como protección entre operadores.
 - Packing: la confirmación exige que todas las unidades recogidas estén verificadas; después de una respuesta incierta se vuelve a consultar el pedido antes de permitir otro scan. Si no se puede reconciliar, se bloquea el siguiente scan.
-- Shipping: el detalle queda ligado al warehouse generation; fulfillment tiene guard local de doble submit y el servidor bloquea el agregado SO con `FOR UPDATE`. No se inventa GET shipment ni idempotency key.
+- Shipping: el detalle queda ligado al warehouse generation. El contrato de ejecución bloquea fulfillment porque Flask sintetiza un paquete y no acepta/valida un package barcode o package_id. La UI exige carrier/tracking en el formulario, pero no permite confirmar el envío hasta que exista validación de paquete; no se inventa GET shipment ni idempotency key.
 
 **Pruebas frontend añadidas/ampliadas:** grants operativos de ruta, capacidades R6 fail-closed, respuesta stale al cambiar warehouse/generation, conciliación de cantidad packed tras timeout, prevención de doble submit local de fulfillment y requisito de conciliación antes de completar packing.
 
 **Límites que siguen abiertos:** la UI no puede demostrar doble pick imposible, bin scan atómico, enforcement server-side de allowed_functions, complete batch idempotente ni reconciliación GET shipment. Se requieren correcciones y pruebas Flask/PostgreSQL; Flask no se modificó.
 
-**Estado:** `FRONTEND_HARDENING_IN_PROGRESS / BLOCKED_BACKEND`. Pendiente CI Webapp sobre HEAD final de esta iteración.
+**Estado:** `FRONTEND_HARDENING_IN_PROGRESS / BLOCKED_BACKEND`. Picking y shipping permanecen fail-closed en sus mutaciones inseguras; packing puede ejecutar scans/confirmación bajo los locks existentes y se reconcilia ante respuestas inciertas. Pendiente CI Webapp sobre HEAD final de esta iteración.
 
 
 ## 9. Cierre de la revisión frontend (20-11-2026)
