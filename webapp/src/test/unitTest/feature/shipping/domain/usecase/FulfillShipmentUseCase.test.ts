@@ -21,4 +21,4 @@ describe('FulfillShipmentUseCase', () => {
 		expect(() => useCase.execute({ soId: 1, warehouseId: 6, trackingNumber: 'T', carrier: ' ' })).toThrow(/carrier/);
 		expect(repo.fulfill).not.toHaveBeenCalled();
 	});
-}
+});
