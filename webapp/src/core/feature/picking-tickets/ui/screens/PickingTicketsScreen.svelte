@@ -64,6 +64,7 @@
     observedWarehouseGeneration = generation;
     loadEpoch++;
     lookupEpoch++;
+    loading = false; lookupLoading = false; error = '';
     selected = [];
     if (id == null) { orders = []; return; }
     void load();
