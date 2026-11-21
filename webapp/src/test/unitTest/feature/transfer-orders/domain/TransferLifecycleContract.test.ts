@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canAccessTransferWarehouses } from '../../../../../../core/feature/transfer-orders/domain/policy/TransferWarehouseScopePolicy';
+import { canAccessTransferWarehouses } from '../../../../../core/feature/transfer-orders/domain/policy/TransferWarehouseScopePolicy';
 import { isTransferLifecycleExecutable, R5_TRANSFER_CAPABILITIES, TransferLifecycleNotSupportedError } from '../../../../../../core/feature/transfer-orders/domain/contract/TransferLifecycleContract';
 
 describe('R5 transfer warehouse scope', () => {
