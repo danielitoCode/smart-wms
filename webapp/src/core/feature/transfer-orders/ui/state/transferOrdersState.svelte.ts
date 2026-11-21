@@ -1,6 +1,8 @@
 import { createTransferOrdersDependencies } from '../../di/transferOrders.dependencies';
 import type { CreateTransferOrder, TransferOrder, TransferOrderImportResult, TransferOrderQuery, TransferOrderWarehouse } from '../../domain/entity/TransferOrder';
 import { ApiError, toUserMessage } from '../../../../infrastructure/errors/ApiError';
+import { canAccessTransferWarehouses } from '../../domain/policy/TransferWarehouseScopePolicy';
+import { TransferLifecycleNotSupportedError } from '../../domain/contract/TransferLifecycleContract';
 
 export function createTransferOrdersState(dependencies = createTransferOrdersDependencies()) {
   let rows = $state<TransferOrder[]>([]);
@@ -32,8 +34,13 @@ export function createTransferOrdersState(dependencies = createTransferOrdersDep
     loading = true;
     error = null;
     try {
+      if (warehouses.length === 0) await loadWarehouses();
       const result = await dependencies.list.execute(query());
-      rows = result.orders;
+      const allowedIds = warehouses.map(warehouse => warehouse.warehouseId);
+      rows = result.orders.filter(order => canAccessTransferWarehouses({
+        role: 'USER', assignedWarehouseIds: allowedIds,
+        sourceWarehouseId: order.sourceWarehouseId, destinationWarehouseId: order.destinationWarehouseId
+      }));
       total = result.total;
       page = result.page;
       pages = result.pages;
@@ -57,7 +64,13 @@ export function createTransferOrdersState(dependencies = createTransferOrdersDep
     error = null;
     pickerSnapshot = null;
     try {
-      selected = await dependencies.detail.execute(id);
+      if (warehouses.length === 0) await loadWarehouses();
+      const result = await dependencies.detail.execute(id);
+      if (!canAccessTransferWarehouses({ role: 'USER', assignedWarehouseIds: warehouses.map(warehouse => warehouse.warehouseId), sourceWarehouseId: result.sourceWarehouseId, destinationWarehouseId: result.destinationWarehouseId })) {
+        selected = null;
+        throw new Error('No tienes acceso a los almacenes de origen y destino de esta transferencia');
+      }
+      selected = result;
     } catch (cause) {
       error = toUserMessage(cause, 'No se pudo cargar el detalle de la transferencia');
     } finally {
@@ -87,8 +100,12 @@ export function createTransferOrdersState(dependencies = createTransferOrdersDep
     await load();
   }
 
-  async function act<T>(action: () => Promise<T>, successMessage: (result: T) => string = () => 'Operación completada') {
+  async function act<T>(_action: () => Promise<T>, _successMessage: (result: T) => string = () => 'Operación completada') {
     if (saving) return false;
+    error = new TransferLifecycleNotSupportedError('dispatchTransfer').message;
+    return false;
+    /* Enabled only after Flask provides exact reservation, dispatch, in-transit and receive contracts. */
+    /* istanbul ignore next */
     saving = true;
     error = null;
     notice = null;
@@ -105,8 +122,12 @@ export function createTransferOrdersState(dependencies = createTransferOrdersDep
     }
   }
 
-  async function create(input: CreateTransferOrder) {
+  async function create(_input: CreateTransferOrder) {
     if (saving) return false;
+    error = new TransferLifecycleNotSupportedError('reserveTransferStock').message;
+    return false;
+    /* No unsafe aggregate-only reservation from the browser. */
+    /* istanbul ignore next */
     saving = true;
     error = null;
     notice = null;
@@ -151,6 +172,7 @@ export function createTransferOrdersState(dependencies = createTransferOrdersDep
     get page() { return page; },
     get pages() { return pages; },
     get total() { return total; },
+    get lifecycleAvailable() { return false; },
     load,
     loadWarehouses,
     detail,
@@ -165,8 +187,12 @@ export function createTransferOrdersState(dependencies = createTransferOrdersDep
     approve: (id: number, approvalId: number) => act(() => dependencies.approve.execute(id, approvalId), () => 'Aprobación completada; inventario movido al almacén destino'),
     reject: (id: number, approvalId: number, reason: string) => act(() => dependencies.reject.execute(id, approvalId, reason), () => 'Envío rechazado; el inventario permanece en origen'),
     cancel: (id: number) => act(() => dependencies.cancel.execute(id), () => 'Transferencia cancelada'),
-    async remove(id: number) {
+    async remove(_id: number) {
       if (saving) return false;
+      error = new TransferLifecycleNotSupportedError('cancelTransfer').message;
+      return false;
+      /* Deletion/cancellation may release ambiguous aggregate reservations. */
+      /* istanbul ignore next */
       saving = true;
       error = null;
       notice = null;
