@@ -58,6 +58,7 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 				batch = nextBatch;
 				task = nextTask;
 				if (nextTask) {
+					if (nextTask.batchId !== nextBatch.batchId) throw new Error('La tarea devuelta no pertenece al batch activo');
 					quantityPicked = nextTask.quantityToPick;
 					scannedBarcode = nextTask.upc ?? '';
 				} else {
@@ -150,7 +151,7 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 	}
 
 	async function confirm() {
-		if (!isR6CapabilityAvailable('confirmPick')) { error = new R6OperationNotSupportedError('confirmPick').message; return false; }
+		if (!isR6PickingExecutionAvailable() || !isR6CapabilityAvailable('confirmPick')) { error = new R6OperationNotSupportedError('confirmPick').message; return false; }
 		if (!task || busy || loading) return false;
 		let warehouseId: number;
 		try { warehouseId = activeWarehouseId(); } catch (err) { error = toUserMessage(err, 'No hay almacén activo'); return false; }
@@ -169,7 +170,7 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 	}
 
 	async function shortPick() {
-		if (!isR6CapabilityAvailable('shortPick')) { error = new R6OperationNotSupportedError('shortPick').message; return false; }
+		if (!isR6PickingExecutionAvailable() || !isR6CapabilityAvailable('shortPick')) { error = new R6OperationNotSupportedError('shortPick').message; return false; }
 		if (!task || busy || loading) return false;
 		let warehouseId: number;
 		try { warehouseId = activeWarehouseId(); } catch (err) { error = toUserMessage(err, 'No hay almacén activo'); return false; }
@@ -185,7 +186,7 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 	}
 
 	async function completeBatch() {
-		if (!isR6CapabilityAvailable('completePicking')) { error = new R6OperationNotSupportedError('completePicking').message; return false; }
+		if (!isR6PickingExecutionAvailable() || !isR6CapabilityAvailable('completePicking')) { error = new R6OperationNotSupportedError('completePicking').message; return false; }
 		if (!batch?.batchId || busy || loading) return false;
 		let warehouseId: number;
 		try { warehouseId = activeWarehouseId(); } catch (err) { error = toUserMessage(err, 'No hay almacén activo'); return false; }
