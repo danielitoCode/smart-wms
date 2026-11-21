@@ -65,7 +65,8 @@
 		{ id: 'globe', name: 'Globe', status: 'ready', href: '/lab/globe', description: 'Globo WebGL (cobe) con drag, spring e inercia; marcadores de hubs.' },
 		{ id: 'tweet-card', name: 'TweetCard', status: 'ready', href: '/lab/tweet-card', description: 'Tarjeta de post X: header, entidades, media y skeleton (syndication + demo).' },
 		{ id: 'dotted-map', name: 'DottedMap', status: 'ready', href: '/lab/dotted-map', description: 'Mapa mundial de puntos SVG con markers pulse (svg-dotted-map).' },
-		{ id: 'iphone', name: 'Iphone', status: 'ready', href: '/lab/iphone', description: 'Marco SVG de iPhone con pantalla img/video y dynamic island.' }
+		{ id: 'iphone', name: 'Iphone', status: 'ready', href: '/lab/iphone', description: 'Marco SVG de iPhone con pantalla img/video y dynamic island.' },
+		{ id: 'android', name: 'Android', status: 'ready', href: '/lab/android', description: 'Marco SVG de teléfono Android con cámara, botones y media.' }
 	] as const;
 </script>
 
