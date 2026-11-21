@@ -98,7 +98,8 @@ export class TransferLifecycleNotSupportedError extends Error {
 }
 
 export function isTransferLifecycleExecutable(): boolean {
-  return Object.values(R5_TRANSFER_CAPABILITIES).every(status => status === 'SUPPORTED');
+  const statuses: TransferLifecycleCapabilityStatus[] = Object.values(R5_TRANSFER_CAPABILITIES);
+  return statuses.every(status => status === 'SUPPORTED');
 }
 
 /** Future application port. Implementations must be backed by one server transaction per command. */
