@@ -1,1 +1,1 @@
-import type {Refund} from '../entity/Refund';export interface RefundsRepository{list(q?:{status?:string;search?:string}):Promise<Refund[]>;detail(id:number):Promise<Refund>;}
+import type {Refund} from '../entity/Refund';export interface RefundsRepository{list(q?:{status?:string;search?:string}):Promise<Refund[]>;detail(id:number, includeRelated?:boolean):Promise<Refund>;}
