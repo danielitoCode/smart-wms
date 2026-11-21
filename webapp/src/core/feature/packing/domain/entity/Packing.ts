@@ -65,12 +65,6 @@ export type VerifyPackResult = {
 	orderProgress: PackingProgress;
 };
 
-export type VerifyPackResult = {
-	message: string;
-	item: { sku: string; itemName: string; quantityVerified: number; lineComplete: boolean };
-	orderProgress: { totalLines: number; linesVerified: number; allVerified: boolean };
-};
-
 export type SimpleMessageResult = {
 	message: string;
 };
