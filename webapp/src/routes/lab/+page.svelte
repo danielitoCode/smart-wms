@@ -57,7 +57,8 @@
 		{ id: 'sidebar', name: 'AppSidebar', status: 'ready', href: '/lab/sidebar', description: 'Shell colapsable a iconos: almacén, nav grupos, en curso y usuario (shadcn-style).' },
 		{ id: 'about3', name: 'About3', status: 'ready', href: '/lab/about3', description: 'Bloque About: grid de imágenes, breakout, marquee de logos, logros y secciones de visión.' },
 		{ id: 'stacked-bars', name: 'StackedBars', status: 'ready', href: '/lab/stacked-bars', description: 'Barras apiladas con scrub/tooltip y categorías WMS (día/semana).' },
-		{ id: 'cutout-card', name: 'CutoutCard', status: 'ready', href: '/lab/cutout-card', description: 'Card con media, cutout corners, pin, stagger CSS y acción flotante.' }
+		{ id: 'cutout-card', name: 'CutoutCard', status: 'ready', href: '/lab/cutout-card', description: 'Card con media, cutout corners, pin, stagger CSS y acción flotante.' },
+		{ id: 'toast', name: 'Toast', status: 'ready', href: '/lab/toast', description: 'Toasts squircle con iconos animados y API success/error/promise (tipo Sonner).' }
 	] as const;
 </script>
 
