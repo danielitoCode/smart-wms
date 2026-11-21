@@ -252,4 +252,6 @@ export const gapEn: Record<string, string> = {
   'Reintentar': 'Retry',
   'de': 'of',
   'La validación de capacidad física no está disponible en el servidor.': 'Physical capacity validation is not available on the server.',
+  'No se puede cancelar el backorder porque el pedido no tiene un almacén asociado.': 'The backorder cannot be cancelled because the order is not associated with a warehouse.',
+  'No se puede cancelar este backorder porque el pedido no tiene un almacén asociado.': 'This backorder cannot be cancelled because the order is not associated with a warehouse.',
 };
