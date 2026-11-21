@@ -1,5 +1,5 @@
 import type { Return, ReturnBinOption, ReturnReceipt, ReturnWarehouseOption } from '../entity/Return';
-import type { ReturnableOrder, ReturnableOrderLine } from '../entity/ReturnableOrder';
+import type { ReturnableOrderLine } from '../entity/ReturnableOrder';
 
 export interface ReturnsRepository {
   list(q?: { status?: string; search?: string }): Promise<Return[]>;
