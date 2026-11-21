@@ -348,3 +348,17 @@ Se completa la pasada frontend con estos cambios:
 
 **Cierre:** R4.2 está completa para Svelte. R4.3 sigue bloqueada por las limitaciones backend documentadas; el cierre frontend no certifica la seguridad del endpoint ante llamadas directas ni concurrencia entre clientes.
 
+
+
+## 13. Evidencia de cierre frontend R4.2
+
+**HEAD verificado:** `b581c260364d03d4e2b77dcb75eb3b6ff404dee0`  
+**Webapp CI:** [44861463776 — success](https://github.com/danielitoCode/smart-wms/actions/runs/44861463776).  
+**Regresión completa:** 200 archivos / 877 tests aprobados. Typecheck, build y suites Domain, Application, Infrastructure, UI, i18n, Integration y Full regression en verde.
+
+Controles adicionales del mismo SHA: [Gitleaks 44861463770](https://github.com/danielitoCode/smart-wms/actions/runs/44861463770), [Dependency Audit 44861463799](https://github.com/danielitoCode/smart-wms/actions/runs/44861463799) y [Lockfile Version Check 44861463774](https://github.com/danielitoCode/smart-wms/actions/runs/44861463774), todos `success`.
+
+El paso no bloqueante de cobertura no generó informe por falta de `@vitest/coverage-v8`; no debe contarse como cobertura medida. El workflow Python `Tests` es independiente del CI Svelte y permanece fuera de este cierre frontend.
+
+**Resultado:** R4.2 `VERIFIED_FRONTEND`. R4-BE-01/02/03 siguen como `BACKEND_LIMITATION`; no se cambió Flask ni se certifica el aislamiento cross-warehouse o la atomicidad entre clientes.
+
