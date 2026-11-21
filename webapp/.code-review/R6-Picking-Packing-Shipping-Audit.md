@@ -57,6 +57,10 @@ La tarea devuelve información de bin, pero `ConfirmPickRequest` solo acepta `sc
 
 `POST /api/shipping/fulfill` devuelve `fulfillment_id`, pero no se encontró GET de detalle para reconciliar un timeout del cliente. El bloqueo de estado evita normalmente una segunda fulfillment tras commit, pero el cliente no puede recuperar la respuesta original por ID.
 
+### R6-BE-07 — grant operativo no enforced en las rutas Flask
+
+`GET /api/auth/me` devuelve `allowed_functions` (incluye las funciones operativas del usuario y filtra `pack` según la configuración), pero `require_auth` no carga ni valida ese grant en cada petición y las rutas picking/packing/shipping solo combinan autenticación con controles de warehouse. El guard Svelte por `pick`, `pack` y `ship` protege navegación/UX, pero no sustituye autorización server-side. Flask debe aplicar el grant operativo correspondiente a cada endpoint.
+
 ## 4. Garantías positivas observadas
 
 - Picking valida el warehouse del batch y llama a `check_warehouse_access` en operaciones de tarea/batch. Las olas se crean para un warehouse explícito y el servicio aplica reglas de disponibilidad, preferred bins y pick sequence.
@@ -64,7 +68,7 @@ La tarea devuelve información de bin, pero `ConfirmPickRequest` solo acepta `sc
 - Complete batch no permite pending tasks y rechaza líneas bajo-pickeadas sin short marker.
 - Packing verify y complete bloquean la fila de `sales_orders` con `FOR UPDATE`; packing no equivale a picking.
 - Shipping fulfill también bloquea `sales_orders` con `FOR UPDATE`, valida estado y crea fulfillment, líneas, auditoría y evento/outbox dentro del flujo transaccional.
-- Los tests backend existentes cubren escenarios funcionales de picking, packing y shipping; `api/tests/test_concurrency.py` cubre otras operaciones (receiving/inventory), pero no se encontró una prueba real de dos conexiones para doble pick, short-pick, packing verify/complete o fulfillment.
+- Los tests backend existentes cubren escenarios funcionales de picking, packing y shipping. Además, `api/tests/test_packing.py::test_concurrent_duplicate_pack_scans_cannot_overpack` ejecuta dos solicitudes concurrentes con dos test clients y verifica un único 200/400 y `quantity_packed == quantity_picked` sobre la base persistente. No se encontró una prueba equivalente para doble pick/short-pick, complete packing frente a verify ni doble fulfillment. `api/tests/test_concurrency.py` cubre receiving/inventory, no el picking/shipping.
 
 ## 5. Trabajo frontend R6
 
@@ -82,8 +86,8 @@ La tarea devuelve información de bin, pero `ConfirmPickRequest` solo acepta `sc
 Deben ejecutarse sobre la persistencia PostgreSQL real usada por Flask (dos conexiones/transacciones, no mocks):
 - dos operadores confirman la misma tarea: exactamente un pick aplicado, un cambio de inventario y un audit;
 - confirm pick frente a short pick sobre la misma tarea: solo una transición gana;
-- dos confirmaciones de packing concurrentes no superan `quantity_picked`;
-- complete packing frente a verify y ship frente a fulfill serializan correctamente;
+- **ya existe** prueba concurrente de dos scans de packing: `api/tests/test_packing.py::test_concurrent_duplicate_pack_scans_cannot_overpack`;
+- añadir concurrencia de complete packing frente a verify y ship frente a fulfill;
 - dos fulfillment concurrentes producen un único fulfillment, un único cambio a SHIPPED y un evento/outbox;
 - retry tras timeout reconcilia la operación original sin duplicar stock, cantidades, fulfillment ni eventos.
 
