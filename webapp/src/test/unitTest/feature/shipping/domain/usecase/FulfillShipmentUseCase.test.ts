@@ -1,14 +1,19 @@
 import { describe, it, expect, vi } from 'vitest';
 import { FulfillShipmentUseCase } from '../../../../../../core/feature/shipping/domain/usecase/FulfillShipmentUseCase';
 import type { ShippingRepository } from '../../../../../../core/feature/shipping/domain/repository/ShippingRepository';
+import { R6OperationNotSupportedError } from '../../../../../../core/feature/picking/domain/contract/R6PickingLifecycleContract';
 
 describe('FulfillShipmentUseCase', () => {
 	it('rejects a valid fulfillment while physical-package validation is unsupported', async () => {
 		const repo: ShippingRepository = { loadOrder: vi.fn(), fulfill: vi.fn() };
 		const useCase = new FulfillShipmentUseCase(repo);
-		await expect(useCase.execute({ soId: 1, warehouseId: 6, trackingNumber: '1Z', carrier: 'UPS', shipMethod: 'GROUND' })).rejects.toMatchObject({
-			name: 'R6OperationNotSupportedError', code: 'R6_CAPABILITY_BLOCKED', operation: 'validateShipmentPackage'
-		});
+		let caught: unknown;
+		try {
+			await useCase.execute({ soId: 1, warehouseId: 6, trackingNumber: '1Z', carrier: 'UPS', shipMethod: 'GROUND' });
+		} catch (error) { caught = error; }
+		expect(caught).toBeInstanceOf(R6OperationNotSupportedError);
+		expect((caught as R6OperationNotSupportedError).code).toBe('R6_CAPABILITY_BLOCKED');
+		expect((caught as R6OperationNotSupportedError).operation).toBe('validateShipmentPackage');
 		expect(repo.fulfill).not.toHaveBeenCalled();
 	});
 
