@@ -909,3 +909,6 @@ La creación/importación, reserva, picking, aprobación/rechazo, short-close, c
 Se añadieron el contrato futuro tipado `TransferLifecycleContract` (comandos/versiones/idempotencia, puerto y diez casos de uso nombrados), la política de scope dual, guardas en estados/UI y pruebas frontend para permisos cruzados y bloqueo de mutaciones. El historial permanece de solo lectura. **No se modifica Flask/Python.**
 
 Auditoría detallada, matriz de aceptación y requisitos de backend: `webapp/.code-review/R5-Transfer-Lifecycle-and-Scope.md`. CI frontend sobre el HEAD definitivo pendiente; R5 no puede cerrarse hasta que el backend aporte reserva exacta, dispatch, tránsito, receive, put-away y ledger.
+
+
+**Endurecimiento de contexto:** listado y detalle Transfer Orders descartan respuestas obsoletas; los filtros limpian detalle/snapshot seleccionado; cualquier fila fuera de ambos almacenes autorizados se oculta sin conservar metadatos de paginación del resultado no filtrado. La verificación CI de esta revisión queda pendiente.
