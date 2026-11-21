@@ -1,10 +1,10 @@
 /**
  * Read-only projection over a POS credit-memo child SalesOrder (order_type='refund').
- * The backend stores negative order_total/line quantities and links the memo
- * to its original sale. Refund is a view of that record, not a new aggregate.
+ * A refund is a monetary/ledger record; it is not a physical return receipt.
  */
 import type { SalesOrder, SalesOrderLine } from '../../../sales-orders/domain/entity/SalesOrder';
 
+export type RefundStatus = 'SHIPPED' | 'CANCELLED';
 export type RefundAmountIntegrity = 'VALID' | 'MISSING' | 'NON_NEGATIVE' | 'LINE_SIGN_MISMATCH';
 
 export type RefundRelatedRecord = {
@@ -18,8 +18,9 @@ export type RefundRelatedRecord = {
   signedAmount: number | null;
 };
 
-export type Refund = Omit<SalesOrder, 'orderType' | 'lines' | 'externalId' | 'orderTotal'> & {
+export type Refund = Omit<SalesOrder, 'orderType' | 'lines' | 'externalId' | 'orderTotal' | 'status'> & {
   orderType: 'refund';
+  status: RefundStatus;
   externalId?: string | null;
   parentSalesOrderId: number | null;
   /** Positive magnitude for display; signedAmount preserves the ledger value. */
