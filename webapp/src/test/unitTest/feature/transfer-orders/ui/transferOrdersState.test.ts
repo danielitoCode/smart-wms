@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createTransferOrdersState } from '../../../../../core/feature/transfer-orders/ui/state/transferOrdersState.svelte';
+import { authSession } from '../../../../../core/infrastructure/auth/AuthSession';
 
 function dependencies() {
+  authSession.setUser({ userId: 7, username: 'test', fullName: 'Test', role: 'USER', warehouseIds: [1, 2, 4], allowedPages: [], allowedFunctions: [], allowedOverrides: [], mustChangePassword: false });
   return {
     list: { execute: vi.fn().mockResolvedValue({ orders: [], total: 0, page: 1, pages: 1, perPage: 50 }) },
     detail: { execute: vi.fn().mockResolvedValue({
@@ -11,7 +13,7 @@ function dependencies() {
     pickerDetail: { execute: vi.fn().mockResolvedValue({}) },
     remove: { execute: vi.fn().mockResolvedValue(undefined) },
     create: { execute: vi.fn() },
-    warehouses: { execute: vi.fn().mockResolvedValue([1, 2, 4].map(warehouseId => ({ warehouseId, warehouseCode: 'WH-' + warehouseId, warehouseName: 'Warehouse ' + warehouseId, active: true }))) },
+    warehouses: { execute: vi.fn().mockResolvedValue([1, 2, 4, 9].map(warehouseId => ({ warehouseId, warehouseCode: 'WH-' + warehouseId, warehouseName: 'Warehouse ' + warehouseId, active: true }))) },
     startPicking: { execute: vi.fn() },
     submitPickerResult: { execute: vi.fn() },
     approve: { execute: vi.fn() },
@@ -62,6 +64,7 @@ describe('transfer orders UI state', () => {
     const state = createTransferOrdersState(deps as never);
     await state.load();
     expect(state.rows.map(row => row.transferOrderId)).toEqual([1]);
+    expect(state.warehouses.map(row => row.warehouseId)).toEqual([1, 2, 4]);
   });
 
   it('rejects a detail unless the user can access both warehouses', async () => {
