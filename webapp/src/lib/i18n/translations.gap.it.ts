@@ -252,4 +252,6 @@ export const gapIt: Record<string, string> = {
   'Reintentar': 'Riprova',
   'de': 'di',
   'La validación de capacidad física no está disponible en el servidor.': 'La validazione della capacità fisica non è disponibile sul server.',
+  'No se puede cancelar el backorder porque el pedido no tiene un almacén asociado.': 'Impossibile annullare il backorder perché l’ordine non è associato a un magazzino.',
+  'No se puede cancelar este backorder porque el pedido no tiene un almacén asociado.': 'Impossibile annullare questo backorder perché l’ordine non è associato a un magazzino.',
 };
