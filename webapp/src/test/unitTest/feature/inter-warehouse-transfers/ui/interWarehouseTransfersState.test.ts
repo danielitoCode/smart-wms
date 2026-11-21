@@ -85,20 +85,26 @@ describe('inter-warehouse transfer selectors and state', () => {
     expect(mocks.searchItems).toHaveBeenCalledTimes(1);
   });
 
-  it('blocks duplicate submissions and refreshes the movement history after success', async () => {
+  it('fails closed instead of executing the immediate stock move endpoint', async () => {
     const state = createInterWarehouseTransfersState();
-    let release!: () => void;
-    mocks.createTransfer.mockReturnValueOnce(new Promise<void>(resolve => { release = resolve; }));
     const payload = {
       itemId: 1, sourceWarehouseId: 1, sourceBinId: 10,
       destinationWarehouseId: 2, destinationBinId: 20,
       quantity: 3, idempotencyKey: '550e8400-e29b-41d4-a716-446655440000'
     };
-    const first = state.create(payload);
     expect(await state.create(payload)).toBe(false);
-    expect(mocks.createTransfer).toHaveBeenCalledTimes(1);
-    release();
-    expect(await first).toBe(true);
-    expect(mocks.listTransfers).toHaveBeenCalled();
+    expect(state.lifecycleAvailable).toBe(false);
+    expect(state.error).toContain('no está disponible');
+    expect(mocks.createTransfer).not.toHaveBeenCalled();
+  });
+
+  it('keeps history only when both warehouses are in the authorized list', async () => {
+    mocks.listTransfers.mockResolvedValue([
+      { transferId: 1, sourceWarehouseId: 1, destinationWarehouseId: 2 },
+      { transferId: 2, sourceWarehouseId: 1, destinationWarehouseId: 9 }
+    ]);
+    const state = createInterWarehouseTransfersState();
+    await state.load();
+    expect(state.rows.map(row => row.transferId)).toEqual([1]);
   });
 });
