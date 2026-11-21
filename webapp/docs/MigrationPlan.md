@@ -927,3 +927,17 @@ Las mutaciones que no representan el ciclo requerido permanecen deshabilitadas. 
 **Bloqueo para R5 integral:** Flask debe implementar y probar reserva exacta transaccional, picking idempotente, short-close con liberación exacta, dispatch que cree saldo IN_TRANSIT, receive con autorización destino y conciliación, put-away con validación de bin/capacidad, cancelación/rechazo con ledger y auditoría/versionado. Hasta entonces la etiqueta correcta sigue siendo `BLOCKED_BACKEND`.
 
 **Verificación CI:** pendiente sobre el HEAD definitivo de esta revisión. No se declara verde ni se afirma ejecución local. No se modificó Flask/Python.
+
+
+## R6 — Preparar, recoger, empaquetar y expedir pedidos
+
+**Estado de ejecución:** `IN_PROGRESS / BACKEND_CONCURRENCY_GAPS`.  
+**Auditoría:** `.code-review/R6-Picking-Packing-Shipping-Audit.md`.
+
+R6 se ejecuta sobre el recorrido operativo original de escáneres (validar SO/TO → crear wave → caminar tareas → confirmar pick/short → completar batch → escanear y verificar packing → completar packing → registrar fulfillment). No se reconstruirán páginas administrativas independientes de tickets/batches que no formen parte del flujo React operativo.
+
+Los contratos comprobados incluyen `/api/picking/wave-validate`, `wave-create`, `batch/<id>`, `batch/<id>/next`, `confirm`, `short`, `complete-batch`, `/api/packing/order`, `verify`, `complete`, `/api/shipping/order` y `/fulfill`. Los DTO y adaptadores deben reflejar únicamente sus campos y respuestas reales; no inventar endpoints `GetShipment`, idempotency keys ni validación server-side de bin barcode.
+
+**Bloqueos backend identificados sin modificar Flask/Python:** `confirm_pick` y `short_pick` leen y actualizan pick_tasks sin lock/UPDATE condicional, por lo que la exclusión entre dos operadores no está garantizada; el comando de confirmación no incluye barcode de bin; `complete_batch` carece de guard de transición terminal/idempotente sobre batch; `wave-create` no acepta idempotency key; y no existe GET de shipment para reconciliar un timeout por `fulfillment_id`. Packing verify/complete y shipping fulfill sí bloquean la fila SO con `FOR UPDATE`; el estado impide normalmente un segundo fulfillment, pero no permite recuperar el resultado original tras perder la respuesta.
+
+El frontend debe proteger warehouse context y respuestas tardías en las tres pantallas, impedir doble submit dentro de una misma instancia, mantener pick/pack/ship como cantidades y estados separados y reconciliar mutaciones con respuestas reales. Estas protecciones locales no se describirán como garantías de concurrencia global. El cierre integral requiere pruebas PostgreSQL con dos conexiones para doble pick/short, packing concurrente, complete/ship y retry tras timeout; son dependencias backend y no se implementan desde esta migración.
