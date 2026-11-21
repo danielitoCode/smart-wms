@@ -37,6 +37,5 @@ regexes = [
   '''0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef''',
   # wms-twin/doc/API_ENDPOINTS_FRONTEND.md: truncated, non-functional JWT
   # example in the historical API response documentation (literal ellipsis).
-  '''^eyJhbGciOiJIUzI1NiIs\.\.\.
-'',
+  '''^eyJhbGciOiJIUzI1NiIs[.]{3}$''',
 ]
