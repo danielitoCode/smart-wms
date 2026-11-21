@@ -6,7 +6,7 @@
   import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
   import type { User } from '../../../auth/domain/entity/User';
   import { createBackordersState } from '../state/backordersState.svelte';
-  import type { Backorder, BackorderQueueTab, CancelBackorderReason } from '../../domain/entity/Backorder';
+  import { isBackorderCancelableStatus, type Backorder, type BackorderQueueTab, type CancelBackorderReason } from '../../domain/entity/Backorder';
   import { resolveBackorderWarehouseScope } from '../../domain/policy/BackorderScopePolicy';
 
   const i18n = getContext<I18nState>('i18n');
@@ -41,7 +41,7 @@
     );
   });
 
-  $effect(() => {
+  async function loadQueue(): Promise<void> {
     if (guard.status !== 'authenticated') return;
     try {
       const warehouseId = resolveBackorderWarehouseScope({
@@ -51,10 +51,25 @@
       });
       scopeError = false;
       scopeErrorMessage = '';
-      void vm.load(warehouseId, activeTab);
+      await vm.load(warehouseId, activeTab);
     } catch (cause) {
       scopeError = true;
       scopeErrorMessage = cause instanceof Error ? cause.message : i18n.t('No tienes acceso al almacén seleccionado.');
+    }
+  }
+
+  $effect(() => {
+    if (guard.status !== 'authenticated') return;
+    selection?.warehouseId;
+    activeTab;
+    void loadQueue();
+  });
+
+  $effect(() => {
+    const selectedWarehouseId = selection?.warehouseId ?? null;
+    if (cancelTarget && guard.user?.role !== 'ADMIN' && cancelTarget.warehouseId !== selectedWarehouseId) {
+      cancelTarget = null;
+      cancelError = i18n.t('El almacén seleccionado cambió. Vuelve a abrir la cancelación desde la cola actual.');
     }
   });
 
@@ -71,8 +86,27 @@
     }
   }
 
+  function isInCurrentQueueScope(row: Backorder): boolean {
+    try {
+      const scope = resolveBackorderWarehouseScope({
+        role: guard.user?.role ?? 'USER',
+        assignedWarehouseIds: guard.user?.warehouseIds ?? [],
+        selectedWarehouseId: selection?.warehouseId ?? null
+      });
+      return scope === null || scope === row.warehouseId;
+    } catch {
+      return false;
+    }
+  }
+
+  function canCancelRow(row: Backorder): boolean {
+    return Boolean(canOpenSalesOrderDetail && row.parentSalesOrderNumber &&
+      canAccessWarehouse(row.warehouseId) && isInCurrentQueueScope(row) &&
+      isBackorderCancelableStatus(row.status));
+  }
+
   function openCancel(row: Backorder): void {
-    if (!canOpenSalesOrderDetail || !canAccessWarehouse(row.warehouseId)) return;
+    if (!canCancelRow(row)) return;
     cancelTarget = row;
     cancelReason = 'other';
     cancelError = '';
@@ -81,8 +115,9 @@
   async function submitCancel(): Promise<void> {
     if (!cancelTarget || vm.saving) return;
     cancelError = '';
-    if (!canAccessWarehouse(cancelTarget.warehouseId)) {
-      cancelError = i18n.t('No tienes acceso al almacén de este backorder.');
+    if (!canCancelRow(cancelTarget)) {
+      cancelTarget = null;
+      cancelError = i18n.t('El backorder ya no pertenece al almacén seleccionado o su estado no permite cancelarlo.');
       return;
     }
 
@@ -98,19 +133,7 @@
       ? i18n.t('Backorder marcado como reembolsado. El pedido original no fue cancelado.')
       : i18n.t('Backorder cancelado. El pedido original no fue modificado.');
 
-    try {
-      const warehouseId = resolveBackorderWarehouseScope({
-        role: guard.user?.role ?? 'USER',
-        assignedWarehouseIds: guard.user?.warehouseIds ?? [],
-        selectedWarehouseId: selection?.warehouseId ?? null
-      });
-      await vm.load(warehouseId, activeTab);
-    } catch (cause) {
-      scopeError = true;
-      scopeErrorMessage = cause instanceof Error
-        ? cause.message
-        : i18n.t('No tienes acceso al almacén seleccionado.');
-    }
+    await loadQueue();
   }
 
   async function changeTab(tab: BackorderQueueTab): Promise<void> {
@@ -164,7 +187,7 @@
   {#if scopeError}
     <p class="message error" role="alert">{scopeErrorMessage}</p>
   {:else if vm.error}
-    <UiStatePanel kind="error" title={i18n.t('No se pudieron cargar los backorders')} message={vm.error} retry={() => vm.load(selection?.warehouseId ?? null, activeTab)} />
+    <UiStatePanel kind="error" title={i18n.t('No se pudieron cargar los backorders')} message={vm.error} retry={() => void loadQueue()} />
   {:else if vm.loading}
     <UiStatePanel kind="loading" title={i18n.t('Cargando backorders')} message={i18n.t('Estamos consultando los pedidos pendientes y su disponibilidad.')} />
   {:else if visibleRows.length === 0}
@@ -213,7 +236,7 @@
           <div class="card-actions">
             {#if canOpenSalesOrderDetail}
               <a class="detail-link" href={'/management/backorders/' + row.salesOrderId + '?tab=' + activeTab}>{i18n.t('Ver detalle')}</a>
-              {#if row.parentSalesOrderNumber && canAccessWarehouse(row.warehouseId)}
+              {#if canCancelRow(row)}
                 <button class="cancel-link" type="button" onclick={() => openCancel(row)}>
                   {i18n.t('Cancelar backorder')}
                 </button>
