@@ -11,7 +11,7 @@
 	import type { I18nState } from '../../lib/i18n/i18n.svelte';
 	import { createAuthGuardState } from '../../core/feature/auth/ui/state/authGuardState.svelte';
 	import { createWarehouseSelectionState } from '../../core/feature/warehouses/ui/state/warehouseSelectionState.svelte';
-	import { canAccessAnyPages, canAccessPages, routeAccessPolicyForPath } from '../../core/feature/auth/domain/policy/AccessPolicy';
+	import { canAccessAnyPages, canAccessOperationalFunction, canAccessPages, routeAccessPolicyForPath } from '../../core/feature/auth/domain/policy/AccessPolicy';
 
 	const i18n = getContext<I18nState>('i18n');
 	let { children } = $props();
@@ -43,17 +43,17 @@
 	});
 
 	type IconName = 'inbox' | 'map-pin' | 'clipboard-list' | 'package-check' | 'truck' | 'boxes' | 'scan' | 'package' | 'warehouse' | 'database' | 'user' | 'globe' | 'lock' | 'menu' | 'logout';
-	type NavItem = { href: string; label: string; icon: IconName; pageKey?: string };
+	type NavItem = { href: string; label: string; icon: IconName; pageKey?: string; functionKey?: 'pick' | 'pack' | 'ship' };
 	const navGroups: { label: string; items: NavItem[] }[] = $derived([
 		{ label: i18n.t('Operaciones'), items: [
 			{ href: '/dashboard', label: i18n.t('Dashboard'), icon: 'database', pageKey: 'dashboard' },
 			{ href: '/receiving', label: i18n.t('Recepción'), icon: 'inbox', pageKey: 'receiving' },
 			{ href: '/putaway', label: i18n.t('Ubicación'), icon: 'map-pin', pageKey: 'putaway' },
-			{ href: '/picking', label: i18n.t('Preparación'), icon: 'clipboard-list' },
+			{ href: '/picking', label: i18n.t('Preparación'), icon: 'clipboard-list', functionKey: 'pick' },
 			{ href: '/picking-tickets', label: i18n.t('Tickets de picking'), icon: 'clipboard-list', pageKey: 'picking-tickets' },
 			{ href: '/picking-batches', label: i18n.t('Lotes de picking'), icon: 'boxes', pageKey: 'picking-batches' },
-			{ href: '/packing', label: i18n.t('Empaque'), icon: 'package-check' },
-			{ href: '/shipping', label: i18n.t('Despacho'), icon: 'truck' }
+			{ href: '/packing', label: i18n.t('Empaque'), icon: 'package-check', functionKey: 'pack' },
+			{ href: '/shipping', label: i18n.t('Despacho'), icon: 'truck', functionKey: 'ship' }
 		]},
 		{ label: i18n.t('Control'), items: [
 			{ href: '/inventory', label: i18n.t('Inventario'), icon: 'boxes', pageKey: 'inventory' },
@@ -100,6 +100,7 @@
 		if (guard.user?.mustChangePassword) return page.url.pathname === '/change-password';
 		if (!routeAccess) return false;
 		if (routeAccess.kind === 'authenticated') return true;
+		if (routeAccess.kind === 'function') return canAccessOperationalFunction(guard.user?.role ?? 'USER', guard.user?.allowedFunctions ?? [], routeAccess.functionKey);
 		if (routeAccess.kind === 'all') {
 			return canAccessPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], routeAccess.pageKeys);
 		}
@@ -107,6 +108,7 @@
 	});
 
 	function canSeeNavItem(item: NavItem) {
+		if (item.functionKey) return canAccessOperationalFunction(guard.user?.role ?? 'USER', guard.user?.allowedFunctions ?? [], item.functionKey);
 		if (item.pageKey) return canAccessPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], [item.pageKey]);
 		if (item.href === '/data') {
 			return canAccessAnyPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], [
