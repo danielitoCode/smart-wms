@@ -167,3 +167,26 @@ La auditoría identificó la prueba backend existente `api/tests/test_packing.py
 ### 9.4 Gate adicional de shipping
 
 La revisión de `api/routes/shipping.py` confirmó que `FulfillRequest` no acepta `package_id` ni barcode del paquete. Además, `GET /api/shipping/order` consulta `quantity_packed` pero no lo incluye en el JSON de líneas; el fulfillment utiliza `quantity_picked`. Se añadieron `validateShipmentPackage = NOT_SUPPORTED_BY_SERVER` y `shipOrder = PARTIAL` al contrato R6. La pantalla muestra el bloqueo y el estado rechaza la llamada al repositorio; no se ejecuta `/fulfill` hasta que el backend permita verificar paquete y conciliar las cantidades.
+
+## 10. Revisión focalizada Picking + Packing (21-11-2026)
+
+### Picking — contratos y gates
+- Se verificó que `ActiveBatchDto`, `PickTaskDto`, wave validate/create y create-batch conservan `batch_id` donde Flask lo devuelve. `PickingMapper` rechaza tareas sin identificador de tarea, batch, item o SKU y mapea campos de ubicación, tote, secuencia y pedidos contribuyentes.
+- La lectura del batch activo se valida contra el `warehouseId` seleccionado; la tarea siguiente se valida además contra el `batchId` activo antes de publicarse en estado.
+- ConfirmPick, ShortPick y CompletePicking consultan tanto la capacidad individual como el gate global de ejecución. La creación de wave/batch permanece detrás de `isR6PickingMutationSafe`. Los controles de pantalla también permanecen deshabilitados cuando las capacidades no están disponibles.
+- La validación de SO/TO y la consulta de batch/tarea continúan disponibles. No se habilitan mutaciones de picking ni se simula su éxito.
+- Persisten las limitaciones de listado/detalle de tickets y permisos descritas en R6-BE-10/11/12; no se crean endpoints frontend ficticios para cubrirlas.
+
+### Packing — conciliación y resultado de verificación
+- `VerifyPackResult` conserva el detalle real devuelto por Flask (`item` y `order_progress`); el mapper y repositorio ya no reducen la respuesta a un mensaje.
+- El estado muestra el progreso de líneas informado por el servidor y después vuelve a leer el pedido para usar las cantidades persistidas como fuente de verdad.
+- La política `arePackingQuantitiesReconciled` exige al menos una línea, cantidades enteras/no negativas y coincidencia exacta `quantity_picked === quantity_packed`. Tanto el indicador `allVerified` como el comando complete comparten esta política; sobre-empaque no se interpreta como éxito.
+- Se conserva la recuperación de errores inciertos: tras error/timeout de verify se relee el pedido; si la lectura falla se invalida el detalle y se bloquean scans hasta recargar. Tras timeout de complete se intenta reconciliar; si no se puede determinar el estado, no se invita a repetir la mutación.
+
+### Pruebas incorporadas en este bloque
+- Mapper de respuesta de verify y progreso de líneas.
+- Use case de verify: normalización del barcode, cantidad por defecto y retorno del progreso del servidor.
+- Política de conciliación: pedido vacío, cantidades iguales, faltantes, excedentes, negativos, fracciones y múltiples líneas.
+- Picking: validación de batch/task y gates de mutación permanecen fail-closed.
+
+**Pendiente de certificación:** ejecutar Webapp CI sobre el HEAD final y revisar cualquier fallo. No se ejecutaron pruebas locales desde esta integración GitHub. No se modificó Flask/Python.
