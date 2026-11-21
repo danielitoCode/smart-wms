@@ -92,3 +92,20 @@ Estas pruebas pertenecen al backend y se documentan como dependencia; no se alte
 ## 7. Estado de aceptación
 
 **R6 no está cerrada inicialmente.** La paridad de flujo React y los contratos existentes permiten completar trabajo frontend, pero los criterios globales de doble picking, validación server-side del bin, idempotencia de wave y consulta/reconciliación de shipment dependen de cambios Flask. Hasta corregirlos y probarlos con PostgreSQL, el resultado final correcto será `FRONTEND_IMPLEMENTATION_COMPLETE / BLOCKED_BACKEND`, no `VERIFIED` integral.
+
+
+## 8. Avance frontend R6 (20-11-2026)
+
+**Trabajo aplicado en `webapp/`:**
+- Se añadió política de acceso a rutas operativas por los grants de `/api/auth/me`: `pick`, `pack` y `ship`; el menú lateral también oculta esas opciones cuando el usuario no tiene el grant (ADMIN conserva acceso).
+- Las tres pantallas capturan warehouseId y generation para las lecturas; las respuestas tardías de otro contexto se descartan.
+- Picking scanner: las SO se agregan únicamente después de validar el barcode; se retiró la creación manual legacy de lote de la pantalla operativa. El listado de batch/tarea sigue siendo consulta real.
+- Picking queda fail-closed para crear ola/lote, confirmar, short-pick y completar batch hasta que el servidor garantice replay seguro, validación de bin y transiciones atómicas/idempotentes. No se presenta el bloqueo local como protección entre operadores.
+- Packing: la confirmación exige que todas las unidades recogidas estén verificadas; después de una respuesta incierta se vuelve a consultar el pedido antes de permitir otro scan. Si no se puede reconciliar, se bloquea el siguiente scan.
+- Shipping: el detalle queda ligado al warehouse generation; fulfillment tiene guard local de doble submit y el servidor bloquea el agregado SO con `FOR UPDATE`. No se inventa GET shipment ni idempotency key.
+
+**Pruebas frontend añadidas/ampliadas:** grants operativos de ruta, capacidades R6 fail-closed, respuesta stale al cambiar warehouse/generation, conciliación de cantidad packed tras timeout, prevención de doble submit local de fulfillment y requisito de conciliación antes de completar packing.
+
+**Límites que siguen abiertos:** la UI no puede demostrar doble pick imposible, bin scan atómico, enforcement server-side de allowed_functions, complete batch idempotente ni reconciliación GET shipment. Se requieren correcciones y pruebas Flask/PostgreSQL; Flask no se modificó.
+
+**Estado:** `FRONTEND_HARDENING_IN_PROGRESS / BLOCKED_BACKEND`. Pendiente CI Webapp sobre HEAD final de esta iteración.
