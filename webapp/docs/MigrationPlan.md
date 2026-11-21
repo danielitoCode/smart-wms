@@ -1013,3 +1013,21 @@ Shipping queda endurecido en UI/state y Application: `FulfillShipmentUseCase` re
 - Lockfile Version Check, gitleaks y Dependency Audit: SUCCESS.
 
 **Estado:** `FRONTEND_HARDENING_COMPLETE / BLOCKED_BACKEND`. El alcance frontend R6 está implementado y verificado. R6 no es un ciclo integral certificado mientras Flask no aporte los contratos, garantías transaccionales, enforcement server-side y pruebas PostgreSQL de concurrencia documentadas en `.code-review/R6-Picking-Packing-Shipping-Audit.md`. No se modifica Flask/Python ni se usan tests backend para la aceptación de Svelte.
+
+
+## 23. R7 — Returns, RMA and Refunds (21-11-2026)
+
+**Trazabilidad:** F3.5 Returns, F3.6 RMA, F3.7 Refunds, Inventory, Orders, Audit.  
+**Estado inicial de implementación:** FRONTEND_IMPLEMENTATION_IN_PROGRESS / BLOCKED_BACKEND.
+
+Se incorporan contratos y gates explícitos para R7:
+- RMA: búsqueda de ventas enviadas, cálculo de cantidades autorizables (quantity_shipped - devoluciones RMA no anuladas), creación del RMA y lectura de detalle/recepciones.
+- La política frontend valida enteros positivos, referencias de línea/artículo, no duplica líneas ni artículos (el endpoint de recepción solo identifica por item_id) y no permite superar la cantidad restante. Flask vuelve a validar el límite de forma transaccional bajo bloqueo del pedido original.
+- Recepción física: el endpoint real registra item_receipts, incrementa inventario y avanza OPEN → PARTIALLY_RECEIVED → RECEIVED. La clave idempotente se genera y conserva en el cliente para reintentos/reconciliación.
+- Reembolsos: listado/detalle de credit memos son solo lectura. GetRefund está soportado; CreateRefund queda NOT_SUPPORTED desde el cliente administrativo porque el POST real exige token POS y contrato de tender.
+- ApproveRMA, ClassifyReturnedItem y RestockReturn separado quedan NOT_SUPPORTED: no hay endpoints/estados independientes; la recepción ya reabastece stock automáticamente.
+- Se añaden guards para no llamar endpoints de relaciones e historial sin warehouse scope desde usuarios no ADMIN; memo se habilita solo con ADMIN o grant fraud.
+
+**Bloqueos backend críticos:** create/receive/return-receipts/related carecen de warehouse scope; receive no rechaza un RMA anulado y no identifica una línea por so_line_id; idempotency_key es opcional; no existe clasificación/disposición por condición; RMA físico y refund POS pueden incrementar inventario de forma separada sin conciliación de unidades. Los hallazgos y el plan de pruebas PostgreSQL están en .code-review/R7-Returns-RMA-Refunds-Audit.md.
+
+**Criterio:** no declarar R7 integral VERIFIED hasta corregir los bloqueos server-side y ejecutar pruebas PostgreSQL de concurrencia/aislamiento/reconciliación. No se modifica Flask/Python ni se simulan operaciones sin endpoint. La certificación CI del frontend queda pendiente del HEAD definitivo de esta iteración.
