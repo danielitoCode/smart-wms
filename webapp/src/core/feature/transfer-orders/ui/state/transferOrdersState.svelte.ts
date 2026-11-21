@@ -104,14 +104,7 @@ export function createTransferOrdersState(dependencies = createTransferOrdersDep
     }
   }
 
-  async function refreshSelected() {
-    if (selected) {
-      const id = selected.transferOrderId;
-      selected = await dependencies.detail.execute(id);
-      if (pickerSnapshot) pickerSnapshot = await dependencies.pickerDetail.execute(id);
-    }
-    await load();
-  }
+
 
   async function act<T>(_action: () => Promise<T>, _successMessage: (result: T) => string = () => 'Operación completada') {
     if (saving) return false;
@@ -148,9 +141,9 @@ export function createTransferOrdersState(dependencies = createTransferOrdersDep
     detail,
     loadPickerDetail,
     create,
-    setStatus(value: string) { status = value; page = 1; },
-    setSourceWarehouse(value: number | null) { sourceWarehouseId = value; page = 1; },
-    setDestinationWarehouse(value: number | null) { destinationWarehouseId = value; page = 1; },
+    setStatus(value: string) { status = value; page = 1; selected = null; pickerSnapshot = null; detailEpoch += 1; },
+    setSourceWarehouse(value: number | null) { sourceWarehouseId = value; page = 1; selected = null; pickerSnapshot = null; detailEpoch += 1; },
+    setDestinationWarehouse(value: number | null) { destinationWarehouseId = value; page = 1; selected = null; pickerSnapshot = null; detailEpoch += 1; },
     setPage(value: number) { page = Math.max(1, Math.min(value, pages)); },
     startPicking: (id: number) => act(() => dependencies.startPicking.execute(id), result => `Lote ${result.batchNumber} creado con ${result.tasksCreated} tarea(s)`),
     submitPickerResult: (id: number) => act(() => dependencies.submitPickerResult.execute(id), result => `Envío #${result.approvalId} creado · ${result.lineCount} línea(s)`),
