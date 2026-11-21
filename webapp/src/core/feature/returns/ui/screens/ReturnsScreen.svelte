@@ -7,8 +7,9 @@
 
   const i18n = getContext<I18nState>('i18n');
   const vm = createReturnsState();
-  const auth = getContext<{ user: { role: string } | null }>('authGuard');
+  const auth = getContext<{ user: { role: string; allowed_pages?: string[] } | null }>('authGuard');
   const isAdmin = auth?.user?.role === 'ADMIN';
+  const canEditMemo = isAdmin || Boolean(auth?.user?.allowed_pages?.includes('fraud'));
 
   let idempotencyKeys = $state<Record<number, string>>({});
   let memoDraft = $state('');
@@ -59,7 +60,7 @@
   }
 
   async function saveMemo(): Promise<void> {
-    if (vm.selected) await vm.memo(vm.selected.salesOrderId, memoDraft);
+    if (vm.selected && canEditMemo) await vm.memo(vm.selected.salesOrderId, memoDraft);
   }
 
   async function receive(line: ReturnLine): Promise<void> {
@@ -199,8 +200,11 @@
       <section>
         <h3>{i18n.t('Nota de operación')}</h3>
         <textarea rows="2" maxlength="4000" bind:value={memoDraft}></textarea>
-        <button onclick={() => void saveMemo()} disabled={vm.saving}>{i18n.t('Guardar nota')}</button>
+        <button onclick={() => void saveMemo()} disabled={vm.saving || !canEditMemo}>{i18n.t('Guardar nota')}</button>
       </section>
+      {#if !canEditMemo}
+        <p class="read-only-note">{i18n.t('La edición de memo requiere el grant fraud en el contrato Flask actual.')}</p>
+      {/if}
 
       <aside class="read-only-note">{i18n.t('Recepción y stock: receive-return registra la recepción e incrementa inventario en el bin elegido dentro de la misma operación. El backend no ofrece clasificación vendible/dañado/cuarentena ni descarte independiente; no se ejecutan esas decisiones desde esta pantalla.')}</aside>
       {#if isAdmin}
