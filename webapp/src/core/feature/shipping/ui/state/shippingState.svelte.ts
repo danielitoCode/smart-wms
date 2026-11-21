@@ -57,9 +57,9 @@ export function createShippingState(warehouseSelection: WarehouseSelectionState)
 		if (!trackingNumber.trim()) { error = 'tracking_number es obligatorio'; return false; }
 		if (!carrier.trim()) { error = 'carrier es obligatorio'; return false; }
 		busy = true; error = null; info = null; lastResult = null;
-		const warehouseId = activeWarehouseId();
 		const generation = warehouseSelection.generation;
 		try {
+			const warehouseId = activeWarehouseId();
 			assertDetailWarehouse();
 			const result = await deps.fulfill.execute({
 				soId: detail.salesOrder.soId,
