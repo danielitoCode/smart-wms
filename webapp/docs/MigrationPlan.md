@@ -929,15 +929,23 @@ Las mutaciones que no representan el ciclo requerido permanecen deshabilitadas. 
 **Verificación CI:** pendiente sobre el HEAD definitivo de esta revisión. No se declara verde ni se afirma ejecución local. No se modificó Flask/Python.
 
 
+
 ## R6 — Preparar, recoger, empaquetar y expedir pedidos
 
-**Estado de ejecución:** `IN_PROGRESS / BACKEND_CONCURRENCY_GAPS`.  
-**Auditoría:** `.code-review/R6-Picking-Packing-Shipping-Audit.md`.
+**Estado de ejecución:** FRONTEND_HARDENING_IN_PROGRESS / BLOCKED_BACKEND.  
+**Auditoría:** .code-review/R6-Picking-Packing-Shipping-Audit.md.
 
-R6 se ejecuta sobre el recorrido operativo original de escáneres (validar SO/TO → crear wave → caminar tareas → confirmar pick/short → completar batch → escanear y verificar packing → completar packing → registrar fulfillment). No se reconstruirán páginas administrativas independientes de tickets/batches que no formen parte del flujo React operativo.
+R6 conserva el flujo operativo React de escáneres: validar SO/TO → crear wave → consultar tarea siguiente → confirmar pick/short → completar batch → escanear/verificar packing → completar packing → fulfillment. No se reconstruyen CRUDs administrativos de tickets o batches como sustituto del flujo móvil. La creación manual legacy de batch fue retirada de la pantalla operativa; la selección de pedidos para wave se alimenta únicamente de SOs validadas por barcode.
 
-Los contratos comprobados incluyen `/api/picking/wave-validate`, `wave-create`, `batch/<id>`, `batch/<id>/next`, `confirm`, `short`, `complete-batch`, `/api/packing/order`, `verify`, `complete`, `/api/shipping/order` y `/fulfill`. Los DTO y adaptadores deben reflejar únicamente sus campos y respuestas reales; no inventar endpoints `GetShipment`, idempotency keys ni validación server-side de bin barcode.
+**Implementación frontend aplicada:**
+- Guards de rutas y navegación por allowed_functions de /api/auth/me: pick, pack, ship; ADMIN conserva acceso.
+- Contexto warehouseId + generation en Picking, Packing y Shipping; las respuestas tardías de otro contexto se descartan y los detalles quedan ligados a la generación que los cargó.
+- Picking consulta batch/tarea y valida SO/TO por barcode, pero mantiene fail-closed las mutaciones de crear wave/lote, confirmar, short-pick y completar batch. La UI no simula exclusión global: el backend todavía carece de lock/UPDATE condicional en pick_task, bin barcode atómico y transición idempotente de batch.
+- Packing distingue picked de packed, impide completar si quedan unidades recogidas sin verificar y reconcilia contra Flask tras un timeout antes de permitir nuevos scans.
+- Shipping exige carrier/tracking, liga el detalle al warehouse generation y bloquea doble submit local. Flask bloquea el agregado SO con FOR UPDATE y el estado evita normalmente fulfillment duplicado; no hay GET shipment para recuperar una respuesta perdida.
 
-**Bloqueos backend identificados sin modificar Flask/Python:** `confirm_pick` y `short_pick` leen y actualizan pick_tasks sin lock/UPDATE condicional, por lo que la exclusión entre dos operadores no está garantizada; el comando de confirmación no incluye barcode de bin; `complete_batch` carece de guard de transición terminal/idempotente sobre batch; `wave-create` no acepta idempotency key; y no existe GET de shipment para reconciliar un timeout por `fulfillment_id`. Packing verify/complete y shipping fulfill sí bloquean la fila SO con `FOR UPDATE`; el estado impide normalmente un segundo fulfillment, pero no permite recuperar el resultado original tras perder la respuesta.
+**Bloqueos backend confirmados (sin modificar Flask/Python):** confirm_pick y short_pick permiten carrera entre operadores; ConfirmPickRequest no acepta barcode de bin; complete_batch carece de guard terminal/idempotente del batch; wave-create no tiene idempotency key; las rutas Flask no validan server-side los grants allowed_functions; y no existe GET de shipment. Packing verify sí tiene una prueba de concurrencia real en api/tests/test_packing.py::test_concurrent_duplicate_pack_scans_cannot_overpack (dos test clients, respuestas 200/400 y cantidad persistida conciliada). Faltan pruebas equivalentes de picking/short, complete packing frente a verify y doble fulfillment.
 
-El frontend debe proteger warehouse context y respuestas tardías en las tres pantallas, impedir doble submit dentro de una misma instancia, mantener pick/pack/ship como cantidades y estados separados y reconciliar mutaciones con respuestas reales. Estas protecciones locales no se describirán como garantías de concurrencia global. El cierre integral requiere pruebas PostgreSQL con dos conexiones para doble pick/short, packing concurrente, complete/ship y retry tras timeout; son dependencias backend y no se implementan desde esta migración.
+**Pruebas frontend añadidas/ampliadas:** grants operativos, capacidades fail-closed, cambio de almacén/generation durante lecturas, reconciliación packing tras timeout, no doble submit local de fulfillment y conciliación picked/packed antes de completar. CI Webapp sobre el HEAD definitivo de esta iteración sigue pendiente; no se declara verde hasta completar el workflow.
+
+**Criterio de cierre:** R6 no puede marcarse VERIFIED integral hasta que Flask implemente grants operativos en endpoints, bloqueo condicional/idempotencia de picking y batch, validación atómica de bin, replay de wave, consulta/reconciliación de shipment y pruebas PostgreSQL de dos conexiones para los casos pendientes. No se modificó Flask/Python.
