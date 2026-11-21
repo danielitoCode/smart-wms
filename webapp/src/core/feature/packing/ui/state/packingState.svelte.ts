@@ -60,18 +60,19 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 		if (!detail || busy || loading) return false;
 		if (!scannedBarcode.trim()) { error = 'Indica el barcode a verificar'; return false; }
 		if (!Number.isInteger(quantity) || quantity <= 0) { error = 'La cantidad debe ser un entero mayor que 0'; return false; }
+		let warehouseId: number;
+		try { warehouseId = activeWarehouseId(); assertDetailWarehouse(); }
+		catch (err) { error = toUserMessage(err, 'El pedido no pertenece al almacén activo'); return false; }
 		busy = true; error = null; info = null;
 		const generation = warehouseSelection.generation;
 		const requestId = requestEpoch;
 		const soNumber = detail.salesOrder.soNumber;
 		const soId = detail.salesOrder.soId;
 		try {
-			assertDetailWarehouse();
-			const warehouseId = activeWarehouseId();
 			const result = await deps.verify.execute({ soId, warehouseId, scannedBarcode: scannedBarcode.trim(), quantity });
 			if (!isCurrentContext(warehouseId, generation) || requestId !== requestEpoch) {
 				info = `Verificación confirmada en el almacén #${warehouseId}. El contexto cambió; vuelve a cargar el pedido para continuar.`;
-				detail = null;
+				detail = null; detailWarehouseId = null; detailGeneration = -1;
 				return true;
 			}
 			info = result.message;
@@ -121,11 +122,12 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 			error = 'No se puede completar el empaque: quedan unidades recogidas sin verificar.';
 			return false;
 		}
+		let warehouseId: number;
+		try { warehouseId = activeWarehouseId(); assertDetailWarehouse(); }
+		catch (err) { error = toUserMessage(err, 'El pedido no pertenece al almacén activo'); return false; }
 		busy = true; error = null; info = null;
 		const generation = warehouseSelection.generation;
 		try {
-			const warehouseId = activeWarehouseId();
-			assertDetailWarehouse();
 			const result = await deps.complete.execute(detail.salesOrder.soId, warehouseId);
 			info = isCurrentContext(warehouseId, generation) ? result.message : `Empaque completado en el almacén #${warehouseId}. El contexto cambió.`;
 			detail = null; detailWarehouseId = null; detailGeneration = -1;
