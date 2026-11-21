@@ -8,6 +8,8 @@ const deps = createShippingDependencies();
 export function createShippingState(warehouseSelection: WarehouseSelectionState) {
 	let barcode = $state('');
 	let detail = $state<ShippingOrderDetail | null>(null);
+	let detailWarehouseId: number | null = null;
+	let detailGeneration = -1;
 	let trackingNumber = $state('');
 	let carrier = $state('');
 	let shipMethod = $state('');
@@ -25,7 +27,7 @@ export function createShippingState(warehouseSelection: WarehouseSelectionState)
 	function activeWarehouseId() { return warehouseSelection.requireWarehouseId(); }
 	function assertDetailWarehouse() {
 		const selected = activeWarehouseId();
-		if (!detail || detail.salesOrder.warehouseId !== selected) {
+		if (!detail || detail.salesOrder.warehouseId !== selected || detailWarehouseId !== selected || detailGeneration !== warehouseSelection.generation) {
 			throw new Error('El pedido no pertenece al almacén seleccionado. Vuelve a escanearlo.');
 		}
 	}
@@ -39,12 +41,15 @@ export function createShippingState(warehouseSelection: WarehouseSelectionState)
 		let warehouseId: number;
 		try { warehouseId = activeWarehouseId(); }
 		catch (err) { error = toUserMessage(err, 'No hay almacén activo'); return false; }
-		loading = true; error = null; info = null; lastResult = null; detail = null;
+		loading = true; error = null; info = null; lastResult = null; detail = null; detailWarehouseId = null; detailGeneration = -1;
 		try {
 			const result = await deps.loadOrder.execute(code, warehouseId);
 			if (epoch !== requestEpoch || !isCurrentContext(warehouseId, generation)) return false;
 			if (result.salesOrder.warehouseId !== warehouseId) throw new Error('El pedido no pertenece al almacén seleccionado');
 			detail = result;
+			detailWarehouseId = warehouseId;
+			detailGeneration = generation;
+			shipMethod = result.salesOrder.shipMethod ?? 'GROUND';
 			return true;
 		} catch (err) {
 			if (epoch === requestEpoch && isCurrentContext(warehouseId, generation)) error = toUserMessage(err, 'No se pudo cargar el pedido');
@@ -56,13 +61,15 @@ export function createShippingState(warehouseSelection: WarehouseSelectionState)
 		if (!detail || busy || loading) return false;
 		if (!trackingNumber.trim()) { error = 'tracking_number es obligatorio'; return false; }
 		if (!carrier.trim()) { error = 'carrier es obligatorio'; return false; }
+		let warehouseId: number;
+		try { warehouseId = activeWarehouseId(); assertDetailWarehouse(); }
+		catch (err) { error = toUserMessage(err, 'El pedido no pertenece al almacén activo'); return false; }
 		busy = true; error = null; info = null; lastResult = null;
 		const generation = warehouseSelection.generation;
+		const soId = detail.salesOrder.soId;
 		try {
-			const warehouseId = activeWarehouseId();
-			assertDetailWarehouse();
 			const result = await deps.fulfill.execute({
-				soId: detail.salesOrder.soId,
+				soId,
 				warehouseId,
 				trackingNumber: trackingNumber.trim(),
 				carrier: carrier.trim(),
@@ -70,20 +77,22 @@ export function createShippingState(warehouseSelection: WarehouseSelectionState)
 			});
 			if (!isCurrentContext(warehouseId, generation)) {
 				info = `Despacho confirmado en el almacén #${warehouseId}. El contexto cambió; vuelve a escanear para continuar.`;
-				detail = null;
+				detail = null; detailWarehouseId = null; detailGeneration = -1;
 				return true;
 			}
 			lastResult = result;
-			detail = null;
+			detail = null; detailWarehouseId = null; detailGeneration = -1;
 			return true;
-		} catch (err) { error = toUserMessage(err, 'No se pudo registrar el envío'); return false; }
-		finally { busy = false; }
+		} catch (err) {
+			if (isCurrentContext(warehouseId, generation)) error = toUserMessage(err, 'No se pudo registrar el envío');
+			return false;
+		} finally { busy = false; }
 	}
 
 	function onWarehouseChanged() {
 		requestEpoch++;
 		loading = false;
-		detail = null; trackingNumber = ''; carrier = ''; shipMethod = ''; error = null; info = null; lastResult = null;
+		detail = null; detailWarehouseId = null; detailGeneration = -1; trackingNumber = ''; carrier = ''; shipMethod = ''; error = null; info = null; lastResult = null;
 	}
 
 	return {
