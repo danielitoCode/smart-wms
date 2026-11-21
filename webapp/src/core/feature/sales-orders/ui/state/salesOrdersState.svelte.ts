@@ -52,6 +52,7 @@ export function createSalesOrdersState() {
   let loading = $state(false);
   let saving = $state(false);
   let error = $state<string | null>(null);
+  let refreshError = $state<string | null>(null);
   let loadedOnce = $state(false);
   let selected = $state<SalesOrder | null>(null);
   let relatedOrders = $state<RelatedSalesOrder[]>([]);
@@ -108,21 +109,34 @@ export function createSalesOrdersState() {
     }
   }
 
+  async function refreshAfterConfirmedMutation(): Promise<void> {
+    refreshError = null;
+    const listRefreshed = await load();
+    try {
+      await refreshSelected();
+    } catch {
+      refreshError = 'La operación se confirmó, pero no se pudo actualizar el detalle. Recarga el pedido.';
+    }
+    if (!listRefreshed) {
+      refreshError = refreshError
+        ? refreshError + ' La lista tampoco pudo actualizarse.'
+        : 'La operación se confirmó, pero no se pudo actualizar la lista. Recarga los pedidos.';
+    }
+  }
+
   async function runMutation(action: () => Promise<void>, fallback: string): Promise<boolean> {
     if (saving) return false;
     saving = true;
     error = null;
+    refreshError = null;
     try {
       await action();
-      await load();
-      await refreshSelected();
-      return true;
     } catch (err) {
       error = toUserMessage(err, fallback);
       return false;
-    } finally {
-      saving = false;
     }
+    await refreshAfterConfirmedMutation();
+    return true;
   }
 
   async function create(input: CreateSalesOrder): Promise<boolean> {
@@ -202,8 +216,7 @@ export function createSalesOrdersState() {
         lineId,
         { delta }
       );
-      await load();
-      await refreshSelected();
+      await refreshAfterConfirmedMutation();
       return result;
     } catch (err) {
       error = toUserMessage(err, 'No se pudo ajustar la asignación de inventario');
@@ -263,8 +276,7 @@ export function createSalesOrdersState() {
     adminShipShortfall = null;
     try {
       await deps.adminShipSalesOrder.execute(selected.salesOrderId, acknowledgeShortfall);
-      await load();
-      await refreshSelected();
+      await refreshAfterConfirmedMutation();
       return true;
     } catch (err) {
       if (err instanceof ApiError && err.details && typeof err.details === 'object') {
@@ -451,6 +463,7 @@ export function createSalesOrdersState() {
     get loading() { return loading; },
     get saving() { return saving; },
     get error() { return error; },
+    get refreshError() { return refreshError; },
     get loadedOnce() { return loadedOnce; },
     get selected() { return selected; },
     get relatedOrders() { return relatedOrders; },
