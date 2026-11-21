@@ -49,3 +49,13 @@ export function isR6PickingMutationSafe(): boolean {
     isR6CapabilityAvailable('idempotentWaveReplay')
   );
 }
+
+/** Picking is executable only when every operation that changes inventory/task state is fully supported. */
+export function isR6PickingExecutionAvailable(): boolean {
+  return (
+    isR6CapabilityAvailable('confirmPick') &&
+    isR6CapabilityAvailable('shortPick') &&
+    isR6CapabilityAvailable('completePicking') &&
+    isR6CapabilityAvailable('itemAndBinBarcodeValidation')
+  );
+}
