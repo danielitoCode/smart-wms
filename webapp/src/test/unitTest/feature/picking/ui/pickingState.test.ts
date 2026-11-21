@@ -9,12 +9,13 @@ const deps = vi.hoisted(() => ({
 vi.mock('../../../../../core/feature/picking/di/picking.dependencies', () => ({ createPickingDependencies: () => deps }));
 import { createPickingState } from '../../../../../core/feature/picking/ui/state/pickingState.svelte';
 
-const warehouse = { warehouseId: 12, initialized: true, generation: 1, requireWarehouseId: () => 12 };
+const warehouse = { warehouseId: 12, initialized: true, generation: 1, requireWarehouseId: () => warehouse.warehouseId };
 const batch = { active: true, batchId: 4, warehouseId: 12, totalPicks: 2, completedPicks: 0, totalOrders: 1, createdAt: null };
 
 describe('Picking scanner state warehouse context', () => {
  beforeEach(() => {
   vi.clearAllMocks();
+  warehouse.warehouseId = 12; warehouse.generation = 1;
   deps.getActiveBatch.execute.mockResolvedValue(batch);
   deps.getNextTask.execute.mockResolvedValue({ pickTaskId: 9, batchId: 4, itemId: 3, sku: 'SKU-3', itemName: 'Item', upc: 'UPC-3', quantityToPick: 2, binId: 2, binCode: 'A-01', status: 'PENDING' });
   deps.waveValidate.execute.mockResolvedValue({ valid: true, soId: 5, soNumber: 'SO-5' });
@@ -44,7 +45,8 @@ describe('Picking scanner state warehouse context', () => {
  });
  it('creates waves using the selected warehouse and real response fields', async () => {
   const state = createPickingState(warehouse as never);
-  state.setSoIdsInput('5');
+  state.setValidateBarcode('SO-5');
+  expect(await state.validateWaveSo()).toBe(true);
   expect(await state.createWave()).toBe(true);
   expect(deps.waveCreate.execute).toHaveBeenCalledWith([5], 12);
   expect(state.waveResult?.batchNumber).toBe('WAVE-4');
@@ -58,6 +60,19 @@ describe('Picking scanner state warehouse context', () => {
   expect(state.validatedSoIds).toEqual([]);
   expect(state.soIdsInput).toBe('');
   expect(state.info).toContain('TO-90');
+ });
+
+ it('discards a batch response that belongs to the previous warehouse generation', async () => {
+  let resolveBatch!: (value: typeof batch) => void;
+  deps.getActiveBatch.execute.mockReturnValueOnce(new Promise(resolve => { resolveBatch = resolve; }));
+  const state = createPickingState(warehouse as never);
+  const pending = state.refresh();
+  warehouse.warehouseId = 13; warehouse.generation = 2;
+  state.onWarehouseChanged();
+  resolveBatch(batch);
+  expect(await pending).toBe(false);
+  expect(state.batch).toBeNull();
+  expect(deps.getNextTask.execute).not.toHaveBeenCalled();
  });
 
 });
