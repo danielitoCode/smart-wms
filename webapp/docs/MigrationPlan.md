@@ -869,3 +869,17 @@ La evidencia detallada y la matriz de R4 se mantienen en [R4-Sales-Orders-Backor
 
 **Decisión:** R4.2 queda completada para el alcance frontend. Esto no significa que los tres riesgos de seguridad/atomicidad backend estén resueltos. R4 global continúa condicionada a R4.3 (enforcement backend o aceptación explícita del bloqueo) y a la regresión CI del HEAD definitivo. No se modificó Flask/Python.
 
+
+
+## 18. R4.2 — verificación final del HEAD de implementación
+
+**HEAD verificado:** `b581c260364d03d4e2b77dcb75eb3b6ff404dee0`  
+**Webapp CI:** `success` — [run 44861463776](https://github.com/danielitoCode/smart-wms/actions/runs/44861463776).  
+**Regresión:** 200 archivos de prueba y 877 tests aprobados. Typecheck, build, Domain, Application, Infrastructure, UI, i18n, Integration y Full regression finalizaron correctamente.
+
+Gitleaks [44861463770](https://github.com/danielitoCode/smart-wms/actions/runs/44861463770), Dependency Audit [44861463799](https://github.com/danielitoCode/smart-wms/actions/runs/44861463799) y Lockfile Version Check [44861463774](https://github.com/danielitoCode/smart-wms/actions/runs/44861463774) también terminaron `success`.
+
+El paso opcional de cobertura intentó ejecutarse, pero no pudo generar el informe porque el proyecto no instala `@vitest/coverage-v8`; está marcado `continue-on-error`, por lo que no invalida la regresión funcional. No se afirma que exista reporte de cobertura.
+
+**Cierre:** R4.2 queda `VERIFIED_FRONTEND` en el HEAD indicado. El workflow `Tests` [44861463773](https://github.com/danielitoCode/smart-wms/actions/runs/44861463773) es el pipeline Python/backend independiente; se deja fuera del alcance Svelte y no se usa para afirmar que el backend esté validado. Los bloqueos R4-BE-01/02/03 continúan abiertos. R4 global no queda cerrado por este resultado.
+
