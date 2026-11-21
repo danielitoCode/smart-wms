@@ -2,7 +2,8 @@ import type { PackingRepository } from '../../domain/repository/PackingRepositor
 import type {
 	PackingOrderDetail,
 	SimpleMessageResult,
-	VerifyPackInput
+	VerifyPackInput,
+	VerifyPackResult
 } from '../../domain/entity/Packing';
 import type { PackingRemoteDataSource } from '../datasource/PackingRemoteDataSource';
 import { PackingMapper } from '../mapper/PackingMapper';
@@ -14,8 +15,8 @@ export class PackingRepositoryImpl implements PackingRepository {
 		return PackingMapper.toDetail(await this.datasource.loadOrder(barcode, warehouseId));
 	}
 
-	async verify(input: VerifyPackInput): Promise<SimpleMessageResult> {
-		return PackingMapper.toMessage(await this.datasource.verify(input));
+	async verify(input: VerifyPackInput): Promise<VerifyPackResult> {
+		return PackingMapper.toVerifyResult(await this.datasource.verify(input));
 	}
 
 	async complete(soId: number, warehouseId: number): Promise<SimpleMessageResult> {
