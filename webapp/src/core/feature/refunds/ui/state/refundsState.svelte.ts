@@ -11,32 +11,38 @@ export function createRefundsState() {
   let error = $state<string | null>(null);
   let status = $state('');
   let search = $state('');
+  let listGeneration = 0;
+  let detailGeneration = 0;
 
   async function load() {
+    const generation = ++listGeneration;
     loading = true;
     error = null;
     try {
-      rows = await dependencies.list.execute({
+      const result = await dependencies.list.execute({
         status: status || undefined,
         search: search || undefined
       });
+      if (generation === listGeneration) rows = result;
     } catch (cause) {
-      error = toUserMessage(cause, 'No se pudieron cargar los reembolsos');
+      if (generation === listGeneration) error = toUserMessage(cause, 'No se pudieron cargar los reembolsos');
     } finally {
-      loading = false;
+      if (generation === listGeneration) loading = false;
     }
   }
 
-  async function detail(id: number) {
+  async function detail(id: number, includeRelated = false) {
+    const generation = ++detailGeneration;
     loading = true;
     error = null;
     selected = null;
     try {
-      selected = await dependencies.detail.execute(id);
+      const result = await dependencies.detail.execute(id, includeRelated);
+      if (generation === detailGeneration) selected = result;
     } catch (cause) {
-      error = toUserMessage(cause, 'No se pudo cargar el detalle del reembolso');
+      if (generation === detailGeneration) error = toUserMessage(cause, 'No se pudo cargar el detalle del reembolso');
     } finally {
-      loading = false;
+      if (generation === detailGeneration) loading = false;
     }
   }
 
@@ -51,6 +57,6 @@ export function createRefundsState() {
     setSearch(value: string) { search = value; },
     load,
     detail,
-    close() { selected = null; }
+    close() { ++detailGeneration; selected = null; }
   };
 }
