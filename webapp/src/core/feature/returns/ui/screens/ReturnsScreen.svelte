@@ -16,6 +16,9 @@
   let binQuery = $state('');
   let itemDrafts = $state<Record<number, string>>({});
   let notes = $state('');
+  let originalQuery = $state('');
+  let originalMemo = $state('');
+  let requestedQuantities = $state<Record<number, string>>({});
 
   $effect(() => { void vm.load(); });
   $effect(() => {
@@ -34,6 +37,24 @@
     binId = '';
     binQuery = '';
     itemDrafts = {};
+  }
+
+  async function searchOriginals(): Promise<void> { await vm.searchOriginals(originalQuery); }
+
+  async function selectOriginal(id: number): Promise<void> {
+    await vm.loadReturnableOrder(id);
+    requestedQuantities = {};
+  }
+
+  async function createRma(): Promise<void> {
+    const order = vm.returnableOrder;
+    if (!order) return;
+    const lines = order.lines
+      .map(line => ({ ...line, quantity: Number(requestedQuantities[line.originalSalesOrderLineId] ?? 0) }))
+      .filter(line => line.quantity > 0)
+      .map(line => ({ itemId: line.itemId, originalSalesOrderLineId: line.originalSalesOrderLineId, quantity: line.quantity }));
+    const created = await vm.createReturn(lines, originalMemo);
+    if (created) { originalMemo = ''; requestedQuantities = {}; }
   }
 
   async function saveMemo(): Promise<void> {
@@ -88,6 +109,46 @@
     <button onclick={() => void vm.load()}>{i18n.t('Actualizar')}</button>
   </header>
 
+  <section class="create-rma">
+    <h2>{i18n.t('Autorizar una devolución')}</h2>
+    <p>{i18n.t('Busca un pedido enviado. El sistema descuenta las cantidades ya autorizadas en otros RMA; Flask vuelve a validar el límite de forma transaccional.')}</p>
+    <div class="filters">
+      <input placeholder={i18n.t('Número de pedido o cliente')} bind:value={originalQuery} onkeydown={(event) => { if (event.key === 'Enter') void searchOriginals(); }} />
+      <button onclick={() => void searchOriginals()} disabled={vm.loading}>{i18n.t('Buscar pedidos enviados')}</button>
+    </div>
+    {#if vm.originals.length > 0}
+      <div class="original-list">
+        {#each vm.originals as original (original.salesOrderId)}
+          <button class="original-option" onclick={() => void selectOriginal(original.salesOrderId)}>
+            <strong>{original.salesOrderNumber}</strong><span>{original.customerName ?? '—'} · {original.status} · WH {original.warehouseId}</span>
+          </button>
+        {/each}
+      </div>
+    {/if}
+    {#if vm.returnableOrder}
+      <div class="returnable-order">
+        <h3>{vm.returnableOrder.salesOrderNumber} · {vm.returnableOrder.customerName ?? '—'}</h3>
+        <p>{i18n.t('La cantidad máxima se calcula como enviado menos devoluciones RMA no anuladas.')}</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>SKU</th><th>{i18n.t('Producto')}</th><th>{i18n.t('Enviado')}</th><th>{i18n.t('Ya autorizado')}</th><th>{i18n.t('Disponible')}</th><th>{i18n.t('Solicitar')}</th></tr></thead>
+          <tbody>
+            {#each vm.returnableOrder.lines as line (line.originalSalesOrderLineId)}
+              <tr>
+                <td>{line.sku}</td><td>{line.itemName}</td><td>{line.quantityShipped}</td><td>{line.quantityAlreadyAuthorized}</td><td>{line.quantityRemaining}</td>
+                <td><input class="qty" type="number" min="0" max={line.quantityRemaining} disabled={line.quantityRemaining <= 0} value={requestedQuantities[line.originalSalesOrderLineId] ?? ''} oninput={(event) => requestedQuantities = { ...requestedQuantities, [line.originalSalesOrderLineId]: event.currentTarget.value }} /></td>
+              </tr>
+            {/each}
+          </tbody>
+        </table></div>
+        <label>{i18n.t('Motivo / nota')}<textarea rows="2" maxlength="4000" bind:value={originalMemo}></textarea></label>
+        <div class="create-actions">
+          <button onclick={() => vm.clearReturnableOrder()}>{i18n.t('Cancelar')}</button>
+          <button class="primary" disabled={vm.saving || !vm.returnableOrder.lines.some(line => Number(requestedQuantities[line.originalSalesOrderLineId]) > 0)} onclick={() => void createRma()}>{i18n.t('Crear RMA')}</button>
+        </div>
+      </div>
+    {/if}
+  </section>
+
   <div class="filters">
     <select value={vm.status} onchange={(event) => { vm.setStatus(event.currentTarget.value); void vm.load(); }}>
       <option value="">{i18n.t('Todos los estados')}</option>
@@ -136,6 +197,7 @@
         <button onclick={() => void saveMemo()} disabled={vm.saving}>{i18n.t('Guardar nota')}</button>
       </section>
 
+      <aside class="read-only-note">{i18n.t('Recepción y stock: receive-return registra la recepción e incrementa inventario en el bin elegido dentro de la misma operación. El backend no ofrece clasificación vendible/dañado/cuarentena ni descarte independiente; no se ejecutan esas decisiones desde esta pantalla.')}</aside>
       <section class="receipt-history">
         <h3>{i18n.t('Historial de recepciones')}</h3>
         {#if vm.selected.receipts.length === 0}
@@ -214,6 +276,13 @@
   .primary { background: var(--navy); color: white; border-color: var(--navy); }
   .danger, .error { color: var(--danger); }
   .filters, .receive-config { display: flex; gap: .6rem; flex-wrap: wrap; margin: 1rem 0; }
+  .create-rma, .returnable-order { border: 1px solid var(--line); border-radius: 12px; padding: 1rem; background: var(--card); margin: 1rem 0; }
+  .create-rma p, .returnable-order p { color: var(--slate); font-size: .85rem; }
+  .original-list { display: grid; gap: .4rem; max-height: 15rem; overflow: auto; }
+  .original-option { display: flex; justify-content: space-between; gap: .8rem; text-align: left; }
+  .original-option span { color: var(--slate); }
+  .create-actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: .8rem; }
+  .read-only-note { border: 1px solid var(--line); border-radius: 8px; padding: .8rem; color: var(--slate); font-size: .82rem; }
   .filters input, .filters select, .receive-config input, .receive-config select, textarea, .qty { min-height: 38px; border: 1px solid var(--line); border-radius: 8px; padding: .45rem .6rem; background: var(--card); color: var(--ink); }
   .filters input { flex: 1; }
   .table-wrap, .detail { overflow: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--card); margin: 1rem 0; }
