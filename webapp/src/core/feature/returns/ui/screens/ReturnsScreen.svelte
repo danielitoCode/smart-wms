@@ -84,7 +84,7 @@
       binId: destinationBinId,
       notes: notes || null,
       idempotencyKey
-    });
+    }, isAdmin);
 
     if (ok) {
       itemDrafts = { ...itemDrafts, [line.soLineId]: '' };
