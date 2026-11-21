@@ -6,7 +6,7 @@ export type RefundHeaderDto = {
   customer_phone?: string | null;
   customer_email?: string | null;
   customer_address?: string | null;
-  status: string;
+  status: 'SHIPPED' | 'CANCELLED';
   priority?: number;
   warehouse_id?: number;
   ship_method?: string | null;
