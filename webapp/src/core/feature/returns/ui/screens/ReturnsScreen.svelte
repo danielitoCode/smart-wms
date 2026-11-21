@@ -146,9 +146,12 @@
         <label>{i18n.t('Motivo / nota')}<textarea rows="2" maxlength="4000" bind:value={originalMemo}></textarea></label>
         <div class="create-actions">
           <button onclick={() => vm.clearReturnableOrder()}>{i18n.t('Cancelar')}</button>
-          <button class="primary" disabled={vm.saving || !vm.returnableOrder.lines.some(line => Number(requestedQuantities[line.originalSalesOrderLineId]) > 0)} onclick={() => void createRma()}>{i18n.t('Crear RMA')}</button>
+          <button class="primary" disabled={vm.saving || vm.createOutcomeUncertain || !vm.returnableOrder.lines.some(line => Number(requestedQuantities[line.originalSalesOrderLineId]) > 0)} onclick={() => void createRma()}>{i18n.t('Crear RMA')}</button>
         </div>
       </div>
+    {/if}
+    {#if vm.createOutcomeUncertain}
+      <aside class="read-only-note" role="alert">{i18n.t('La respuesta de creación fue incierta y el backend no ofrece idempotencia para create-rma. No vuelvas a enviar la solicitud en esta sesión; verifica la lista de RMA antes de reintentar tras recargar.')}</aside>
     {/if}
   </section>
   {:else}
