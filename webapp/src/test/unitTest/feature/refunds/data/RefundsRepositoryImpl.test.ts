@@ -25,12 +25,23 @@ describe('RefundsRepositoryImpl', () => {
       })
     } as unknown as RefundsRemoteDataSource;
     const repository = new RefundsRepositoryImpl(remote);
-    const refund = await repository.detail(20);
+    const refund = await repository.detail(20, true);
     expect(remote.detail).toHaveBeenCalledWith(20);
     expect(remote.related).toHaveBeenCalledWith(20);
     expect(refund.relatedRecords).toHaveLength(3);
     expect(refund.relatedRecords.map(record => record.orderType)).toEqual(['return', 'refund', 'refund']);
     expect(refund.relatedRecords[0].status).toBe('PARTIALLY_RECEIVED');
     expect(refund.relatedRecords[1].signedAmount).toBe(-7);
+  });
+
+  it('does not call the unscoped family endpoint unless explicitly authorized by the caller', async () => {
+    const remote = {
+      detail: vi.fn().mockResolvedValue({ sales_order: header, lines: [] }),
+      related: vi.fn()
+    } as unknown as RefundsRemoteDataSource;
+    const repository = new RefundsRepositoryImpl(remote);
+    const refund = await repository.detail(20);
+    expect(remote.related).not.toHaveBeenCalled();
+    expect(refund.relatedRecords).toEqual([]);
   });
 });
