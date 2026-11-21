@@ -1,4 +1,5 @@
 import type { FulfillShipmentInput, FulfillShipmentResult } from '../entity/Shipping';
+import { isR6ShippingExecutionAvailable, R6OperationNotSupportedError } from '../../../picking/domain/contract/R6PickingLifecycleContract';
 import type { ShippingRepository } from '../repository/ShippingRepository';
 
 export class FulfillShipmentUseCase {
@@ -15,6 +16,11 @@ export class FulfillShipmentUseCase {
 		const carrier = input.carrier?.trim() ?? '';
 		if (!carrier) throw new Error('carrier is required');
 		if (carrier.length > 100) throw new Error('carrier max length is 100');
+		// Enforce the server capability at the application boundary as well as in UI state.
+		// Direct callers must not bypass the physical-package validation gate.
+		if (!isR6ShippingExecutionAvailable()) {
+			throw new R6OperationNotSupportedError('validateShipmentPackage');
+		}
 		return this.repository.fulfill({
 			soId: input.soId,
 			warehouseId: input.warehouseId,
