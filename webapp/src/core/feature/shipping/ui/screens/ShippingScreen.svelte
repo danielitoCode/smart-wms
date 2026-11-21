@@ -48,7 +48,7 @@
 		</button>
 	</form>
 
-	{#if state.error}<UiStatePanel kind="error" title={i18n.t('No se pudo cargar el pedido')} message={state.error} />{/if}
+	{#if state.error}<UiStatePanel kind="error" title={i18n.t('No se pudo completar la operación')} message={state.error} />{/if}
 	{#if state.loading && !state.detail}<UiStatePanel kind="loading" title={i18n.t('Cargando pedido para despacho')} message={i18n.t('Estamos validando el código escaneado.')} />
 	{:else if !state.detail}<UiStatePanel kind="empty" title={i18n.t('Escanea un pedido')} message={i18n.t('Introduce o escanea el código de barras para cargar el pedido que vas a despachar.')} />{/if}
 	{#if state.info}<p class="ok" role="status">{state.info}</p>{/if}
