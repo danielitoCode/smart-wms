@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { canAccessTransferWarehouses } from '../../../../../core/feature/transfer-orders/domain/policy/TransferWarehouseScopePolicy';
-import { isTransferLifecycleExecutable, R5_TRANSFER_CAPABILITIES, TransferLifecycleNotSupportedError } from '../../../../../../core/feature/transfer-orders/domain/contract/TransferLifecycleContract';
+import { createR5TransferUseCases, isTransferLifecycleExecutable, R5_TRANSFER_CAPABILITIES, TransferLifecycleNotSupportedError } from '../../../../../core/feature/transfer-orders/domain/contract/TransferLifecycleContract';
 
 describe('R5 transfer warehouse scope', () => {
   it('requires access to both source and destination independently', () => {
@@ -23,6 +23,12 @@ describe('R5 future server contract', () => {
     expect(R5_TRANSFER_CAPABILITIES.exactReservationLedger).toBe('NOT_SUPPORTED_BY_SERVER');
     expect(R5_TRANSFER_CAPABILITIES.inventoryInTransitLedger).toBe('NOT_SUPPORTED_BY_SERVER');
     expect(isTransferLifecycleExecutable()).toBe(false);
+  });
+
+  it('exposes all ten named future use cases without pretending they are implemented', () => {
+    const useCases = createR5TransferUseCases();
+    expect(Object.keys(useCases)).toEqual(['CreateTransfer', 'GetTransfer', 'ReserveTransferStock', 'StartTransferPicking', 'SubmitPickedQuantities', 'ShortCloseTransfer', 'DispatchTransfer', 'ReceiveTransfer', 'PutAwayTransfer', 'CancelTransfer']);
+    expect(() => useCases.ReceiveTransfer.execute({})).toThrow('NOT_SUPPORTED_BY_SERVER');
   });
 
   it('exposes an explicit unsupported-operation error', () => {
