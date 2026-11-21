@@ -101,7 +101,7 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 			if (!result.valid) error = result.error ?? result.message ?? 'Pedido no válido para picking';
 			else if (result.kind !== 'TO') info = `SO ${result.soNumber} válida · líneas ${result.lineCount ?? 0} · unidades ${result.totalUnits ?? 0}`;
 			return result.valid;
-		} catch (err) { error = toUserMessage(err, 'No se pudo validar el SO'); return false; }
+		} catch (err) { if (isCurrentContext(warehouseId, generation)) error = toUserMessage(err, 'No se pudo validar el SO'); return false; }
 		finally { busy = false; }
 	}
 
@@ -118,12 +118,13 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 		if (!soIds.length) { error = 'Selecciona al menos un pedido validado'; return false; }
 		busy = true; error = null; waveResult = null; info = null;
 		try {
-			waveResult = await deps.waveCreate.execute(soIds, warehouseId);
+			const result = await deps.waveCreate.execute(soIds, warehouseId);
 			if (!isCurrentContext(warehouseId, generation)) return false;
+			waveResult = result;
 			info = `Wave ${waveResult.batchNumber} · ${waveResult.totalUnits} unidades · ${waveResult.totalPicks} tareas`;
 			clearValidated();
 			return true;
-		} catch (err) { error = toUserMessage(err, 'No se pudo crear el wave'); return false; }
+		} catch (err) { if (isCurrentContext(warehouseId, generation)) error = toUserMessage(err, 'No se pudo crear el wave'); return false; }
 		finally { busy = false; if (warehouseSelection.initialized) await refresh(); }
 	}
 
@@ -136,12 +137,13 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 		if (!identifiers.length) { error = 'Indica al menos un pedido'; return false; }
 		busy = true; error = null; createBatchResult = null; info = null;
 		try {
-			createBatchResult = await deps.createBatch.execute(identifiers, warehouseId);
+			const result = await deps.createBatch.execute(identifiers, warehouseId);
 			if (!isCurrentContext(warehouseId, generation)) return false;
+			createBatchResult = result;
 			info = `Batch ${createBatchResult.batchNumber} (#${createBatchResult.batchId}) · pedidos ${createBatchResult.totalOrders}`;
 			batchIdentifiersInput = '';
 			return true;
-		} catch (err) { error = toUserMessage(err, 'No se pudo crear el batch'); return false; }
+		} catch (err) { if (isCurrentContext(warehouseId, generation)) error = toUserMessage(err, 'No se pudo crear el batch'); return false; }
 		finally { busy = false; await refresh(); }
 	}
 
