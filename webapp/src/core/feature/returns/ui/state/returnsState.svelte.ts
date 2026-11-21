@@ -127,6 +127,10 @@ export function createReturnsState() {
 
   async function receive(id: number, value: { itemId: number; quantity: number; warehouseId: number; binId: number; notes?: string | null; idempotencyKey: string }, includeReceipts = false) {
     if (saving) return false;
+    if (selected?.salesOrderId !== id || selected.voidedAt !== null) {
+      error = 'No se puede recibir mercancía en un RMA anulado o no cargado';
+      return false;
+    }
     saving = true; error = null;
     try {
       await d.receive.execute(id, value);
@@ -144,6 +148,10 @@ export function createReturnsState() {
 
   async function voidReturn(id: number) {
     if (saving) return false;
+    if (selected?.salesOrderId !== id || selected.status !== 'OPEN' || selected.voidedAt !== null || selected.receipts.length > 0) {
+      error = 'Solo se puede anular un RMA OPEN sin recepciones';
+      return false;
+    }
     saving = true; error = null;
     try { await d.voidReturn.execute(id); selected = null; await load(); return true; }
     catch (cause) { error = toUserMessage(cause, 'No se pudo anular la devolución'); return false; }
