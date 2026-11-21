@@ -838,3 +838,34 @@ Corregir las carreras de listado/detalle y preservar el resultado de creación e
 - Revalidar los contratos de creación y demás mutaciones SO registrados en las secciones anteriores.
 
 La evidencia detallada y la matriz de R4 se mantienen en [R4-Sales-Orders-Backorders-Audit.md](./R4-Sales-Orders-Backorders-Audit.md).
+
+## 17. R4.2 — cierre de implementación frontend (pasada integral)
+
+**Implementación:** `0351dab45ac5ca9d5dffe44e8a7dda60fd55805d` (la documentación de cierre se añade en el commit siguiente).  
+**Estado funcional frontend:** `IMPLEMENTED`; verificación CI final pendiente sobre el HEAD que incluya esta actualización documental.
+
+### Cambios incluidos
+
+- La carga inicial, el reintento y la recarga tras cancelar pasan por una única función `loadQueue()`, que vuelve a resolver `resolveBackorderWarehouseScope()` antes de llamar al caso de uso. Un usuario no ADMIN sin almacén seleccionado ya no puede ejecutar un retry con `warehouseId=null`.
+- La elegibilidad de cancelación se centraliza en Domain (`isBackorderCancelableStatus`) y se comparte entre listado, detalle y caso de uso. Solo `WAITING_STOCK`, `OPEN`, `PICKED` y `PACKED` son cancelables; los estados enviados/terminales quedan fuera de la acción.
+- El listado comprueba permiso, almacén asignado, almacén de la cola actual y estado antes de mostrar/abrir la acción. Si cambia el almacén con el diálogo abierto, este se invalida; el submit vuelve a validar scope y estado antes de enviar.
+- El detalle usa la misma política de estados, revalida el almacén antes del POST y no mantiene visible el diálogo si el pedido deja de ser cancelable.
+- Se añadieron pruebas de política de estados y de errores HTTP 400/403/404/409. Se mantienen las pruebas existentes de carreras, detalle, historial, paginación, doble submit y ausencia de mutación optimista del inventario.
+- En Sales Orders, una mutación que el servidor ya confirmó devuelve éxito aunque falle la recarga posterior; el fallo se conserva por separado en `refreshError` para pedir una recarga, sin inducir un reintento de la mutación. Se aplica a mutaciones comunes, ajuste de asignación, despacho administrativo y cancelación.
+
+### Criterios R4.2
+
+| Criterio | Resultado frontend | Evidencia / límite |
+|---|---|---|
+| Estados y motivos permitidos | `IMPLEMENTED` | Política Domain compartida + tests |
+| Cola, retry y refresh con warehouse scope | `IMPLEMENTED` | Todos pasan por `loadQueue()`; no-admin sin selección bloqueado |
+| Cancelación desde lista y detalle | `IMPLEMENTED` | Permiso, scope, padre/estado y doble submit comprobados en cliente |
+| Cambio de almacén con modal abierto | `IMPLEMENTED` | Modal invalidado y submit revalidado |
+| Errores 400/403/404/409 | `TESTED` | Se conserva el mensaje de error y se libera `saving` |
+| Historial y paginación | `IMPLEMENTED` | Endpoint audit-history, permisos y pruebas de estado previas |
+| Liberación de inventario | `SERVER_OWNED` | No hay mutación optimista local; la liberación forma parte de la transacción Flask |
+| Concurrencia dentro de una instancia UI | `TESTED` | Secuencias de carga + guard de doble submit |
+| Aislamiento entre clientes / atomicidad del motivo | `BLOCKED_BACKEND` | R4-BE-01/02/03; no se puede certificar desde Svelte |
+
+**Decisión:** R4.2 queda completada para el alcance frontend. Esto no significa que los tres riesgos de seguridad/atomicidad backend estén resueltos. R4 global continúa condicionada a R4.3 (enforcement backend o aceptación explícita del bloqueo) y a la regresión CI del HEAD definitivo. No se modificó Flask/Python.
+
