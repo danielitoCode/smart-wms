@@ -949,3 +949,23 @@ R6 conserva el flujo operativo React de escáneres: validar SO/TO → crear wave
 **Pruebas frontend añadidas/ampliadas:** grants operativos, capacidades fail-closed, cambio de almacén/generation durante lecturas, reconciliación packing tras timeout, no doble submit local de fulfillment y conciliación picked/packed antes de completar. CI Webapp sobre el HEAD definitivo de esta iteración sigue pendiente; no se declara verde hasta completar el workflow.
 
 **Criterio de cierre:** R6 no puede marcarse VERIFIED integral hasta que Flask implemente grants operativos en endpoints, bloqueo condicional/idempotencia de picking y batch, validación atómica de bin, replay de wave, consulta/reconciliación de shipment y pruebas PostgreSQL de dos conexiones para los casos pendientes. No se modificó Flask/Python.
+
+
+## 21. R6 — hardening frontend del flujo operativo de escáner
+
+**Estado:** `FRONTEND_HARDENING_IN_PROGRESS / BLOCKED_BACKEND`.  
+**Auditoría:** `.code-review/R6-Picking-Packing-Shipping-Audit.md`.
+
+Se conserva el patrón React de escáner: validar SO/TO, wave/batch, tarea siguiente, pick/short, packing por escaneo de artículos y fulfillment con transportista/tracking. No se crean nuevas páginas administrativas de tickets/batches; las pantallas supervisoras que React mantiene siguen siendo independientes del flujo operativo.
+
+**Autorización y contexto:** `/picking`, `/packing` y `/shipping` usan los grants operativos `pick`, `pack` y `ship` de `/api/auth/me`, tanto en rutas como en navegación. Los estados ligan la lectura al `warehouseId + generation`, descartan respuestas obsoletas y rechazan acciones sobre un pedido cargado en un contexto anterior.
+
+**Picking:** wave-create no se ejecuta porque no acepta idempotency key/replay general. ConfirmPick y ShortPick quedan bloqueados por ausencia de lock/UPDATE condicional de la tarea; CompletePicking queda bloqueado por ausencia de guard terminal/idempotente del batch; no existe validación atómica del barcode de bin. El frontend permite validar y consultar el trabajo real, pero no simula la ejecución ni la protección entre operadores.
+
+**Packing:** se mantiene la conciliación independiente entre `quantity_picked` y `quantity_packed`. Completar solo se habilita cuando todas las cantidades recogidas están verificadas. Ante un fallo incierto de verify se consulta de nuevo el pedido antes de aceptar otro scan; si no se puede reconciliar, la pantalla queda bloqueada hasta volver a cargarlo. El contrato Flask produce un único paquete sintético, sin identidad de paquete ni multi-package packing.
+
+**Shipping:** se exige tracking y carrier, se conserva el método del pedido o el default React `GROUND`, y se evita doble submit local. Flask bloquea la SO con `FOR UPDATE` y el estado impide normalmente un segundo fulfillment. No existe GET shipment para recuperar el resultado original tras un timeout.
+
+**Bloqueos integrales backend:** enforcement server-side de `allowed_functions`; concurrencia PostgreSQL de doble pick/short y complete batch; validación de bin dentro de la transacción; replay idempotente de wave; concurrencia complete packing/verify y doble fulfillment; consulta/reconciliación de shipment. La prueba backend existente `test_concurrent_duplicate_pack_scans_cannot_overpack` no sustituye las pruebas faltantes.
+
+**Verificación:** ejecutar y registrar Webapp CI en el HEAD definitivo de esta revisión. No usar workflows Python como aceptación frontend. No se modificó Flask/Python.
