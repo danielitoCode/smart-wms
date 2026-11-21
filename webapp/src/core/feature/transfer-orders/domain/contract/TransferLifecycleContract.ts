@@ -122,3 +122,19 @@ export class TransferLifecycleContractUseCase {
     throw new TransferLifecycleNotSupportedError(this.operation);
   }
 }
+
+/** Named R5 use-case contract surface; each currently fails closed. */
+export function createR5TransferUseCases() {
+  return {
+    CreateTransfer: new TransferLifecycleContractUseCase('createTransfer'),
+    GetTransfer: new TransferLifecycleContractUseCase('getTransfer'),
+    ReserveTransferStock: new TransferLifecycleContractUseCase('reserveTransferStock'),
+    StartTransferPicking: new TransferLifecycleContractUseCase('startTransferPicking'),
+    SubmitPickedQuantities: new TransferLifecycleContractUseCase('submitPickedQuantities'),
+    ShortCloseTransfer: new TransferLifecycleContractUseCase('shortCloseTransfer'),
+    DispatchTransfer: new TransferLifecycleContractUseCase('dispatchTransfer'),
+    ReceiveTransfer: new TransferLifecycleContractUseCase('receiveTransfer'),
+    PutAwayTransfer: new TransferLifecycleContractUseCase('putAwayTransfer'),
+    CancelTransfer: new TransferLifecycleContractUseCase('cancelTransfer')
+  } as const;
+}
