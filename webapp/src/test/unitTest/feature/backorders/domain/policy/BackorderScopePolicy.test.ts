@@ -38,3 +38,24 @@ describe('resolveBackorderWarehouseScope', () => {
     })).toBe(9);
   });
 });
+
+
+describe('backorder cancellation queue context', () => {
+  it('invalidates a confirmation when the selected warehouse changes, including for admins', () => {
+    expect(isBackorderQueueContextCurrent({
+      openedWarehouseId: 3, openedTab: 'waiting', selectedWarehouseId: 4, activeTab: 'waiting'
+    })).toBe(false);
+  });
+
+  it('invalidates a confirmation when the active queue tab changes', () => {
+    expect(isBackorderQueueContextCurrent({
+      openedWarehouseId: null, openedTab: 'waiting', selectedWarehouseId: null, activeTab: 'ready-to-ship'
+    })).toBe(false);
+  });
+
+  it('keeps the confirmation valid only while its original queue context is unchanged', () => {
+    expect(isBackorderQueueContextCurrent({
+      openedWarehouseId: 3, openedTab: 'ready-to-ship', selectedWarehouseId: 3, activeTab: 'ready-to-ship'
+    })).toBe(true);
+  });
+});
