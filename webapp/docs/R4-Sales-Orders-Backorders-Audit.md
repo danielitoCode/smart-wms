@@ -280,3 +280,25 @@ React carga hasta 100 filas y permite editar memo y enviar a cola; Svelte usa p�
 | Regresión y criterios completos | `PENDING_CI` | Debe ejecutarse en el HEAD final de esta entrega |
 
 **Decisión:** reconciliación funcional y contratos de Fraud documentados; historial por pedido y guardas de cancelación implementados en frontend. R4 permanece `IN_PROGRESS` hasta verificar CI final y resolver/aceptar formalmente los gaps backend de warehouse scope y concurrencia del wrapper de cancelación.
+
+## 10. R4.1 — Reparación de CI frontend
+
+**HEAD de partida:** `00bc8b93239c82aa5c7237b8442a1f184f62f295`.
+
+### 10.1 Guard de warehouseId nullable
+
+La implementación actual de `BackorderDetailScreen.svelte`:
+- excluye del estado cancelable los pedidos con `warehouseId === null`;
+- repite la validación en `submitCancel()` como defensa antes de la llamada;
+- resuelve el scope autorizado y solo invoca `vm.cancel(..., order.warehouseId)` después de estrechar el tipo a `number`;
+- muestra un mensaje localizado cuando falta el almacén.
+
+El workflow **Webapp CI** de ese HEAD terminó correctamente en el job `Typecheck · Build · Test`. Por tanto, typecheck, build y tests frontend pasaron en ese commit.
+
+### 10.2 Gitleaks
+
+La ejecución sobre ese HEAD detectó `generic-api-key` en el historial, en `wms-twin/doc/API_ENDPOINTS_FRONTEND.md:76`, originado en `03169fe385a187aa797661272d025b7b945faa75`. La inspección de la línea histórica confirma que el valor es un JWT de ejemplo truncado literalmente con `...`; no es una credencial completa utilizable.
+
+Se añadió una allowlist exacta y anclada en `.gitleaks.toml` para ese único placeholder. No se excluyó el archivo ni se debilitó la regla genérica. La verificación final requiere que el nuevo workflow de Gitleaks termine en verde en el HEAD que contiene esta excepción.
+
+**Estado R4.1:** `IMPLEMENTED_UNVERIFIED` hasta la finalización satisfactoria de Gitleaks sobre el nuevo HEAD. No se tocaron archivos Flask/Python.
