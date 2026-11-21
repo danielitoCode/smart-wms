@@ -34,7 +34,7 @@ export class ReturnCapabilityNotSupportedError extends Error {
  * There is no separate approve, classify, quarantine, discard or restock API.
  */
 export const RETURN_BACKEND_CONTRACT = {
-  createReturn: { method: 'POST', path: '/api/admin/sales-orders/{saleId}/create-rma', status: 'SUPPORTED' },
+  createReturn: { method: 'POST', path: '/api/admin/sales-orders/{saleId}/create-rma', status: 'SUPPORTED', idempotent: false },
   getReturn: { method: 'GET', path: '/api/admin/sales-orders/{rmaId}', status: 'SUPPORTED' },
   listReturns: { method: 'GET', path: '/api/admin/sales-orders?order_type=return', status: 'SUPPORTED' },
   receiveReturn: { method: 'POST', path: '/api/admin/sales-orders/{rmaId}/receive-return', status: 'SUPPORTED', sideEffect: 'RECEIPT_AND_INVENTORY_RESTOCK' },
