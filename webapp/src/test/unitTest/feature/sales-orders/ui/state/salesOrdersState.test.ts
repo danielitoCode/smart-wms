@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const deps = vi.hoisted(() => ({
   listSalesOrders: { execute: vi.fn() },
   getSalesOrder: { execute: vi.fn() },
-  createSalesOrder: { execute: vi.fn() }
+  createSalesOrder: { execute: vi.fn() },
+  updateSalesOrder: { execute: vi.fn() }
 }));
 
 vi.mock('../../../../../../core/feature/sales-orders/di/sales-orders.dependencies', () => ({
@@ -89,6 +90,7 @@ describe('salesOrdersState request ordering and create confirmation', () => {
     deps.listSalesOrders.execute.mockResolvedValue(page());
     deps.getSalesOrder.execute.mockImplementation(async (id: number) => order(id));
     deps.createSalesOrder.execute.mockImplementation(async () => order(99, 5));
+    deps.updateSalesOrder.execute.mockResolvedValue(undefined);
   });
 
   it('keeps only the newest list response when filters change during a request', async () => {
@@ -184,6 +186,21 @@ describe('salesOrdersState request ordering and create confirmation', () => {
 
     expect(await opening).toBe(false);
     expect(state.selected).toBeNull();
+  });
+
+  it('reports a confirmed mutation as successful when the follow-up detail refresh fails', async () => {
+    deps.getSalesOrder.execute
+      .mockResolvedValueOnce(order(1))
+      .mockRejectedValueOnce(new Error('detail refresh unavailable'));
+    const state = createSalesOrdersState();
+    expect(await state.open(1)).toBe(true);
+
+    const result = await state.update(1, {} as never);
+
+    expect(result).toBe(true);
+    expect(state.error).toBeNull();
+    expect(state.refreshError).toMatch(/operación se confirmó/);
+    expect(deps.updateSalesOrder.execute).toHaveBeenCalledTimes(1);
   });
 
   it('retains the created detail and the server allocation quantities', async () => {
