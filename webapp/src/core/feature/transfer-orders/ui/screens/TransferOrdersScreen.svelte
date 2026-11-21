@@ -20,7 +20,6 @@
   let clientErrors = $state<string[]>([]);
 
   onMount(() => {
-    void vm.loadWarehouses();
     void vm.load();
   });
 
