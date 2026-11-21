@@ -127,12 +127,33 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 		catch (err) { error = toUserMessage(err, 'El pedido no pertenece al almacén activo'); return false; }
 		busy = true; error = null; info = null;
 		const generation = warehouseSelection.generation;
+		const soNumber = detail.salesOrder.soNumber;
+		const soId = detail.salesOrder.soId;
 		try {
-			const result = await deps.complete.execute(detail.salesOrder.soId, warehouseId);
+			const result = await deps.complete.execute(soId, warehouseId);
 			info = isCurrentContext(warehouseId, generation) ? result.message : `Empaque completado en el almacén #${warehouseId}. El contexto cambió.`;
 			detail = null; detailWarehouseId = null; detailGeneration = -1;
 			return true;
-		} catch (err) { if (warehouseId != null && isCurrentContext(warehouseId, generation)) error = toUserMessage(err, 'No se pudo completar el packing'); return false; }
+		} catch (err) {
+			if (!isCurrentContext(warehouseId, generation)) return false;
+			error = toUserMessage(err, 'No se pudo completar el packing');
+			// If complete committed but its response was lost, the PICKED-only
+			// lookup rejects the now-PACKED order. Lock the UI rather than retrying.
+			try {
+				const reconciled = await deps.loadOrder.execute(soNumber, warehouseId);
+				if (isCurrentContext(warehouseId, generation)) {
+					detail = reconciled; detailWarehouseId = warehouseId; detailGeneration = generation;
+					reconciliationRequired = false;
+				}
+			} catch {
+				if (isCurrentContext(warehouseId, generation)) {
+					detail = null; detailWarehouseId = null; detailGeneration = -1;
+					reconciliationRequired = true;
+					error = 'No se pudo determinar si el empaque se completó. No repitas la confirmación; vuelve a consultar el pedido o verifica su estado.';
+				}
+			}
+			return false;
+		}
 		finally { busy = false; }
 	}
 
