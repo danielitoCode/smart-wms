@@ -40,6 +40,12 @@ describe('InterWarehouseTransfersScreen selectors', () => {
     expect(body).toContain('Limpiar filtros');
   });
 
+  it('shows direct cross-warehouse movement as unavailable for the R5 staged lifecycle', () => {
+    const { body } = render(InterWarehouseTransfersScreen, { context: new Map([['i18n', { t: (value: string) => value }]]) });
+    expect(body).toContain('Nueva transferencia · no disponible');
+    expect(body).toContain('no mantiene mercancía en tránsito');
+  });
+
   it('shows backend failures as an accessible alert', () => {
     vm.error = 'No tienes acceso a ambos almacenes';
     const { body } = render(InterWarehouseTransfersScreen, {
