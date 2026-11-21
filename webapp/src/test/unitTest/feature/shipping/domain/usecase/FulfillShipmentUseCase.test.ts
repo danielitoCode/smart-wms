@@ -3,45 +3,22 @@ import { FulfillShipmentUseCase } from '../../../../../../core/feature/shipping/
 import type { ShippingRepository } from '../../../../../../core/feature/shipping/domain/repository/ShippingRepository';
 
 describe('FulfillShipmentUseCase', () => {
-	it('fulfills with trimmed fields', async () => {
-		const repo: ShippingRepository = {
-			loadOrder: vi.fn(),
-			fulfill: vi.fn().mockResolvedValue({
-				message: 'Shipment fulfilled',
-				fulfillmentId: 1,
-				soNumber: 'SO-001',
-				trackingNumber: '1Z',
-				carrier: 'UPS',
-				linesShipped: 1,
-				totalQuantity: 2
-			})
-		};
+	it('rejects a valid fulfillment while physical-package validation is unsupported', async () => {
+		const repo: ShippingRepository = { loadOrder: vi.fn(), fulfill: vi.fn() };
 		const useCase = new FulfillShipmentUseCase(repo);
-		await useCase.execute({
-			soId: 1,
-			warehouseId: 6,
-			trackingNumber: ' 1Z ',
-			carrier: ' UPS ',
-			shipMethod: 'GROUND'
+		await expect(useCase.execute({ soId: 1, warehouseId: 6, trackingNumber: '1Z', carrier: 'UPS', shipMethod: 'GROUND' })).rejects.toMatchObject({
+			name: 'R6OperationNotSupportedError', code: 'R6_CAPABILITY_BLOCKED', operation: 'validateShipmentPackage'
 		});
-		expect(repo.fulfill).toHaveBeenCalledWith({
-			soId: 1,
-			warehouseId: 6,
-			trackingNumber: '1Z',
-			carrier: 'UPS',
-			shipMethod: 'GROUND'
-		});
+		expect(repo.fulfill).not.toHaveBeenCalled();
 	});
 
-	it('rejects empty tracking_number', async () => {
+	it('rejects invalid identifiers and required transport metadata before reaching the repository', () => {
 		const repo = { loadOrder: vi.fn(), fulfill: vi.fn() } as ShippingRepository;
-		expect(() => 
-			new FulfillShipmentUseCase(repo).execute({
-				soId: 1,
-				warehouseId: 6,
-				trackingNumber: ' ',
-				carrier: 'UPS'
-			})
-		).toThrow(/tracking/);
+		const useCase = new FulfillShipmentUseCase(repo);
+		expect(() => useCase.execute({ soId: 0, warehouseId: 6, trackingNumber: 'T', carrier: 'UPS' })).toThrow(/soId/);
+		expect(() => useCase.execute({ soId: 1, warehouseId: 0, trackingNumber: 'T', carrier: 'UPS' })).toThrow(/warehouseId/);
+		expect(() => useCase.execute({ soId: 1, warehouseId: 6, trackingNumber: ' ', carrier: 'UPS' })).toThrow(/tracking/);
+		expect(() => useCase.execute({ soId: 1, warehouseId: 6, trackingNumber: 'T', carrier: ' ' })).toThrow(/carrier/);
+		expect(repo.fulfill).not.toHaveBeenCalled();
 	});
-});
+}
