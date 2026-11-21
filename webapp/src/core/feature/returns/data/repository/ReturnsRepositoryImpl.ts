@@ -23,7 +23,7 @@ export class ReturnsRepositoryImpl implements ReturnsRepository {
       memo: value.memo
     });
   }
-  async detail(id: number): Promise<Return> { const [r, receipts] = await Promise.all([this.remote.detail(id), this.remote.receipts(id)]); return ReturnMapper.header(r.sales_order, r.lines, receipts); }
+  async detail(id: number, includeReceipts = false): Promise<Return> { const r = await this.remote.detail(id); const receipts = includeReceipts ? await this.remote.receipts(id) : []; return ReturnMapper.header(r.sales_order, r.lines, receipts); }
   saveMemo(id: number, memo: string) { return this.remote.saveMemo(id, memo); }
   receive(id: number, v: { itemId: number; quantity: number; warehouseId: number; binId: number; notes?: string | null; idempotencyKey: string }) {
     return this.remote.receive(id, { item_id: v.itemId, quantity: v.quantity, warehouse_id: v.warehouseId, bin_id: v.binId, notes: v.notes, idempotency_key: v.idempotencyKey });
