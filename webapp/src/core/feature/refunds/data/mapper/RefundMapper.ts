@@ -28,6 +28,11 @@ function line(dto: RefundLineDto): SalesOrderLine {
   };
 }
 
+function status(value: string): 'SHIPPED' | 'CANCELLED' {
+  if (value === 'SHIPPED' || value === 'CANCELLED') return value;
+  throw new Error(`Estado de reembolso no reconocido: ${value}`);
+}
+
 export const RefundMapper = {
   line,
   header(dto: RefundHeaderDto, lines: RefundLineDto[] = [], related: RefundRelatedRecord[] = []): Refund {
@@ -47,7 +52,7 @@ export const RefundMapper = {
       soNumber: dto.so_number,
       id: dto.so_id,
       barcode: dto.so_barcode ?? null,
-      status: dto.status,
+      status: status(dto.status),
       priority: dto.priority ?? 0,
       warehouseId: dto.warehouse_id ?? null,
       customerId: null,
