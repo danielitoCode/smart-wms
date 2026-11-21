@@ -2,6 +2,7 @@ import { createPickingDependencies } from '../../di/picking.dependencies';
 import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
 import type { ActiveBatch, CreateBatchResult, PickTask, WaveCreateResult, WaveValidateResult } from '../../domain/entity/Picking';
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
+import { isR6PickingMutationSafe, R6OperationNotSupportedError } from '../../domain/contract/R6PickingLifecycleContract';
 import { isR6PickingExecutionAvailable, R6PickingCapabilityError } from '../../domain/policy/R6PickingExecutionCapabilities';
 
 const deps = createPickingDependencies();
@@ -111,6 +112,7 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 
 	async function createWave() {
 		if (busy || loading) return false;
+		if (!isR6PickingMutationSafe()) { error = new R6OperationNotSupportedError('createPickBatch').message; return false; }
 		let warehouseId: number;
 		try { warehouseId = activeWarehouseId(); } catch (err) { error = toUserMessage(err, 'No hay almacén activo'); return false; }
 		const generation = warehouseSelection.generation;
@@ -130,6 +132,7 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 
 	async function createBatch() {
 		if (busy || loading) return false;
+		if (!isR6PickingMutationSafe()) { error = new R6OperationNotSupportedError('createPickBatch').message; return false; }
 		let warehouseId: number;
 		try { warehouseId = activeWarehouseId(); } catch (err) { error = toUserMessage(err, 'No hay almacén activo'); return false; }
 		const generation = warehouseSelection.generation;
@@ -215,6 +218,7 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 		get validateBarcode() { return validateBarcode; }, get validateResult() { return validateResult; },
 		get validatedSoIds() { return validatedSoIds; },
 		get batchIdentifiersInput() { return batchIdentifiersInput; },
+		get pickingMutationsAvailable() { return isR6PickingMutationSafe(); },
 		get createBatchResult() { return createBatchResult; },
 		get pickingExecutionAvailable() { return isR6PickingExecutionAvailable(); },
 		setScannedBarcode: (v: string) => scannedBarcode = v,
