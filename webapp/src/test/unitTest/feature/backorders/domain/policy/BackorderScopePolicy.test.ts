@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveBackorderWarehouseScope } from '../../../../../../core/feature/backorders/domain/policy/BackorderScopePolicy';
+import { isBackorderQueueContextCurrent, resolveBackorderWarehouseScope } from '../../../../../../core/feature/backorders/domain/policy/BackorderScopePolicy';
 
 describe('resolveBackorderWarehouseScope', () => {
   it('sends the selected assigned warehouse for a scoped operator', () => {
