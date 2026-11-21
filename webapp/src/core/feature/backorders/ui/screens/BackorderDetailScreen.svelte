@@ -4,7 +4,7 @@
   import { page } from '$app/state';
   import type { I18nState } from '#lib/i18n/i18n.svelte.ts';
   import type { User } from '../../../auth/domain/entity/User';
-  import type { CancelBackorderReason } from '../../domain/entity/Backorder';
+  import { isBackorderCancelableStatus, type CancelBackorderReason } from '../../domain/entity/Backorder';
   import { resolveBackorderWarehouseScope } from '../../domain/policy/BackorderScopePolicy';
   import { createBackordersState } from '../state/backordersState.svelte';
 
@@ -57,7 +57,7 @@
     order.parentSoId !== null &&
     parentSalesOrder !== null &&
     parentSalesOrder.status !== 'CANCELLED' &&
-    ['WAITING_STOCK', 'OPEN', 'PICKED', 'PACKED'].includes(order.status)
+    isBackorderCancelableStatus(order.status)
   );
 
   $effect(() => {
@@ -78,7 +78,7 @@
   }
 
   async function submitCancel(): Promise<void> {
-    if (!order || !cancelable) return;
+    if (!order || !cancelable || vm.saving) return;
     if (order.warehouseId === null) {
       cancelError = i18n.t('No se puede cancelar el backorder porque el pedido no tiene un almacén asociado.');
       return;
@@ -94,7 +94,9 @@
       cancelError = cause instanceof Error ? cause.message : i18n.t('No tienes acceso al almacén seleccionado.');
       return;
     }
-    const ok = await vm.cancel(order.salesOrderId, reason, order.warehouseId);
+    const expectedOrderId = order.salesOrderId;
+    const expectedWarehouseId = order.warehouseId;
+    const ok = await vm.cancel(expectedOrderId, reason, expectedWarehouseId);
     if (!ok) {
       cancelError = vm.error;
       return;
@@ -255,7 +257,7 @@
       <p class="hint">{i18n.t('Un backorder enviado no puede cancelarse por esta operación.')}</p>
     {/if}
 
-    {#if confirmCancel}
+    {#if confirmCancel && cancelable}
       <div class="overlay">
         <dialog open class="dialog" aria-labelledby="cancel-title">
           <h2 id="cancel-title">{i18n.t('Confirmar cancelación')}</h2>
