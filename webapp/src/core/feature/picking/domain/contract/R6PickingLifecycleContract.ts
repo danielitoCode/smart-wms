@@ -6,8 +6,9 @@
 export type R6CapabilityStatus = 'SUPPORTED' | 'PARTIAL' | 'NOT_SUPPORTED_BY_SERVER';
 
 export const R6_PICKING_CAPABILITIES = {
-  listPickTickets: 'NOT_SUPPORTED_BY_SERVER',
+  listPickTickets: 'PARTIAL',
   getPickTicket: 'NOT_SUPPORTED_BY_SERVER',
+  markPickTicketsPrinted: 'NOT_SUPPORTED_BY_SERVER',
   listPickBatches: 'PARTIAL',
   getPickBatch: 'SUPPORTED',
   createPickBatch: 'PARTIAL',
