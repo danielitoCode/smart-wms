@@ -9,7 +9,7 @@ const context = { warehouseId: 7, generation: 1, requireWarehouseId: () => conte
 const detail = { salesOrder: { soId: 3, soNumber: 'SO-3', status: 'PICKED', warehouseId: 7 }, lines: [], calculatedWeightLbs: 0, totalItems: 0, itemsVerified: 0 };
 
 describe('Packing scanner state warehouse context', () => {
- beforeEach(() => { context.warehouseId = 7; context.generation = 1; vi.clearAllMocks(); deps.loadOrder.execute.mockResolvedValue(detail); deps.verify.execute.mockResolvedValue({ message: 'Item verified' }); deps.complete.execute.mockResolvedValue({ message: 'Packed' }); });
+ beforeEach(() => { context.warehouseId = 7; context.generation = 1; vi.clearAllMocks(); deps.loadOrder.execute.mockResolvedValue(detail); deps.verify.execute.mockResolvedValue({ message: 'Item verified', item: { sku: 'SKU-3', itemName: 'Item 3', quantityVerified: 1, lineComplete: true }, orderProgress: { totalLines: 1, linesVerified: 1, allVerified: true } }); deps.complete.execute.mockResolvedValue({ message: 'Packed' }); });
  it('loads order using selected warehouse and verifies scan', async () => {
   const state = createPackingState(context as never);
   state.setBarcode(' SO-3 ');
