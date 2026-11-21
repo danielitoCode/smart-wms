@@ -23,14 +23,14 @@ No se debe reconstruir un CRUD administrativo independiente de tickets/lotes com
 | MarkPickingTicketsPrinted | POST `/api/admin/sales-orders/mark-printed`; acepta so_ids y actualiza printed_at. Exige picking-tickets, pero el UPDATE no filtra por warehouse. | Parcial: no seguro para usuarios multi-almacén no ADMIN |
 | ListPickBatches | `GET /api/admin/pick-batches?warehouse_id=`; requiere `picking-batches` page permission y warehouse access. Devuelve batches activos con estado, operador, warehouse, tareas y pedidos. | Parcial / administrativo |
 | GetPickBatch | `GET /api/picking/batch/<id>`; valida acceso al warehouse y devuelve tareas. | Disponible |
-| CreatePickBatch | `POST /api/picking/wave-create` y legacy `/create-batch`; wave valida IDs, warehouse, cobertura y planifica inventario/bins según reglas del servicio. Responde batch_id, batch_number, total_orders/picks/units y first_pick. | Disponible; no idempotency key |
+| CreatePickBatch | `POST /api/picking/wave-create` y legacy `/create-batch`; wave valida IDs, warehouse, cobertura y planifica inventario/bins según reglas del servicio. Responde batch_id, batch_number, total_orders/picks/units y first_pick. | Parcial; no idempotency key/replay seguro |
 | GetNextPickTask | `GET /api/picking/batch/<id>/next`; consulta la siguiente tarea. | Disponible |
 | ConfirmPick | `POST /api/picking/confirm`; body `pick_task_id, warehouse_id?, scanned_barcode, quantity_picked`. Valida barcode de item, cantidad y estado, actualiza tarea, línea, inventario y audit en una transacción. | **Bloqueado por concurrencia** |
 | ShortPick | `POST /api/picking/short`; body `pick_task_id, warehouse_id?, quantity_available`. Registra short, cantidades, inventario y audit. | **Bloqueado por concurrencia** |
 | CompletePicking | `POST /api/picking/complete-batch`; valida tareas pendientes y shortfall, cambia SO a PICKED y escribe audit/eventos. | Parcial; falta lock/idempotencia del batch |
 | VerifyPacking | `POST /api/packing/verify`; body `so_id, scanned_barcode, quantity, warehouse_id?`. Bloquea el pedido `FOR UPDATE`, valida barcode/cantidad y actualiza `quantity_packed`. | Disponible con lock de agregado |
 | ConfirmPacking | `POST /api/packing/complete`; bloquea SO `FOR UPDATE`, exige todas las cantidades recogidas verificadas y shortfalls explícitos, pasa a PACKED y emite audit/evento. | Disponible con lock de agregado |
-| ShipOrder | `POST /api/shipping/fulfill`; exige tracking y carrier; bloquea SO `FOR UPDATE`, comprueba estado y regla `require_packing_before_shipping`, crea fulfillment/lines, actualiza SO y audit/outbox. | Disponible; estado bloquea segundo fulfillment, pero no expone idempotency key |
+| ShipOrder | `POST /api/shipping/fulfill`; exige tracking y carrier no vacíos; bloquea SO `FOR UPDATE`, comprueba estado y regla `require_packing_before_shipping`, crea fulfillment/lines, actualiza SO y audit/outbox. | Parcial; paquete físico no validable, sin GET shipment/idempotency key |
 | GetShipment | No se encontró endpoint de detalle de fulfillment por `fulfillment_id`. | No disponible |
 
 ## 3. Hallazgos críticos backend (no modificar en esta migración)
