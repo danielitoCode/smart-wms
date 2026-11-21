@@ -42,16 +42,17 @@
 5. **Disposition/classification is not modeled.** There is no condition enum, quarantine/discard decision, or separate inventory disposition endpoint. The chosen destination bin is only a location. receive-return always increments inventory.
 6. **No independent RMA approval endpoint/state** exists. Creating the RMA itself is the authorization. ApproveRMA is therefore NOT_SUPPORTED.
 7. **No separate restock endpoint** exists. Restocking is inseparable from receive-return; a separate RestockReturn command is NOT_SUPPORTED.
-8. **Refund and physical return are separate workflows with no direct line-level reconciliation.** POS refund also increments inventory in the original sale locations, while RMA receipt increments inventory in its selected destination bin. Issuing both for the same units can double-increment stock unless a future backend rule links/limits the two ledgers.
-9. **Refund execution is POS-only.** The admin Svelte API client has no POS token/tender contract. It must not call or emulate the POS refund endpoint.
-10. **Family endpoint scope:** related is used to calculate prior RMA authorizations and display siblings. It is called only for ADMIN until server-side warehouse scoping is added.
+8. **Create-RMA is not idempotent and does not write a dedicated creation audit row** in the inspected service path. A timeout after commit cannot be safely retried by the admin UI. The frontend blocks another create POST after any uncertain response for the mounted session; the operator must inspect the RMA list before retrying after reload.
+9. **Refund and physical return are separate workflows with no direct line-level reconciliation.** POS refund also increments inventory in the original sale locations, while RMA receipt increments inventory in its selected destination bin. Issuing both for the same units can double-increment stock unless a future backend rule links/limits the two ledgers.
+10. **Refund execution is POS-only.** The admin Svelte API client has no POS token/tender contract. It must not call or emulate the POS refund endpoint.
+11. **Family endpoint scope:** related is used to calculate prior RMA authorizations and display siblings. It is called only for ADMIN until server-side warehouse scoping is added.
 
 ## 4. Frontend implementation in this R7 slice
 
 - Added ReturnLifecycleContract and RefundLifecycleContract with explicit supported/unsupported capabilities and typed fail-closed errors.
 - Added ReturnQuantityPolicy: positive integer quantities, valid source line/item, no duplicate source line, no duplicate item ID (because receive API is item-based), and no quantity above shipped less previously authorized.
 - Added search for shipped original sales, calculation of already-authorized units from non-voided RMA family members and child detail, and the create-RMA UI.
-- Create-RMA mutation sends original line IDs; Flask remains authoritative and serializes concurrent requests.
+- Create-RMA mutation sends original line IDs; Flask remains authoritative and serializes concurrent quantity authorization. Because the endpoint has no idempotency key, the UI blocks a second create after an uncertain response until the operator reloads and inspects the RMA list.
 - Existing receive flow keeps idempotency key on uncertain failure and reloads RMA detail for reconciliation. Receipt history and unscoped family reads are restricted to ADMIN.
 - Memo edit is enabled only for ADMIN or users with the fraud page grant, matching the actual PATCH route.
 - Refunds remain read-only; family reconciliation is ADMIN-only because related lacks warehouse scope.
