@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
 	 * Globe — canvas COBE con rotación inercial y drag.
-	 * Port Svelte 5 del componente Magic UI (sin motion/react).
+	 * Port Svelte 5 de Magic UI / React (sin motion/react).
 	 * Dependencia: `cobe`
 	 */
 	import { onMount } from 'svelte';
@@ -9,14 +9,15 @@
 
 	interface Props {
 		class?: string;
-		config?: Partial<COBEOptions>;
+		config?: COBEOptions;
 	}
 
 	let { class: className = '', config }: Props = $props();
 
 	const MOVEMENT_DAMPING = 1400;
 
-	const DEFAULT_CONFIG: COBEOptions = {
+	/** Config por defecto — alineada con el componente React de referencia. */
+	const GLOBE_CONFIG: COBEOptions = {
 		width: 800,
 		height: 800,
 		onRender: () => {},
@@ -28,19 +29,19 @@
 		mapSamples: 16000,
 		mapBrightness: 1.2,
 		baseColor: [1, 1, 1],
-		markerColor: [0 / 255, 76 / 255, 139 / 255],
+		markerColor: [251 / 255, 100 / 255, 21 / 255],
 		glowColor: [1, 1, 1],
 		markers: [
-			{ location: [40.4168, -3.7038], size: 0.1 },
-			{ location: [41.3874, 2.1686], size: 0.07 },
-			{ location: [40.7128, -74.006], size: 0.1 },
-			{ location: [51.5074, -0.1278], size: 0.08 },
-			{ location: [48.8566, 2.3522], size: 0.07 },
-			{ location: [19.4326, -99.1332], size: 0.1 },
+			{ location: [14.5995, 120.9842], size: 0.03 },
+			{ location: [19.076, 72.8777], size: 0.1 },
+			{ location: [23.8103, 90.4125], size: 0.05 },
+			{ location: [30.0444, 31.2357], size: 0.07 },
+			{ location: [39.9042, 116.4074], size: 0.08 },
 			{ location: [-23.5505, -46.6333], size: 0.1 },
-			{ location: [35.6762, 139.6503], size: 0.08 },
-			{ location: [1.3521, 103.8198], size: 0.06 },
-			{ location: [25.2048, 55.2708], size: 0.07 }
+			{ location: [19.4326, -99.1332], size: 0.1 },
+			{ location: [40.7128, -74.006], size: 0.1 },
+			{ location: [34.6937, 135.5022], size: 0.05 },
+			{ location: [41.0082, 28.9784], size: 0.06 }
 		]
 	};
 
@@ -54,6 +55,7 @@
 		let phi = 0;
 		let pointerInteracting: number | null = null;
 
+		// Spring (useMotionValue + useSpring: mass 1, damping 30, stiffness 100)
 		let r = 0;
 		let rTarget = 0;
 		let rVel = 0;
@@ -67,9 +69,10 @@
 		window.addEventListener('resize', onResize);
 		onResize();
 
-		const merged: COBEOptions = {
-			...DEFAULT_CONFIG,
-			...config,
+		const base = config ?? GLOBE_CONFIG;
+
+		const globe = createGlobe(canvasEl, {
+			...base,
 			width: width * 2,
 			height: width * 2,
 			onRender: (state) => {
@@ -85,22 +88,35 @@
 				state.width = width * 2;
 				state.height = width * 2;
 			}
-		};
+		});
 
-		const globe = createGlobe(canvasEl, merged);
-
-		const updateCursor = (grabbing: boolean) => {
+		const setCursor = (grabbing: boolean) => {
 			if (canvasEl) canvasEl.style.cursor = grabbing ? 'grabbing' : 'grab';
 		};
 
+		const updatePointerInteraction = (value: number | null) => {
+			pointerInteracting = value;
+			setCursor(value !== null);
+		};
+
+		const updateMovement = (clientX: number) => {
+			if (pointerInteracting === null) return;
+			const delta = clientX - pointerInteracting;
+			// Incremental: ancla en cada move (evita acumulación del original)
+			rTarget = rTarget + delta / MOVEMENT_DAMPING;
+			pointerInteracting = clientX;
+		};
+
 		const onPointerDown = (e: PointerEvent) => {
-			pointerInteracting = e.clientX;
-			updateCursor(true);
-			canvasEl?.setPointerCapture(e.pointerId);
+			updatePointerInteraction(e.clientX);
+			try {
+				canvasEl?.setPointerCapture(e.pointerId);
+			} catch {
+				/* ignore */
+			}
 		};
 		const onPointerUp = (e: PointerEvent) => {
-			pointerInteracting = null;
-			updateCursor(false);
+			updatePointerInteraction(null);
 			try {
 				canvasEl?.releasePointerCapture(e.pointerId);
 			} catch {
@@ -108,17 +124,14 @@
 			}
 		};
 		const onPointerMove = (e: PointerEvent) => {
-			if (pointerInteracting === null) return;
-			const delta = e.clientX - pointerInteracting;
-			rTarget = rTarget + delta / MOVEMENT_DAMPING;
-			pointerInteracting = e.clientX;
+			updateMovement(e.clientX);
 		};
 
 		canvasEl.addEventListener('pointerdown', onPointerDown);
 		canvasEl.addEventListener('pointerup', onPointerUp);
 		canvasEl.addEventListener('pointercancel', onPointerUp);
-		canvasEl.addEventListener('pointermove', onPointerMove);
 		canvasEl.addEventListener('pointerout', onPointerUp);
+		canvasEl.addEventListener('pointermove', onPointerMove);
 
 		requestAnimationFrame(() => {
 			ready = true;
@@ -130,8 +143,8 @@
 			canvasEl?.removeEventListener('pointerdown', onPointerDown);
 			canvasEl?.removeEventListener('pointerup', onPointerUp);
 			canvasEl?.removeEventListener('pointercancel', onPointerUp);
-			canvasEl?.removeEventListener('pointermove', onPointerMove);
 			canvasEl?.removeEventListener('pointerout', onPointerUp);
+			canvasEl?.removeEventListener('pointermove', onPointerMove);
 		};
 	});
 </script>
@@ -141,18 +154,19 @@
 		bind:this={canvasEl}
 		class="globe-canvas"
 		class:globe-canvas--ready={ready}
-		aria-label="Globo interactivo de ubicaciones"
+		aria-label="Globo interactivo"
 	></canvas>
 </div>
 
 <style>
 	.globe {
-		position: relative;
+		position: absolute;
+		inset: 0;
 		margin-left: auto;
 		margin-right: auto;
 		aspect-ratio: 1;
 		width: 100%;
-		max-width: 37.5rem;
+		max-width: 37.5rem; /* max-w-150 */
 	}
 
 	.globe-canvas {

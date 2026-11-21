@@ -13,8 +13,8 @@
 	<a class="detail-back" href="/lab">← Lab</a>
 	<h1 class="detail-title">Globe</h1>
 	<p class="detail-lead">
-		Globo WebGL (librería <code>cobe</code>) con rotación automática, drag con inercia spring y
-		marcadores. Port Svelte 5 sin Motion; marker en navy Abellis. Arrastra para girar.
+		Globo WebGL (<code>cobe</code>) con rotación automática, drag + spring (mass/damping/stiffness del
+		original) y marcadores naranja Magic UI. Port Svelte 5 sin Motion. Arrastra para girar.
 	</p>
 </section>
 
@@ -78,6 +78,7 @@
 		width: 100%;
 		max-width: 28rem;
 		margin: 0 auto;
+		aspect-ratio: 1;
 		min-height: 16rem;
 	}
 </style>
