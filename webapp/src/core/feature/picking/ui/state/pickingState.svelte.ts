@@ -82,7 +82,8 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 
 	async function validateWaveSo() {
 		if (busy || loading) return false;
-		const warehouseId = activeWarehouseId();
+		let warehouseId: number;
+		try { warehouseId = activeWarehouseId(); } catch (err) { error = toUserMessage(err, 'No hay almacén activo'); return false; }
 		const generation = warehouseSelection.generation;
 		if (!validateBarcode.trim()) { error = 'Indica un SO barcode'; return false; }
 		busy = true; error = null; validateResult = null;
@@ -109,7 +110,8 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 
 	async function createWave() {
 		if (busy || loading) return false;
-		const warehouseId = activeWarehouseId();
+		let warehouseId: number;
+		try { warehouseId = activeWarehouseId(); } catch (err) { error = toUserMessage(err, 'No hay almacén activo'); return false; }
 		const generation = warehouseSelection.generation;
 		const soIds = soIdsInput.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean)
 			.map(Number).filter(n => Number.isInteger(n) && n > 0);
@@ -127,7 +129,8 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 
 	async function createBatch() {
 		if (busy || loading) return false;
-		const warehouseId = activeWarehouseId();
+		let warehouseId: number;
+		try { warehouseId = activeWarehouseId(); } catch (err) { error = toUserMessage(err, 'No hay almacén activo'); return false; }
 		const generation = warehouseSelection.generation;
 		const identifiers = batchIdentifiersInput.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
 		if (!identifiers.length) { error = 'Indica al menos un pedido'; return false; }
@@ -144,7 +147,8 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 
 	async function confirm() {
 		if (!task || busy || loading) return false;
-		const warehouseId = activeWarehouseId();
+		let warehouseId: number;
+		try { warehouseId = activeWarehouseId(); } catch (err) { error = toUserMessage(err, 'No hay almacén activo'); return false; }
 		const generation = warehouseSelection.generation;
 		const taskId = task.pickTaskId;
 		if (!scannedBarcode.trim()) { error = 'Indica el barcode escaneado'; return false; }
@@ -175,7 +179,8 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 
 	async function completeBatch() {
 		if (!batch?.batchId || busy || loading) return false;
-		const warehouseId = activeWarehouseId();
+		let warehouseId: number;
+		try { warehouseId = activeWarehouseId(); } catch (err) { error = toUserMessage(err, 'No hay almacén activo'); return false; }
 		const generation = warehouseSelection.generation;
 		const batchId = batch.batchId;
 		busy = true; error = null;
@@ -188,12 +193,12 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 	}
 
 	function onWarehouseChanged() {
-			refreshEpoch++;
-			batch = null; task = null; loading = false;
-			error = null; info = null; validateResult = null;
-			validatedSoIds = []; soIdsInput = ''; waveResult = null;
-			createBatchResult = null; scannedBarcode = ''; quantityPicked = 1;
-		}
+		refreshEpoch++;
+		batch = null; task = null; loading = false;
+		error = null; info = null; validateResult = null;
+		validatedSoIds = []; soIdsInput = ''; waveResult = null;
+		createBatchResult = null; scannedBarcode = ''; quantityPicked = 1;
+	}
 
 	return {
 		get batch() { return batch; }, get task() { return task; },
