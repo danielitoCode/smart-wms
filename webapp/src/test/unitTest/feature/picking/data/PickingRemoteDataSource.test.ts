@@ -14,7 +14,7 @@ describe('PickingRemoteDataSource', () => {
   await ds.waveValidate('SO-12', 12);
   await ds.waveCreate([3, 4], 12);
   await ds.createBatch(['SO-12'], 12);
-  expect(api.post).toHaveBeenNthCalledWith(1, '/api/picking/wave-validate', { so_barcode: 'SO-12', warehouse_id: 12 });
+  expect(api.post).toHaveBeenNthCalledWith(1, '/api/picking/wave-validate', { barcode: 'SO-12', warehouse_id: 12 });
   expect(api.post).toHaveBeenNthCalledWith(2, '/api/picking/wave-create', { so_ids: [3, 4], warehouse_id: 12 });
   expect(api.post).toHaveBeenNthCalledWith(3, '/api/picking/create-batch', { so_identifiers: ['SO-12'], warehouse_id: 12 });
  });
