@@ -75,4 +75,32 @@ describe('Picking scanner state warehouse context', () => {
   expect(deps.getNextTask.execute).not.toHaveBeenCalled();
  });
 
+ it('fails closed for pick, short-pick and batch completion while Flask lacks atomic task transitions', async () => {
+  const state = createPickingState(warehouse as never);
+  await state.refresh();
+  expect(state.pickingExecutionAvailable).toBe(false);
+  expect(await state.confirm()).toBe(false);
+  expect(await state.shortPick()).toBe(false);
+  expect(await state.completeBatch()).toBe(false);
+  expect(deps.confirmPick.execute).not.toHaveBeenCalled();
+  expect(deps.shortPick.execute).not.toHaveBeenCalled();
+  expect(deps.completeBatch).not.toHaveBeenCalled();
+  expect(state.error).toContain('Flask');
+ });
+
+ it('discards a batch response if the warehouse generation changes while loading', async () => {
+  let resolveBatch!: (value: typeof batch) => void;
+  const selection = { ...warehouse };
+  deps.getActiveBatch.execute.mockImplementationOnce(() => new Promise(resolve => { resolveBatch = resolve; }));
+  const state = createPickingState(selection as never);
+  const pending = state.refresh();
+  selection.generation = 2;
+  selection.warehouseId = 13;
+  state.onWarehouseChanged();
+  resolveBatch(batch);
+  expect(await pending).toBe(false);
+  expect(state.batch).toBeNull();
+  expect(deps.getNextTask.execute).not.toHaveBeenCalled();
+ });
+
 });
