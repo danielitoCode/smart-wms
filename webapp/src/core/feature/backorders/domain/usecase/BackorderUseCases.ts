@@ -1,9 +1,8 @@
-import type {
-  Backorder, BackorderAuditHistoryPage, BackorderDetail, BackorderQueueTab, CancelBackorderReason
+import {
+  isBackorderCancelableStatus,
+  type Backorder, type BackorderAuditHistoryPage, type BackorderDetail, type BackorderQueueTab, type CancelBackorderReason
 } from '../entity/Backorder';
 import type { BackordersRepository } from '../repository/BackordersRepository';
-
-const CANCELLABLE_BACKORDER_STATUSES = ['WAITING_STOCK', 'OPEN', 'PICKED', 'PACKED'] as const;
 
 export class ListBackordersUseCase {
   constructor(private readonly repository: BackordersRepository) {}
@@ -81,7 +80,7 @@ export class CancelBackorderUseCase {
     if (detail.parentSalesOrder.status === 'CANCELLED') {
       throw new Error('No se puede cancelar el backorder porque el pedido original ya está cancelado');
     }
-    if (!(CANCELLABLE_BACKORDER_STATUSES as readonly string[]).includes(order.status)) {
+    if (!isBackorderCancelableStatus(order.status)) {
       throw new Error('No se puede cancelar un backorder en estado ' + order.status);
     }
     await this.repository.cancel(backorderId, reason);
