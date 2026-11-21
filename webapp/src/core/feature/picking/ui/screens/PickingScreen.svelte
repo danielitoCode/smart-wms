@@ -91,12 +91,12 @@
 				type="text"
 				class="grow"
 				placeholder={i18n.t('Identificadores de pedidos (ej. 1, 2, 3)')}
-				value={state.soIdsInput}
-				oninput={(e) => state.setSoIdsInput(e.currentTarget.value)}
+				value={state.validatedSoIds.join(', ')}
+				readonly
 				disabled={state.busy}
 				required
 			/>
-			<button type="submit" disabled={state.busy || warehouseSelection.warehouseId == null || !state.soIdsInput.trim()}>
+			<button type="submit" disabled={state.busy || warehouseSelection.warehouseId == null || state.validatedSoIds.length === 0}>
 				{i18n.t("Crear ola")}
 			</button>
 		</form>
