@@ -230,7 +230,7 @@
         <aside class="read-only-note">{i18n.t('El historial de recepciones se oculta a usuarios no ADMIN porque el endpoint Flask no aplica warehouse scope.')}</aside>
       {/if}
 
-      {#if vm.selected.status !== 'RECEIVED' && isAdmin}
+      {#if vm.selected.status !== 'RECEIVED' && vm.selected.voidedAt === null && isAdmin}
         <section>
           <h3>{i18n.t('Disposición de la mercancía')}</h3>
           <div class="receive-config">
@@ -275,10 +275,13 @@
         </section>
       {/if}
 
-      {#if vm.selected.status === 'OPEN' && auth?.user?.role === 'ADMIN'}
+      {#if vm.selected.status === 'OPEN' && vm.selected.voidedAt === null && auth?.user?.role === 'ADMIN'}
         <button class="danger" onclick={() => void voidRma()}>{i18n.t('Anular RMA')}</button>
-      {:else if vm.selected.status !== 'RECEIVED' && !isAdmin}
+      {:else if vm.selected.status !== 'RECEIVED' && vm.selected.voidedAt === null && !isAdmin}
         <aside class="read-only-note">{i18n.t('La recepción física requiere ADMIN hasta que Flask aplique aislamiento por almacén en el endpoint receive-return.')}</aside>
+      {/if}
+      {#if vm.selected.voidedAt !== null}
+        <aside class="read-only-note">{i18n.t('Este RMA está anulado. Las operaciones de recepción y anulación permanecen bloqueadas.')}</aside>
       {/if}
     </aside>
   {/if}
