@@ -7,9 +7,9 @@
 
   const i18n = getContext<I18nState>('i18n');
   const vm = createReturnsState();
-  const auth = getContext<{ user: { role: string; allowed_pages?: string[] } | null }>('authGuard');
+  const auth = getContext<{ user: { role: string; allowedPages?: string[] } | null }>('authGuard');
   const isAdmin = auth?.user?.role === 'ADMIN';
-  const canEditMemo = isAdmin || Boolean(auth?.user?.allowed_pages?.includes('fraud'));
+  const canEditMemo = isAdmin || Boolean(auth?.user?.allowedPages?.includes('fraud'));
 
   let idempotencyKeys = $state<Record<number, string>>({});
   let memoDraft = $state('');
