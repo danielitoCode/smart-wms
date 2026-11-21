@@ -71,6 +71,7 @@ export function createTransferOrdersState(dependencies = createTransferOrdersDep
     const epoch = ++detailEpoch;
     loading = true;
     error = null;
+    selected = null;
     pickerSnapshot = null;
     try {
       if (warehouses.length === 0) await loadWarehouses();
