@@ -302,3 +302,18 @@ La ejecución sobre ese HEAD detectó `generic-api-key` en el historial, en `wms
 Se añadió una allowlist exacta y anclada en `.gitleaks.toml` para ese único placeholder. No se excluyó el archivo ni se debilitó la regla genérica. La verificación final requiere que el nuevo workflow de Gitleaks termine en verde en el HEAD que contiene esta excepción.
 
 **Estado R4.1:** `IMPLEMENTED_UNVERIFIED` hasta la finalización satisfactoria de Gitleaks sobre el nuevo HEAD. No se tocaron archivos Flask/Python.
+
+
+## 11. R4.2 — Pruebas frontend de Backorders
+
+**HEAD verificado:** `cd343913a88168ef180b79a74c227354b3767015`.
+
+Se incorporó `src/test/unitTest/feature/backorders/ui/backordersState.test.ts` con siete pruebas de estado para carreras de cola/detalle/historial, paginación, doble submit, error de cancelación y ausencia de mutación optimista de inventario. Se ampliaron además las pruebas de `BackorderUseCases.test.ts` para todos los estados cancelables y todos los motivos permitidos.
+
+La regresión frontend completa pasó: 200 archivos, 871 tests. Webapp CI y Gitleaks están en verde para este HEAD.
+
+**Criterio de liberación:** Svelte no tiene un endpoint independiente de release. La liberación es un efecto de la operación transaccional `cancel-backorder` del servidor; el frontend envía la intención, espera la respuesta y no modifica cantidades localmente. Por tanto, no se añade una simulación local de liberación.
+
+**Concurrencia:** se verifica la protección de doble submit y las carreras de peticiones dentro de una instancia del frontend. La atomicidad del motivo, el aislamiento cross-warehouse y la concurrencia entre clientes siguen sin poder certificarse desde el cliente y permanecen como bloqueos backend de R4.3.
+
+**Estado R4.2:** cobertura frontend ampliada y regresión verificada; cierre funcional global pendiente de los bloqueos formales R4.3 y de la matriz final.

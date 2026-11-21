@@ -82,4 +82,25 @@ Los gaps R4-BE-01/02/03 solo podrán marcarse resueltos si existe evidencia de e
 - Gitleaks 8.21.2 reportó una coincidencia histórica `generic-api-key` en la línea 76 de `wms-twin/doc/API_ENDPOINTS_FRONTEND.md`, commit de origen `03169fe385a187aa797661272d025b7b945faa75`. La línea es un ejemplo JSON de respuesta con un JWT truncado literalmente mediante puntos suspensivos; no contiene un token completo utilizable.
 - Se añadió a `.gitleaks.toml` una allowlist anclada al valor exacto del placeholder. No se excluyó el archivo, el path ni la regla; cualquier otro valor sigue sujeto al escaneo normal.
 
-**Estado R4.1:** corrección frontend y typecheck/build verificados en el HEAD indicado; allowlist aplicada, pero el cierre de CI queda **pendiente de que Gitleaks vuelva a ejecutarse y termine en verde sobre el nuevo HEAD**. No se modifica Flask.
+**Estado R4.1:** `VERIFIED` en el HEAD `cd343913a88168ef180b79a74c227354b3767015`: guard frontend, typecheck, build, Gitleaks, Dependency Audit, Lockfile Version Check y Webapp CI terminaron correctamente. La cobertura adicional no bloqueó el job, pero su paso quedó sin ejecutar por falta de `@vitest/coverage-v8`; está anotado como mejora de tooling, no como suite funcional fallida. No se modifica Flask.
+
+
+## 7. R4.2 — Cobertura de estado, cancelación, historial y concurrencia frontend
+
+**HEAD verificado:** `cd343913a88168ef180b79a74c227354b3767015`.
+
+Se añadieron pruebas frontend para:
+- carreras entre cargas de cola con cambio de almacén/pestaña;
+- aperturas consecutivas de detalle y descarte de respuestas antiguas;
+- invalidación del historial que llega después de cambiar de pedido;
+- paginación y metadatos del historial;
+- prevención de doble envío mientras una cancelación sigue pendiente;
+- propagación de error y liberación del flag `saving`;
+- no mutar localmente cantidades/reservas tras cancelar: la liberación pertenece al resultado transaccional del servidor;
+- estados cancelables admitidos (`WAITING_STOCK`, `OPEN`, `PICKED`, `PACKED`), estados terminales/no admitidos y los cuatro motivos válidos.
+
+**Evidencia CI:** Webapp CI `44859962355` terminó en `success`; el paso de regresión completa informó **200 archivos y 871 tests aprobados**, incluyendo `backordersState.test.ts` (7 tests) y `BackorderUseCases.test.ts` (20 tests).
+
+**Límite:** estas pruebas verifican el comportamiento del cliente y la delegación al endpoint. No prueban la liberación real de inventario, el aislamiento entre clientes ni la atomicidad bajo concurrencia en Flask. Esos puntos permanecen en R4.3 como `BACKEND_LIMITATION`; no se simulan ni se certifican desde Svelte.
+
+**Nota de tooling:** el paso opcional `test:coverage:feature` no pudo ejecutarse porque falta el paquete `@vitest/coverage-v8`; el workflow lo define con `continue-on-error: true`, por eso el job general permanece verde. No se ocultó ningún fallo de tests: las 871 pruebas de regresión sí pasaron.

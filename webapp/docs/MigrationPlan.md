@@ -355,8 +355,8 @@ Aceptación:
 
 | Subtarea | Estado actual | Evidencia / siguiente condición |
 |---|---|---|
-| R4.1 — Reparar CI | `IMPLEMENTED_UNVERIFIED` | Guard de `warehouseId` nullable y Webapp CI verde en `00bc8b93239c82aa5c7237b8442a1f184f62f295`; allowlist exacta para el JWT truncado histórico aplicada. Falta Gitleaks verde sobre el nuevo HEAD. |
-| R4.2 — Pruebas Backorders | `IN_PROGRESS` | Completar cobertura de estado, cancelación, liberación, historial y concurrencia del cliente; no presentar pruebas fake como concurrencia backend. |
+| R4.1 — Reparar CI | `VERIFIED` | Guard nullable, typecheck/build, Gitleaks, Dependency Audit, Lockfile Version Check y Webapp CI verdes en `cd343913a88168ef180b79a74c227354b3767015`. La cobertura opcional sigue sin proveedor. |
+| R4.2 — Pruebas Backorders | `IN_PROGRESS` | Añadidos tests de carreras, detalle, historial/paginación, doble submit, errores, estados y motivos cancelables. Regresión frontend: 200 archivos / 871 tests. La liberación real y concurrencia multi-cliente siguen limitadas por Flask y se registran en R4.3. |
 | R4.3 — Seguridad backend | `BLOCKED_BACKEND` | Scope de cola/cancelación y atomicidad del motivo permanecen documentados en `webapp/.code-review/R4-Backorders-Scope-and-Security.md`. Sin cambios Flask, no se pueden cerrar como seguridad real del servidor. |
 | R4.4 — Regresión final | `NOT_STARTED` | Ejecutar suites frontend y comprobar todos los workflows en el SHA definitivo. |
 | R4.5 — Cierre R4 | `NOT_STARTED` | Revisar matriz completa y actualizar este plan y la auditoría R4 con evidencias del HEAD final. |
