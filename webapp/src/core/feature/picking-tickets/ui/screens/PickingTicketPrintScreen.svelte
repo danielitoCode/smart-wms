@@ -1,34 +1,79 @@
 <script lang="ts">
 	import UiStatePanel from '#lib/components/UiStatePanel.svelte';
-  import { onMount } from 'svelte';
+  import { onMount, getContext } from 'svelte';
+  import { authSession } from '#core/infrastructure/auth/AuthSession.ts';
+  import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
+  import { canViewPickingTicketInWarehouse } from '../../domain/policy/PickingTicketWarehouseScopePolicy';
   import { goto } from '$app/navigation';
   import { createPickingTicketsDependencies } from '../../di/pickingTickets.dependencies';
   import Code128Barcode from '../components/Code128Barcode.svelte';
   import type { PickingTicket } from '../../domain/entity/PickingTicket';
   const deps = createPickingTicketsDependencies();
+  const warehouse = getContext<WarehouseSelectionState>('warehouseSelection');
   let { salesOrderId }: { salesOrderId: number } = $props();
   let ticket = $state<PickingTicket | null>(null);
   let loading = $state(true);
   let error = $state('');
   let markFailed = $state(false);
   let marking = $state(false);
+  let requestEpoch = 0;
+  let ticketWarehouseId: number | null = null;
+  let ticketGeneration = -1;
+  let observedGeneration = warehouse.generation;
+  $effect(() => {
+    const generation = warehouse.generation;
+    if (generation === observedGeneration) return;
+    observedGeneration = generation;
+    requestEpoch++;
+    ticket = null; ticketWarehouseId = null; ticketGeneration = -1;
+    loading = false; error = ''; markFailed = false;
+  });
   onMount(() => { void load(); });
   async function load() {
-    loading = true; error = ''; markFailed = false;
+    const epoch = ++requestEpoch;
+    const generation = warehouse.generation;
+    const selectedWarehouseId = warehouse.warehouseId;
+    const role = authSession.getUser()?.role ?? null;
+    if (role !== 'ADMIN' && selectedWarehouseId == null) {
+      error = 'Selecciona un almacén antes de abrir un ticket.';
+      ticket = null; loading = false; return;
+    }
+    loading = true; error = ''; markFailed = false; ticket = null;
     if (!Number.isInteger(salesOrderId) || salesOrderId < 1) {
       error = 'Invalid sales order identifier.'; loading = false; return;
     }
     try {
-      ticket = await deps.getTicket.execute(salesOrderId);
+      const loaded = await deps.getTicket.execute(salesOrderId);
+      if (epoch !== requestEpoch || generation !== warehouse.generation) return;
+      if (!canViewPickingTicketInWarehouse({
+        role,
+        selectedWarehouseId: warehouse.warehouseId,
+        ticketWarehouseId: loaded.order.warehouseId
+      })) {
+        error = 'El ticket no pertenece al almacén activo.';
+        ticket = null; ticketWarehouseId = null; ticketGeneration = -1;
+        loading = false; return;
+      }
+      ticket = loaded;
+      ticketWarehouseId = loaded.order.warehouseId;
+      ticketGeneration = generation;
       loading = false;
       await markPrinted();
     } catch (cause) {
-      error = cause instanceof Error ? cause.message : 'Could not load picking ticket.';
-      loading = false;
+      if (epoch === requestEpoch && generation === warehouse.generation) {
+        error = cause instanceof Error ? cause.message : 'Could not load picking ticket.';
+        loading = false;
+      }
+    } finally {
+      if (epoch === requestEpoch) loading = false;
     }
   }
   async function markPrinted() {
     if (!ticket) return;
+    const role = authSession.getUser()?.role ?? null;
+    if (ticketGeneration !== warehouse.generation || !canViewPickingTicketInWarehouse({
+      role, selectedWarehouseId: warehouse.warehouseId, ticketWarehouseId: ticketWarehouseId ?? ticket.order.warehouseId
+    })) { markFailed = true; return; }
     marking = true;
     try { await deps.markPrinted.execute([ticket.order.salesOrderId]); markFailed = false; }
     catch { markFailed = true; }
