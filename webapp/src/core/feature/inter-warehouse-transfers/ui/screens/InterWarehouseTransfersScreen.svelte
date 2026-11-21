@@ -134,8 +134,9 @@
   <header>
     <div><p class="eyebrow">ABELLIS · SMART WMS</p><h1>{i18n.t('Movimientos entre almacenes')}</h1>
       <p>{i18n.t('Transfiere existencias entre almacenes autorizados con registro transaccional e idempotente.')}</p></div>
-    <button class="primary" onclick={() => open = !open}>{open ? i18n.t('Cerrar') : i18n.t('Nueva transferencia')}</button>
+    <button class="primary" disabled>{i18n.t('Nueva transferencia · no disponible')}</button>
   </header>
+  <p class="notice" role="status">{i18n.t('La transferencia directa está deshabilitada en este recorrido. El endpoint actual mueve inventario inmediatamente y no mantiene mercancía en tránsito ni ofrece recepción/put-away separados. El historial permanece disponible en consulta.')}</p>
   {#if vm.error}<UiStatePanel kind="error" title={i18n.t('No se pudieron cargar los movimientos')} message={vm.error} />{/if}
 
   {#if open}
