@@ -1,6 +1,7 @@
 import type { ReturnsRepository } from '../repository/ReturnsRepository';
 import type { RequestedReturnLine } from '../policy/ReturnQuantityPolicy';
 import { validateReturnRequest } from '../policy/ReturnQuantityPolicy';
+import { ReturnCapabilityNotSupportedError } from '../contract/ReturnLifecycleContract';
 
 export class ListReturnsUseCase { constructor(private r: ReturnsRepository) {} execute(q?: { status?: string; search?: string }) { return this.r.list(q); } }
 export class SearchReturnableOrdersUseCase { constructor(private r: ReturnsRepository) {} execute(search = '') { return this.r.originals(search); } }
@@ -11,13 +12,12 @@ export class CreateReturnUseCase {
     if (!Number.isInteger(id) || id <= 0) throw new Error('Identificador de pedido original no válido');
     const validation = validateReturnRequest(available.lines, value.lines);
     if (!validation.valid) throw new Error(validation.reason ?? 'Solicitud RMA no válida');
-    return this.r.createReturn(id, {
-      lines: value.lines.map(line => ({ itemId: line.itemId, quantity: line.quantity, originalSalesOrderLineId: line.originalSalesOrderLineId }))
-        .map(line => ({ item_id: line.itemId, quantity: line.quantity, original_so_line_id: line.originalSalesOrderLineId })),
-      memo: value.memo?.trim() || null
-    });
+    return this.r.createReturn(id, { lines: value.lines, memo: value.memo?.trim() || null });
   }
 }
+export class ApproveRMAUseCase { execute(): never { throw new ReturnCapabilityNotSupportedError('approveRma'); } }
+export class ClassifyReturnedItemUseCase { execute(): never { throw new ReturnCapabilityNotSupportedError('classifyReturnedItem'); } }
+export class RestockReturnUseCase { execute(): never { throw new ReturnCapabilityNotSupportedError('restockReturn'); } }
 export class GetReturnDetailUseCase { constructor(private r: ReturnsRepository) {} execute(id: number) { if (!Number.isInteger(id) || id <= 0) throw new Error('Identificador de RMA no válido'); return this.r.detail(id); } }
 export class SaveReturnMemoUseCase { constructor(private r: ReturnsRepository) {} execute(id: number, memo: string) { if (!Number.isInteger(id) || id <= 0) throw new Error('Identificador de RMA no válido'); if (memo.length > 4000) throw new Error('La nota supera los 4000 caracteres'); return this.r.saveMemo(id, memo); } }
 export class ReceiveReturnLineUseCase { constructor(private r: ReturnsRepository) {} execute(id: number, v: { itemId: number; quantity: number; warehouseId: number; binId: number; notes?: string | null; idempotencyKey: string }) { if (!Number.isInteger(id) || id <= 0 || !Number.isInteger(v.itemId) || v.itemId <= 0 || !Number.isInteger(v.quantity) || v.quantity <= 0 || !Number.isInteger(v.warehouseId) || v.warehouseId <= 0 || !Number.isInteger(v.binId) || v.binId <= 0 || !v.idempotencyKey.trim()) throw new Error('Datos de recepción no válidos'); return this.r.receive(id, v); } }
