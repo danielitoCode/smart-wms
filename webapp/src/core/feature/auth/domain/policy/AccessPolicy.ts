@@ -195,7 +195,8 @@ export type RouteAccessPolicy =
 	| { kind: 'authenticated' }
 	| { kind: 'function'; functionKey: OperationalFunctionKey }
 	| { kind: 'all'; pageKeys: readonly string[] }
-	| { kind: 'any'; pageKeys: readonly string[] };
+	| { kind: 'any'; pageKeys: readonly string[] }
+	| { kind: 'allAndAny'; allPageKeys: readonly string[]; anyPageKeys: readonly string[] };
 
 export function canAccessAnyPages(
 	role: AccessRole,
@@ -220,6 +221,10 @@ export function routeAccessPolicyForPath(pathname: string): RouteAccessPolicy | 
 	// is sufficient to enter it; each child route still has its own gate.
 	if (path === '/data') {
 		return { kind: 'any', pageKeys: ['warehouses', 'bins', 'zones', 'preferred-bins'] };
+	}
+	// The printable queue lists through sales-orders (or fraud), while ticket detail/print requires picking-tickets.
+	if (isPathOrChild(path, '/picking-tickets')) {
+		return { kind: 'allAndAny', allPageKeys: ['picking-tickets'], anyPageKeys: ['sales-orders', 'fraud'] };
 	}
 
 	const pageKeys = requiredPageKeysForPath(path);
