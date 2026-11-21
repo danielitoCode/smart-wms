@@ -18,7 +18,9 @@ No se debe reconstruir un CRUD administrativo independiente de tickets/lotes com
 
 | Caso de uso | Contrato observado | Estado |
 |---|---|---|
-| ListPickTickets / GetPickTicket | No se encontró una API operativa independiente de tickets para el flujo de escáner. La entrada real es validar SO/TO por barcode. | No disponible como API separada |
+| ListPickTickets | GET `/api/admin/sales-orders` con status, warehouse_id, hide_printed, include_primary_bin e include_line_count. La consulta aplica warehouse_scope_clause y el servicio Svelte GetAllPrintableTickets reutiliza este endpoint. La ruta Flask exige sales-orders o fraud, no picking-tickets. | Parcial: datos/warehouse sí; ACL de listado no coincide con la página |
+| GetPickTicket | GET `/api/admin/sales-orders/<id>/picking-ticket`; devuelve cabecera, líneas, UPC y preferred_bin. Exige picking-tickets, pero la consulta del SO no aplica warehouse_scope_clause ni check_warehouse_access. | Parcial: contrato de datos existe; aislamiento server-side ausente |
+| MarkPickingTicketsPrinted | POST `/api/admin/sales-orders/mark-printed`; acepta so_ids y actualiza printed_at. Exige picking-tickets, pero el UPDATE no filtra por warehouse. | Parcial: no seguro para usuarios multi-almacén no ADMIN |
 | ListPickBatches | `GET /api/admin/pick-batches?warehouse_id=`; requiere `picking-batches` page permission y warehouse access. Devuelve batches activos con estado, operador, warehouse, tareas y pedidos. | Parcial / administrativo |
 | GetPickBatch | `GET /api/picking/batch/<id>`; valida acceso al warehouse y devuelve tareas. | Disponible |
 | CreatePickBatch | `POST /api/picking/wave-create` y legacy `/create-batch`; wave valida IDs, warehouse, cobertura y planifica inventario/bins según reglas del servicio. Responde batch_id, batch_number, total_orders/picks/units y first_pick. | Disponible; no idempotency key |
@@ -69,6 +71,18 @@ El contrato de FulfillRequest solo acepta so_id, tracking_number, carrier, ship_
 ### R6-BE-09 — shipping lookup omite quantity_packed
 
 GET /api/shipping/order consulta quantity_packed en SQL, pero no lo incluye en cada objeto lines de la respuesta JSON. Devuelve quantity_ordered y quantity_picked. El endpoint fulfill crea líneas enviadas a partir de quantity_picked. El estado PACKED y el flujo de packing garantizan que la orden pasó por verificación cuando la configuración lo exige, pero el cliente no puede reconciliar explícitamente quantity_picked vs quantity_packed vs quantity_shipped desde el detalle de shipping.
+
+### R6-BE-10 — detalle de ticket imprimible sin warehouse ACL
+
+GET /api/admin/sales-orders/<id>/picking-ticket exige la página picking-tickets, pero selecciona el sales_order por so_id sin warehouse_scope_clause ni check_warehouse_access. Un usuario no ADMIN con esa página puede solicitar directamente un SO de otro almacén. La pantalla Svelte no debe tratar el filtro de la lista como autorización para el detalle; el servidor debe filtrar/validar el warehouse antes de devolver cabecera y líneas.
+
+### R6-BE-11 — marcar tickets impresos sin warehouse scope
+
+POST /api/admin/sales-orders/mark-printed actualiza printed_at para cualquier so_id recibido, sin filtrar warehouse ni validar acceso por fila. No debe ejecutarse para usuarios no ADMIN hasta que Flask aplique scope a cada SO.
+
+### R6-BE-12 — ACL del listado de tickets no coincide con la página
+
+El listado se obtiene de GET /api/admin/sales-orders, protegido por require_admin_or_any_page_permission('sales-orders', 'fraud'); la página y el detalle de ticket usan picking-tickets. Un usuario con solo picking-tickets puede entrar al frontend pero recibir 403 en el listado. Flask debe alinear el permiso del listado con picking-tickets o el frontend debe requerir explícitamente la combinación real de grants.
 ## 4. Garantías positivas observadas
 
 - Picking valida el warehouse del batch y llama a `check_warehouse_access` en operaciones de tarea/batch. Las olas se crean para un warehouse explícito y el servicio aplica reglas de disponibilidad, preferred bins y pick sequence.
