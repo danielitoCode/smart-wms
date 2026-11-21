@@ -4,6 +4,14 @@ export type BackorderStatus =
   | 'WAITING_STOCK' | 'OPEN' | 'PICKED' | 'PACKED' | 'SHIPPED'
   | 'CANCELLED' | 'REFUNDED';
 
+export const CANCELLABLE_BACKORDER_STATUSES = [
+  'WAITING_STOCK', 'OPEN', 'PICKED', 'PACKED'
+] as const;
+
+export function isBackorderCancelableStatus(status: string): boolean {
+  return (CANCELLABLE_BACKORDER_STATUSES as readonly string[]).includes(status);
+}
+
 export type BackorderInboundPurchaseOrder = {
   purchaseOrderNumber: string;
   expectedDate: string | null;
