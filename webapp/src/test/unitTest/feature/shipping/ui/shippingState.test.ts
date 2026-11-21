@@ -8,13 +8,15 @@ const detail = { salesOrder: { soId: 2, soNumber: 'SO-2', status: 'PACKED', ware
 
 describe('Shipping scanner state warehouse context', () => {
  beforeEach(() => { context.warehouseId = 6; context.generation = 1; vi.clearAllMocks(); deps.loadOrder.execute.mockResolvedValue(detail); deps.fulfill.execute.mockResolvedValue({ message: 'Shipment fulfilled', fulfillmentId: 11, soNumber: 'SO-2', trackingNumber: 'TRACK', carrier: 'Carrier', linesShipped: 1, totalQuantity: 2 }); });
- it('loads the order in the selected warehouse and fulfills it', async () => {
+ it('loads the order in the selected warehouse but blocks shipping without package validation', async () => {
   const state = createShippingState(context as never);
   state.setBarcode('SO-2'); expect(await state.load()).toBe(true);
   expect(deps.loadOrder.execute).toHaveBeenCalledWith('SO-2', 6);
   state.setTrackingNumber('TRACK'); state.setCarrier('Carrier');
-  expect(await state.fulfill()).toBe(true);
-  expect(deps.fulfill.execute).toHaveBeenCalledWith({ soId: 2, warehouseId: 6, trackingNumber: 'TRACK', carrier: 'Carrier', shipMethod: 'GROUND' });
+  expect(state.shippingExecutionAvailable).toBe(false);
+  expect(await state.fulfill()).toBe(false);
+  expect(deps.fulfill.execute).not.toHaveBeenCalled();
+  expect(state.error).toContain('Flask');
  });
  it('blocks fulfillment when the selected warehouse no longer matches the loaded order', async () => {
   const state = createShippingState(context as never);
@@ -43,18 +45,13 @@ describe('Shipping scanner state warehouse context', () => {
   expect(state.detail).toBeNull();
  });
 
- it('prevents two local fulfill submissions from running at once', async () => {
-  let resolveFulfill!: (value: Awaited<ReturnType<typeof deps.fulfill.execute>>) => void;
-  deps.fulfill.execute.mockReturnValueOnce(new Promise(resolve => { resolveFulfill = resolve; }));
+ it('fails closed for fulfillment without a physical package contract', async () => {
   const state = createShippingState(context as never);
   state.setBarcode('SO-2'); await state.load();
   state.setTrackingNumber('TRACK'); state.setCarrier('Carrier');
-  const first = state.fulfill();
-  const second = state.fulfill();
-  expect(await second).toBe(false);
-  expect(deps.fulfill.execute).toHaveBeenCalledTimes(1);
-  resolveFulfill({ message: 'Shipment fulfilled', fulfillmentId: 11, soNumber: 'SO-2', trackingNumber: 'TRACK', carrier: 'Carrier', linesShipped: 1, totalQuantity: 2 });
-  expect(await first).toBe(true);
+  expect(await state.fulfill()).toBe(false);
+  expect(deps.fulfill.execute).not.toHaveBeenCalled();
+  expect(state.error).toContain('paquete');
  });
 
  it('rejects a loaded order when warehouse generation changes even if the id is unchanged', async () => {
