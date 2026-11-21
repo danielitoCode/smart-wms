@@ -17,6 +17,7 @@ export function validateReturnRequest(
 ): { valid: boolean; reason?: string } {
   if (requested.length === 0) return { valid: false, reason: 'Selecciona al menos una línea para devolver' };
   const seen = new Set<number>();
+  const seenItems = new Set<number>();
   for (const line of requested) {
     if (!Number.isSafeInteger(line.originalSalesOrderLineId) || line.originalSalesOrderLineId <= 0 ||
         !Number.isSafeInteger(line.itemId) || line.itemId <= 0 ||
@@ -24,7 +25,9 @@ export function validateReturnRequest(
       return { valid: false, reason: 'Las cantidades e identificadores deben ser enteros positivos' };
     }
     if (seen.has(line.originalSalesOrderLineId)) return { valid: false, reason: 'No se puede repetir una línea original' };
+    if (seenItems.has(line.itemId)) return { valid: false, reason: 'El backend recibe por item_id y no permite distinguir líneas duplicadas del mismo artículo' };
     seen.add(line.originalSalesOrderLineId);
+    seenItems.add(line.itemId);
     const available = availableLines.find(x => x.originalSalesOrderLineId === line.originalSalesOrderLineId);
     if (!available || available.itemId !== line.itemId || line.quantity > available.quantityRemaining) {
       return { valid: false, reason: 'La cantidad supera lo enviado menos las devoluciones ya autorizadas' };
