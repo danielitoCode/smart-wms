@@ -189,7 +189,7 @@ La revisión de `api/routes/shipping.py` confirmó que `FulfillRequest` no acept
 - Política de conciliación: pedido vacío, cantidades iguales, faltantes, excedentes, negativos, fracciones y múltiples líneas.
 - Picking: validación de batch/task y gates de mutación permanecen fail-closed.
 
-**Pendiente de certificación:** ejecutar Webapp CI sobre el HEAD final y revisar cualquier fallo. No se ejecutaron pruebas locales desde esta integración GitHub. No se modificó Flask/Python.
+**Estado histórico de esa iteración:** la certificación quedó pendiente en ese momento; el cierre de verificación definitivo se registra en la sección 10. No se ejecutaron pruebas locales desde esta integración GitHub. No se modificó Flask/Python.
 
 
 ## 9. R6 — cierre de contrato y gate de Shipping (21-11-2026)
@@ -216,3 +216,43 @@ La revisión de `api/routes/shipping.py` confirmó que `FulfillRequest` no acept
 **Regresión requerida para el cierre frontend:** permisos operativos y grants, aislamiento entre almacenes, doble submit dentro de una instancia, cambios de generación/respuestas obsoletas, contratos DTO/mappers/repositories, npm run check, npm run build, Domain, Application, Infrastructure, UI, i18n, Integration y Full regression. Las pruebas PostgreSQL multi-conexión para doble picking/short, complete/verify y doble fulfillment siguen siendo responsabilidad Flask y no pueden certificarse con Vitest.
 
 **Estado de R6:** FRONTEND_IMPLEMENTATION_PARTIAL / BLOCKED_BACKEND. El gate de Shipping queda endurecido a nivel de aplicación, pero R6 no es VERIFIED integral ni puede cerrarse operativamente hasta que Flask implemente las capacidades indicadas y se valide la regresión frontend completa. No se modificó Flask/Python.
+
+
+## 10. R6 — verificación final de Shipping y regresión frontend (21-11-2026)
+
+**HEAD de implementación validado:** `d4fe8246477efd9e9134583186e87af2300afe8c` (rama `svelte-webapp`).  
+**Webapp CI:** [run 44871706656](https://github.com/danielitoCode/smart-wms/actions/runs/44871706656) — **SUCCESS**.
+
+### Shipping — cierre frontend
+
+- El contrato Flask de lectura y fulfillment queda documentado con los campos exactos disponibles; no se mapean campos que la respuesta no expone.
+- `validateShipmentPackage` permanece `NOT_SUPPORTED_BY_SERVER`, `shipOrder` `PARTIAL` y `getShipment` `NOT_SUPPORTED_BY_SERVER`.
+- `FulfillShipmentUseCase` aplica el gate antes de invocar el repositorio. La UI/state conserva el mismo gate, el scope `warehouseId + generation`, el descarte de respuestas obsoletas y la protección de doble submit local.
+- Pruebas de contrato, use case, mapper, datasource y estado verifican que una solicitud directa no puede ejecutar fulfillment sin package validation; no se llama al POST ni se fabrica un resultado.
+
+### Regresión final observada
+
+Todos los pasos del job Webapp CI finalizaron correctamente:
+- Typecheck (`svelte-check + TypeScript`): PASS.
+- Build SvelteKit/Vite: PASS.
+- Domain: 87 archivos / 363 tests PASS.
+- Application: 60 archivos / 258 tests PASS.
+- Infrastructure: 69 archivos / 279 tests PASS.
+- UI/presentation: 43 archivos / 245 tests PASS.
+- i18n: 1 archivo / 5 tests PASS.
+- Integration: 5 archivos / 24 tests PASS.
+- Full regression: **204 archivos / 911 tests PASS**.
+- Coverage by feature paths: PASS (el workflow no publica un porcentaje global de cobertura).
+
+Controles auxiliares sobre el mismo HEAD:
+- [Lockfile Version Check 44871706704](https://github.com/danielitoCode/smart-wms/actions/runs/44871706704): SUCCESS.
+- [gitleaks 44871706699](https://github.com/danielitoCode/smart-wms/actions/runs/44871706699): SUCCESS.
+- [Dependency Audit 44871706641](https://github.com/danielitoCode/smart-wms/actions/runs/44871706641): SUCCESS.
+
+La regresión detectó y se corrigió un import faltante de `onMount` en `PickingTicketPrintAllScreen.svelte`, además de actualizar fixtures/expectativas de pruebas de Shipping, Packing y el contrato R5. Los fallos intermedios quedaron corregidos antes del HEAD validado.
+
+### Decisión de aceptación
+
+**Frontend R6: `FRONTEND_HARDENING_COMPLETE` para el alcance implementable y verificable en Svelte.** Typecheck, build y todas las suites frontend están verdes en el HEAD indicado.
+
+**R6 integral: `BLOCKED_BACKEND`, no `VERIFIED`.** Continúan pendientes las garantías que solo Flask puede aportar: grants operativos server-side, locking/UPDATE condicional e idempotencia de pick/short/batch/wave, validación de bin atómica, identidad/validación de paquete físico, exposición de `quantity_packed`, GET/reconciliación de shipment y pruebas PostgreSQL multi-conexión de las carreras de picking/packing/shipping. La regresión frontend no sustituye esas pruebas. No se modificó Flask/Python.
