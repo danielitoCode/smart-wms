@@ -60,7 +60,8 @@
 		{ id: 'cutout-card', name: 'CutoutCard', status: 'ready', href: '/lab/cutout-card', description: 'Card con media, cutout corners, pin, stagger CSS y acción flotante.' },
 		{ id: 'toast', name: 'Toast', status: 'ready', href: '/lab/toast', description: 'Toasts squircle con iconos animados y API success/error/promise (tipo Sonner).' },
 		{ id: 'animated-beam', name: 'AnimatedBeam', status: 'ready', href: '/lab/animated-beam', description: 'Haz SVG animado entre nodos (gradiente SMIL, curvatura configurable).' },
-		{ id: 'bento-eight', name: 'BentoEight', status: 'ready', href: '/lab/bento-eight', description: 'Grid bento 8 celdas: ticker, counter, typing, barras y skeletons (Animata Eight).' }
+		{ id: 'bento-eight', name: 'BentoEight', status: 'ready', href: '/lab/bento-eight', description: 'Grid bento 8 celdas: ticker, counter, typing, barras y skeletons (Animata Eight).' },
+		{ id: 'terminal', name: 'Terminal', status: 'ready', href: '/lab/terminal', description: 'Terminal secuencial con typing y spans (CLI demo Smart WMS).' }
 	] as const;
 </script>
 
