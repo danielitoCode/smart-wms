@@ -19,6 +19,7 @@ export function createShippingState(warehouseSelection: WarehouseSelectionState)
 	let error = $state<string | null>(null);
 	let lastResult = $state<FulfillShipmentResult | null>(null);
 	let info = $state<string | null>(null);
+	let reconciliationRequired = $state(false);
 	let requestEpoch = 0;
 
 	function isCurrentContext(warehouseId: number, generation: number) {
@@ -42,7 +43,7 @@ export function createShippingState(warehouseSelection: WarehouseSelectionState)
 		let warehouseId: number;
 		try { warehouseId = activeWarehouseId(); }
 		catch (err) { error = toUserMessage(err, 'No hay almacén activo'); return false; }
-		loading = true; error = null; info = null; lastResult = null; detail = null; detailWarehouseId = null; detailGeneration = -1;
+		loading = true; error = null; info = null; lastResult = null; reconciliationRequired = false; detail = null; detailWarehouseId = null; detailGeneration = -1;
 		try {
 			const result = await deps.loadOrder.execute(code, warehouseId);
 			if (epoch !== requestEpoch || !isCurrentContext(warehouseId, generation)) return false;
@@ -69,6 +70,7 @@ export function createShippingState(warehouseSelection: WarehouseSelectionState)
 		busy = true; error = null; info = null; lastResult = null;
 		const generation = warehouseSelection.generation;
 		const soId = detail.salesOrder.soId;
+		const soNumber = detail.salesOrder.soNumber;
 		try {
 			const result = await deps.fulfill.execute({
 				soId,
@@ -86,7 +88,25 @@ export function createShippingState(warehouseSelection: WarehouseSelectionState)
 			detail = null; detailWarehouseId = null; detailGeneration = -1;
 			return true;
 		} catch (err) {
-			if (isCurrentContext(warehouseId, generation)) error = toUserMessage(err, 'No se pudo registrar el envío');
+			if (!isCurrentContext(warehouseId, generation)) return false;
+			error = toUserMessage(err, 'No se pudo registrar el envío');
+			// Fulfill can commit before a network timeout reaches the browser.
+			// Re-read the real shipping queue before allowing another attempt.
+			try {
+				const reconciled = await deps.loadOrder.execute(soNumber, warehouseId);
+				if (isCurrentContext(warehouseId, generation)) {
+					detail = reconciled;
+					detailWarehouseId = warehouseId;
+					detailGeneration = generation;
+					reconciliationRequired = false;
+				}
+			} catch {
+				if (isCurrentContext(warehouseId, generation)) {
+					detail = null; detailWarehouseId = null; detailGeneration = -1;
+					reconciliationRequired = true;
+					error = 'No se pudo determinar si el despacho se confirmó. No repitas el envío; vuelve a consultar el pedido o verifica el historial de fulfillment.';
+				}
+			}
 			return false;
 		} finally { busy = false; }
 	}
@@ -94,7 +114,7 @@ export function createShippingState(warehouseSelection: WarehouseSelectionState)
 	function onWarehouseChanged() {
 		requestEpoch++;
 		loading = false;
-		detail = null; detailWarehouseId = null; detailGeneration = -1; trackingNumber = ''; carrier = ''; shipMethod = ''; error = null; info = null; lastResult = null;
+		detail = null; detailWarehouseId = null; detailGeneration = -1; trackingNumber = ''; carrier = ''; shipMethod = ''; error = null; info = null; lastResult = null; reconciliationRequired = false;
 	}
 
 	return {
@@ -102,7 +122,7 @@ export function createShippingState(warehouseSelection: WarehouseSelectionState)
 		get trackingNumber() { return trackingNumber; }, get carrier() { return carrier; },
 		get shipMethod() { return shipMethod; }, get loading() { return loading; },
 		get busy() { return busy; }, get error() { return error; },
-		get lastResult() { return lastResult; }, get info() { return info; }, get warehouseId() { return warehouseSelection.warehouseId; },
+		get lastResult() { return lastResult; }, get info() { return info; }, get reconciliationRequired() { return reconciliationRequired; }, get warehouseId() { return warehouseSelection.warehouseId; },
 		get shippingExecutionAvailable() { return isR6ShippingExecutionAvailable(); },
 		setBarcode: (v: string) => barcode = v,
 		setTrackingNumber: (v: string) => trackingNumber = v,
