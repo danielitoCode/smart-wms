@@ -61,6 +61,14 @@ La tarea devuelve información de bin, pero `ConfirmPickRequest` solo acepta `sc
 
 `GET /api/auth/me` devuelve `allowed_functions` (incluye las funciones operativas del usuario y filtra `pack` según la configuración), pero `require_auth` no carga ni valida ese grant en cada petición y las rutas picking/packing/shipping solo combinan autenticación con controles de warehouse. El guard Svelte por `pick`, `pack` y `ship` protege navegación/UX, pero no sustituye autorización server-side. Flask debe aplicar el grant operativo correspondiente a cada endpoint.
 
+
+### R6-BE-08 — shipping no valida un paquete físico
+
+El contrato de FulfillRequest solo acepta so_id, tracking_number, carrier, ship_method y warehouse_id. No existe package_id, package barcode, dimensiones ni operación de verificación de paquete. record_ship sintetiza un único package en el evento ship.confirmed, con dimensiones null y peso calculado desde las unidades picked. Por tanto, la aplicación no puede verificar un paquete escaneado; solo aplica estado de pedido y campos de transportista/tracking no vacíos.
+
+### R6-BE-09 — shipping lookup omite quantity_packed
+
+GET /api/shipping/order consulta quantity_packed en SQL, pero no lo incluye en cada objeto lines de la respuesta JSON. Devuelve quantity_ordered y quantity_picked. El endpoint fulfill crea líneas enviadas a partir de quantity_picked. El estado PACKED y el flujo de packing garantizan que la orden pasó por verificación cuando la configuración lo exige, pero el cliente no puede reconciliar explícitamente quantity_picked vs quantity_packed vs quantity_shipped desde el detalle de shipping.
 ## 4. Garantías positivas observadas
 
 - Picking valida el warehouse del batch y llama a `check_warehouse_access` en operaciones de tarea/batch. Las olas se crean para un warehouse explícito y el servicio aplica reglas de disponibilidad, preferred bins y pick sequence.
