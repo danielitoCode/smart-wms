@@ -113,8 +113,7 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 		let warehouseId: number;
 		try { warehouseId = activeWarehouseId(); } catch (err) { error = toUserMessage(err, 'No hay almacén activo'); return false; }
 		const generation = warehouseSelection.generation;
-		const soIds = soIdsInput.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean)
-			.map(Number).filter(n => Number.isInteger(n) && n > 0);
+		const soIds = [...validatedSoIds];
 		if (!soIds.length) { error = 'Selecciona al menos un pedido validado'; return false; }
 		busy = true; error = null; waveResult = null; info = null;
 		try {
