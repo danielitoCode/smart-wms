@@ -18,6 +18,7 @@ export const R6_PICKING_CAPABILITIES = {
   itemAndBinBarcodeValidation: 'NOT_SUPPORTED_BY_SERVER',
   verifyPacking: 'SUPPORTED',
   confirmPacking: 'SUPPORTED',
+  validateShipmentPackage: 'NOT_SUPPORTED_BY_SERVER',
   shipOrder: 'PARTIAL',
   getShipment: 'NOT_SUPPORTED_BY_SERVER',
   idempotentWaveReplay: 'NOT_SUPPORTED_BY_SERVER'
@@ -57,5 +58,13 @@ export function isR6PickingExecutionAvailable(): boolean {
     isR6CapabilityAvailable('shortPick') &&
     isR6CapabilityAvailable('completePicking') &&
     isR6CapabilityAvailable('itemAndBinBarcodeValidation')
+  );
+}
+
+/** Shipping cannot execute the R6 contract until the server validates a physical package. */
+export function isR6ShippingExecutionAvailable(): boolean {
+  return (
+    isR6CapabilityAvailable('validateShipmentPackage') &&
+    isR6CapabilityAvailable('shipOrder')
   );
 }
