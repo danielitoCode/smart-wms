@@ -61,6 +61,13 @@ describe('TransferOrdersScreen', () => {
     expect(body).toContain('Rechazado el');
   });
 
+  it('shows that transfer mutations are disabled until the server supports the staged lifecycle', () => {
+    const { body } = render(TransferOrdersScreen, { context: new Map([['i18n', { t: (value: string) => value }]]) });
+    expect(body).toContain('Nueva transferencia · no disponible');
+    expect(body).toContain('reserva exacta por línea/bin');
+    expect(body).toContain('role="status"');
+  });
+
   it('renders normalized HTTP errors as an accessible alert', () => {
     vm.error = 'Conflicto: existe una aprobación pendiente (409)';
     const { body } = render(TransferOrdersScreen, {
