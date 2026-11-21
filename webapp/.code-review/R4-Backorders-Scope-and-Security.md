@@ -123,3 +123,18 @@ Se añadieron pruebas frontend para:
 
 La sección inicial que marcaba el hallazgo como `PENDING_REVIEW` queda supersedida por la verificación posterior: el patrón era un JWT de ejemplo truncado literalmente con puntos suspensivos, y `.gitleaks.toml` contiene una allowlist exacta y anclada para ese placeholder. El workflow Gitleaks terminó `success` en los HEAD posteriores; no se excluyó el archivo ni la regla genérica. Mantener como evidencia los runs específicos de cada SHA, no inferir estado del HEAD actual a partir de ejecuciones antiguas.
 
+
+
+## 9. Verificación CI del cierre R4.2
+
+**HEAD:** `b581c260364d03d4e2b77dcb75eb3b6ff404dee0`.
+
+- Webapp CI [44861463776](https://github.com/danielitoCode/smart-wms/actions/runs/44861463776): `success`.
+- Regresión completa: 200 test files, 877 tests aprobados; typecheck, build y todas las suites funcionales en verde.
+- Gitleaks [44861463770](https://github.com/danielitoCode/smart-wms/actions/runs/44861463770): `success`.
+- Dependency Audit [44861463799](https://github.com/danielitoCode/smart-wms/actions/runs/44861463799): `success`.
+- Lockfile Version Check [44861463774](https://github.com/danielitoCode/smart-wms/actions/runs/44861463774): `success`.
+- Coverage by feature paths: el intento de generar el informe falló por falta de `@vitest/coverage-v8`, pero el paso es `continue-on-error`; las pruebas funcionales sí pasaron. No afirmar cobertura medida.
+
+**Dictamen:** `R4.2 VERIFIED_FRONTEND`. Los controles server-side R4-BE-01/02/03 permanecen abiertos y no se han modificado archivos Flask/Python. El workflow Python `Tests` no forma parte del CI frontend y no acredita el estado de R4.2.
+
