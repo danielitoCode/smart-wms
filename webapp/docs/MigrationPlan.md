@@ -883,3 +883,18 @@ El paso opcional de cobertura intentó ejecutarse, pero no pudo generar el infor
 
 **Cierre:** R4.2 queda `VERIFIED_FRONTEND` en el HEAD indicado. El workflow `Tests` [44861463773](https://github.com/danielitoCode/smart-wms/actions/runs/44861463773) es el pipeline Python/backend independiente; se deja fuera del alcance Svelte y no se usa para afirmar que el backend esté validado. Los bloqueos R4-BE-01/02/03 continúan abiertos. R4 global no queda cerrado por este resultado.
 
+
+
+## 19. R4.2 — revalidación final del contexto del diálogo de cancelación
+
+En la reauditoría de R4.2 se detectó un caso residual en `BackordersScreen.svelte`: el diálogo de cancelación se invalidaba al cambiar de almacén solo para usuarios no ADMIN. Aunque ADMIN puede consultar varios almacenes, el diálogo seguía asociado a la fila/cola anterior y podía confirmar desde un contexto ya cambiado.
+
+**Corrección frontend:**
+- Se guarda el contexto (almacén seleccionado y pestaña) al abrir el diálogo.
+- Cualquier cambio de almacén o pestaña invalida el diálogo, también para ADMIN.
+- El submit vuelve a comparar el contexto capturado con el contexto actual antes de llamar a cancelación.
+- La política pura `isBackorderQueueContextCurrent` tiene pruebas para cambio de almacén (incluido ADMIN), cambio de pestaña y contexto estable.
+
+**Commit de implementación:** `c9d7214a2e7b64a3cfade816e0a7489fd3ffaa63`.
+
+**Verificación:** pendiente de la ejecución Webapp CI asociada al HEAD que incorpora esta actualización documental. No se modifica Flask/Python. R4-BE-01/02/03 continúan como limitaciones backend: la protección de contexto del cliente no sustituye el aislamiento server-side ni la atomicidad de la razón de cancelación. La liberación de inventario sigue siendo responsabilidad de la transacción backend.
