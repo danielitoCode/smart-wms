@@ -22,6 +22,7 @@ vi.mock('../../../../../core/feature/items/di/items.dependencies', () => ({
 }));
 
 import { createInterWarehouseTransfersState } from '../../../../../core/feature/inter-warehouse-transfers/ui/state/interWarehouseTransfersState.svelte';
+import { authSession } from '../../../../../core/infrastructure/auth/AuthSession';
 
 const warehouse = (id: number) => ({ id, code: 'WH-' + id, name: 'Warehouse ' + id, address: null, active: true, createdAt: null });
 const bin = (id: number, warehouseId: number) => ({
@@ -37,10 +38,11 @@ const item = (id: number, active = true) => ({
 
 describe('inter-warehouse transfer selectors and state', () => {
   beforeEach(() => {
+    authSession.setUser({ userId: 7, username: 'test', fullName: 'Test', role: 'USER', warehouseIds: [1, 2, 3], allowedPages: [], allowedFunctions: [], allowedOverrides: [], mustChangePassword: false });
     vi.clearAllMocks();
     mocks.listTransfers.mockResolvedValue([]);
     mocks.createTransfer.mockResolvedValue(undefined);
-    mocks.listWarehouses.mockResolvedValue([warehouse(1), warehouse(2), warehouse(3)]);
+    mocks.listWarehouses.mockResolvedValue([warehouse(1), warehouse(2), warehouse(3), warehouse(9)]);
     mocks.searchBins.mockImplementation(async (_query: string, warehouseId: number) => [bin(10, warehouseId), bin(99, 99)]);
     mocks.searchItems.mockResolvedValue([item(1), item(2, false)]);
   });
