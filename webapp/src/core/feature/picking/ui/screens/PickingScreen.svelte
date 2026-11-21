@@ -13,7 +13,10 @@
 		const generation = warehouseSelection.generation;
 		const busy = state.busy;
 		if (!warehouseSelection.initialized || warehouseSelection.warehouseId == null) return;
-		if (generation !== lastWarehouseGeneration) lastWarehouseGeneration = generation;
+		if (generation !== lastWarehouseGeneration) {
+			lastWarehouseGeneration = generation;
+			state.onWarehouseChanged();
+		}
 		if (!busy) void state.refresh();
 	});
 
