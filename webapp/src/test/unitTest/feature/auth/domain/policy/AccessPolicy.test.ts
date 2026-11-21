@@ -161,6 +161,20 @@ describe('explicit app route access policies', () => {
 		expect(canAccessAnyPages('USER', ['inventory'], policy?.kind === 'any' ? policy.pageKeys : [])).toBe(false);
 	});
 
+	it('requires ticket permission plus the sales-orders/fraud grant used by the Flask queue API', () => {
+		const policy = routeAccessPolicyForPath('/picking-tickets/42/print');
+		expect(policy).toEqual({
+			kind: 'allAndAny',
+			allPageKeys: ['picking-tickets'],
+			anyPageKeys: ['sales-orders', 'fraud']
+		});
+		if (policy?.kind !== 'allAndAny') throw new Error('Expected ticket route policy');
+		expect(canAccessPages('USER', ['picking-tickets'], policy.allPageKeys)).toBe(true);
+		expect(canAccessAnyPages('USER', ['picking-tickets'], policy.anyPageKeys)).toBe(false);
+		expect(canAccessAnyPages('USER', ['picking-tickets', 'fraud'], policy.anyPageKeys)).toBe(true);
+		expect(canAccessPages('ADMIN', [], policy.allPageKeys)).toBe(true);
+	});
+
 	it('requires the matching operational grant for each scanner workflow', () => {
 		expect(routeAccessPolicyForPath('/picking')).toEqual({ kind: 'function', functionKey: 'pick' });
 		expect(routeAccessPolicyForPath('/packing/scan')).toEqual({ kind: 'function', functionKey: 'pack' });
