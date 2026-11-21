@@ -12,7 +12,10 @@ describe('R6 picking lifecycle capabilities', () => {
   it('keeps reads available only where Flask exposes the scanner contracts', () => {
     expect(isR6CapabilityAvailable('getPickBatch')).toBe(true);
     expect(isR6CapabilityAvailable('getNextPickTask')).toBe(true);
+    expect(R6_PICKING_CAPABILITIES.listPickTickets).toBe('PARTIAL');
     expect(isR6CapabilityAvailable('listPickTickets')).toBe(false);
+    expect(R6_PICKING_CAPABILITIES.getPickTicket).toBe('NOT_SUPPORTED_BY_SERVER');
+    expect(R6_PICKING_CAPABILITIES.markPickTicketsPrinted).toBe('NOT_SUPPORTED_BY_SERVER');
     expect(isR6CapabilityAvailable('getShipment')).toBe(false);
   });
 
