@@ -8,9 +8,9 @@ export class ListRefundsUseCase {
 
 export class GetRefundDetailUseCase {
   constructor(private repository: RefundsRepository) {}
-  execute(id: number) {
+  execute(id: number, includeRelated = false) {
     if (!Number.isInteger(id) || id <= 0) throw new Error('Identificador de reembolso inválido');
-    return this.repository.detail(id);
+    return this.repository.detail(id, includeRelated);
   }
 }
 
