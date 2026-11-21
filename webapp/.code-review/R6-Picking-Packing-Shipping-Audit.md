@@ -137,14 +137,19 @@ Estas pruebas pertenecen al backend y se documentan como dependencia; no se alte
 - Picking conserva el recorrido de escáner: validar SO/TO por barcode y consultar batch/tarea real. Se retiró de la pantalla operativa la creación manual legacy de batch; las pantallas supervisoras existentes de tickets/batches no se sustituyen ni se duplican.
 - La creación de wave/batch, ConfirmPick, ShortPick y CompletePicking quedan fail-closed. La wave carece de idempotency key/replay general; ConfirmPick y ShortPick tienen carrera de tarea; falta validación atómica del bin; CompletePicking no serializa el agregado batch. No se llama al endpoint inseguro ni se devuelve éxito local.
 - Packing mantiene separado `quantity_picked` de `quantity_packed`. El botón de completar solo se habilita cuando todas las unidades recogidas están verificadas. Si una verificación termina con timeout/error de transporte, se relee el pedido para reconciliar `quantity_packed`; si no se puede releer, se bloquean nuevos scans hasta cargar el pedido de nuevo.
-- Shipping exige tracking y carrier, precarga `ship_method` del pedido o `GROUND` como hace React, y bloquea doble submit local. Flask bloquea la fila SO con `FOR UPDATE` y el estado impide un segundo fulfillment, pero falta GET shipment para recuperar `fulfillment_id` tras timeout.
+- Shipping conserva el detalle real del pedido y precarga `ship_method` o `GROUND`, pero el botón de fulfillment queda fail-closed: Flask no expone validación de paquete físico ni `quantity_packed` en el lookup. Aunque `/fulfill` bloquea la SO con `FOR UPDATE` y el estado impide normalmente un segundo fulfillment, el contrato actual no cumple la aceptación de paquete/conciliación pick-pack-ship ni permite recuperar `fulfillment_id` tras timeout.
 - El DTO de wave validation usa el campo canónico `barcode` aceptado por `WaveValidateRequest` (el alias `so_barcode` permanece en Flask por compatibilidad). `batch_id` se conserva en DTO/mapper de wave, batch y tarea donde el servidor lo devuelve.
 - Flask genera hoy un único paquete sintético al confirmar packing; no hay identidad de paquete, dimensiones ni multi-package packing en el contrato. No se inventó una entidad de paquete persistida en el frontend.
 
 ### 9.3 Pruebas y límites de aceptación
 
-Pruebas frontend añadidas/ampliadas: grants pick/pack/ship; capacidades R6 fail-closed; rechazo de operaciones no soportadas sin llamar repositorios; cambios de warehouse/generation durante carga; reconciliación de cantidades packed tras fallo incierto; no doble submit local de fulfillment; y bloqueo de completar packing antes de verificar cantidades.
+Pruebas frontend añadidas/ampliadas: grants pick/pack/ship; capacidades R6 fail-closed; rechazo de operaciones no soportadas sin llamar repositorios; cambios de warehouse/generation durante carga; reconciliación de cantidades packed tras fallo incierto; bloqueo de shipping cuando falta validación de paquete físico; y bloqueo de completar packing antes de verificar cantidades.
 
 La auditoría identificó la prueba backend existente `api/tests/test_packing.py::test_concurrent_duplicate_pack_scans_cannot_overpack`. No se encontró prueba PostgreSQL equivalente para dos operadores sobre la misma tarea pick/short, complete batch, verify frente a complete packing ni doble fulfillment. Estas pruebas reales son criterio backend pendiente; no se reemplazan por mocks frontend.
 
 **Estado final de esta revisión:** `FRONTEND_HARDENING_IN_PROGRESS / BLOCKED_BACKEND`. La verificación CI del HEAD definitivo sigue pendiente. Flask/Python no se modificó.
+
+
+### 9.4 Gate adicional de shipping
+
+La revisión de `api/routes/shipping.py` confirmó que `FulfillRequest` no acepta `package_id` ni barcode del paquete. Además, `GET /api/shipping/order` consulta `quantity_packed` pero no lo incluye en el JSON de líneas; el fulfillment utiliza `quantity_picked`. Se añadieron `validateShipmentPackage = NOT_SUPPORTED_BY_SERVER` y `shipOrder = PARTIAL` al contrato R6. La pantalla muestra el bloqueo y el estado rechaza la llamada al repositorio; no se ejecuta `/fulfill` hasta que el backend permita verificar paquete y conciliar las cantidades.
