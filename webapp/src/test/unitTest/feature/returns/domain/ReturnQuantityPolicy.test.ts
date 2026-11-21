@@ -22,6 +22,10 @@ describe('ReturnQuantityPolicy', () => {
     ])).toMatchObject({ valid: false });
     expect(validateReturnRequest(available, [{ originalSalesOrderLineId: 11, itemId: 4, quantity: 4 }])).toMatchObject({ valid: false });
     expect(validateReturnRequest(available, [{ originalSalesOrderLineId: 12, itemId: 5, quantity: 1 }])).toMatchObject({ valid: false });
+    expect(validateReturnRequest([...available, { ...available[0], originalSalesOrderLineId: 13 }], [
+      { originalSalesOrderLineId: 11, itemId: 4, quantity: 1 },
+      { originalSalesOrderLineId: 13, itemId: 4, quantity: 1 }
+    ])).toMatchObject({ valid: false });
   });
   it('accepts quantities within the remaining shipped allowance', () => {
     expect(validateReturnRequest(available, [{ originalSalesOrderLineId: 11, itemId: 4, quantity: 3 }])).toEqual({ valid: true });
