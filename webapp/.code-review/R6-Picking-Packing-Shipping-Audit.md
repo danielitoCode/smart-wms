@@ -1,6 +1,6 @@
 # R6 — Picking, Packing y Shipping: auditoría de recorrido
 
-**Estado inicial:** `IN_PROGRESS / BACKEND_CONCURRENCY_GAPS`  
+**Estado de revisión:** `FRONTEND_HARDENING_IN_PROGRESS / BLOCKED_BACKEND`  
 **Rama:** `svelte-webapp`  
 **Alcance:** exclusivamente `webapp/`. Flask/Python se inspecciona como contrato y no se modifica.
 
@@ -95,7 +95,7 @@ Estas pruebas pertenecen al backend y se documentan como dependencia; no se alte
 
 ## 7. Estado de aceptación
 
-**R6 no está cerrada inicialmente.** La paridad de flujo React y los contratos existentes permiten completar trabajo frontend, pero los criterios globales de doble picking, validación server-side del bin, idempotencia de wave y consulta/reconciliación de shipment dependen de cambios Flask. Hasta corregirlos y probarlos con PostgreSQL, el resultado final correcto será `FRONTEND_IMPLEMENTATION_COMPLETE / BLOCKED_BACKEND`, no `VERIFIED` integral.
+**R6 no se declara integralmente cerrada.** El frontend puede quedar protegido y alineado con el flujo operativo, pero el cierre funcional requiere garantías Flask y pruebas PostgreSQL reales para doble picking/short, bin scan, batch completion, replay de wave y reconciliación de shipment. El estado correcto es `FRONTEND_HARDENING_IN_PROGRESS / BLOCKED_BACKEND`, no `VERIFIED` integral.
 
 
 ## 8. Avance frontend R6 (20-11-2026)
@@ -113,3 +113,30 @@ Estas pruebas pertenecen al backend y se documentan como dependencia; no se alte
 **Límites que siguen abiertos:** la UI no puede demostrar doble pick imposible, bin scan atómico, enforcement server-side de allowed_functions, complete batch idempotente ni reconciliación GET shipment. Se requieren correcciones y pruebas Flask/PostgreSQL; Flask no se modificó.
 
 **Estado:** `FRONTEND_HARDENING_IN_PROGRESS / BLOCKED_BACKEND`. Pendiente CI Webapp sobre HEAD final de esta iteración.
+
+
+## 9. Cierre de la revisión frontend (20-11-2026)
+
+### 9.1 Autorización operativa y warehouse context
+
+- Las rutas y el menú de `/picking`, `/packing` y `/shipping` requieren el grant operativo correspondiente de `/api/auth/me`: `pick`, `pack` y `ship`. ADMIN conserva bypass UX.
+- La política de acceso distingue estos grants de las page permissions administrativas. No se crearon CRUD administrativos nuevos para sustituir el flujo de escáner.
+- Los estados de las tres pantallas ligan el detalle/batch al `warehouseId + generation`; descartan respuestas tardías y no permiten mutar un pedido cargado en una generación anterior, aunque se reutilice el mismo ID.
+- Las rutas Flask inspeccionadas solo muestran `require_auth` y validaciones de warehouse para estos endpoints; no se observó enforcement server-side de `allowed_functions`. El guard Svelte es UX, no autorización backend.
+
+### 9.2 Flujo y contratos frontend
+
+- Picking conserva el recorrido de escáner: validar SO/TO por barcode y consultar batch/tarea real. Se retiró de la pantalla operativa la creación manual legacy de batch; las pantallas supervisoras existentes de tickets/batches no se sustituyen ni se duplican.
+- La creación de wave/batch, ConfirmPick, ShortPick y CompletePicking quedan fail-closed. La wave carece de idempotency key/replay general; ConfirmPick y ShortPick tienen carrera de tarea; falta validación atómica del bin; CompletePicking no serializa el agregado batch. No se llama al endpoint inseguro ni se devuelve éxito local.
+- Packing mantiene separado `quantity_picked` de `quantity_packed`. El botón de completar solo se habilita cuando todas las unidades recogidas están verificadas. Si una verificación termina con timeout/error de transporte, se relee el pedido para reconciliar `quantity_packed`; si no se puede releer, se bloquean nuevos scans hasta cargar el pedido de nuevo.
+- Shipping exige tracking y carrier, precarga `ship_method` del pedido o `GROUND` como hace React, y bloquea doble submit local. Flask bloquea la fila SO con `FOR UPDATE` y el estado impide un segundo fulfillment, pero falta GET shipment para recuperar `fulfillment_id` tras timeout.
+- El DTO de wave validation usa el campo canónico `barcode` aceptado por `WaveValidateRequest` (el alias `so_barcode` permanece en Flask por compatibilidad). `batch_id` se conserva en DTO/mapper de wave, batch y tarea donde el servidor lo devuelve.
+- Flask genera hoy un único paquete sintético al confirmar packing; no hay identidad de paquete, dimensiones ni multi-package packing en el contrato. No se inventó una entidad de paquete persistida en el frontend.
+
+### 9.3 Pruebas y límites de aceptación
+
+Pruebas frontend añadidas/ampliadas: grants pick/pack/ship; capacidades R6 fail-closed; rechazo de operaciones no soportadas sin llamar repositorios; cambios de warehouse/generation durante carga; reconciliación de cantidades packed tras fallo incierto; no doble submit local de fulfillment; y bloqueo de completar packing antes de verificar cantidades.
+
+La auditoría identificó la prueba backend existente `api/tests/test_packing.py::test_concurrent_duplicate_pack_scans_cannot_overpack`. No se encontró prueba PostgreSQL equivalente para dos operadores sobre la misma tarea pick/short, complete batch, verify frente a complete packing ni doble fulfillment. Estas pruebas reales son criterio backend pendiente; no se reemplazan por mocks frontend.
+
+**Estado final de esta revisión:** `FRONTEND_HARDENING_IN_PROGRESS / BLOCKED_BACKEND`. La verificación CI del HEAD definitivo sigue pendiente. Flask/Python no se modificó.
