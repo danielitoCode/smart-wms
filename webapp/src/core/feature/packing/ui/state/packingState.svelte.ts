@@ -1,5 +1,6 @@
 import { createPackingDependencies } from '../../di/packing.dependencies';
 import type { PackingOrderDetail } from '../../domain/entity/Packing';
+import { arePackingQuantitiesReconciled } from '../../domain/policy/PackingQuantityPolicy';
 import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
 import { toUserMessage } from '#core/infrastructure/errors/ApiError.ts';
 
@@ -118,7 +119,7 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 
 	async function complete() {
 		if (!detail || busy || loading) return false;
-		if (detail.lines.length === 0 || detail.lines.some(line => !Number.isInteger(line.quantityPicked) || !Number.isInteger(line.quantityPacked) || line.quantityPicked < 0 || line.quantityPacked < 0 || line.quantityPacked !== line.quantityPicked)) {
+		if (!arePackingQuantitiesReconciled(detail.lines)) {
 			error = 'No se puede completar el empaque: quedan unidades recogidas sin verificar.';
 			return false;
 		}
@@ -169,7 +170,7 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 		get loading() { return loading; }, get busy() { return busy; },
 		get error() { return error; }, get info() { return info; },
 		get warehouseId() { return warehouseSelection.warehouseId; },
-		get allVerified() { return !!detail && detail.lines.length > 0 && detail.lines.every(line => Number.isInteger(line.quantityPicked) && Number.isInteger(line.quantityPacked) && line.quantityPicked >= 0 && line.quantityPacked === line.quantityPicked); },
+		get allVerified() { return !!detail && arePackingQuantitiesReconciled(detail.lines); },
 		get reconciliationRequired() { return reconciliationRequired; },
 		setBarcode: (v: string) => barcode = v,
 		setScannedBarcode: (v: string) => scannedBarcode = v,
