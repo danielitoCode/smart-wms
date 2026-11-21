@@ -12,4 +12,15 @@ describe('PackingMapper Flask response contracts', () => {
   expect(result.lines[0]).toMatchObject({ soLineId: 31, upc: 'UPC-9', quantityPicked: 3, quantityPacked: 2, packVerified: false });
   expect(result).toMatchObject({ calculatedWeightLbs: 4.5, totalItems: 3, itemsVerified: 0 });
  });
+ it('preserves the verify response progress instead of reducing it to a message', () => {
+  expect(PackingMapper.toVerifyResult({
+   message: 'Verified',
+   item: { sku: 'SKU-9', item_name: 'Item 9', quantity_verified: 2, line_complete: true },
+   order_progress: { total_lines: 3, lines_verified: 2, all_verified: false }
+  })).toEqual({
+   message: 'Verified',
+   item: { sku: 'SKU-9', itemName: 'Item 9', quantityVerified: 2, lineComplete: true },
+   orderProgress: { totalLines: 3, linesVerified: 2, allVerified: false }
+  });
+ });
 });
