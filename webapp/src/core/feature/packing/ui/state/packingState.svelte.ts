@@ -77,7 +77,7 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 				detail = refreshed;
 				reconciliationRequired = false;
 				scannedBarcode = ''; quantity = 1;
-			} catch (refreshError) {
+			} catch {
 				if (isCurrentContext(warehouseId, generation) && requestId === requestEpoch) {
 					detail = null;
 					reconciliationRequired = true;
@@ -122,7 +122,7 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 			info = isCurrentContext(warehouseId, generation) ? result.message : `Empaque completado en el almacén #${warehouseId}. El contexto cambió.`;
 			detail = null;
 			return true;
-		} catch (err) { error = toUserMessage(err, 'No se pudo completar el packing'); return false; }
+		} catch (err) { if (isCurrentContext(warehouseId, generation)) error = toUserMessage(err, 'No se pudo completar el packing'); return false; }
 		finally { busy = false; }
 	}
 
