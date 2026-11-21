@@ -43,7 +43,8 @@ export function createReturnsState() {
     const generation = ++detailGeneration;
     loading = true; error = null; selected = null; bins = [];
     try {
-      const [result, warehouseOptions] = await Promise.all([d.detail.execute(id, includeReceipts), d.warehouses.execute()]);
+      const result = await d.detail.execute(id, includeReceipts);
+      const warehouseOptions = includeReceipts ? await d.warehouses.execute() : [];
       if (generation !== detailGeneration) return;
       selected = result;
       warehouses = warehouseOptions;
@@ -81,17 +82,17 @@ export function createReturnsState() {
   async function createReturn(lines: RequestedReturnLine[], memo: string) {
     if (!returnableOrder || saving) return false;
     saving = true; error = null;
+    const sourceId = returnableOrder.salesOrderId;
     try {
-      const result = await d.create.execute(returnableOrder.salesOrderId, { lines, memo }, returnableOrder);
+      const result = await d.create.execute(sourceId, { lines, memo }, returnableOrder);
       returnableOrder = null;
       await load();
-      await detail(result.so_id);
+      await detail(result.so_id, true);
       return true;
     } catch (cause) {
       error = toUserMessage(cause, 'No se pudo crear la autorización de devolución');
       // The server serializes the shipped-quantity allowance. Refresh it after
       // a rejected request so a concurrent RMA cannot leave a stale allowance.
-      const sourceId = returnableOrder.salesOrderId;
       try { returnableOrder = await d.returnableOrder.execute(sourceId); } catch { returnableOrder = null; }
       return false;
     } finally { saving = false; }
@@ -119,18 +120,18 @@ export function createReturnsState() {
     finally { saving = false; }
   }
 
-  async function receive(id: number, value: { itemId: number; quantity: number; warehouseId: number; binId: number; notes?: string | null; idempotencyKey: string }) {
+  async function receive(id: number, value: { itemId: number; quantity: number; warehouseId: number; binId: number; notes?: string | null; idempotencyKey: string }, includeReceipts = false) {
     if (saving) return false;
     saving = true; error = null;
     try {
       await d.receive.execute(id, value);
-      await detail(id);
+      await detail(id, includeReceipts);
       await load();
       return true;
     } catch (cause) {
       // A timeout may happen after the server committed the receipt. Re-read
       // the RMA before allowing a retry; the UI retains the same idempotency key.
-      try { await detail(id); } catch { /* retain the original mutation error */ }
+      try { await detail(id, includeReceipts); } catch { /* retain the original mutation error */ }
       error = toUserMessage(cause, 'No se pudo confirmar la recepción; se ha intentado reconciliar el estado del RMA');
       return false;
     } finally { saving = false; }
