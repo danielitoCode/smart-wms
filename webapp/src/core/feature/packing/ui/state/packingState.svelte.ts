@@ -80,10 +80,10 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 
 	async function complete() {
 		if (!detail || busy || loading) return false;
- 		busy = true; error = null; info = null;
-		const warehouseId = activeWarehouseId();
+		busy = true; error = null; info = null;
 		const generation = warehouseSelection.generation;
 		try {
+			const warehouseId = activeWarehouseId();
 			assertDetailWarehouse();
 			const result = await deps.complete.execute(detail.salesOrder.soId, warehouseId);
 			info = isCurrentContext(warehouseId, generation) ? result.message : `Empaque completado en el almacén #${warehouseId}. El contexto cambió.`;
