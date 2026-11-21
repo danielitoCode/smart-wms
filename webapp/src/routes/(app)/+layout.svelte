@@ -104,12 +104,22 @@
 		if (routeAccess.kind === 'all') {
 			return canAccessPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], routeAccess.pageKeys);
 		}
+		if (routeAccess.kind === 'allAndAny') {
+			const role = guard.user?.role ?? 'USER';
+			const allowed = guard.user?.allowedPages ?? [];
+			return canAccessPages(role, allowed, routeAccess.allPageKeys) && canAccessAnyPages(role, allowed, routeAccess.anyPageKeys);
+		}
 		return canAccessAnyPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], routeAccess.pageKeys);
 	});
 
 	function canSeeNavItem(item: NavItem) {
 		if (item.functionKey) return canAccessOperationalFunction(guard.user?.role ?? 'USER', guard.user?.allowedFunctions ?? [], item.functionKey);
-		if (item.pageKey) return canAccessPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], [item.pageKey]);
+		if (item.pageKey) {
+			const role = guard.user?.role ?? 'USER';
+			const allowed = guard.user?.allowedPages ?? [];
+			if (item.href === '/picking-tickets') return canAccessPages(role, allowed, ['picking-tickets']) && canAccessAnyPages(role, allowed, ['sales-orders', 'fraud']);
+			return canAccessPages(role, allowed, [item.pageKey]);
+		}
 		if (item.href === '/data') {
 			return canAccessAnyPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], [
 				'warehouses', 'bins', 'zones', 'preferred-bins'
