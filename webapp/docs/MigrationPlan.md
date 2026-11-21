@@ -980,3 +980,14 @@ Se completó un bloque adicional frontend:
 - Se añadieron pruebas unitarias de mapper/use case y política de conciliación.
 
 Esto cierra el hardening frontend de este bloque a nivel de implementación, no la aceptación integral R6. Siguen bloqueados por contrato backend el doble picking/short atómico, validación de bin, finalización idempotente del batch, replay de wave y shipment físico/consultable. Las pruebas PostgreSQL multi-conexión faltantes pertenecen al backend y no se simulan con tests frontend. CI debe validarse sobre el HEAD definitivo. Flask/Python no fue modificado.
+
+
+### R6 — cierre de contrato Shipping y estado de regresión (21-11-2026)
+
+Shipping conserva el contrato real de Flask: consulta de pedido por barcode y warehouse; líneas con quantity_ordered y quantity_picked; fulfillment con so_id, warehouse_id, tracking_number, carrier y ship_method opcional. El backend no devuelve quantity_packed, no expone GET shipment y no acepta identidad/barcode de paquete físico. No se agregan DTO, rutas ni estados inventados para cubrir esas ausencias.
+
+El gate de validateShipmentPackage y shipOrder se comprueba en UI/state y en el límite de Application (FulfillShipmentUseCase): un llamado directo tampoco puede enviar el POST mientras la validación física de paquete siga sin soporte. La consulta sigue protegida por warehouseId + generation; respuestas obsoletas y contexto de almacén cambiado se descartan. Se añaden pruebas para la barrera de Application y se mantienen pruebas de DTO/mappers/datasource.
+
+**CI anterior a este bloque:** Webapp CI sobre aaae5009bd4cb6190b0951b50f227e2a4544d4d7 falló en typecheck (svelte-check: 1 error, 100 warnings), por lo que build y suites se omitieron. Lockfile, Dependency Audit y gitleaks terminaron correctamente. Este resultado no certifica regresión.
+
+**Criterio de aceptación:** R6 sigue FRONTEND_IMPLEMENTATION_PARTIAL / BLOCKED_BACKEND hasta que el HEAD final pase typecheck, build y las suites frontend Domain, Application, Infrastructure, UI, i18n, Integration y Full regression. Las pruebas reales de concurrencia PostgreSQL (doble pick/short, packing complete frente a verify, doble fulfillment y replay tras timeout) son dependencias backend; no se simulan ni se ejecutan desde esta migración. Flask/Python no se modifica.
