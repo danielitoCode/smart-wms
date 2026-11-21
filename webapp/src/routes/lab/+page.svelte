@@ -66,7 +66,8 @@
 		{ id: 'tweet-card', name: 'TweetCard', status: 'ready', href: '/lab/tweet-card', description: 'Tarjeta de post X: header, entidades, media y skeleton (syndication + demo).' },
 		{ id: 'dotted-map', name: 'DottedMap', status: 'ready', href: '/lab/dotted-map', description: 'Mapa mundial de puntos SVG con markers pulse (svg-dotted-map).' },
 		{ id: 'iphone', name: 'Iphone', status: 'ready', href: '/lab/iphone', description: 'Marco SVG de iPhone con pantalla img/video y dynamic island.' },
-		{ id: 'android', name: 'Android', status: 'ready', href: '/lab/android', description: 'Marco SVG de teléfono Android con cámara, botones y media.' }
+		{ id: 'android', name: 'Android', status: 'ready', href: '/lab/android', description: 'Marco SVG de teléfono Android con cámara, botones y media.' },
+		{ id: 'interactive-grid', name: 'InteractiveGridPattern', status: 'ready', href: '/lab/interactive-grid', description: 'Rejilla SVG interactiva: celdas con hover fill (fade-in rápido / fade-out lento).' }
 	] as const;
 </script>
 
