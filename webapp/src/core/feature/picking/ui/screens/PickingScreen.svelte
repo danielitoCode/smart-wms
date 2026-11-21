@@ -48,6 +48,9 @@
 	</header>
 
 	<p class="meta">Almacén activo: #{warehouseSelection.warehouseId ?? '—'}</p>
+	{#if !state.pickingExecutionAvailable}
+		<UiStatePanel kind="error" title={i18n.t('Picking temporalmente bloqueado')} message={i18n.t('El servidor todavía no garantiza la confirmación atómica entre operadores ni la validación del bin. Puedes validar pedidos y consultar la tarea, pero no confirmar recogidas, faltantes ni completar el lote hasta que Flask incorpore esas garantías.')} />
+	{/if}
 
 	<section class="panel">
 		<h2>{i18n.t('Validar pedido para picking')}</h2>
@@ -107,48 +110,12 @@
 		{/if}
 	</section>
 
-	<section class="panel">
-		<h2>{i18n.t('Crear lote de trabajo')}</h2>
-		<p class="meta">{i18n.t('Crea un lote a partir de los números o códigos de los pedidos.')}</p>
-		<form class="row" onsubmit={onCreateBatch}>
-			<input
-				type="text"
-				class="grow"
-				placeholder={i18n.t('Números o códigos de pedido (ej. SO-001, SO-002)')}
-				value={state.batchIdentifiersInput}
-				oninput={(e) => state.setBatchIdentifiersInput(e.currentTarget.value)}
-				disabled={state.busy}
-				required
-			/>
-			<button type="submit" disabled={state.busy || warehouseSelection.warehouseId == null || !state.batchIdentifiersInput.trim()}>
-				{i18n.t("Crear lote")}
-			</button>
-		</form>
-		{#if state.createBatchResult}
-			<p class="ok">
-				{state.createBatchResult.batchNumber} (#{state.createBatchResult.batchId})
-				· pedidos: {state.createBatchResult.totalOrders}
-				· tareas: {state.createBatchResult.totalItems}
-			</p>
-			{#if state.createBatchResult.orders.length}
-				<ul class="totes">
-					{#each state.createBatchResult.orders as o, i (o.soNumber ?? i)}
-						<li>
-							{o.soNumber ?? o.soId}
-							{#if o.toteNumber} · contenedor {o.toteNumber}{/if}
-						</li>
-					{/each}
-				</ul>
-			{/if}
-		{/if}
-	</section>
-
 	<div class="toolbar">
 		<button type="button" onclick={() => state.refresh()} disabled={state.loading || state.busy || warehouseSelection.warehouseId == null}>
 			{state.loading ? i18n.t('Cargando…') : i18n.t('Actualizar lote')}
 		</button>
 		{#if state.batch?.active && state.batch.batchId}
-			<button type="button" class="secondary" onclick={() => state.completeBatch()} disabled={state.busy || warehouseSelection.warehouseId == null}>
+			<button type="button" class="secondary" onclick={() => state.completeBatch()} disabled={state.busy || warehouseSelection.warehouseId == null || !state.pickingExecutionAvailable}>
 				{i18n.t("Completar lote")}
 			</button>
 		{/if}
@@ -204,9 +171,9 @@
 					/>
 				</label>
 				<div class="actions">
-					<button type="submit" class="accent" disabled={state.busy || warehouseSelection.warehouseId == null}>{i18n.t('Confirmar recogida')}</button>
+					<button type="submit" class="accent" disabled={state.busy || warehouseSelection.warehouseId == null || !state.pickingExecutionAvailable}>{i18n.t('Confirmar recogida')}</button>
 					{#if state.batch?.kind !== 'TO'}
-						<button type="button" class="secondary" onclick={() => state.shortPick()} disabled={state.busy || warehouseSelection.warehouseId == null}>
+						<button type="button" class="secondary" onclick={() => state.shortPick()} disabled={state.busy || warehouseSelection.warehouseId == null || !state.pickingExecutionAvailable}>
 							{i18n.t("Indicar faltante (0)")}
 						</button>
 					{/if}
