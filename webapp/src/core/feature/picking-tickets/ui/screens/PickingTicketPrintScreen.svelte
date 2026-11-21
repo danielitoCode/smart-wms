@@ -1,6 +1,6 @@
 <script lang="ts">
 	import UiStatePanel from '#lib/components/UiStatePanel.svelte';
-  import { onMount, getContext } from 'svelte';
+  import { getContext } from 'svelte';
   import { authSession } from '#core/infrastructure/auth/AuthSession.ts';
   import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
   import { canViewPickingTicketInWarehouse } from '../../domain/policy/PickingTicketWarehouseScopePolicy';
@@ -19,16 +19,17 @@
   let requestEpoch = 0;
   let ticketWarehouseId: number | null = null;
   let ticketGeneration = -1;
-  let observedGeneration = warehouse.generation;
+  let observedGeneration = -1;
   $effect(() => {
+    const initialized = warehouse.initialized;
     const generation = warehouse.generation;
-    if (generation === observedGeneration) return;
+    if (!initialized || generation === observedGeneration) return;
     observedGeneration = generation;
     requestEpoch++;
     ticket = null; ticketWarehouseId = null; ticketGeneration = -1;
     loading = false; error = ''; markFailed = false;
+    void load();
   });
-  onMount(() => { void load(); });
   async function load() {
     const epoch = ++requestEpoch;
     const generation = warehouse.generation;
