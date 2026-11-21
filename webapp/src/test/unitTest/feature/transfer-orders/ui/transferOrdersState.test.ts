@@ -12,7 +12,7 @@ function dependencies() {
     pickerDetail: { execute: vi.fn().mockResolvedValue({}) },
     remove: { execute: vi.fn().mockResolvedValue(undefined) },
     create: { execute: vi.fn() },
-    warehouses: { execute: vi.fn().mockResolvedValue([]) },
+    warehouses: { execute: vi.fn().mockResolvedValue([1, 2, 4].map(warehouseId => ({ warehouseId, warehouseCode: 'WH-' + warehouseId, warehouseName: 'Warehouse ' + warehouseId, active: true }))) },
     startPicking: { execute: vi.fn() },
     submitPickerResult: { execute: vi.fn() },
     approve: { execute: vi.fn() },
@@ -23,92 +23,58 @@ function dependencies() {
 }
 
 describe('transfer orders UI state', () => {
-  it('keeps the selected order visible when delete fails', async () => {
+  it('fails closed for delete, cancel, picking and approval while the staged lifecycle is unsupported', async () => {
     const deps = dependencies();
     const state = createTransferOrdersState(deps as never);
     await state.detail(12);
-    deps.remove.execute.mockRejectedValueOnce(new Error('conflict'));
+
     await expect(state.remove(12)).resolves.toBe(false);
-    expect(state.selected?.transferOrderId).toBe(12);
-    expect(state.error).toContain('conflict');
-  });
-
-  it('clears the selected order only after a successful delete', async () => {
-    const deps = dependencies();
-    const state = createTransferOrdersState(deps as never);
-    await state.detail(12);
-    await expect(state.remove(12)).resolves.toBe(true);
-    expect(state.selected).toBeNull();
-    expect(deps.remove.execute).toHaveBeenCalledWith(12);
-    expect(deps.list.execute).toHaveBeenCalledTimes(1);
-  });
-
-  it('surfaces HTTP 409 conflicts without refreshing away the current detail', async () => {
-    const deps = dependencies();
-    const state = createTransferOrdersState(deps as never);
-    await state.detail(12);
-    deps.cancel.execute.mockRejectedValueOnce(new ApiError(409, 'Transfer already has a pending approval', 'conflict'));
     await expect(state.cancel(12)).resolves.toBe(false);
-    expect(state.error).toBe('Transfer already has a pending approval');
-    expect(state.selected?.transferOrderId).toBe(12);
-    expect(deps.detail.execute).toHaveBeenCalledTimes(1);
-  });
-
-  it('maps HTTP 422 row validation details from a failed import', async () => {
-    const deps = dependencies();
-    const state = createTransferOrdersState(deps as never);
-    deps.create.execute.mockRejectedValueOnce(new ApiError(422, 'Invalid import rows', 'unprocessable', {
-      rows: [{ row_index: 2, error_kind: 'quantity_exceeds_limit', sku: 'SKU-7' }]
-    }));
-    await expect(state.create({
-      sourceWarehouseCode: 'WH-A', destinationWarehouseCode: 'WH-B',
-      notes: null, records: [{ sku: 'SKU-7', quantity: 1000001 }]
-    })).resolves.toBe(false);
-    expect(state.error).toBe('Invalid import rows');
-    expect(state.importErrors).toEqual([{ rowIndex: 2, errorKind: 'quantity_exceeds_limit', sku: 'SKU-7' }]);
-    expect(deps.list.execute).not.toHaveBeenCalled();
-  });
-
-  it('dispatches each supported transfer operation and refreshes the selected order', async () => {
-    const deps = dependencies();
-    deps.startPicking.execute.mockResolvedValue({ batchNumber: 'B-3', tasksCreated: 2 });
-    deps.submitPickerResult.execute.mockResolvedValue({ approvalId: 8, lineCount: 1 });
-    const state = createTransferOrdersState(deps as never);
-    await state.detail(12);
-
-    await expect(state.startPicking(12)).resolves.toBe(true);
-    await expect(state.submitPickerResult(12)).resolves.toBe(true);
-    await expect(state.approve(12, 8)).resolves.toBe(true);
-    await expect(state.reject(12, 8, 'damaged')).resolves.toBe(true);
-    await expect(state.shortClose(12, 31)).resolves.toBe(true);
-    await expect(state.cancel(12)).resolves.toBe(true);
-
-    expect(deps.startPicking.execute).toHaveBeenCalledWith(12);
-    expect(deps.submitPickerResult.execute).toHaveBeenCalledWith(12);
-    expect(deps.approve.execute).toHaveBeenCalledWith(12, 8);
-    expect(deps.reject.execute).toHaveBeenCalledWith(12, 8, 'damaged');
-    expect(deps.shortClose.execute).toHaveBeenCalledWith(12, 31);
-    expect(deps.cancel.execute).toHaveBeenCalledWith(12);
-    expect(deps.detail.execute).toHaveBeenCalledTimes(7);
-  });
-
-  it('rejects a repeated mutation while the first request is still pending', async () => {
-    const deps = dependencies();
-    let release!: () => void;
-    const pending = new Promise<{ batchNumber: string; tasksCreated: number }>(resolve => {
-      release = () => resolve({ batchNumber: 'B-3', tasksCreated: 1 });
-    });
-    deps.startPicking.execute.mockImplementationOnce(() => pending);
-    const state = createTransferOrdersState(deps as never);
-
-    const first = state.startPicking(12);
-    expect(state.saving).toBe(true);
     await expect(state.startPicking(12)).resolves.toBe(false);
-    expect(deps.startPicking.execute).toHaveBeenCalledTimes(1);
+    await expect(state.submitPickerResult(12)).resolves.toBe(false);
+    await expect(state.approve(12, 8)).resolves.toBe(false);
+    await expect(state.reject(12, 8, 'damaged')).resolves.toBe(false);
+    await expect(state.shortClose(12, 31)).resolves.toBe(false);
+    await expect(state.create({
+      sourceWarehouseCode: 'WH-2', destinationWarehouseCode: 'WH-4',
+      notes: null, records: [{ sku: 'SKU-7', quantity: 1 }]
+    })).resolves.toBe(false);
 
-    release();
-    await expect(first).resolves.toBe(true);
-    expect(state.saving).toBe(false);
+    expect(state.lifecycleAvailable).toBe(false);
+    expect(deps.remove.execute).not.toHaveBeenCalled();
+    expect(deps.cancel.execute).not.toHaveBeenCalled();
+    expect(deps.startPicking.execute).not.toHaveBeenCalled();
+    expect(deps.submitPickerResult.execute).not.toHaveBeenCalled();
+    expect(deps.approve.execute).not.toHaveBeenCalled();
+    expect(deps.reject.execute).not.toHaveBeenCalled();
+    expect(deps.shortClose.execute).not.toHaveBeenCalled();
+    expect(deps.create.execute).not.toHaveBeenCalled();
+    expect(state.error).toContain('no está disponible');
+  });
+
+  it('filters list results unless both warehouses are in the authorized warehouse list', async () => {
+    const deps = dependencies();
+    deps.list.execute.mockResolvedValue({
+      orders: [
+        { transferOrderId: 1, sourceWarehouseId: 2, destinationWarehouseId: 4 },
+        { transferOrderId: 2, sourceWarehouseId: 2, destinationWarehouseId: 9 }
+      ], total: 2, page: 1, pages: 1, perPage: 50
+    });
+    const state = createTransferOrdersState(deps as never);
+    await state.load();
+    expect(state.rows.map(row => row.transferOrderId)).toEqual([1]);
+  });
+
+  it('rejects a detail unless the user can access both warehouses', async () => {
+    const deps = dependencies();
+    deps.detail.execute.mockResolvedValue({
+      transferOrderId: 99, transferOrderNumber: 'TO-99', status: 'OPEN',
+      lines: [], approvals: [], sourceWarehouseId: 2, destinationWarehouseId: 9
+    });
+    const state = createTransferOrdersState(deps as never);
+    await state.detail(99);
+    expect(state.selected).toBeNull();
+    expect(state.error).toContain('No tienes acceso');
   });
 
 });
