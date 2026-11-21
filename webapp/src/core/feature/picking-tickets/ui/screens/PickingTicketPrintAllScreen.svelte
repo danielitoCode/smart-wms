@@ -10,7 +10,7 @@
   import { groupOrdersByAddress } from '../../domain/policy/pickingGroups';
   const deps = createPickingTicketsDependencies();
   const queue = createPickingQueueDependencies();
-  const warehouse = getContext<{ warehouseId: number | null; generation?: number }>('warehouseSelection');
+  const warehouse = getContext<{ warehouseId: number | null; generation?: number; initialized: boolean }>('warehouseSelection');
   let { salesOrderIds, status, warehouseId, combine = false }: { salesOrderIds: number[]; status: string; warehouseId?: number; combine?: boolean } = $props();
   let tickets = $state<PickingTicket[]>([]);
   let loading = $state(true);
