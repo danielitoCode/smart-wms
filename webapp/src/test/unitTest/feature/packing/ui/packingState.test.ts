@@ -5,11 +5,11 @@ const deps = vi.hoisted(() => ({
 vi.mock('../../../../../core/feature/packing/di/packing.dependencies', () => ({ createPackingDependencies: () => deps }));
 import { createPackingState } from '../../../../../core/feature/packing/ui/state/packingState.svelte';
 
-const context = { warehouseId: 7, requireWarehouseId: () => context.warehouseId };
+const context = { warehouseId: 7, generation: 1, requireWarehouseId: () => context.warehouseId };
 const detail = { salesOrder: { soId: 3, soNumber: 'SO-3', status: 'PICKED', warehouseId: 7 }, lines: [], calculatedWeightLbs: 0, totalItems: 0, itemsVerified: 0 };
 
 describe('Packing scanner state warehouse context', () => {
- beforeEach(() => { vi.clearAllMocks(); deps.loadOrder.execute.mockResolvedValue(detail); deps.verify.execute.mockResolvedValue({ message: 'Item verified' }); deps.complete.execute.mockResolvedValue({ message: 'Packed' }); });
+ beforeEach(() => { context.warehouseId = 7; context.generation = 1; vi.clearAllMocks(); deps.loadOrder.execute.mockResolvedValue(detail); deps.verify.execute.mockResolvedValue({ message: 'Item verified' }); deps.complete.execute.mockResolvedValue({ message: 'Packed' }); });
  it('loads order using selected warehouse and verifies scan', async () => {
   const state = createPackingState(context as never);
   state.setBarcode(' SO-3 ');
@@ -22,14 +22,37 @@ describe('Packing scanner state warehouse context', () => {
  it('rejects a stale order after warehouse context changes', async () => {
   const state = createPackingState(context as never);
   state.setBarcode('SO-3'); await state.load();
-  context.warehouseId = 8;
+  context.warehouseId = 8; context.generation++;
   expect(await state.verify()).toBe(false);
   expect(deps.verify.execute).not.toHaveBeenCalled();
  });
  it('clears loaded order when warehouse selection changes', async () => {
   const state = createPackingState(context as never);
   state.setBarcode('SO-3'); await state.load();
+  context.warehouseId = 8; context.generation++;
   state.onWarehouseChanged();
   expect(state.detail).toBeNull();
  });
+ it('does not restore an order when a load resolves after warehouse context changed', async () => {
+  let resolveOrder!: (value: typeof detail) => void;
+  deps.loadOrder.execute.mockReturnValueOnce(new Promise(resolve => { resolveOrder = resolve; }));
+  const state = createPackingState(context as never);
+  state.setBarcode('SO-3');
+  const pending = state.load();
+  context.warehouseId = 8; context.generation++;
+  state.onWarehouseChanged();
+  resolveOrder(detail);
+  expect(await pending).toBe(false);
+  expect(state.detail).toBeNull();
+ });
+
+ it('does not allow packing completion until every picked unit is verified', async () => {
+  deps.loadOrder.execute.mockResolvedValueOnce({ ...detail, lines: [{ sku: 'SKU-1', quantityPicked: 2, quantityPacked: 1 }] });
+  const state = createPackingState(context as never);
+  state.setBarcode('SO-3'); await state.load();
+  expect(state.allVerified).toBe(false);
+  expect(await state.complete()).toBe(false);
+  expect(deps.complete.execute).not.toHaveBeenCalled();
+ });
+
 });
