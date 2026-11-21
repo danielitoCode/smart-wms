@@ -1,17 +1,13 @@
+/**
+ * Compatibilidad con el API histórico `pushToast(message, tone)`.
+ * Delega en el sistema de toasts squircle (`lib/components/toast`).
+ */
+import {
+	toast as rareToast,
+	type ToastOptions
+} from '../components/toast/toast.store';
+
 export type ToastTone = 'info' | 'success' | 'warning' | 'error';
-
-export type ToastItem = {
-	id: number;
-	message: string;
-	tone: ToastTone;
-	/** Optional short title (defaults from tone). */
-	title?: string;
-	createdAt: number;
-};
-
-let seq = 0;
-let items = $state<ToastItem[]>([]);
-const timers = new Map<number, ReturnType<typeof setTimeout>>();
 
 const TONE_TITLE: Record<ToastTone, string> = {
 	info: 'Aviso',
@@ -20,22 +16,9 @@ const TONE_TITLE: Record<ToastTone, string> = {
 	error: 'Error'
 };
 
-function clearTimer(id: number) {
-	const t = timers.get(id);
-	if (t) {
-		clearTimeout(t);
-		timers.delete(id);
-	}
-}
-
-export function dismissToast(id: number) {
-	clearTimer(id);
-	items = items.filter((t) => t.id !== id);
-}
-
 /**
- * Toast global de feedback breve (éxito / error de acción).
- * Auto-cierre ~4.2s. Respetar reduced-motion vía CSS.
+ * Feedback breve global (éxito / error de acción).
+ * Auto-cierre por defecto ~4.2s.
  */
 export function pushToast(
 	message: string,
@@ -43,31 +26,38 @@ export function pushToast(
 	durationMs = 4200,
 	title?: string
 ) {
-	const id = ++seq;
-	const item: ToastItem = {
-		id,
-		message,
-		tone,
-		title: title?.trim() || TONE_TITLE[tone],
-		createdAt: Date.now()
+	const heading = title?.trim() || TONE_TITLE[tone];
+	const options: ToastOptions = {
+		description: message,
+		duration: durationMs
 	};
-	// Newest first (stack front)
-	items = [item, ...items].slice(0, 6);
-	if (durationMs > 0 && typeof window !== 'undefined') {
-		const timer = setTimeout(() => dismissToast(id), durationMs);
-		timers.set(id, timer);
+
+	switch (tone) {
+		case 'success':
+			return rareToast.success(heading, options);
+		case 'error':
+			return rareToast.error(heading, options);
+		case 'warning':
+			return rareToast.warning(heading, options);
+		case 'info':
+		default:
+			return rareToast.info(heading, options);
 	}
-	return id;
 }
 
-export function getToasts(): ToastItem[] {
-	return items;
+export function dismissToast(id?: string | number) {
+	rareToast.dismiss(id);
 }
 
-/** Acceso reactivo para el host. */
+/** Acceso al API nuevo (success / error / promise / …). */
+export const toast = rareToast;
+
+/**
+ * @deprecated Usar `toast` o `pushToast`. Conservado por si algún host legado lee `.items`.
+ */
 export const toastStore = {
 	get items() {
-		return items;
+		return [];
 	},
 	push: pushToast,
 	dismiss: dismissToast

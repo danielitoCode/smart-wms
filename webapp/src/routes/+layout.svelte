@@ -3,7 +3,7 @@
 	import '../styles/app.css';
 	import { createI18nState } from '../lib/i18n/i18n.svelte';
 	import { createThemeState } from '../lib/ui/theme.svelte';
-	import UiToastHost from '../lib/components/UiToastHost.svelte';
+	import { Toaster } from '../lib/components/toast';
 
 	const i18n = createI18nState();
 	const theme = createThemeState();
@@ -19,4 +19,4 @@
 </script>
 
 {@render children()}
-<UiToastHost />
+<Toaster position="bottom-right" />
