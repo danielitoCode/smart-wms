@@ -6,6 +6,7 @@ import type { Warehouse, OperationalBinSearchResult } from '../../../warehouses/
 import type { Item } from '../../../items/domain/entity/Item';
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
 import { TransferLifecycleNotSupportedError } from '../../../transfer-orders/domain/contract/TransferLifecycleContract';
+import { authSession } from '#core/infrastructure/auth/AuthSession.ts';
 
 const dependencies = createInterWarehouseTransfersDependencies();
 const warehousesDependencies = createWarehousesDependencies();
@@ -44,7 +45,8 @@ export function createInterWarehouseTransfersState() {
         warehouses.length ? Promise.resolve(warehouses) : warehousesDependencies.listWarehouses.execute()
       ]);
       if (epoch !== listEpoch) return;
-      warehouses = nextWarehouses.filter(row => row.active);
+      const sessionUser = authSession.getUser();
+      warehouses = nextWarehouses.filter(row => row.active && (sessionUser?.role === 'ADMIN' || (sessionUser?.warehouseIds ?? []).includes(row.id)));
       const authorizedIds = new Set(warehouses.map(warehouse => warehouse.id));
       rows = nextRows.filter(row => authorizedIds.has(row.sourceWarehouseId) && authorizedIds.has(row.destinationWarehouseId));
     } catch (cause) {
