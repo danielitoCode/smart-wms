@@ -577,6 +577,7 @@
   </PageHeader>
 
   {#if vm.error}<UiBanner tone="error" message={vm.error} />{/if}
+  {#if vm.refreshError}<UiBanner tone="warning" message={vm.refreshError} />{/if}
   {#if feedback}<UiBanner tone="success" message={feedback} />{/if}
 
   <form class="filters" onsubmit={(event) => { event.preventDefault(); void vm.load(); }}>
