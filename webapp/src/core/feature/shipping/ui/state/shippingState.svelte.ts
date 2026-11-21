@@ -2,6 +2,7 @@ import { createShippingDependencies } from '../../di/shipping.dependencies';
 import type { FulfillShipmentResult, ShippingOrderDetail } from '../../domain/entity/Shipping';
 import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
+import { isR6ShippingExecutionAvailable, R6OperationNotSupportedError } from '../../../picking/domain/contract/R6PickingLifecycleContract';
 
 const deps = createShippingDependencies();
 
@@ -58,6 +59,7 @@ export function createShippingState(warehouseSelection: WarehouseSelectionState)
 	}
 
 	async function fulfill() {
+		if (!isR6ShippingExecutionAvailable()) { error = new R6OperationNotSupportedError('validateShipmentPackage').message; return false; }
 		if (!detail || busy || loading) return false;
 		if (!trackingNumber.trim()) { error = 'tracking_number es obligatorio'; return false; }
 		if (!carrier.trim()) { error = 'carrier es obligatorio'; return false; }
@@ -101,6 +103,7 @@ export function createShippingState(warehouseSelection: WarehouseSelectionState)
 		get shipMethod() { return shipMethod; }, get loading() { return loading; },
 		get busy() { return busy; }, get error() { return error; },
 		get lastResult() { return lastResult; }, get info() { return info; }, get warehouseId() { return warehouseSelection.warehouseId; },
+		get shippingExecutionAvailable() { return isR6ShippingExecutionAvailable(); },
 		setBarcode: (v: string) => barcode = v,
 		setTrackingNumber: (v: string) => trackingNumber = v,
 		setCarrier: (v: string) => carrier = v,
