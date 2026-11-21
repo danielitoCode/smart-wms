@@ -2,6 +2,16 @@ import type { OverrideKey, PageKey, PermissionCapability } from './PermissionCat
 import { ALL_OVERRIDE_KEYS } from './PermissionCatalog';
 
 export type AccessRole = 'ADMIN' | 'USER' | string;
+export type OperationalFunctionKey = 'pick' | 'pack' | 'ship';
+
+/** UX gate for the mobile scanner grants returned by /api/auth/me. */
+export function canAccessOperationalFunction(
+	role: AccessRole,
+	allowedFunctions: readonly string[],
+	functionKey: OperationalFunctionKey
+): boolean {
+	return role === 'ADMIN' || allowedFunctions.includes(functionKey);
+}
 
 export function canAccessPages(
 	role: AccessRole,
@@ -183,6 +193,7 @@ export { ALL_OVERRIDE_KEYS };
  */
 export type RouteAccessPolicy =
 	| { kind: 'authenticated' }
+	| { kind: 'function'; functionKey: OperationalFunctionKey }
 	| { kind: 'all'; pageKeys: readonly string[] }
 	| { kind: 'any'; pageKeys: readonly string[] };
 
@@ -198,16 +209,12 @@ export function canAccessAnyPages(
 export function routeAccessPolicyForPath(pathname: string): RouteAccessPolicy | null {
 	const path = pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
 
-	// These operational scanner flows are authenticated, then authorized
-	// by Flask's allowed_functions / endpoint-specific checks, not page grants.
-	if (
-		path === '/picking' || path.startsWith('/picking/') ||
-		path === '/packing' || path.startsWith('/packing/') ||
-		path === '/shipping' || path.startsWith('/shipping/') ||
-		path === '/change-password' || path.startsWith('/change-password/')
-	) {
-		return { kind: 'authenticated' };
-	}
+	// Scanner workflows use the operational grants returned by /api/auth/me,
+	// not the administrative page-permission catalog.
+	if (path === '/picking' || path.startsWith('/picking/')) return { kind: 'function', functionKey: 'pick' };
+	if (path === '/packing' || path.startsWith('/packing/')) return { kind: 'function', functionKey: 'pack' };
+	if (path === '/shipping' || path.startsWith('/shipping/')) return { kind: 'function', functionKey: 'ship' };
+	if (path === '/change-password' || path.startsWith('/change-password/')) return { kind: 'authenticated' };
 
 	// The Data landing page is a tab container: any one of these page grants
 	// is sufficient to enter it; each child route still has its own gate.
