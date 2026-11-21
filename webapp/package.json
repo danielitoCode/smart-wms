@@ -34,7 +34,8 @@
   },
   "dependencies": {
     "@lottiefiles/dotlottie-svelte": "0.10.15",
-    "cobe": "^2.0.1"
+    "cobe": "^2.0.1",
+    "svg-dotted-map": "^2.1.0"
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^7.0.0",
