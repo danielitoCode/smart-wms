@@ -190,3 +190,29 @@ La revisión de `api/routes/shipping.py` confirmó que `FulfillRequest` no acept
 - Picking: validación de batch/task y gates de mutación permanecen fail-closed.
 
 **Pendiente de certificación:** ejecutar Webapp CI sobre el HEAD final y revisar cualquier fallo. No se ejecutaron pruebas locales desde esta integración GitHub. No se modificó Flask/Python.
+
+
+## 9. R6 — cierre de contrato y gate de Shipping (21-11-2026)
+
+**Contrato de Shipping verificado en Flask:**
+- GET /api/shipping/order/<barcode>?warehouse_id=<id> es la lectura disponible. La respuesta contiene cabecera de SO (incluido warehouse_id), líneas con quantity_ordered y quantity_picked, y totales. Aunque el servicio consulta quantity_packed, el JSON no lo expone; el DTO Svelte no lo inventa ni lo convierte a cero.
+- POST /api/shipping/fulfill acepta exclusivamente so_id, warehouse_id, tracking_number, carrier y ship_method opcional. La respuesta confirmada contiene fulfillment_id, pedido, transportista/tracking, método y totales enviados.
+- No existe GET de shipment/fulfillment para recuperar un fulfillment concreto; tampoco existe contrato para package_id, package barcode, dimensiones o validación física. El paquete generado por Flask es sintético y no equivale a una verificación del paquete preparado.
+
+**Decisión de capacidades y estados:**
+- validateShipmentPackage = NOT_SUPPORTED_BY_SERVER; shipOrder = PARTIAL; getShipment = NOT_SUPPORTED_BY_SERVER. La operación de envío de R6 no es ejecutable mientras falte la validación de paquete y la conciliación requerida.
+- El estado de Shipping conserva el detalle ligado a warehouseId + generation, descarta lecturas obsoletas, limpia el pedido al cambiar de almacén y evita dobles envíos locales mediante busy.
+- El gate se aplica en la pantalla/estado y también en FulfillShipmentUseCase; un caller que omita la UI recibe R6OperationNotSupportedError y no alcanza el repositorio HTTP.
+- El DTO representa únicamente los campos que Flask devuelve. No se añade quantity_packed, un shipment GET, un package ID ni estados de fulfillment inferidos.
+
+**Pruebas frontend del gate:**
+- El contrato declara explícitamente las capacidades ausentes y isR6ShippingExecutionAvailable() === false.
+- El estado verifica que no se llama a fulfill cuando falta package validation, que el pedido de otro almacén/generation no se puede despachar y que una respuesta de lectura obsoleta se descarta.
+- El use case comprueba que una llamada directa válida también queda bloqueada y que el repositorio no recibe la mutación.
+- Los tests DTO/mappers y datasource verifican la forma real de la respuesta de lectura y el payload de fulfill, sin agregar campos no servidos.
+
+**CI observada antes de este bloque:** HEAD aaae5009bd4cb6190b0951b50f227e2a4544d4d7, Webapp CI run [44871055210](https://github.com/danielitoCode/smart-wms/actions/runs/44871055210) falló en svelte-check (1 error, 100 warnings); build y suites quedaron omitidas. Lockfile, Dependency Audit y gitleaks pasaron. Por tanto, no se certifica regresión verde hasta ejecutar y revisar un workflow posterior a las correcciones sobre el HEAD final.
+
+**Regresión requerida para el cierre frontend:** permisos operativos y grants, aislamiento entre almacenes, doble submit dentro de una instancia, cambios de generación/respuestas obsoletas, contratos DTO/mappers/repositories, npm run check, npm run build, Domain, Application, Infrastructure, UI, i18n, Integration y Full regression. Las pruebas PostgreSQL multi-conexión para doble picking/short, complete/verify y doble fulfillment siguen siendo responsabilidad Flask y no pueden certificarse con Vitest.
+
+**Estado de R6:** FRONTEND_IMPLEMENTATION_PARTIAL / BLOCKED_BACKEND. El gate de Shipping queda endurecido a nivel de aplicación, pero R6 no es VERIFIED integral ni puede cerrarse operativamente hasta que Flask implemente las capacidades indicadas y se valide la regresión frontend completa. No se modificó Flask/Python.
