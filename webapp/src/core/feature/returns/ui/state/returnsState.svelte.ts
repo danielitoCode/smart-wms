@@ -39,11 +39,11 @@ export function createReturnsState() {
     }
   }
 
-  async function detail(id: number) {
+  async function detail(id: number, includeReceipts = false) {
     const generation = ++detailGeneration;
     loading = true; error = null; selected = null; bins = [];
     try {
-      const [result, warehouseOptions] = await Promise.all([d.detail.execute(id), d.warehouses.execute()]);
+      const [result, warehouseOptions] = await Promise.all([d.detail.execute(id, includeReceipts), d.warehouses.execute()]);
       if (generation !== detailGeneration) return;
       selected = result;
       warehouses = warehouseOptions;
