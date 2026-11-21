@@ -52,7 +52,7 @@ export class PickingRemoteDataSource {
 
 	waveValidate(soBarcode: string, warehouseId: number): Promise<WaveValidateDto> {
 		return this.api.post<WaveValidateDto>('/api/picking/wave-validate', {
-			so_barcode: soBarcode,
+			barcode: soBarcode,
 			warehouse_id: warehouseId
 		});
 	}
