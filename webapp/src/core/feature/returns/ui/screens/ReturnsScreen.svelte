@@ -8,6 +8,7 @@
   const i18n = getContext<I18nState>('i18n');
   const vm = createReturnsState();
   const auth = getContext<{ user: { role: string } | null }>('authGuard');
+  const isAdmin = auth?.user?.role === 'ADMIN';
 
   let idempotencyKeys = $state<Record<number, string>>({});
   let memoDraft = $state('');
@@ -31,7 +32,7 @@
   });
 
   async function open(id: number): Promise<void> {
-    await vm.detail(id);
+    await vm.detail(id, isAdmin);
     memoDraft = vm.selected?.memo ?? '';
     warehouseId = String(vm.selected?.warehouseId ?? '');
     binId = '';
@@ -109,6 +110,7 @@
     <button onclick={() => void vm.load()}>{i18n.t('Actualizar')}</button>
   </header>
 
+  {#if isAdmin}
   <section class="create-rma">
     <h2>{i18n.t('Autorizar una devolución')}</h2>
     <p>{i18n.t('Busca un pedido enviado. El sistema descuenta las cantidades ya autorizadas en otros RMA; Flask vuelve a validar el límite de forma transaccional.')}</p>
@@ -148,6 +150,9 @@
       </div>
     {/if}
   </section>
+  {:else}
+    <aside class="read-only-note">{i18n.t('La creación y recepción de RMA está temporalmente limitada a ADMIN: los endpoints Flask actuales no aplican warehouse scope en esas mutaciones ni en la consulta de relaciones.')}</aside>
+  {/if}
 
   <div class="filters">
     <select value={vm.status} onchange={(event) => { vm.setStatus(event.currentTarget.value); void vm.load(); }}>
@@ -214,7 +219,7 @@
         {/if}
       </section>
 
-      {#if vm.selected.status !== 'RECEIVED'}
+      {#if vm.selected.status !== 'RECEIVED' && isAdmin}
         <section>
           <h3>{i18n.t('Disposición de la mercancía')}</h3>
           <div class="receive-config">
@@ -251,7 +256,7 @@
                       oninput={(event) => { itemDrafts = { ...itemDrafts, [line.soLineId]: event.currentTarget.value }; }}
                     />
                   </td>
-                  <td><button class="primary" disabled={vm.saving || !warehouseId || !binId || line.itemId == null} onclick={() => void receive(line)}>{i18n.t('Recibir')}</button></td>
+                  <td><button class="primary" disabled={!isAdmin || vm.saving || !warehouseId || !binId || line.itemId == null} onclick={() => void receive(line)}>{i18n.t('Recibir')}</button></td>
                 </tr>
               {/each}
             </tbody>
@@ -261,6 +266,8 @@
 
       {#if vm.selected.status === 'OPEN' && auth?.user?.role === 'ADMIN'}
         <button class="danger" onclick={() => void voidRma()}>{i18n.t('Anular RMA')}</button>
+      {:else if vm.selected.status !== 'RECEIVED'}
+        <aside class="read-only-note">{i18n.t('La recepción física requiere ADMIN hasta que Flask aplique aislamiento por almacén en el endpoint receive-return.')}</aside>
       {/if}
     </aside>
   {/if}
