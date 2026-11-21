@@ -73,6 +73,23 @@ describe('Packing scanner state warehouse context', () => {
   expect(deps.loadOrder.execute).toHaveBeenCalledTimes(2);
  });
 
+
+ it('blocks a retry when packing completion may have committed before a timeout', async () => {
+  deps.loadOrder.execute.mockResolvedValueOnce({
+   ...detail,
+   lines: [{ sku: 'SKU-3', quantityPicked: 1, quantityPacked: 1, packVerified: true }]
+  });
+  const state = createPackingState(context as never);
+  state.setBarcode('SO-3'); await state.load();
+  deps.complete.execute.mockRejectedValueOnce(new Error('timeout'));
+  deps.loadOrder.execute.mockRejectedValueOnce(new Error('Order is not ready for packing'));
+  expect(await state.complete()).toBe(false);
+  expect(state.detail).toBeNull();
+  expect(state.reconciliationRequired).toBe(true);
+  expect(state.error).toContain('No repitas');
+  expect(deps.complete.execute).toHaveBeenCalledTimes(1);
+ });
+
  it('discards a load response after the warehouse generation changes even if the id is reused', async () => {
   const state = createPackingState(context as never);
   let resolveLoad!: (value: typeof detail) => void;
