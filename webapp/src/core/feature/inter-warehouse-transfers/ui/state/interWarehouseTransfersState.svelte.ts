@@ -5,6 +5,7 @@ import type { InterWarehouseTransfer, RecordInterWarehouseTransfer } from '../..
 import type { Warehouse, OperationalBinSearchResult } from '../../../warehouses/domain/entity/Warehouse';
 import type { Item } from '../../../items/domain/entity/Item';
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
+import { TransferLifecycleNotSupportedError } from '../../../transfer-orders/domain/contract/TransferLifecycleContract';
 
 const dependencies = createInterWarehouseTransfersDependencies();
 const warehousesDependencies = createWarehousesDependencies();
@@ -43,8 +44,9 @@ export function createInterWarehouseTransfersState() {
         warehouses.length ? Promise.resolve(warehouses) : warehousesDependencies.listWarehouses.execute()
       ]);
       if (epoch !== listEpoch) return;
-      rows = nextRows;
       warehouses = nextWarehouses.filter(row => row.active);
+      const authorizedIds = new Set(warehouses.map(warehouse => warehouse.id));
+      rows = nextRows.filter(row => authorizedIds.has(row.sourceWarehouseId) && authorizedIds.has(row.destinationWarehouseId));
     } catch (cause) {
       if (epoch === listEpoch) error = toUserMessage(cause, 'No se pudieron cargar los movimientos o almacenes autorizados');
     } finally {
@@ -87,8 +89,12 @@ export function createInterWarehouseTransfersState() {
     }
   }
 
-  async function create(input: RecordInterWarehouseTransfer) {
+  async function create(_input: RecordInterWarehouseTransfer) {
     if (saving) return false;
+    error = new TransferLifecycleNotSupportedError('dispatchTransfer').message;
+    return false;
+    /* This endpoint moves stock immediately; it is not a dispatch/receive lifecycle. */
+    /* istanbul ignore next */
     saving = true;
     error = null;
     try {
@@ -115,6 +121,7 @@ export function createInterWarehouseTransfersState() {
     get destinationBinSearching() { return destinationBinSearching; },
     get itemSearching() { return itemSearching; },
     get loading() { return loading; }, get saving() { return saving; }, get error() { return error; },
+    get lifecycleAvailable() { return false; },
     get fromWarehouseFilter() { return fromWarehouseFilter; }, get toWarehouseFilter() { return toWarehouseFilter; },
     setFromWarehouseFilter, setToWarehouseFilter, searchBins, searchItems, load, create
   };
