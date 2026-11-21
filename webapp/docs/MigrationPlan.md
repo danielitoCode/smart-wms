@@ -349,6 +349,18 @@ Aceptación:
 - Filtros, detalle, historial y paginación corresponden a Flask.
 - Clientes read-only indican limitación del servidor cuando no exista API de gestión.
 
+### Seguimiento de R4 — estado de ejecución
+
+**Estado global:** `IN_PROGRESS`. El trabajo se limita a `webapp/`; no se modifica Flask ni se exige que sus suites pasen para aceptar la migración frontend.
+
+| Subtarea | Estado actual | Evidencia / siguiente condición |
+|---|---|---|
+| R4.1 — Reparar CI | `IMPLEMENTED_UNVERIFIED` | Guard de `warehouseId` nullable y Webapp CI verde en `00bc8b93239c82aa5c7237b8442a1f184f62f295`; allowlist exacta para el JWT truncado histórico aplicada. Falta Gitleaks verde sobre el nuevo HEAD. |
+| R4.2 — Pruebas Backorders | `IN_PROGRESS` | Completar cobertura de estado, cancelación, liberación, historial y concurrencia del cliente; no presentar pruebas fake como concurrencia backend. |
+| R4.3 — Seguridad backend | `BLOCKED_BACKEND` | Scope de cola/cancelación y atomicidad del motivo permanecen documentados en `webapp/.code-review/R4-Backorders-Scope-and-Security.md`. Sin cambios Flask, no se pueden cerrar como seguridad real del servidor. |
+| R4.4 — Regresión final | `NOT_STARTED` | Ejecutar suites frontend y comprobar todos los workflows en el SHA definitivo. |
+| R4.5 — Cierre R4 | `NOT_STARTED` | Revisar matriz completa y actualizar este plan y la auditoría R4 con evidencias del HEAD final. |
+
 ### R5 — Transferir inventario entre almacenes
 **Trazabilidad:** F3.8 Transfer Orders, F3.9 Inter-warehouse Transfers, Inventory, Warehouse, Picking, Receiving, Audit.
 
