@@ -35,10 +35,6 @@
 		void state.validateWaveSo();
 	}
 
-	function onCreateBatch(event: Event) {
-		event.preventDefault();
-		void state.createBatch();
-	}
 </script>
 
 <section class="page">
@@ -99,7 +95,7 @@
 				disabled={state.busy}
 				required
 			/>
-			<button type="submit" disabled={state.busy || warehouseSelection.warehouseId == null || state.validatedSoIds.length === 0}>
+			<button type="submit" disabled={state.busy || warehouseSelection.warehouseId == null || state.validatedSoIds.length === 0 || !state.pickingMutationsAvailable}>
 				{i18n.t("Crear ola")}
 			</button>
 		</form>
