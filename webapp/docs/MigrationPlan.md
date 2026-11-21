@@ -991,3 +991,25 @@ El gate de validateShipmentPackage y shipOrder se comprueba en UI/state y en el 
 **CI anterior a este bloque:** Webapp CI sobre aaae5009bd4cb6190b0951b50f227e2a4544d4d7 falló en typecheck (svelte-check: 1 error, 100 warnings), por lo que build y suites se omitieron. Lockfile, Dependency Audit y gitleaks terminaron correctamente. Este resultado no certifica regresión.
 
 **Criterio de aceptación:** R6 sigue FRONTEND_IMPLEMENTATION_PARTIAL / BLOCKED_BACKEND hasta que el HEAD final pase typecheck, build y las suites frontend Domain, Application, Infrastructure, UI, i18n, Integration y Full regression. Las pruebas reales de concurrencia PostgreSQL (doble pick/short, packing complete frente a verify, doble fulfillment y replay tras timeout) son dependencias backend; no se simulan ni se ejecutan desde esta migración. Flask/Python no se modifica.
+
+
+## 22. R6 — verificación frontend definitiva (21-11-2026)
+
+**HEAD validado:** `d4fe8246477efd9e9134583186e87af2300afe8c`.  
+**Webapp CI:** [44871706656](https://github.com/danielitoCode/smart-wms/actions/runs/44871706656) — SUCCESS.
+
+Shipping queda endurecido en UI/state y Application: `FulfillShipmentUseCase` rechaza fulfillment antes del repositorio si Flask no valida un paquete físico. Los DTO y mappers conservan el contrato real; no inventan `quantity_packed`, package ID/barcode ni GET shipment. Se mantienen los guards de permisos, warehouse context, generaciones, respuestas obsoletas y doble submit local.
+
+**Resultados de la regresión Webapp:**
+- Typecheck y build: PASS.
+- Domain: 87 archivos / 363 tests.
+- Application: 60 archivos / 258 tests.
+- Infrastructure: 69 archivos / 279 tests.
+- UI/presentation: 43 archivos / 245 tests.
+- i18n: 1 archivo / 5 tests.
+- Integration: 5 archivos / 24 tests.
+- Full regression: **204 archivos / 911 tests PASS**.
+- Coverage by feature paths: PASS (sin porcentaje global publicado).
+- Lockfile Version Check, gitleaks y Dependency Audit: SUCCESS.
+
+**Estado:** `FRONTEND_HARDENING_COMPLETE / BLOCKED_BACKEND`. El alcance frontend R6 está implementado y verificado. R6 no es un ciclo integral certificado mientras Flask no aporte los contratos, garantías transaccionales, enforcement server-side y pruebas PostgreSQL de concurrencia documentadas en `.code-review/R6-Picking-Packing-Shipping-Audit.md`. No se modifica Flask/Python ni se usan tests backend para la aceptación de Svelte.
