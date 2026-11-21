@@ -28,14 +28,14 @@ describe('Picking scanner state warehouse context', () => {
   expect(deps.getActiveBatch.execute).toHaveBeenCalledWith(12);
   expect(state.batch?.warehouseId).toBe(12);
  });
- it('sends wave validation and batch creation with the selected warehouse', async () => {
+ it('validates scanned orders in the selected warehouse without bypassing the scanner flow', async () => {
   const state = createPickingState(warehouse as never);
   state.setValidateBarcode('SO-5');
-  await state.validateWaveSo();
-  state.setBatchIdentifiersInput('SO-5');
-  await state.createBatch();
+  expect(await state.validateWaveSo()).toBe(true);
   expect(deps.waveValidate.execute).toHaveBeenCalledWith('SO-5', 12);
-  expect(deps.createBatch.execute).toHaveBeenCalledWith(['SO-5'], 12);
+  expect(state.validatedSoIds).toEqual([5]);
+  expect(await state.createBatch()).toBe(false);
+  expect(deps.createBatch.execute).not.toHaveBeenCalled();
  });
  it('refuses to operate when there is no authorized active warehouse', async () => {
   const noWarehouse = { ...warehouse, requireWarehouseId: () => { throw new Error('No hay almacén activo'); } };
@@ -47,9 +47,10 @@ describe('Picking scanner state warehouse context', () => {
   const state = createPickingState(warehouse as never);
   state.setValidateBarcode('SO-5');
   expect(await state.validateWaveSo()).toBe(true);
-  expect(await state.createWave()).toBe(true);
-  expect(deps.waveCreate.execute).toHaveBeenCalledWith([5], 12);
-  expect(state.waveResult?.batchNumber).toBe('WAVE-4');
+  expect(await state.createWave()).toBe(false);
+  expect(deps.waveCreate.execute).not.toHaveBeenCalled();
+  expect(state.waveResult).toBeNull();
+  expect(state.error).toContain('Flask');
  });
 
  it('recognizes a validated TO without adding it to an SO wave', async () => {
