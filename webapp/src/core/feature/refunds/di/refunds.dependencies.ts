@@ -8,6 +8,7 @@ export function createRefundsDependencies() {
   return {
     list: new ListRefundsUseCase(r),
     detail: new GetRefundUseCase(r),
+    getRefund: new GetRefundUseCase(r),
     create: new CreateRefundUseCase()
   };
 }
