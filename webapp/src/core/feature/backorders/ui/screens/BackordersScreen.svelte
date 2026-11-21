@@ -7,7 +7,7 @@
   import type { User } from '../../../auth/domain/entity/User';
   import { createBackordersState } from '../state/backordersState.svelte';
   import { isBackorderCancelableStatus, type Backorder, type BackorderQueueTab, type CancelBackorderReason } from '../../domain/entity/Backorder';
-  import { resolveBackorderWarehouseScope } from '../../domain/policy/BackorderScopePolicy';
+  import { isBackorderQueueContextCurrent, resolveBackorderWarehouseScope } from '../../domain/policy/BackorderScopePolicy';
 
   const i18n = getContext<I18nState>('i18n');
   const selection = getContext<{ warehouseId: number | null }>('warehouseSelection');
@@ -70,7 +70,12 @@
   $effect(() => {
     const selectedWarehouseId = selection?.warehouseId ?? null;
     const selectedTab = activeTab;
-    if (cancelTarget && (cancelScopeWarehouseId !== selectedWarehouseId || cancelScopeTab !== selectedTab)) {
+    if (cancelTarget && !isBackorderQueueContextCurrent({
+      openedWarehouseId: cancelScopeWarehouseId,
+      openedTab: cancelScopeTab,
+      selectedWarehouseId,
+      activeTab: selectedTab
+    })) {
       cancelTarget = null;
       cancelScopeWarehouseId = null;
       cancelError = i18n.t('El almacén o la cola seleccionada cambió. Vuelve a abrir la cancelación desde la cola actual.');
@@ -121,7 +126,12 @@
   async function submitCancel(): Promise<void> {
     if (!cancelTarget || vm.saving) return;
     cancelError = '';
-    if (cancelScopeWarehouseId !== (selection?.warehouseId ?? null) || cancelScopeTab !== activeTab || !canCancelRow(cancelTarget)) {
+    if (!isBackorderQueueContextCurrent({
+      openedWarehouseId: cancelScopeWarehouseId,
+      openedTab: cancelScopeTab,
+      selectedWarehouseId: selection?.warehouseId ?? null,
+      activeTab
+    }) || !canCancelRow(cancelTarget)) {
       cancelTarget = null;
       cancelScopeWarehouseId = null;
       cancelError = i18n.t('El almacén o la cola cambió, o el backorder ya no pertenece al contexto actual o su estado no permite cancelarlo.');
