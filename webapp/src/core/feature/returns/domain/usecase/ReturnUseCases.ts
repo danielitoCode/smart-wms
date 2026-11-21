@@ -10,6 +10,7 @@ export class CreateReturnUseCase {
   constructor(private r: ReturnsRepository) {}
   execute(id: number, value: { lines: RequestedReturnLine[]; memo?: string | null }, available: Awaited<ReturnType<ReturnsRepository['returnableOrder']>>) {
     if (!Number.isInteger(id) || id <= 0) throw new Error('Identificador de pedido original no válido');
+    if (available.salesOrderId !== id || available.status !== 'SHIPPED') throw new Error('El pedido original no está disponible para autorizar devoluciones');
     const validation = validateReturnRequest(available.lines, value.lines);
     if (!validation.valid) throw new Error(validation.reason ?? 'Solicitud RMA no válida');
     return this.r.createReturn(id, { lines: value.lines, memo: value.memo?.trim() || null });
