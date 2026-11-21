@@ -28,7 +28,10 @@ describe('R5 future server contract', () => {
   it('exposes all ten named future use cases without pretending they are implemented', () => {
     const useCases = createR5TransferUseCases();
     expect(Object.keys(useCases)).toEqual(['CreateTransfer', 'GetTransfer', 'ReserveTransferStock', 'StartTransferPicking', 'SubmitPickedQuantities', 'ShortCloseTransfer', 'DispatchTransfer', 'ReceiveTransfer', 'PutAwayTransfer', 'CancelTransfer']);
-    expect(() => useCases.ReceiveTransfer.execute({})).toThrow('NOT_SUPPORTED_BY_SERVER');
+    let caught: unknown;
+    try { useCases.ReceiveTransfer.execute({}); } catch (error) { caught = error; }
+    expect(caught).toBeInstanceOf(TransferLifecycleNotSupportedError);
+    expect((caught as TransferLifecycleNotSupportedError).code).toBe('NOT_SUPPORTED_BY_SERVER');
   });
 
   it('exposes an explicit unsupported-operation error', () => {
