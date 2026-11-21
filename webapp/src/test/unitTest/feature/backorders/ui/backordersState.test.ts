@@ -15,6 +15,7 @@ vi.mock('../../../../../core/feature/backorders/di/backorders.dependencies', () 
 }));
 
 import { createBackordersState } from '../../../../../core/feature/backorders/ui/state/backordersState.svelte';
+import { ApiError } from '../../../../../core/infrastructure/errors/ApiError';
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -180,6 +181,22 @@ describe('backordersState', () => {
 
     expect(deps.cancel.execute).toHaveBeenCalledWith(41, 'customer_asked', 3);
     expect(state.detail?.order.lines[0].quantityAllocated).toBe(before);
+  });
+
+  it.each([
+    [400, 'Solicitud inválida'],
+    [403, 'No tienes permiso para esta operación'],
+    [404, 'Recurso no encontrado'],
+    [409, 'Conflicto con el estado actual del recurso']
+  ])('preserves the user-facing HTTP %i cancellation error', async (status, message) => {
+    deps.cancel.execute.mockRejectedValueOnce(
+      new ApiError(status, message, ApiError.codeForStatus(status))
+    );
+    const state = createBackordersState();
+
+    expect(await state.cancel(41, 'other', 3)).toBe(false);
+    expect(state.error).toBe(message);
+    expect(state.saving).toBe(false);
   });
 
   it('keeps cancellation errors visible and always releases the saving guard', async () => {
