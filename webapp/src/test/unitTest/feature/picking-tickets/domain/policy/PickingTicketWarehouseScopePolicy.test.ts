@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canViewPickingTicketInWarehouse } from '../../../../../core/feature/picking-tickets/domain/policy/PickingTicketWarehouseScopePolicy';
+import { canViewPickingTicketInWarehouse } from '../../../../../../core/feature/picking-tickets/domain/policy/PickingTicketWarehouseScopePolicy';
 
 describe('canViewPickingTicketInWarehouse', () => {
   it('requires the selected warehouse to match the ticket for non-admin users', () => {
