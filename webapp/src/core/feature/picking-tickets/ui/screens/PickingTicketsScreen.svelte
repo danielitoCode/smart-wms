@@ -8,7 +8,7 @@
   import type { SalesOrder } from '#core/feature/sales-orders/domain/entity/SalesOrder';
   import { groupOrdersByAddress } from '../../domain/policy/pickingGroups';
   const queue = createPickingQueueDependencies();
-  const warehouse = getContext<{ warehouseId: number | null }>('warehouseSelection');
+  const warehouse = getContext<{ warehouseId: number | null; generation?: number }>('warehouseSelection');
   let orders = $state<SalesOrder[]>([]);
   let status = $state<'OPEN' | 'PICKED' | 'ALL'>('OPEN');
   let hidePrinted = $state(true);
@@ -53,10 +53,17 @@
   const visibleOrders = $derived(displayRows.map((row) => row.order));
   const selectedVisibleIds = $derived(visibleOrders.filter((order) => selected.includes(order.salesOrderId)).map((order) => order.salesOrderId));
   let observedWarehouseId: number | null | undefined = undefined;
+  let observedWarehouseGeneration = -1;
+  let loadEpoch = 0;
+  let lookupEpoch = 0;
   $effect(() => {
     const id = warehouse?.warehouseId ?? null;
-    if (id === observedWarehouseId) return;
+    const generation = warehouse?.generation ?? 0;
+    if (id === observedWarehouseId && generation === observedWarehouseGeneration) return;
     observedWarehouseId = id;
+    observedWarehouseGeneration = generation;
+    loadEpoch++;
+    lookupEpoch++;
     selected = [];
     if (id == null) { orders = []; return; }
     void load();
@@ -64,17 +71,20 @@
   async function load() {
     const selectedWarehouseId = warehouse?.warehouseId;
     if (selectedWarehouseId == null) { orders = []; loading = false; return; }
+    const generation = warehouse?.generation ?? 0;
+    const epoch = ++loadEpoch;
     loading = true; error = '';
     try {
       const page = await queue.getAllPrintableTickets.execute({
         warehouseId: selectedWarehouseId, status, hidePrinted
       });
+      if (epoch !== loadEpoch || warehouse?.warehouseId !== selectedWarehouseId || (warehouse?.generation ?? 0) !== generation) return;
       orders = page.items.filter((order) => ['OPEN', 'PICKED'].includes(order.status) &&
         !['return', 'refund'].includes(order.orderType ?? ''));
       selected = selected.filter((id) => orders.some((order) => order.salesOrderId === id));
     } catch (cause) {
-      error = cause instanceof Error ? cause.message : 'Could not load picking tickets.';
-    } finally { loading = false; }
+      if (epoch === loadEpoch && warehouse?.warehouseId === selectedWarehouseId && (warehouse?.generation ?? 0) === generation) error = cause instanceof Error ? cause.message : 'Could not load picking tickets.';
+    } finally { if (epoch === loadEpoch) loading = false; }
   }
   function toggleSort(key: typeof sortKey) {
     if (sortKey === key) sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
@@ -97,17 +107,22 @@
   function printAll() { openPrintBatch(visibleOrders.slice(0, batchLimit).map((order) => order.salesOrderId)); }
   async function openByNumber() {
     const term = search.trim();
+    const selectedWarehouseId = warehouse?.warehouseId;
     if (!term) return;
+    if (selectedWarehouseId == null) { error = 'Select a warehouse before searching for a ticket.'; return; }
+    const generation = warehouse?.generation ?? 0;
+    const epoch = ++lookupEpoch;
     lookupLoading = true; error = '';
     try {
-      const page = await queue.findOrder.execute(term);
+      const page = await queue.findOrder.execute(term, selectedWarehouseId);
+      if (epoch !== lookupEpoch || warehouse?.warehouseId !== selectedWarehouseId || (warehouse?.generation ?? 0) !== generation) return;
       const exact = page.items.find((order) => order.salesOrderNumber.toLowerCase() === term.toLowerCase());
       const match = exact ?? page.items[0];
       if (match) openTicket(match.salesOrderId);
       else error = `No sales order found matching "${term}".`;
     } catch (cause) {
-      error = cause instanceof Error ? cause.message : 'Could not search sales orders.';
-    } finally { lookupLoading = false; }
+      if (epoch === lookupEpoch && warehouse?.warehouseId === selectedWarehouseId && (warehouse?.generation ?? 0) === generation) error = cause instanceof Error ? cause.message : 'Could not search sales orders.';
+    } finally { if (epoch === lookupEpoch) lookupLoading = false; }
   }
 </script>
 
