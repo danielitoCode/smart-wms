@@ -31,6 +31,7 @@
 	<header>
 		<h1>{i18n.t('Despacho de pedidos')}</h1>
 		<p class="meta">Almacén activo: #{warehouseSelection.warehouseId ?? '—'}</p>
+		{#if !state.shippingExecutionAvailable}<UiStatePanel kind="error" title={i18n.t('Despacho bloqueado')} message={i18n.t('Flask todavía no permite validar un paquete físico ni conciliar sus cantidades. El servidor crea un paquete sintético; no se confirmará el fulfillment hasta que exista el contrato de validación de paquete.')} />{/if}
 		<p class="subtitle">{i18n.t('Consulta el pedido y registra su salida con los datos de transporte.')}</p>
 	</header>
 
@@ -103,7 +104,7 @@
 					oninput={(e) => state.setShipMethod(e.currentTarget.value)}
 					disabled={state.busy} />
 			</label>
-			<button type="submit" class="accent" disabled={state.busy || warehouseSelection.warehouseId == null}>{i18n.t('Registrar despacho')}</button>
+			<button type="submit" class="accent" disabled={state.busy || warehouseSelection.warehouseId == null || !state.shippingExecutionAvailable}>{i18n.t('Registrar despacho')}</button>
 		</form>
 	{/if}
 </section>
