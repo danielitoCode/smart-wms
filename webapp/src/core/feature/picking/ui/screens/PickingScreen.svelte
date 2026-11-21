@@ -12,11 +12,12 @@
 	$effect(() => {
 		const generation = warehouseSelection.generation;
 		const busy = state.busy;
-		if (!warehouseSelection.initialized || warehouseSelection.warehouseId == null) return;
+		if (!warehouseSelection.initialized) return;
 		if (generation !== lastWarehouseGeneration) {
 			lastWarehouseGeneration = generation;
 			state.onWarehouseChanged();
 		}
+		if (warehouseSelection.warehouseId == null) return;
 		if (!busy) void state.refresh();
 	});
 
