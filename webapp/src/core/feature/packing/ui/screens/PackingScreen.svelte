@@ -47,7 +47,7 @@
 		</button>
 	</form>
 
-	{#if state.error}<UiStatePanel kind="error" title={i18n.t('No se pudo cargar el pedido')} message={state.error} />{/if}
+	{#if state.error}<UiStatePanel kind="error" title={i18n.t('No se pudo completar la operación de empaque')} message={state.error} />{/if}
 	{#if state.loading && !state.detail}<UiStatePanel kind="loading" title={i18n.t('Cargando pedido para empaque')} message={i18n.t('Estamos validando el código escaneado.')} />
 	{:else if !state.detail}<UiStatePanel kind="empty" title={i18n.t('Escanea un pedido')} message={i18n.t('Introduce o escanea el código de barras para cargar el pedido que vas a empacar.')} />{/if}
 	{#if state.info}<p class="ok" role="status">{state.info}</p>{/if}
@@ -99,7 +99,7 @@
 				oninput={(e) => state.setQuantity(Number(e.currentTarget.value))}
 				disabled={state.busy}
 			/>
-			<button type="submit" disabled={state.busy || state.reconciliationRequired}>{i18n.t('Verificar')}</button>
+			<button type="submit" disabled={state.busy || state.reconciliationRequired || warehouseSelection.warehouseId == null}>{i18n.t('Verificar')}</button>
 		</form>
 
 		<button type="button" class="accent" onclick={() => state.complete()} disabled={state.busy || !state.allVerified || state.reconciliationRequired || warehouseSelection.warehouseId == null}>
