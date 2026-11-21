@@ -19,8 +19,6 @@ export function createShippingState(warehouseSelection: WarehouseSelectionState)
 	let lastResult = $state<FulfillShipmentResult | null>(null);
 	let info = $state<string | null>(null);
 	let requestEpoch = 0;
-	let detailWarehouseId: number | null = null;
-	let detailGeneration = -1;
 
 	function isCurrentContext(warehouseId: number, generation: number) {
 		return warehouseSelection.warehouseId === warehouseId && warehouseSelection.generation === generation;
@@ -43,7 +41,7 @@ export function createShippingState(warehouseSelection: WarehouseSelectionState)
 		let warehouseId: number;
 		try { warehouseId = activeWarehouseId(); }
 		catch (err) { error = toUserMessage(err, 'No hay almacén activo'); return false; }
-		loading = true; error = null; info = null; lastResult = null; detail = null; detailWarehouseId = null; detailGeneration = -1; detailWarehouseId = null; detailGeneration = -1;
+		loading = true; error = null; info = null; lastResult = null; detail = null; detailWarehouseId = null; detailGeneration = -1;
 		try {
 			const result = await deps.loadOrder.execute(code, warehouseId);
 			if (epoch !== requestEpoch || !isCurrentContext(warehouseId, generation)) return false;
@@ -83,7 +81,7 @@ export function createShippingState(warehouseSelection: WarehouseSelectionState)
 				return true;
 			}
 			lastResult = result;
-			detail = null; detailWarehouseId = null; detailGeneration = -1; detailWarehouseId = null; detailGeneration = -1;
+			detail = null; detailWarehouseId = null; detailGeneration = -1;
 			return true;
 		} catch (err) {
 			if (isCurrentContext(warehouseId, generation)) error = toUserMessage(err, 'No se pudo registrar el envío');
