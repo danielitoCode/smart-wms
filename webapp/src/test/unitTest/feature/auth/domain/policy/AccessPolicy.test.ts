@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
 	canAccessPages,
+	canAccessOperationalFunction,
 	canPerform,
 	hasOverride,
 	requiredPageKeysForPath,
@@ -160,10 +161,14 @@ describe('explicit app route access policies', () => {
 		expect(canAccessAnyPages('USER', ['inventory'], policy?.kind === 'any' ? policy.pageKeys : [])).toBe(false);
 	});
 
-	it('keeps scanner workflows authenticated and defers operational grants to Flask', () => {
-		expect(routeAccessPolicyForPath('/picking')).toEqual({ kind: 'authenticated' });
-		expect(routeAccessPolicyForPath('/packing/scan')).toEqual({ kind: 'authenticated' });
-		expect(routeAccessPolicyForPath('/shipping')).toEqual({ kind: 'authenticated' });
+	it('requires the matching operational grant for each scanner workflow', () => {
+		expect(routeAccessPolicyForPath('/picking')).toEqual({ kind: 'function', functionKey: 'pick' });
+		expect(routeAccessPolicyForPath('/packing/scan')).toEqual({ kind: 'function', functionKey: 'pack' });
+		expect(routeAccessPolicyForPath('/shipping')).toEqual({ kind: 'function', functionKey: 'ship' });
+		expect(canAccessOperationalFunction('USER', ['pick'], 'pick')).toBe(true);
+		expect(canAccessOperationalFunction('USER', ['pick'], 'pack')).toBe(false);
+		expect(canAccessOperationalFunction('USER', [], 'ship')).toBe(false);
+		expect(canAccessOperationalFunction('ADMIN', [], 'ship')).toBe(true);
 	});
 
 	it('fails closed for an unregistered route instead of treating an empty grant list as public', () => {
