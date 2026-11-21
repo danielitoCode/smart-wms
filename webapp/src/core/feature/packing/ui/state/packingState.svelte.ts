@@ -75,7 +75,7 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 				detail = null; detailWarehouseId = null; detailGeneration = -1;
 				return true;
 			}
-			info = result.message;
+			info = `${result.message} · ${result.orderProgress.linesVerified}/${result.orderProgress.totalLines} líneas verificadas`;
 			try {
 				const refreshed = await deps.loadOrder.execute(soNumber, warehouseId);
 				if (!isCurrentContext(warehouseId, generation) || requestId !== requestEpoch) { detail = null; detailWarehouseId = null; detailGeneration = -1; return true; }
