@@ -45,7 +45,7 @@
 
 	<p class="meta">Almacén activo: #{warehouseSelection.warehouseId ?? '—'}</p>
 	{#if !state.pickingExecutionAvailable}
-		<UiStatePanel kind="error" title={i18n.t('Picking temporalmente bloqueado')} message={i18n.t('El servidor todavía no garantiza la confirmación atómica entre operadores ni la validación del bin. Puedes validar pedidos y consultar la tarea, pero no confirmar recogidas, faltantes ni completar el lote hasta que Flask incorpore esas garantías.')} />
+		<UiStatePanel kind="error" title={i18n.t('Picking temporalmente bloqueado')} message={i18n.t('El servidor todavía no garantiza la confirmación atómica entre operadores ni la validación del bin. Puedes validar pedidos y consultar lotes existentes. La creación de olas también permanece bloqueada porque Flask no ofrece replay idempotente; tampoco se pueden confirmar recogidas, faltantes ni completar lotes hasta que el servidor incorpore las garantías transaccionales.')} />
 	{/if}
 
 	<section class="panel">
