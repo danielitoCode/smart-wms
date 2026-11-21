@@ -172,7 +172,8 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 	async function shortPick() {
 		if (!isR6PickingExecutionAvailable()) { error = new R6PickingCapabilityError('shortPickAtomically').message; return false; }
 		if (!task || busy || loading) return false;
-		const warehouseId = activeWarehouseId();
+		let warehouseId: number;
+		try { warehouseId = activeWarehouseId(); } catch (err) { error = toUserMessage(err, 'No hay almacén activo'); return false; }
 		const generation = warehouseSelection.generation;
 		const taskId = task.pickTaskId;
 		busy = true; error = null; info = null;
