@@ -76,4 +76,37 @@ describe('transfer orders UI state', () => {
     expect(state.error).toContain('No tienes acceso');
   });
 
+  it('keeps the latest transfer detail when two rows are opened in quick succession', async () => {
+    let resolveFirst!: (value: unknown) => void;
+    let resolveSecond!: (value: unknown) => void;
+    const deps = dependencies();
+    deps.detail.execute
+      .mockReturnValueOnce(new Promise(resolve => { resolveFirst = resolve; }))
+      .mockReturnValueOnce(new Promise(resolve => { resolveSecond = resolve; }));
+    const state = createTransferOrdersState(deps as never);
+    const first = state.detail(12);
+    const second = state.detail(13);
+    resolveSecond({
+      transferOrderId: 13, transferOrderNumber: 'TO-13', status: 'OPEN',
+      lines: [], approvals: [], sourceWarehouseId: 2, destinationWarehouseId: 4
+    });
+    await second;
+    resolveFirst({
+      transferOrderId: 12, transferOrderNumber: 'TO-12', status: 'OPEN',
+      lines: [], approvals: [], sourceWarehouseId: 2, destinationWarehouseId: 4
+    });
+    await first;
+    expect(state.selected?.transferOrderId).toBe(13);
+  });
+
+  it('clears selected transfer details when returning to a differently filtered queue', async () => {
+    const deps = dependencies();
+    const state = createTransferOrdersState(deps as never);
+    await state.detail(12);
+    expect(state.selected?.transferOrderId).toBe(12);
+    state.setSourceWarehouse(2);
+    expect(state.selected).toBeNull();
+    expect(state.pickerSnapshot).toBeNull();
+  });
+
 });
