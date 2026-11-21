@@ -51,7 +51,7 @@ describe('Shipping scanner state warehouse context', () => {
   state.setTrackingNumber('TRACK'); state.setCarrier('Carrier');
   expect(await state.fulfill()).toBe(false);
   expect(deps.fulfill.execute).not.toHaveBeenCalled();
-  expect(state.error).toContain('paquete');
+  expect(state.error).toContain('Flask');
  });
 
  it('rejects a loaded order when warehouse generation changes even if the id is unchanged', async () => {
