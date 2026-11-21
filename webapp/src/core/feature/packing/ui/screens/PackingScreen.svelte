@@ -98,7 +98,7 @@
 				oninput={(e) => state.setQuantity(Number(e.currentTarget.value))}
 				disabled={state.busy}
 			/>
-			<button type="submit" disabled={state.busy}>{i18n.t('Verificar')}</button>
+			<button type="submit" disabled={state.busy || state.reconciliationRequired}>{i18n.t('Verificar')}</button>
 		</form>
 
 		<button type="button" class="accent" onclick={() => state.complete()} disabled={state.busy || !state.allVerified}>
