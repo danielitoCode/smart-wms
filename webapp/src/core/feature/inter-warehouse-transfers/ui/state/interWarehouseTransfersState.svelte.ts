@@ -93,21 +93,6 @@ export function createInterWarehouseTransfersState() {
     if (saving) return false;
     error = new TransferLifecycleNotSupportedError('dispatchTransfer').message;
     return false;
-    /* This endpoint moves stock immediately; it is not a dispatch/receive lifecycle. */
-    /* istanbul ignore next */
-    saving = true;
-    error = null;
-    try {
-      await dependencies.create.execute(input);
-      sourceBins = []; destinationBins = []; itemResults = [];
-      await load();
-      return true;
-    } catch (cause) {
-      error = toUserMessage(cause, 'No se pudo transferir el inventario');
-      return false;
-    } finally {
-      saving = false;
-    }
   }
 
   function setFromWarehouseFilter(value: string) { fromWarehouseFilter = value; void load(); }
