@@ -1,10 +1,10 @@
-import type { SimpleMessageResult, VerifyPackInput } from '../entity/Packing';
+import type { VerifyPackInput, VerifyPackResult } from '../entity/Packing';
 import type { PackingRepository } from '../repository/PackingRepository';
 
 export class VerifyPackItemUseCase {
 	constructor(private readonly repository: PackingRepository) {}
 
-	execute(input: VerifyPackInput): Promise<SimpleMessageResult> {
+	execute(input: VerifyPackInput): Promise<VerifyPackResult> {
 		if (!Number.isInteger(input.soId) || input.soId <= 0) {
 			throw new Error('soId must be a positive integer');
 		}
