@@ -203,6 +203,7 @@
       </section>
 
       <aside class="read-only-note">{i18n.t('Recepción y stock: receive-return registra la recepción e incrementa inventario en el bin elegido dentro de la misma operación. El backend no ofrece clasificación vendible/dañado/cuarentena ni descarte independiente; no se ejecutan esas decisiones desde esta pantalla.')}</aside>
+      {#if isAdmin}
       <section class="receipt-history">
         <h3>{i18n.t('Historial de recepciones')}</h3>
         {#if vm.selected.receipts.length === 0}
@@ -266,7 +267,7 @@
 
       {#if vm.selected.status === 'OPEN' && auth?.user?.role === 'ADMIN'}
         <button class="danger" onclick={() => void voidRma()}>{i18n.t('Anular RMA')}</button>
-      {:else if vm.selected.status !== 'RECEIVED'}
+      {:else if vm.selected.status !== 'RECEIVED' && !isAdmin}
         <aside class="read-only-note">{i18n.t('La recepción física requiere ADMIN hasta que Flask aplique aislamiento por almacén en el endpoint receive-return.')}</aside>
       {/if}
     </aside>
