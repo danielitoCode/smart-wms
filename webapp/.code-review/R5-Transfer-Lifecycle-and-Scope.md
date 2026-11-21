@@ -100,3 +100,10 @@ Las pruebas se han añadido al repositorio; no se consideran aprobadas hasta que
 ## 6. Dictamen
 
 R5 **no está cerrado funcionalmente**. La migración frontend queda protegida contra las dos operaciones actuales que podrían confundirse con el flujo solicitado. Se habilitará la ejecución cuando Flask proporcione reserva exacta, dispatch, tránsito, receive, put-away y ledger con sus garantías transaccionales. No se ha modificado Flask/Python.
+
+
+## 7. Endurecimiento adicional de contexto UI
+
+- Las cargas de listado y detalle de Transfer Orders usan epochs: una respuesta antigua no puede reemplazar una consulta más reciente ni reabrir un detalle anterior.
+- Al cambiar filtros de estado/origen/destino o volver al listado, se invalida el detalle seleccionado y el snapshot de picker.
+- Si el servidor devuelve alguna fila cuyo origen o destino no está en la lista autorizada, se oculta y no se conserva el total/paginación original que pudiera filtrar metadatos de esa fila.
