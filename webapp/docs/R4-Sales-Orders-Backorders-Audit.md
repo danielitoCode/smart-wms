@@ -317,3 +317,34 @@ La regresión frontend completa pasó: 200 archivos, 871 tests. Webapp CI y Gitl
 **Concurrencia:** se verifica la protección de doble submit y las carreras de peticiones dentro de una instancia del frontend. La atomicidad del motivo, el aislamiento cross-warehouse y la concurrencia entre clientes siguen sin poder certificarse desde el cliente y permanecen como bloqueos backend de R4.3.
 
 **Estado R4.2:** cobertura frontend ampliada y regresión verificada; cierre funcional global pendiente de los bloqueos formales R4.3 y de la matriz final.
+
+
+## 12. R4.2 — cierre de implementación frontend
+
+**Código implementado en:** `0351dab45ac5ca9d5dffe44e8a7dda60fd55805d`.  
+**CI final:** pendiente de confirmar en el HEAD documental definitivo.
+
+Se completa la pasada frontend con estos cambios:
+
+1. Retry y refresh de la cola ya no llaman directamente a `vm.load(selection?.warehouseId ?? null, ...)`; inicialización, retry y refresh tras cancelación comparten `loadQueue()` y el resolver de scope. Un no-admin sin selección queda bloqueado antes de la consulta.
+2. La política `isBackorderCancelableStatus` es única y se usa en Domain/use case, listado y detalle. Se limita a `WAITING_STOCK`, `OPEN`, `PICKED` y `PACKED`.
+3. La lista solo expone cancelar si el usuario tiene permiso, la fila pertenece al scope actualmente seleccionado/autorizado y el estado admite cancelación. Un cambio de almacén invalida el diálogo y submit vuelve a validar.
+4. El detalle vuelve a validar almacén y estado justo antes de cancelar. El diálogo deja de renderizarse si la orden ya no es cancelable.
+5. Tests adicionales cubren la política compartida y errores HTTP 400/403/404/409; los tests anteriores cubren concurrencia de cargas, detalle/historial, paginación, doble submit y no mutación local del inventario.
+6. Se corrigió la semántica de mutaciones Sales Orders: una respuesta satisfactoria del endpoint no se convierte en fallo de la mutación porque falle el refresh posterior. `refreshError` distingue el aviso de sincronización del error real de operación; cubre update, address, líneas, allocation, admin ship y cancel.
+
+### Matriz R4.2 — estado frontend
+
+| Criterio | Estado | Evidencia |
+|---|---|---|
+| Estados cancelables y motivos | `IMPLEMENTED` | Domain policy + UseCase tests |
+| Scope en carga inicial/retry/refresh | `IMPLEMENTED` | Resolver común `loadQueue()` |
+| Modal y cambio de almacén | `IMPLEMENTED` | Invalida modal y revalida submit |
+| Errores HTTP 400/403/404/409 | `TESTED` | Tests `backordersState` |
+| Historial y paginación | `IMPLEMENTED` | Data/domain/UI state y tests previos |
+| Doble submit / carreras UI | `TESTED` | State tests previos |
+| Liberación inventario | `SERVER_OWNED` | Solo endpoint transaccional; sin simulación FE |
+| Scope cross-warehouse / atomicidad cross-client | `BLOCKED_BACKEND` | R4-BE-01/02/03 sin enforcement Flask demostrado |
+
+**Cierre:** R4.2 está completa para Svelte. R4.3 sigue bloqueada por las limitaciones backend documentadas; el cierre frontend no certifica la seguridad del endpoint ante llamadas directas ni concurrencia entre clientes.
+
