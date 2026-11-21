@@ -14,6 +14,11 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 	let busy = $state(false);
 	let error = $state<string | null>(null);
 	let info = $state<string | null>(null);
+	let requestEpoch = 0;
+
+	function isCurrentContext(warehouseId: number, generation: number) {
+		return warehouseSelection.warehouseId === warehouseId && warehouseSelection.generation === generation;
+	}
 
 	function activeWarehouseId() { return warehouseSelection.requireWarehouseId(); }
 	function assertDetailWarehouse() {
@@ -27,15 +32,22 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 		if (loading || busy) return false;
 		const code = barcode.trim();
 		if (!code) { error = 'Indica un SO number o barcode'; return false; }
+		const epoch = ++requestEpoch;
+		const generation = warehouseSelection.generation;
+		let warehouseId: number;
+		try { warehouseId = activeWarehouseId(); }
+		catch (err) { error = toUserMessage(err, 'No hay almacén activo'); return false; }
 		loading = true; error = null; info = null; detail = null;
 		try {
-			const warehouseId = activeWarehouseId();
 			const result = await deps.loadOrder.execute(code, warehouseId);
+			if (epoch !== requestEpoch || !isCurrentContext(warehouseId, generation)) return false;
 			if (result.salesOrder.warehouseId !== warehouseId) throw new Error('El pedido no pertenece al almacén seleccionado');
 			detail = result;
 			return true;
-		} catch (err) { error = toUserMessage(err, 'No se pudo cargar el pedido'); return false; }
-		finally { loading = false; }
+		} catch (err) {
+			if (epoch === requestEpoch && isCurrentContext(warehouseId, generation)) error = toUserMessage(err, 'No se pudo cargar el pedido');
+			return false;
+		} finally { if (epoch === requestEpoch) loading = false; }
 	}
 
 	async function verify() {
@@ -43,19 +55,23 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 		if (!scannedBarcode.trim()) { error = 'Indica el barcode a verificar'; return false; }
 		if (!Number.isInteger(quantity) || quantity <= 0) { error = 'La cantidad debe ser un entero mayor que 0'; return false; }
 		busy = true; error = null; info = null;
+		const generation = warehouseSelection.generation;
+		const requestId = requestEpoch;
 		const soNumber = detail.salesOrder.soNumber;
 		const soId = detail.salesOrder.soId;
 		try {
 			assertDetailWarehouse();
 			const warehouseId = activeWarehouseId();
 			const result = await deps.verify.execute({ soId, warehouseId, scannedBarcode: scannedBarcode.trim(), quantity });
-			info = result.message;
-			if (warehouseSelection.warehouseId !== warehouseId) {
+			if (!isCurrentContext(warehouseId, generation) || requestId !== requestEpoch) {
+				info = `Verificación confirmada en el almacén #${warehouseId}. El contexto cambió; vuelve a cargar el pedido para continuar.`;
 				detail = null;
-				info = `Lectura registrada en el almacén #${warehouseId}; vuelve a escanear al cambiar de almacén.`;
 				return true;
 			}
-			detail = await deps.loadOrder.execute(soNumber, warehouseId);
+			info = result.message;
+			const refreshed = await deps.loadOrder.execute(soNumber, warehouseId);
+			if (!isCurrentContext(warehouseId, generation) || requestId !== requestEpoch) { detail = null; return true; }
+			detail = refreshed;
 			scannedBarcode = ''; quantity = 1;
 			return true;
 		} catch (err) { error = toUserMessage(err, 'No se pudo verificar el ítem'); return false; }
@@ -64,11 +80,13 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 
 	async function complete() {
 		if (!detail || busy || loading) return false;
-		busy = true; error = null; info = null;
+ 		busy = true; error = null; info = null;
+		const warehouseId = activeWarehouseId();
+		const generation = warehouseSelection.generation;
 		try {
 			assertDetailWarehouse();
-			const result = await deps.complete.execute(detail.salesOrder.soId, activeWarehouseId());
-			info = result.message;
+			const result = await deps.complete.execute(detail.salesOrder.soId, warehouseId);
+			info = isCurrentContext(warehouseId, generation) ? result.message : `Empaque completado en el almacén #${warehouseId}. El contexto cambió.`;
 			detail = null;
 			return true;
 		} catch (err) { error = toUserMessage(err, 'No se pudo completar el packing'); return false; }
@@ -76,6 +94,8 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 	}
 
 	function onWarehouseChanged() {
+		requestEpoch++;
+		loading = false;
 		detail = null; scannedBarcode = ''; quantity = 1; error = null; info = null;
 	}
 
@@ -85,6 +105,7 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 		get loading() { return loading; }, get busy() { return busy; },
 		get error() { return error; }, get info() { return info; },
 		get warehouseId() { return warehouseSelection.warehouseId; },
+		get allVerified() { return !!detail && detail.lines.length > 0 && detail.lines.every(line => line.quantityPacked >= line.quantityPicked); },
 		setBarcode: (v: string) => barcode = v,
 		setScannedBarcode: (v: string) => scannedBarcode = v,
 		setQuantity: (v: number) => quantity = Number.isFinite(v) ? Math.trunc(v) : 1,
