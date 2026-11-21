@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   CancelBackorderUseCase, GetBackorderAuditHistoryUseCase, GetBackorderDetailUseCase, ListBackordersUseCase
 } from '../../../../../../core/feature/backorders/domain/usecase/BackorderUseCases';
+import { isBackorderCancelableStatus } from '../../../../../../core/feature/backorders/domain/entity/Backorder';
 import type { BackordersRepository } from '../../../../../../core/feature/backorders/domain/repository/BackordersRepository';
 import type { SalesOrder } from '../../../../../../core/feature/sales-orders/domain/entity/SalesOrder';
 
@@ -45,6 +46,17 @@ function repository(order = makeOrder(), parentSalesOrder: SalesOrder | null = o
     auditHistory: ReturnType<typeof vi.fn>;
   };
 }
+
+describe('Backorder cancellation status policy', () => {
+  it('allows only the backend-supported pre-shipment statuses', () => {
+    for (const status of ['WAITING_STOCK', 'OPEN', 'PICKED', 'PACKED']) {
+      expect(isBackorderCancelableStatus(status)).toBe(true);
+    }
+    for (const status of ['SHIPPED', 'CANCELLED', 'REFUNDED', 'FRAUD_REVIEW']) {
+      expect(isBackorderCancelableStatus(status)).toBe(false);
+    }
+  });
+});
 
 describe('ListBackordersUseCase', () => {
   it('passes the selected warehouse and supported queue to the repository', async () => {
