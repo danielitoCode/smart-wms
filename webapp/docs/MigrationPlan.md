@@ -912,3 +912,18 @@ Auditoría detallada, matriz de aceptación y requisitos de backend: `webapp/.co
 
 
 **Endurecimiento de contexto:** listado y detalle Transfer Orders descartan respuestas obsoletas; los filtros limpian detalle/snapshot seleccionado; cualquier fila fuera de ambos almacenes autorizados se oculta sin conservar metadatos de paginación del resultado no filtrado. La verificación CI de esta revisión queda pendiente.
+
+
+## 20. R5 — cierre del alcance frontend y bloqueo del ciclo integral
+
+**Estado de entrega:** `FRONTEND_IMPLEMENTATION_COMPLETE / BLOCKED_BACKEND`. La parte frontend de R5 queda implementada y documentada como consulta protegida; R5 no se etiqueta como recorrido logístico integral verificado porque el servidor no expone las garantías necesarias.
+
+En la revisión final se corrigió una debilidad de autorización en las vistas de transferencias: Transfer Orders ya no usa el rol literal `USER` y ambas vistas derivan rol y `warehouseIds` de `authSession.getUser()`, alimentado por el perfil autenticado `/me`. Los almacenes del selector y los registros del historial se filtran con esos grants; ADMIN conserva el comportamiento global definido por la política. Sin sesión o grants, el frontend falla de forma cerrada.
+
+Las mutaciones que no representan el ciclo requerido permanecen deshabilitadas. No se utiliza el endpoint de movimiento inmediato IWH como sustituto de dispatch/receive y no se invoca el flujo de Transfer Orders que reserva cantidades agregadas sin ledger exacto por línea/bin. No hay simulación de reservas, stock en tránsito, recepciones ni put-away.
+
+**Criterios frontend cerrados:** contrato futuro tipado, política dual de almacenes, autorización basada en sesión, aislamiento de listado/detalle/historial, descarte de respuestas obsoletas, bloqueo de mutaciones inseguras, mensajes de indisponibilidad y pruebas de estado/política/contrato/UI documentadas en `webapp/.code-review/R5-Transfer-Lifecycle-and-Scope.md`.
+
+**Bloqueo para R5 integral:** Flask debe implementar y probar reserva exacta transaccional, picking idempotente, short-close con liberación exacta, dispatch que cree saldo IN_TRANSIT, receive con autorización destino y conciliación, put-away con validación de bin/capacidad, cancelación/rechazo con ledger y auditoría/versionado. Hasta entonces la etiqueta correcta sigue siendo `BLOCKED_BACKEND`.
+
+**Verificación CI:** pendiente sobre el HEAD definitivo de esta revisión. No se declara verde ni se afirma ejecución local. No se modificó Flask/Python.
