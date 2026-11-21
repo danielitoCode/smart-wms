@@ -80,6 +80,10 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 
 	async function complete() {
 		if (!detail || busy || loading) return false;
+		if (detail.lines.length === 0 || detail.lines.some(line => line.quantityPacked < line.quantityPicked)) {
+			error = 'No se puede completar el empaque: quedan unidades recogidas sin verificar.';
+			return false;
+		}
 		busy = true; error = null; info = null;
 		const generation = warehouseSelection.generation;
 		try {
