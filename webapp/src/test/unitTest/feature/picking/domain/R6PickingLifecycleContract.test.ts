@@ -3,7 +3,8 @@ import {
   R6_PICKING_CAPABILITIES,
   R6OperationNotSupportedError,
   isR6CapabilityAvailable,
-  isR6PickingMutationSafe
+  isR6PickingMutationSafe,
+  isR6PickingExecutionAvailable
 } from '../../../../../core/feature/picking/domain/contract/R6PickingLifecycleContract';
 
 describe('R6 picking lifecycle capabilities', () => {
@@ -20,6 +21,7 @@ describe('R6 picking lifecycle capabilities', () => {
     expect(R6_PICKING_CAPABILITIES.itemAndBinBarcodeValidation).toBe('NOT_SUPPORTED_BY_SERVER');
     expect(R6_PICKING_CAPABILITIES.idempotentWaveReplay).toBe('NOT_SUPPORTED_BY_SERVER');
     expect(isR6PickingMutationSafe()).toBe(false);
+    expect(isR6PickingExecutionAvailable()).toBe(false);
   });
 
   it('exposes a typed actionable error instead of fabricating local success', () => {
