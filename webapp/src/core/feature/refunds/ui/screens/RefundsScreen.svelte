@@ -6,6 +6,8 @@
   import { createRefundsState } from '../state/refundsState.svelte';
 
   const i18n = getContext<I18nState>('i18n');
+  const auth = getContext<{ user: { role: string } | null }>('authGuard');
+  const isAdmin = auth?.user?.role === 'ADMIN';
   const vm = createRefundsState();
   const money = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' });
   const formatMoney = (amount: number) => money.format(amount);
@@ -69,7 +71,7 @@
         <tbody>
           {#each vm.rows as refund (refund.salesOrderId)}
             <tr>
-              <td><button class="link" onclick={() => void vm.detail(refund.salesOrderId)}>{refund.salesOrderNumber}</button></td>
+              <td><button class="link" onclick={() => void vm.detail(refund.salesOrderId, isAdmin)}>{refund.salesOrderNumber}</button></td>
               <td>{refund.customerName ?? '—'}</td>
               <td class="mono">{refund.parentSalesOrderNumber ?? '—'}</td>
               <td><span class="status">{refund.status}</span></td>
@@ -134,6 +136,7 @@
         </table>
       </div>
 
+      {#if isAdmin}
       <h3>{i18n.t('Reembolsos del mismo pedido')}</h3>
       <p class="relationship-note">{i18n.t('Las notas de crédito parciales se relacionan con el pedido original. Se muestran juntas para facilitar la conciliación.')}</p>
       {#each vm.selected.relatedRecords.filter(record => record.orderType === 'refund' && record.salesOrderId !== vm.selected?.salesOrderId) as sibling (sibling.salesOrderId)}
@@ -157,6 +160,10 @@
       {:else}
         <p class="empty">{i18n.t('No hay una RMA asociada al pedido original')}</p>
       {/each}
+
+      {:else}
+      <p class="relationship-note">{i18n.t('La consulta de relaciones entre pedidos está limitada a ADMIN porque el endpoint /related no aplica warehouse scope.')}</p>
+      {/if}
 
       <p class="pos-note"><strong>{i18n.t('Ejecución del reembolso')}</strong> — {i18n.t('Debe realizarse desde el POS. Esta vista solo consulta el registro administrativo y no modifica pagos ni inventario.')}</p>
     </section>
