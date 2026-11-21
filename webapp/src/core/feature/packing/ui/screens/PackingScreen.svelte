@@ -102,7 +102,7 @@
 			<button type="submit" disabled={state.busy || state.reconciliationRequired}>{i18n.t('Verificar')}</button>
 		</form>
 
-		<button type="button" class="accent" onclick={() => state.complete()} disabled={state.busy || !state.allVerified}>
+		<button type="button" class="accent" onclick={() => state.complete()} disabled={state.busy || !state.allVerified || state.reconciliationRequired || warehouseSelection.warehouseId == null}>
 			{i18n.t("Completar empaque")}
 		</button>
 	{/if}
