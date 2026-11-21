@@ -101,7 +101,7 @@
 			<button type="submit" disabled={state.busy}>{i18n.t('Verificar')}</button>
 		</form>
 
-		<button type="button" class="accent" onclick={() => state.complete()} disabled={state.busy}>
+		<button type="button" class="accent" onclick={() => state.complete()} disabled={state.busy || !state.allVerified}>
 			{i18n.t("Completar empaque")}
 		</button>
 	{/if}
