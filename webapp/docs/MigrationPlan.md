@@ -970,3 +970,13 @@ Se conserva el patrón React de escáner: validar SO/TO, wave/batch, tarea sigui
 **Bloqueos integrales backend:** enforcement server-side de `allowed_functions`; concurrencia PostgreSQL de doble pick/short y complete batch; validación de bin dentro de la transacción; replay idempotente de wave; validación/identidad de paquete físico; exposición y conciliación de `quantity_packed`; concurrencia complete packing/verify y doble fulfillment; consulta/reconciliación de shipment. La prueba backend existente `test_concurrent_duplicate_pack_scans_cannot_overpack` no sustituye las pruebas faltantes.
 
 **Verificación:** ejecutar y registrar Webapp CI en el HEAD definitivo de esta revisión. No usar workflows Python como aceptación frontend. No se modificó Flask/Python.
+
+## R6 — avance de cierre Picking y Packing (21-11-2026)
+
+Se completó un bloque adicional frontend:
+- Picking valida que la tarea consultada pertenece al batch activo y usa el gate global de ejecución además de las capacidades individuales para ConfirmPick, ShortPick y CompletePicking. Wave/batch creation permanece bloqueada por falta de replay idempotente.
+- Packing preserva la respuesta estructurada de `/api/packing/verify` (artículo y progreso), muestra el progreso del servidor y recarga el pedido para reconciliar cantidades persistidas.
+- La política compartida de packing solo permite completar con líneas no vacías y cantidades enteras/no negativas exactamente conciliadas (`quantity_picked === quantity_packed`); cantidades excedentes tampoco pasan el gate.
+- Se añadieron pruebas unitarias de mapper/use case y política de conciliación.
+
+Esto cierra el hardening frontend de este bloque a nivel de implementación, no la aceptación integral R6. Siguen bloqueados por contrato backend el doble picking/short atómico, validación de bin, finalización idempotente del batch, replay de wave y shipment físico/consultable. Las pruebas PostgreSQL multi-conexión faltantes pertenecen al backend y no se simulan con tests frontend. CI debe validarse sobre el HEAD definitivo. Flask/Python no fue modificado.
