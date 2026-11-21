@@ -8,6 +8,8 @@ const deps = createPackingDependencies();
 export function createPackingState(warehouseSelection: WarehouseSelectionState) {
 	let barcode = $state('');
 	let detail = $state<PackingOrderDetail | null>(null);
+	let detailWarehouseId: number | null = null;
+	let detailGeneration = -1;
 	let scannedBarcode = $state('');
 	let quantity = $state(1);
 	let loading = $state(false);
@@ -24,7 +26,7 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 	function activeWarehouseId() { return warehouseSelection.requireWarehouseId(); }
 	function assertDetailWarehouse() {
 		const selected = activeWarehouseId();
-		if (!detail || detail.salesOrder.warehouseId !== selected) {
+		if (!detail || detail.salesOrder.warehouseId !== selected || detailWarehouseId !== selected || detailGeneration !== warehouseSelection.generation) {
 			throw new Error('El pedido no pertenece al almacén seleccionado. Vuelve a escanearlo.');
 		}
 	}
@@ -38,12 +40,14 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 		let warehouseId: number;
 		try { warehouseId = activeWarehouseId(); }
 		catch (err) { error = toUserMessage(err, 'No hay almacén activo'); return false; }
-		loading = true; error = null; info = null; detail = null;
+		loading = true; error = null; info = null; detail = null; detailWarehouseId = null; detailGeneration = -1;
 		try {
 			const result = await deps.loadOrder.execute(code, warehouseId);
 			if (epoch !== requestEpoch || !isCurrentContext(warehouseId, generation)) return false;
 			if (result.salesOrder.warehouseId !== warehouseId) throw new Error('El pedido no pertenece al almacén seleccionado');
 			detail = result;
+			detailWarehouseId = warehouseId;
+			detailGeneration = generation;
 			reconciliationRequired = false;
 			return true;
 		} catch (err) {
@@ -73,13 +77,15 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 			info = result.message;
 			try {
 				const refreshed = await deps.loadOrder.execute(soNumber, warehouseId);
-				if (!isCurrentContext(warehouseId, generation) || requestId !== requestEpoch) { detail = null; return true; }
+				if (!isCurrentContext(warehouseId, generation) || requestId !== requestEpoch) { detail = null; detailWarehouseId = null; detailGeneration = -1; return true; }
 				detail = refreshed;
+				detailWarehouseId = warehouseId;
+				detailGeneration = generation;
 				reconciliationRequired = false;
 				scannedBarcode = ''; quantity = 1;
 			} catch {
 				if (isCurrentContext(warehouseId, generation) && requestId === requestEpoch) {
-					detail = null;
+					detail = null; detailWarehouseId = null; detailGeneration = -1;
 					reconciliationRequired = true;
 					error = 'La verificación fue confirmada, pero no se pudo actualizar el pedido. Vuelve a cargarlo antes de continuar.';
 				}
@@ -94,11 +100,13 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 				const reconciled = await deps.loadOrder.execute(soNumber, warehouseId);
 				if (isCurrentContext(warehouseId, generation) && requestId === requestEpoch) {
 					detail = reconciled;
+					detailWarehouseId = warehouseId;
+					detailGeneration = generation;
 					reconciliationRequired = false;
 				}
 			} catch {
 				if (isCurrentContext(warehouseId, generation) && requestId === requestEpoch) {
-					detail = null;
+					detail = null; detailWarehouseId = null; detailGeneration = -1;
 					reconciliationRequired = true;
 				}
 			}
@@ -120,7 +128,7 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 			assertDetailWarehouse();
 			const result = await deps.complete.execute(detail.salesOrder.soId, warehouseId);
 			info = isCurrentContext(warehouseId, generation) ? result.message : `Empaque completado en el almacén #${warehouseId}. El contexto cambió.`;
-			detail = null;
+			detail = null; detailWarehouseId = null; detailGeneration = -1;
 			return true;
 		} catch (err) { if (isCurrentContext(warehouseId, generation)) error = toUserMessage(err, 'No se pudo completar el packing'); return false; }
 		finally { busy = false; }
@@ -129,7 +137,7 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 	function onWarehouseChanged() {
 		requestEpoch++;
 		loading = false;
-		detail = null; scannedBarcode = ''; quantity = 1; error = null; info = null; reconciliationRequired = false;
+		detail = null; detailWarehouseId = null; detailGeneration = -1; scannedBarcode = ''; quantity = 1; error = null; info = null; reconciliationRequired = false;
 	}
 
 	return {
