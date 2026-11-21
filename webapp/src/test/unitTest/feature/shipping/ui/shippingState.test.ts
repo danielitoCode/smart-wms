@@ -14,7 +14,7 @@ describe('Shipping scanner state warehouse context', () => {
   expect(deps.loadOrder.execute).toHaveBeenCalledWith('SO-2', 6);
   state.setTrackingNumber('TRACK'); state.setCarrier('Carrier');
   expect(await state.fulfill()).toBe(true);
-  expect(deps.fulfill.execute).toHaveBeenCalledWith({ soId: 2, warehouseId: 6, trackingNumber: 'TRACK', carrier: 'Carrier', shipMethod: null });
+  expect(deps.fulfill.execute).toHaveBeenCalledWith({ soId: 2, warehouseId: 6, trackingNumber: 'TRACK', carrier: 'Carrier', shipMethod: 'GROUND' });
  });
  it('blocks fulfillment when the selected warehouse no longer matches the loaded order', async () => {
   const state = createShippingState(context as never);
@@ -55,6 +55,27 @@ describe('Shipping scanner state warehouse context', () => {
   expect(deps.fulfill.execute).toHaveBeenCalledTimes(1);
   resolveFulfill({ message: 'Shipment fulfilled', fulfillmentId: 11, soNumber: 'SO-2', trackingNumber: 'TRACK', carrier: 'Carrier', linesShipped: 1, totalQuantity: 2 });
   expect(await first).toBe(true);
+ });
+
+ it('rejects a loaded order when warehouse generation changes even if the id is unchanged', async () => {
+  const state = createShippingState(context as never);
+  state.setBarcode('SO-2'); await state.load();
+  context.generation = 2;
+  state.setTrackingNumber('TRACK'); state.setCarrier('Carrier');
+  expect(await state.fulfill()).toBe(false);
+  expect(deps.fulfill.execute).not.toHaveBeenCalled();
+ });
+ it('discards an order lookup response from an obsolete warehouse generation', async () => {
+  const state = createShippingState(context as never);
+  let resolveLoad!: (value: typeof detail) => void;
+  deps.loadOrder.execute.mockImplementationOnce(() => new Promise(resolve => { resolveLoad = resolve; }));
+  state.setBarcode('SO-2');
+  const pending = state.load();
+  context.generation = 2;
+  state.onWarehouseChanged();
+  resolveLoad(detail);
+  expect(await pending).toBe(false);
+  expect(state.detail).toBeNull();
  });
 
 });
