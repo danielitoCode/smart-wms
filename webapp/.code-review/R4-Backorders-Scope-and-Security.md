@@ -104,3 +104,22 @@ Se añadieron pruebas frontend para:
 **Límite:** estas pruebas verifican el comportamiento del cliente y la delegación al endpoint. No prueban la liberación real de inventario, el aislamiento entre clientes ni la atomicidad bajo concurrencia en Flask. Esos puntos permanecen en R4.3 como `BACKEND_LIMITATION`; no se simulan ni se certifican desde Svelte.
 
 **Nota de tooling:** el paso opcional `test:coverage:feature` no pudo ejecutarse porque falta el paquete `@vitest/coverage-v8`; el workflow lo define con `continue-on-error: true`, por eso el job general permanece verde. No se ocultó ningún fallo de tests: las 871 pruebas de regresión sí pasaron.
+
+
+## 8. R4.2 — revisión de cambios frontend y cierre de alcance
+
+**Código:** `0351dab45ac5ca9d5dffe44e8a7dda60fd55805d`.
+
+- `BackordersScreen.svelte`: `loadQueue()` concentra carga inicial, retry y refresh posterior a cancelación; siempre resuelve scope desde auth + selección. El retry ya no pasa un `null` sin validar.
+- La elegibilidad de cancelación usa la política Domain compartida; el listado no presenta la acción en estados no cancelables. El scope de la fila se compara con el scope actual.
+- Cambio de almacén no-admin cierra/invalida el modal abierto. `submitCancel()` repite la comprobación de permiso/scope/estado para evitar usar una fila obsoleta.
+- `BackorderDetailScreen.svelte` comparte la política de estados, vuelve a comprobar el warehouse antes del POST y oculta el diálogo si el estado dejó de ser cancelable.
+- Pruebas añadidas para estados admitidos y errores HTTP 400/403/404/409; se conservan pruebas de doble submit, carreras, historial/paginación y ausencia de liberación local.
+- Sales Orders separa éxito confirmado de fallo de refresh (`refreshError`) para no inducir un segundo POST tras una mutación ya aceptada.
+
+**Dictamen R4.2:** `IMPLEMENTED_FRONTEND`. La UI no reemplaza controles backend: R4-BE-01 (GET cola), R4-BE-02 (POST cancelación) y R4-BE-03 (atomicidad de `cancellation_reason`) permanecen `BACKEND_LIMITATION`. La liberación de inventario sigue siendo propiedad de la transacción Flask. No se tocó backend.
+
+### Corrección de estado Gitleaks histórico
+
+La sección inicial que marcaba el hallazgo como `PENDING_REVIEW` queda supersedida por la verificación posterior: el patrón era un JWT de ejemplo truncado literalmente con puntos suspensivos, y `.gitleaks.toml` contiene una allowlist exacta y anclada para ese placeholder. El workflow Gitleaks terminó `success` en los HEAD posteriores; no se excluyó el archivo ni la regla genérica. Mantener como evidencia los runs específicos de cada SHA, no inferir estado del HEAD actual a partir de ejecuciones antiguas.
+
