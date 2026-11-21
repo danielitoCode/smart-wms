@@ -1,6 +1,6 @@
 <script lang="ts">
 	import UiStatePanel from '#lib/components/UiStatePanel.svelte';
-  import { getContext, onMount } from 'svelte';
+  import { getContext } from 'svelte';
   import { authSession } from '#core/infrastructure/auth/AuthSession.ts';
   import { canViewPickingTicketInWarehouse } from '../../domain/policy/PickingTicketWarehouseScopePolicy';
   import { createPickingTicketsDependencies } from '../../di/pickingTickets.dependencies';
