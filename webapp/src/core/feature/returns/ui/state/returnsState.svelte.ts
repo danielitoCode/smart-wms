@@ -16,6 +16,7 @@ export function createReturnsState() {
   let returnableOrder = $state<ReturnableOrder | null>(null);
   let loading = $state(false);
   let saving = $state(false);
+  let createOutcomeUncertain = $state(false);
   let error = $state<string | null>(null);
   let status = $state('');
   let search = $state('');
@@ -80,7 +81,7 @@ export function createReturnsState() {
   }
 
   async function createReturn(lines: RequestedReturnLine[], memo: string) {
-    if (!returnableOrder || saving) return false;
+    if (!returnableOrder || saving || createOutcomeUncertain) return false;
     saving = true; error = null;
     const sourceId = returnableOrder.salesOrderId;
     try {
@@ -90,7 +91,11 @@ export function createReturnsState() {
       await detail(result.so_id, true);
       return true;
     } catch (cause) {
-      error = toUserMessage(cause, 'No se pudo crear la autorización de devolución');
+      // create-rma has no server idempotency key. Treat every failed response as
+      // uncertain and block another POST in this mounted session; the operator
+      // must inspect the RMA list before retrying after a full page reload.
+      createOutcomeUncertain = true;
+      error = toUserMessage(cause, 'No se pudo confirmar la creación. No repitas el POST; comprueba primero la lista de RMA.');
       // The server serializes the shipped-quantity allowance. Refresh it after
       // a rejected request so a concurrent RMA cannot leave a stale allowance.
       try { returnableOrder = await d.returnableOrder.execute(sourceId); } catch { returnableOrder = null; }
@@ -147,6 +152,7 @@ export function createReturnsState() {
 
   return {
     get rows() { return rows; }, get selected() { return selected; },
+    get createOutcomeUncertain() { return createOutcomeUncertain; },
     get warehouses() { return warehouses; }, get bins() { return bins; },
     get originals() { return originals; }, get returnableOrder() { return returnableOrder; },
     get loading() { return loading; }, get saving() { return saving; }, get error() { return error; },
