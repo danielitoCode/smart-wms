@@ -55,4 +55,35 @@ describe('Packing scanner state warehouse context', () => {
   expect(deps.complete.execute).not.toHaveBeenCalled();
  });
 
+ it('reconciles packed quantity from Flask after an uncertain scan failure before allowing another scan', async () => {
+  const state = createPackingState(context as never);
+  state.setBarcode('SO-3');
+  await state.load();
+  state.setScannedBarcode('UPC-3');
+  deps.verify.execute.mockRejectedValueOnce(new Error('timeout'));
+  deps.loadOrder.execute.mockResolvedValueOnce({
+   ...detail,
+   lines: [{ sku: 'SKU-3', quantityPicked: 2, quantityPacked: 1, packVerified: false }],
+   totalItems: 2,
+   itemsVerified: 1
+  });
+  expect(await state.verify()).toBe(false);
+  expect(state.detail?.lines[0].quantityPacked).toBe(1);
+  expect(state.reconciliationRequired).toBe(false);
+  expect(deps.loadOrder.execute).toHaveBeenCalledTimes(2);
+ });
+
+ it('discards a load response after the warehouse generation changes even if the id is reused', async () => {
+  const state = createPackingState(context as never);
+  let resolveLoad!: (value: typeof detail) => void;
+  deps.loadOrder.execute.mockImplementationOnce(() => new Promise(resolve => { resolveLoad = resolve; }));
+  state.setBarcode('SO-3');
+  const pending = state.load();
+  context.generation = 2;
+  state.onWarehouseChanged();
+  resolveLoad(detail);
+  expect(await pending).toBe(false);
+  expect(state.detail).toBeNull();
+ });
+
 });
