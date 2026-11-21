@@ -219,6 +219,9 @@
           </table>
         {/if}
       </section>
+      {:else}
+        <aside class="read-only-note">{i18n.t('El historial de recepciones se oculta a usuarios no ADMIN porque el endpoint Flask no aplica warehouse scope.')}</aside>
+      {/if}
 
       {#if vm.selected.status !== 'RECEIVED' && isAdmin}
         <section>
