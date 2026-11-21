@@ -14,6 +14,7 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 	let busy = $state(false);
 	let error = $state<string | null>(null);
 	let info = $state<string | null>(null);
+	let reconciliationRequired = $state(false);
 	let requestEpoch = 0;
 
 	function isCurrentContext(warehouseId: number, generation: number) {
@@ -43,6 +44,7 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 			if (epoch !== requestEpoch || !isCurrentContext(warehouseId, generation)) return false;
 			if (result.salesOrder.warehouseId !== warehouseId) throw new Error('El pedido no pertenece al almacén seleccionado');
 			detail = result;
+			reconciliationRequired = false;
 			return true;
 		} catch (err) {
 			if (epoch === requestEpoch && isCurrentContext(warehouseId, generation)) error = toUserMessage(err, 'No se pudo cargar el pedido');
@@ -69,12 +71,39 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 				return true;
 			}
 			info = result.message;
-			const refreshed = await deps.loadOrder.execute(soNumber, warehouseId);
-			if (!isCurrentContext(warehouseId, generation) || requestId !== requestEpoch) { detail = null; return true; }
-			detail = refreshed;
-			scannedBarcode = ''; quantity = 1;
+			try {
+				const refreshed = await deps.loadOrder.execute(soNumber, warehouseId);
+				if (!isCurrentContext(warehouseId, generation) || requestId !== requestEpoch) { detail = null; return true; }
+				detail = refreshed;
+				reconciliationRequired = false;
+				scannedBarcode = ''; quantity = 1;
+			} catch (refreshError) {
+				if (isCurrentContext(warehouseId, generation) && requestId === requestEpoch) {
+					detail = null;
+					reconciliationRequired = true;
+					error = 'La verificación fue confirmada, pero no se pudo actualizar el pedido. Vuelve a cargarlo antes de continuar.';
+				}
+			}
 			return true;
-		} catch (err) { error = toUserMessage(err, 'No se pudo verificar el ítem'); return false; }
+		} catch (err) {
+			if (!isCurrentContext(warehouseId, generation) || requestId !== requestEpoch) return false;
+			error = toUserMessage(err, 'No se pudo verificar el ítem');
+			// A timeout may happen after Flask committed. Re-read the server
+			// quantity before allowing the operator to scan this item again.
+			try {
+				const reconciled = await deps.loadOrder.execute(soNumber, warehouseId);
+				if (isCurrentContext(warehouseId, generation) && requestId === requestEpoch) {
+					detail = reconciled;
+					reconciliationRequired = false;
+				}
+			} catch {
+				if (isCurrentContext(warehouseId, generation) && requestId === requestEpoch) {
+					detail = null;
+					reconciliationRequired = true;
+				}
+			}
+			return false;
+		}
 		finally { busy = false; }
 	}
 
@@ -100,7 +129,7 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 	function onWarehouseChanged() {
 		requestEpoch++;
 		loading = false;
-		detail = null; scannedBarcode = ''; quantity = 1; error = null; info = null;
+		detail = null; scannedBarcode = ''; quantity = 1; error = null; info = null; reconciliationRequired = false;
 	}
 
 	return {
@@ -110,6 +139,7 @@ export function createPackingState(warehouseSelection: WarehouseSelectionState) 
 		get error() { return error; }, get info() { return info; },
 		get warehouseId() { return warehouseSelection.warehouseId; },
 		get allVerified() { return !!detail && detail.lines.length > 0 && detail.lines.every(line => line.quantityPacked >= line.quantityPicked); },
+		get reconciliationRequired() { return reconciliationRequired; },
 		setBarcode: (v: string) => barcode = v,
 		setScannedBarcode: (v: string) => scannedBarcode = v,
 		setQuantity: (v: number) => quantity = Number.isFinite(v) ? Math.trunc(v) : 1,
