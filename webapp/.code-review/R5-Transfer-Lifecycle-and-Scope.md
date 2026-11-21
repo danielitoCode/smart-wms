@@ -107,3 +107,24 @@ R5 **no está cerrado funcionalmente**. La migración frontend queda protegida c
 - Las cargas de listado y detalle de Transfer Orders usan epochs: una respuesta antigua no puede reemplazar una consulta más reciente ni reabrir un detalle anterior.
 - Al cambiar filtros de estado/origen/destino o volver al listado, se invalida el detalle seleccionado y el snapshot de picker.
 - Si el servidor devuelve alguna fila cuyo origen o destino no está en la lista autorizada, se oculta y no se conserva el total/paginación original que pudiera filtrar metadatos de esa fila.
+
+
+## 8. Revisión de autorización de sesión (20-11-2026)
+
+La revisión final detectó que las guardas de Transfer Orders utilizaban el rol literal `USER` y que ambas vistas inferían autorización a partir de la lista de almacenes cargada por su propio selector. Eso no era suficiente: podía excluir incorrectamente a ADMIN y, más importante, no debía convertir una lista de catálogo en la fuente de grants del usuario.
+
+**Corrección aplicada en frontend:**
+- Transfer Orders obtiene `role` y `warehouseIds` desde `authSession.getUser()`, que se alimenta del perfil autenticado `/me`.
+- El policy de ambos extremos recibe el rol real; ADMIN conserva el alcance global permitido por la política y los demás roles necesitan los dos IDs en sus grants.
+- Los almacenes disponibles en Transfer Orders se limitan a los grants de sesión para usuarios no ADMIN.
+- El historial IWH limita también los almacenes del selector y las filas a los grants de sesión; no considera autorizado un almacén solo porque aparezca en el catálogo.
+- Si no hay usuario autenticado/grants en memoria, el comportamiento es fail-closed.
+- Se ampliaron las pruebas de estado para comprobar que un almacén presente en el catálogo pero ausente de los grants no aparece como autorizado.
+
+**Commits de esta corrección:**
+- `92e85efd867cd4d597ff96aea5eaf5bdd5ec97fe` — Transfer Orders.
+- `dfcc97c1a9c6ba902ad58a21690ab9fb2eec9584` — Inter-warehouse history.
+- `fe27f0db9c01b5d5dfb134d1a92c867558102a62` — pruebas Transfer Orders.
+- `5578c7516b186873e0154f16ffad0d2a68de2952` — pruebas IWH.
+
+**Estado de aceptación:** guardas frontend y pruebas añadidas; la aprobación efectiva depende de Webapp CI en el HEAD final. Esto no sustituye el enforcement Flask. El cierre funcional integral R5 sigue bloqueado por las capacidades backend enumeradas en §5.
