@@ -71,3 +71,15 @@ El log de CI redacta el valor detectado. No se copia ni reproduce ningún secret
 ## 5. Criterio para cerrar los bloqueos
 
 Los gaps R4-BE-01/02/03 solo podrán marcarse resueltos si existe evidencia de enforcement y atomicidad del lado del servidor en un alcance backend autorizado. Mientras Flask permanezca fuera del alcance, se conservarán como bloqueos formales y R4 no se declarará completamente seguro/operativo en esos criterios.
+
+
+## 6. R4.1 — CI frontend y hallazgo Gitleaks
+
+**HEAD evaluado:** `00bc8b93239c82aa5c7237b8442a1f184f62f295`.
+
+- La pantalla `BackorderDetailScreen.svelte` rechaza la cancelación cuando `order.warehouseId` es `null`, comprueba el scope antes de ejecutar y solo pasa un `number` válido al estado/caso de uso.
+- El workflow **Webapp CI** del HEAD evaluado terminó en `success`; su job `Typecheck · Build · Test` pasó. Esto confirma typecheck, build y tests frontend en ese commit.
+- Gitleaks 8.21.2 reportó una coincidencia histórica `generic-api-key` en la línea 76 de `wms-twin/doc/API_ENDPOINTS_FRONTEND.md`, commit de origen `03169fe385a187aa797661272d025b7b945faa75`. La línea es un ejemplo JSON de respuesta con un JWT truncado literalmente mediante puntos suspensivos; no contiene un token completo utilizable.
+- Se añadió a `.gitleaks.toml` una allowlist anclada al valor exacto del placeholder. No se excluyó el archivo, el path ni la regla; cualquier otro valor sigue sujeto al escaneo normal.
+
+**Estado R4.1:** corrección frontend y typecheck/build verificados en el HEAD indicado; allowlist aplicada, pero el cierre de CI queda **pendiente de que Gitleaks vuelva a ejecutarse y termine en verde sobre el nuevo HEAD**. No se modifica Flask.
