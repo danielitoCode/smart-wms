@@ -1,8 +1,9 @@
 import type {
 	PackingOrderDetail,
-	SimpleMessageResult
+	SimpleMessageResult,
+	VerifyPackResult
 } from '../../domain/entity/Packing';
-import type { MessageDto, PackingOrderResponseDto } from '../dto/PackingDto';
+import type { MessageDto, PackingOrderResponseDto, VerifyPackResponseDto } from '../dto/PackingDto';
 
 export const PackingMapper = {
 	toDetail(dto: PackingOrderResponseDto): PackingOrderDetail {
@@ -34,6 +35,14 @@ export const PackingMapper = {
 			calculatedWeightLbs: dto.calculated_weight_lbs,
 			totalItems: dto.total_items,
 			itemsVerified: dto.items_verified
+		};
+	},
+
+	toVerifyResult(dto: VerifyPackResponseDto): VerifyPackResult {
+		return {
+			message: dto.message,
+			item: { sku: dto.item.sku, itemName: dto.item.item_name, quantityVerified: dto.item.quantity_verified, lineComplete: dto.item.line_complete },
+			orderProgress: { totalLines: dto.order_progress.total_lines, linesVerified: dto.order_progress.lines_verified, allVerified: dto.order_progress.all_verified }
 		};
 	},
 
