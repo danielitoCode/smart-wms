@@ -52,6 +52,7 @@
 	{#if state.loading && !state.detail}<UiStatePanel kind="loading" title={i18n.t('Cargando pedido para despacho')} message={i18n.t('Estamos validando el código escaneado.')} />
 	{:else if !state.detail}<UiStatePanel kind="empty" title={i18n.t('Escanea un pedido')} message={i18n.t('Introduce o escanea el código de barras para cargar el pedido que vas a despachar.')} />{/if}
 	{#if state.info}<p class="ok" role="status">{state.info}</p>{/if}
+	{#if state.reconciliationRequired}<p class="err" role="alert">{i18n.t('No repitas el envío: el resultado es incierto y debes reconciliar el pedido antes de volver a intentarlo.')}</p>{/if}
 	{#if state.lastResult}
 		<p class="ok" role="status">
 			{state.lastResult.message} · {state.lastResult.carrier}
