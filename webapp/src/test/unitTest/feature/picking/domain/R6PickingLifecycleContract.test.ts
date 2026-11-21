@@ -29,6 +29,7 @@ describe('R6 picking lifecycle capabilities', () => {
     expect(R6_PICKING_CAPABILITIES.validateShipmentPackage).toBe('NOT_SUPPORTED_BY_SERVER');
     expect(R6_PICKING_CAPABILITIES.shipOrder).toBe('PARTIAL');
     expect(isR6ShippingExecutionAvailable()).toBe(false);
+    expect(R6_PICKING_CAPABILITIES.getShipment).toBe('NOT_SUPPORTED_BY_SERVER');
   });
 
   it('exposes a typed actionable error instead of fabricating local success', () => {
