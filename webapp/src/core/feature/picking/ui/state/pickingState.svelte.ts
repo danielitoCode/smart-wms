@@ -2,8 +2,7 @@ import { createPickingDependencies } from '../../di/picking.dependencies';
 import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
 import type { ActiveBatch, CreateBatchResult, PickTask, WaveCreateResult, WaveValidateResult } from '../../domain/entity/Picking';
 import { toUserMessage } from '../../../../infrastructure/errors/ApiError';
-import { isR6PickingMutationSafe, R6OperationNotSupportedError } from '../../domain/contract/R6PickingLifecycleContract';
-import { isR6PickingExecutionAvailable, R6PickingCapabilityError } from '../../domain/policy/R6PickingExecutionCapabilities';
+import { isR6PickingMutationSafe, isR6PickingExecutionAvailable, isR6CapabilityAvailable, R6OperationNotSupportedError } from '../../domain/contract/R6PickingLifecycleContract';
 
 const deps = createPickingDependencies();
 
@@ -151,7 +150,7 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 	}
 
 	async function confirm() {
-		if (!isR6PickingExecutionAvailable()) { error = new R6PickingCapabilityError('confirmPickAtomically').message; return false; }
+		if (!isR6CapabilityAvailable('confirmPick')) { error = new R6OperationNotSupportedError('confirmPick').message; return false; }
 		if (!task || busy || loading) return false;
 		let warehouseId: number;
 		try { warehouseId = activeWarehouseId(); } catch (err) { error = toUserMessage(err, 'No hay almacén activo'); return false; }
@@ -170,7 +169,7 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 	}
 
 	async function shortPick() {
-		if (!isR6PickingExecutionAvailable()) { error = new R6PickingCapabilityError('shortPickAtomically').message; return false; }
+		if (!isR6CapabilityAvailable('shortPick')) { error = new R6OperationNotSupportedError('shortPick').message; return false; }
 		if (!task || busy || loading) return false;
 		let warehouseId: number;
 		try { warehouseId = activeWarehouseId(); } catch (err) { error = toUserMessage(err, 'No hay almacén activo'); return false; }
@@ -186,7 +185,7 @@ export function createPickingState(warehouseSelection: WarehouseSelectionState) 
 	}
 
 	async function completeBatch() {
-		if (!isR6PickingExecutionAvailable()) { error = new R6PickingCapabilityError('completePickingIdempotently').message; return false; }
+		if (!isR6CapabilityAvailable('completePicking')) { error = new R6OperationNotSupportedError('completePicking').message; return false; }
 		if (!batch?.batchId || busy || loading) return false;
 		let warehouseId: number;
 		try { warehouseId = activeWarehouseId(); } catch (err) { error = toUserMessage(err, 'No hay almacén activo'); return false; }
