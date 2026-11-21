@@ -176,4 +176,20 @@ describe('CancelBackorderUseCase', () => {
     await expect(new CancelBackorderUseCase(repo).execute(41, 'found', 3)).rejects.toThrow(/CANCELLED/);
     expect(repo.cancel).not.toHaveBeenCalled();
   });
+  it('allows cancellation only from each backend-supported pre-shipment state', async () => {
+    for (const status of ['WAITING_STOCK', 'OPEN', 'PICKED', 'PACKED'] as const) {
+      const repo = repository(makeOrder({ status }));
+      await new CancelBackorderUseCase(repo).execute(41, 'other', 3);
+      expect(repo.cancel).toHaveBeenCalledWith(41, 'other');
+    }
+  });
+
+  it('accepts every documented cancellation reason without translating it locally', async () => {
+    for (const reason of ['found', 'customer_asked', 'refunded', 'other'] as const) {
+      const repo = repository();
+      await new CancelBackorderUseCase(repo).execute(41, reason, 3);
+      expect(repo.cancel).toHaveBeenCalledWith(41, reason);
+    }
+  });
+
 });
