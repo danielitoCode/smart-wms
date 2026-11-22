@@ -152,4 +152,19 @@ describe('Integrations UI state', () => {
     state.destroy();
     vi.useRealTimers();
   });
+
+  it('keeps warehouse id attached to credential mutations and surfaces scoped HTTP failures', async () => {
+    const state = createIntegrationsState(createDeps());
+    await state.selectConnector(connector('erp'), 7);
+    await state.save('erp', 7, { api_key: 'secret' });
+    expect(deps.save.execute).toHaveBeenCalledWith('erp', 7, { api_key: 'secret' });
+    await state.deleteCredentials('erp', 7);
+    expect(deps.deleteCredentials.execute).toHaveBeenCalledWith('erp', 7);
+    for (const statusCode of [400, 403, 404]) {
+      deps.testConnection.execute.mockRejectedValueOnce(new ApiError(statusCode, `HTTP ${statusCode}`, 'api_error'));
+      expect(await state.testConnection('erp', 7)).toBe(false);
+      expect(state.error).toBeTruthy();
+    }
+    state.destroy();
+  });
 });
