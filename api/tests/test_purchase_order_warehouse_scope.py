@@ -130,3 +130,15 @@ def test_create_purchase_order_rejects_unassigned_warehouse(client):
         },
     )
     assert response.status_code == 403
+
+
+def test_receiving_grant_can_list_only_bins_in_assigned_warehouse(client):
+    user = _user_headers(client, [1], ["receiving"])
+
+    own = client.get("/api/admin/bins?warehouse_id=1&per_page=1000", headers=user)
+    assert own.status_code == 200, own.get_json()
+    assert all(row["warehouse_id"] == 1 for row in own.get_json()["bins"])
+
+    foreign = client.get("/api/admin/bins?warehouse_id=2&per_page=1000", headers=user)
+    assert foreign.status_code == 200, foreign.get_json()
+    assert foreign.get_json()["bins"] == []
