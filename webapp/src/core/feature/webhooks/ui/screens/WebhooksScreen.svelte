@@ -1,6 +1,6 @@
 <script lang="ts">
 	import UiStatePanel from '#lib/components/UiStatePanel.svelte';
- import {onMount,getContext} from 'svelte';
+ import {onDestroy,onMount,getContext} from 'svelte';
  import type {I18nState} from '#lib/i18n/i18n.svelte';
  import {createWebhooksState} from '../state/webhooksState.svelte';
  import type {WebhookSubscription,WebhookCreateInput,WebhookStats,ReplayBatchFilter} from '../../domain/entity/Webhook';
@@ -11,6 +11,7 @@
  let dlqPage=$state(0),statsWindow=$state<WebhookStats['window']>('24h'),showErrors=$state(false),errorKind=$state(''),errorSubscription=$state(''),errorFrom=$state(''),errorTo=$state('');
  let errorsPage=$state(0); let replayStatus=$state<'dlq'|'failed'|'succeeded'>('dlq'),replayType=$state(''),replayWarehouse=$state(''),replayFrom=$state(''),replayTo=$state(''),ackLarge=$state(false),showReplay=$state(false);
  onMount(()=>{void vm.load();});
+ onDestroy(()=>{vm.clearSecret();});
  function parseList(s:string){return s.split(',').map(v=>v.trim()).filter(Boolean);}
  function currentFilter(){return { ...(parseList(eventTypes).length?{eventTypes:parseList(eventTypes)}:{}),...(parseList(warehouseIds).length?{warehouseIds:parseList(warehouseIds).map(Number)}:{}),...(parseList(externalIds).length?{aggregateExternalIdAllowlist:parseList(externalIds)}:{})};}
  function resetForm(){name='';connectorId=vm.connectors[0]?.connectorId??'';url='';eventTypes='';warehouseIds='';externalIds='';rate=50;pending=10000;dlqCeiling=1000;formError='';}
