@@ -154,7 +154,7 @@
 			const from: Keyframe = {
 				opacity: startOpacity,
 				filter: fromFilter(effectType, blurPx),
-				transform: fromTransform(effect)
+				transform: fromTransform(effectType)
 			};
 			const to: Keyframe = {
 				opacity: 1,
@@ -189,7 +189,7 @@
 					{
 						opacity: startOpacity,
 						filter: fromFilter(effectType, blurPx),
-						transform: fromTransform(effect)
+						transform: fromTransform(effectType)
 					}
 				],
 				{ duration: durMs, easing: cssEase, fill: 'forwards' }
@@ -234,8 +234,8 @@
 							for (const t of targets) {
 								t.getAnimations().forEach((a) => a.cancel());
 								t.style.opacity = String(startOpacity);
-								t.style.filter = fromFilter(effect, blurPx);
-								t.style.transform = fromTransform(effect);
+								t.style.filter = fromFilter(effectType, blurPx);
+								t.style.transform = fromTransform(effectType);
 							}
 							node.style.visibility = 'hidden';
 						}
