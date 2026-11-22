@@ -157,7 +157,19 @@ def test_create_purchase_order_rejects_unassigned_warehouse(client):
     assert response.status_code == 403
 
 
-def test_receiving_grant_can_list_only_bins_in_assigned_warehouse(client):
+def test_receiving_grant_can_list_only_bins_and_purchase_orders_in_assigned_warehouse(client):
+    admin = _admin_headers(client)
+    own_po = client.post(
+        "/api/admin/purchase-orders",
+        headers=admin,
+        json={
+            "po_number": f"PO-WH-OWN-{uuid.uuid4().hex[:8]}",
+            "warehouse_id": 1,
+            "lines": [{"item_id": 1, "quantity_ordered": 2}],
+        },
+    )
+    assert own_po.status_code == 200, own_po.get_json()
+    foreign_po_id = _create_warehouse_two_po(client, admin)
     user = _user_headers(client, [1], ["receiving"])
 
     own = client.get("/api/admin/bins?warehouse_id=1&per_page=1000", headers=user)
@@ -170,3 +182,14 @@ def test_receiving_grant_can_list_only_bins_in_assigned_warehouse(client):
 
     foreign = client.get("/api/admin/bins?warehouse_id=2&per_page=1000", headers=user)
     assert foreign.status_code == 403
+
+    orders = client.get("/api/admin/purchase-orders?per_page=1000", headers=user)
+    assert orders.status_code == 200, orders.get_json()
+    listed_ids = {row["po_id"] for row in orders.get_json()["purchase_orders"]}
+    assert own_po.get_json()["po_id"] in listed_ids
+    assert foreign_po_id not in listed_ids
+
+    denied_foreign_filter = client.get(
+        "/api/admin/purchase-orders?warehouse_id=2", headers=user
+    )
+    assert denied_foreign_filter.status_code == 403
