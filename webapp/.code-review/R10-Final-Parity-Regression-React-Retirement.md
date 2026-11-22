@@ -165,3 +165,25 @@ Se añadieron redirects HTTP 308 para 28 rutas antiguas que no tenían una pági
 - `R10.8 React retirement`: bloqueado; requiere evidencia completa y aprobación explícita.
 
 No declarar R10 completa ni paridad funcional a partir de estos checks estáticos.
+
+
+## 9. R10.1 — matriz operativa por acción (primera pasada)
+
+Se creó `.code-review/R10.1-Operation-Traceability-Matrix.md` con una primera descomposición de R1–R9 en operaciones de negocio. Cada fila enlaza ruta React, destino Svelte, caso de uso/regla, contrato Flask/DTO, permiso, warehouse scope y evidencia disponible.
+
+**Estado:** `BASELINE_CREATED — TRACEABILITY_PARTIAL`. No se declara paridad por tener ruta o test de mapper. La matriz distingue `CONTRACT_DOCUMENTED`, `BACKEND_LIMITATION`, `PENDING_EVIDENCE` y reserva `VERIFIED_PARITY` para recorridos reproducibles R10.3/R10.4.
+
+Pendiente completar handlers React/transiciones, nombres exactos de use cases y tests por acción, DTO de respuesta/códigos HTTP y enforcement real de warehouse scope. Los contratos que no ofrecen preview, ledger o scope permanecen explícitamente como limitaciones Flask.
+
+## 10. R10.2 — validación estática reforzada de compatibilidad
+
+La revisión de React confirmó que `/warehouses` es un alias histórico hacia `/data/warehouses`. Svelte tenía una pantalla equivalente en ambos paths, pero servía `/warehouses` directamente y no reproducía el destino/canonicalización React. Se añadió redirect HTTP 308 para `/warehouses` y se cambió el landing interno de usuarios con grant `warehouses` a `/data/warehouses`.
+
+- Mapa central actualizado: `src/lib/navigation/legacyRouteRedirects.ts`.
+- Wrapper añadido: `src/routes/(app)/warehouses/+page.server.ts`.
+- El test ahora verifica que cada destino resuelve a una página Svelte concreta o a una feature explícita de `management/[feature]`, además de comprobar que cada ruta heredada tiene su wrapper.
+- El inventario pasa de 28 a **29 redirects legacy**.
+
+**Límite:** son pruebas estáticas de filesystem/catálogo. No prueban el status HTTP observado en servidor, la navegación del browser, query strings, refresh autenticado ni la autorización efectiva Flask. Esas comprobaciones siguen en R10.2/R10.3 E2E. Estado: `IMPLEMENTED_PENDING_CI_AND_BROWSER`.
+
+**React sigue intacto.**
