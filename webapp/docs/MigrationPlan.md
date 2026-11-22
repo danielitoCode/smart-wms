@@ -457,6 +457,10 @@ No soportado: CRUD, grants, configuración, replay, import o conectores sin ruta
 
 Aceptación: permisos efectivos comprobados en UI y Flask, aislamiento, validación y regresión de usuarios existentes.
 
+**Seguimiento R8 (22-11-2026):** auditoría inicial realizada sobre HEAD `5a2cb48adb09e2942f58eade176222744fb9b463`. La base Svelte existente cubre Users/Grants, Warehouse CRUD, Settings, Audit Log, Imports y Integrations; no se reconstruyen esos módulos. Se registran los hallazgos y el orden de trabajo en [R8-Administration-Users-Permissions-Configuration-Audit.md](../.code-review/R8-Administration-Users-Permissions-Configuration-Audit.md). Prioridades iniciales: impedir que los grants sintéticos de ADMIN se conviertan en grants USER al degradar el rol; cerrar en UI el acceso no-ADMIN a audit y administración global de almacenes mientras Flask no aplique warehouse scope; hacer explícito que Settings es global; prevalidar warehouse IDs en importaciones y bloquear reintentos completos tras resultado incierto; revisar reconciliación de sesión y secretos. Flask no se modifica.
+
+**Estado:** `AUDIT_IN_PROGRESS / FRONTEND_HARDENING_REQUIRED / BACKEND_LIMITATIONS`. R8 no está cerrado. El HEAD de referencia de esta auditoría tenía Webapp CI fallido en typecheck por dos errores en `TransactionList.svelte` y su ruta de laboratorio; instalación de dependencias sí pasó. Build y suites quedaron omitidos, por lo que el cierre requiere resolver el bloqueo global y ejecutar la regresión frontend sobre el HEAD definitivo.
+
 ### R9 — Integraciones, webhooks, auditoría y operaciones complementarias
 **Trazabilidad:** F5, F6.1 Fraud, Audit Log, Webhooks, Connectors, Customers.
 
