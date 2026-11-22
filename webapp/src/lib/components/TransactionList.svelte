@@ -65,7 +65,7 @@
 					{#each transactions as t (t.id)}
 						<button type="button" class="tx-row" onclick={() => select(t.id)}>
 							<div class="tx-row-left">
-								<div class="tx-icon">{render iconSvg(t.icon)}</div>
+								<div class="tx-icon">{@render iconSvg(t.icon)}</div>
 								<div class="tx-meta">
 									<p class="tx-name">{t.name}</p>
 									<p class="tx-type">{t.type}</p>
@@ -87,7 +87,7 @@
 		{:else}
 			<div class="tx-detail">
 				<div class="tx-detail-top">
-					<div class="tx-icon tx-icon--lg">{render iconSvg(selected.icon)}</div>
+					<div class="tx-icon tx-icon--lg">{@render iconSvg(selected.icon)}</div>
 					<button type="button" class="tx-close" onclick={clear} aria-label="Close">
 						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
 							><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
