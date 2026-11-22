@@ -176,7 +176,7 @@ export function canSelectWarehouse(
 	},
 	warehouseId: number
 ): boolean {
-	const canBrowseAll = input.role === 'ADMIN' || input.allowedPages.includes('warehouses');
+	const canBrowseAll = input.role === 'ADMIN';
 	const candidates =
 		canBrowseAll && input.availableWarehouseIds.length > 0
 			? input.availableWarehouseIds
