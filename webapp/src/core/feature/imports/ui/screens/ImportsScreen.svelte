@@ -38,7 +38,9 @@
 		const warehouseId = warehouseSelection.warehouseId ?? '';
 		const warehouseCode = activeWarehouse?.code ?? '';
 		const templates: Record<CsvImportType, string> = {
-			items: 'sku,name,description,category,upc,default_bin,weight,quantity\nWIDGET-001,Blue Widget,Standard blue widget,Widgets,012345678901,A-01-01-01,0.50,100',
+			items: authGuard.user?.role === 'ADMIN'
+				? 'sku,name,description,category,upc,default_bin,weight,quantity\\nWIDGET-001,Blue Widget,Standard blue widget,Widgets,012345678901,A-01-01-01,0.50,100'
+				: 'sku,name,description,category,upc,default_bin,weight,quantity\\nWIDGET-001,Blue Widget,Standard blue widget,Widgets,012345678901,,0.50,',
 			bins: `bin_code,bin_barcode,zone,warehouse_id,aisle,bin_type,pick_sequence,putaway_sequence,description\nC-01-01-01,C-01-01-01,STORAGE,${warehouseId},C,Pickable,100,100,Shelf C Row 1 Level 1`,
 			'purchase-orders': `po_number,warehouse_id,vendor,sku,quantity,expected_date\nPO-1001,${warehouseId},Acme Supply Co,WIDGET-001,100,2026-05-01`,
 			'sales-orders': `so_number,warehouse_id,customer,customer_phone,customer_address,sku,quantity\nSO-5001,${warehouseId},John Smith,555-0101,123 Main St,WIDGET-001,2`,
