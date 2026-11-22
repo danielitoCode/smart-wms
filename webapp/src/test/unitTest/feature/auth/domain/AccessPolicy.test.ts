@@ -6,10 +6,17 @@ import {
 	routeAccessPolicyForPath
 } from '../../../../../core/feature/auth/domain/policy/AccessPolicy';
 
-describe('R8 administrative route access', () => {
+describe('R8/R9 administrative route access', () => {
 	it('restricts global audit log to ADMIN even when USER has the audit-log page grant', () => {
 		const policy = routeAccessPolicyForPath('/management/audit-log');
 		expect(policy).toEqual({ kind: 'admin' });
+		expect(canAccessAdminRoute('USER')).toBe(false);
+		expect(canAccessAdminRoute('ADMIN')).toBe(true);
+	});
+
+	it('restricts global webhook subscriptions, DLQ and replay to ADMIN', () => {
+		expect(routeAccessPolicyForPath('/management/webhooks')).toEqual({ kind: 'admin' });
+		expect(routeAccessPolicyForPath('/management/webhooks/subscription-id')).toEqual({ kind: 'admin' });
 		expect(canAccessAdminRoute('USER')).toBe(false);
 		expect(canAccessAdminRoute('ADMIN')).toBe(true);
 	});
