@@ -1074,3 +1074,24 @@ El alcance frontend R7 está implementado: contratos y políticas de Returns/RMA
 - Auditoría detallada: `.code-review/R8-Administration-Users-Permissions-Configuration-Audit.md`.
 
 **No cerrar R8 todavía:** CI Webapp completo debe pasar sobre HEAD definitivo. Flask aún carece de idempotencia de importación y de validación por fila de la relación warehouse/bin; los guards Svelte son una defensa de UX/datos, no sustituyen autorización backend.
+
+
+## 25. R8.5 y R8.6 — integraciones, secretos y matriz de auditoría (22-11-2026)
+
+**Estado:** `FRONTEND_HARDENING_IMPLEMENTED / CI_PENDING / BLOCKED_BACKEND_AUDIT`.
+
+### R8.5 — integraciones y secretos
+
+- El backend cifra credenciales al guardar; GET devuelve únicamente claves con valor enmascarado `****`; POST devuelve nombres de claves, nunca plaintext. El mapper descarta el valor del DTO, incluso si el servidor devolviera por error un valor real.
+- Los campos sensibles siempre se muestran como password por schema o nombre de clave; el formulario descarta el draft al guardar, cambiar de almacén/conector o destruir la pantalla. Las llamadas de credenciales/test/sync llevan warehouse_id y el estado descarta respuestas/polling de contextos anteriores.
+- Pruebas ampliadas: mapper que rechaza incorporar plaintext al dominio, pantalla que verifica enmascaramiento/limpieza, y estado de integraciones con stale responses, warehouse switch, 409 y polling.
+- Flask no registra save/delete credentials, test connection ni sync enqueue; sí registra `SYNC_RESET`. No se fabrican eventos frontend.
+
+### R8.6 — auditoría y limitaciones Flask
+
+- Se añadió la matriz por operación a `.code-review/R8-Administration-Users-Permissions-Configuration-Audit.md`, con endpoints, presencia/ausencia de `write_audit_log`, manejo frontend y acciones backend requeridas.
+- Los handlers de user CRUD/grants, settings, warehouse/zone/bin CRUD, importación de items/bins/PO/SO y credentials save/delete/test/sync enqueue no escriben audit_log en las rutas inspeccionadas. La importación de inventory-adjustments escribe por ajuste aplicado; sync-reset escribe `SYNC_RESET`.
+- El audit-log carece de warehouse filter/scope; warehouse admin CRUD carece de scope. Svelte limita ambas vistas a ADMIN, sin pretender que sea enforcement backend.
+- Para cerrar integralmente R8 se requieren eventos transaccionales con redacción de secretos, aislamiento por almacén, idempotencia/validación por fila de importaciones y política de invalidación de sesiones.
+
+**No se modifica Flask/Python.** La matriz documenta las limitaciones; no equivale a una certificación backend ni a un ledger completo.
