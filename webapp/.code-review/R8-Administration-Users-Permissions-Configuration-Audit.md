@@ -266,3 +266,7 @@ La matriz se refiere a eventos persistidos por Flask en `audit_log`, no a mensaj
 - Añadir pruebas Flask/PostgreSQL que verifiquen tanto la presencia del evento como la ausencia de secretos en audit details.
 
 **Criterio R8.6:** matriz documentada y frontend no fabrica evidencia. La cobertura integral queda `BLOCKED_BACKEND` hasta que los handlers Flask implementen y prueben los eventos y scopes anteriores. No se modificó Flask/Python.
+
+### Nota de redacción del audit log
+
+- `AuditLogMapper` aplica redacción recursiva en Svelte para nombres de campos sensibles (password, secret, token, authorization, cookie, credential, api key, private key y datos personales como email/teléfono/dirección). Esto protege la representación en esta UI, pero es una defensa de presentación: `services/audit_service.py::write_audit_log` serializa `details` directamente y no aplica redacción server-side. Flask debe redactar antes de persistir y antes de devolver detalles; el cliente no puede garantizar que otros consumidores no reciban esos valores.
