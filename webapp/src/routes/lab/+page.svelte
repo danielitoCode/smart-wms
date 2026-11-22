@@ -87,7 +87,8 @@
 		{ id: 'grid-reveal', name: 'GridReveal', status: 'ready', href: '/lab/grid-reveal', description: 'Revelado BSP en canvas: celdas se separan, colorean y entregan la foto.' },
 		{ id: 'delete-button', name: 'DeleteButton', status: 'ready', href: '/lab/delete-button', description: 'Papelera expandible: confirmar / cancelar, tapa animada y check stroke.' },
 		{ id: 'magic-bento', name: 'MagicBento', status: 'ready', href: '/lab/magic-bento', description: 'Bento WMS: throughput, ocupación, cycle count, wave pipeline, conectores y roles.' },
-		{ id: 'flowing-menu', name: 'FlowingMenu', status: 'ready', href: '/lab/flowing-menu', description: 'Menú ops WMS con band marquee spring, magnet al cursor e intro staggered.' }
+		{ id: 'flowing-menu', name: 'FlowingMenu', status: 'ready', href: '/lab/flowing-menu', description: 'Menú ops WMS con band marquee spring, magnet al cursor e intro staggered.' },
+		{ id: 'true-focus', name: 'TrueFocus', status: 'ready', href: '/lab/true-focus', description: 'Foco animado sobre palabras: brackets, box, underline, highlight (WAAPI).' }
 	] as const;
 </script>
 
