@@ -4,7 +4,9 @@ import { validateImportWarehouseScope } from '../../../../../core/feature/import
 const assignedUser = {
 	role: 'USER',
 	assignedWarehouseIds: [12],
-	activeWarehouse: { id: 12, code: 'WH-12' }
+	activeWarehouse: { id: 12, code: 'WH-12' },
+	availableBinCodes: ['PICK-01', 'STAGE-01'],
+	binCatalogVerified: true
 };
 
 describe('R8.4 import warehouse preflight', () => {
@@ -36,24 +38,29 @@ describe('R8.4 import warehouse preflight', () => {
 		})).toHaveLength(1);
 	});
 
-	it('blocks non-admin inventory adjustments because bin-to-warehouse scope is not enforced by Flask', () => {
+	it('requires a verified active-warehouse bin catalog for inventory adjustments', () => {
 		expect(validateImportWarehouseScope('inventory-adjustments', [
 			{ warehouse: 'WH-12', bin: 'PICK-01' }
-		], assignedUser)[0].message).toContain('no valida que cada bin pertenezca');
+		], { ...assignedUser, binCatalogVerified: false })[0].message).toContain('catálogo de bins');
+		expect(validateImportWarehouseScope('inventory-adjustments', [
+			{ warehouse: 'WH-12', bin: 'PICK-01' }
+		], assignedUser)).toEqual([]);
+		expect(validateImportWarehouseScope('inventory-adjustments', [
+			{ warehouse: 'WH-12', bin: 'FOREIGN-BIN' }
+		], assignedUser)[0].message).toContain('no pertenece');
 	});
 
-	it('validates admin inventory adjustment warehouse and required bin', () => {
+	it('checks both warehouse code and bin membership for inventory adjustments', () => {
 		expect(validateImportWarehouseScope('inventory-adjustments', [
-			{ warehouse: 'WH-12', bin: 'PICK-01' }
-		], { ...assignedUser, role: 'ADMIN', assignedWarehouseIds: [] })).toEqual([]);
-		expect(validateImportWarehouseScope('inventory-adjustments', [
-			{ warehouse: 'WH-13', bin: '' }
+			{ warehouse: 'WH-13', bin: 'PICK-01' },
+			{ warehouse: 'WH-12', bin: '' }
 		], { ...assignedUser, role: 'ADMIN', assignedWarehouseIds: [] })).toHaveLength(2);
 	});
 
-	it('blocks non-admin item imports that carry initial stock or a default bin', () => {
+	it('allows product master rows but validates any initial stock/default bin against the active warehouse', () => {
 		expect(validateImportWarehouseScope('items', [{ sku: 'A', name: 'Item' }], assignedUser)).toEqual([]);
-		expect(validateImportWarehouseScope('items', [{ sku: 'A', default_bin: 'B-01' }], assignedUser)).toHaveLength(1);
+		expect(validateImportWarehouseScope('items', [{ sku: 'A', default_bin: 'PICK-01' }], assignedUser)).toEqual([]);
+		expect(validateImportWarehouseScope('items', [{ sku: 'A', default_bin: 'FOREIGN' }], assignedUser)).toHaveLength(1);
 		expect(validateImportWarehouseScope('items', [{ sku: 'A', quantity: '5' }], assignedUser)).toHaveLength(1);
 	});
 });
