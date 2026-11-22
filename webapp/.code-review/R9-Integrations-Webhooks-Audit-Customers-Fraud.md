@@ -106,3 +106,12 @@ Estos guards son mitigaciones de interfaz. El backend sigue aceptando page grant
 - **Customers — endurecimiento:** `setWarehouseId` invalida inmediatamente solicitudes y detalle anteriores y limpia datos del almacén previo. Se corrigió además una carrera real: las respuestas de búsqueda/listado ahora se aplican solo si su request version sigue vigente; anteriormente la versión protegía errores/loading pero no impedía que una respuesta vieja sobrescribiera resultados recientes. Pruebas nuevas cubren respuesta antigua de búsqueda, cambio de almacén y detalle tardío.
 - **R9.6 — regresión:** añadidas pruebas unitarias de estado para los casos de concurrencia anteriores, manteniendo pruebas existentes de DTO/mapper, límites, paginación, scope y transiciones. La matriz completa y la aceptación CI permanecen pendientes hasta obtener un resultado exitoso en el HEAD definitivo.
 - **Límite de alcance:** no se modificó Flask/Python. No se simula una evaluación antifraude ni un CRUD/merge de clientes. Las comprobaciones frontend no reemplazan las validaciones warehouse-scoped del servidor.
+
+
+### Endurecimiento adicional Fraud y estado CI (22-11-2026)
+
+- Se detectó que los catch de memo y push podían publicar un error de una solicitud antigua después de invalidar/cambiar el contexto de almacén. Ahora solo publican el error si el epoch de lista sigue vigente.
+- Se añadieron dos pruebas que rechazan memo/push después de clear() y verifican que el contexto nuevo permanece sin errores ni datos antiguos.
+- Webapp CI del HEAD previo 4ee1428ff66a672125dcde6c4e27b967c9f6892b, run [45042682060](https://github.com/danielitoCode/smart-wms/actions/runs/45042682060), falló en typecheck antes de build/tests: 26 errores y 122 warnings en 53 archivos. Los errores visibles corresponden a componentes/rutas de laboratorio (BranchedMenu ausente, props de FlowingMenu/MagicBento incompatibles, entre otros); no se reportaron errores en Fraud/Customers en el log inspeccionado. Las suites no se ejecutaron, por tanto no hay aceptación R9.6.
+- Lockfile Version Check, Dependency Audit y gitleaks finalizaron correctamente en ese HEAD. El workflow Tests separado seguía en curso y no forma parte de la aceptación frontend.
+- El nuevo HEAD con el hardening de errores stale es 37d2f3577f8fcfd221a59f5c3abca5a91baf37ef; su CI debe completar para evaluar si los cambios nuevos están limpios. No se modificó Flask/Python.
