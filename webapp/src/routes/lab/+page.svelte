@@ -67,7 +67,8 @@
 		{ id: 'dotted-map', name: 'DottedMap', status: 'ready', href: '/lab/dotted-map', description: 'Mapa mundial de puntos SVG con markers pulse (svg-dotted-map).' },
 		{ id: 'iphone', name: 'Iphone', status: 'ready', href: '/lab/iphone', description: 'Marco SVG de iPhone con pantalla img/video y dynamic island.' },
 		{ id: 'android', name: 'Android', status: 'ready', href: '/lab/android', description: 'Marco SVG de teléfono Android con cámara, botones y media.' },
-		{ id: 'interactive-grid', name: 'InteractiveGridPattern', status: 'ready', href: '/lab/interactive-grid', description: 'Rejilla SVG interactiva: celdas con hover fill (fade-in rápido / fade-out lento).' }
+		{ id: 'interactive-grid', name: 'InteractiveGridPattern', status: 'ready', href: '/lab/interactive-grid', description: 'Rejilla SVG interactiva: celdas con hover fill (fade-in rápido / fade-out lento).' },
+		{ id: 'pixel-image', name: 'PixelImage', status: 'ready', href: '/lab/pixel-image', description: 'Imagen que se revela por celdas (clip-path) con delays y paso grayscale → color.' }
 	] as const;
 </script>
 
