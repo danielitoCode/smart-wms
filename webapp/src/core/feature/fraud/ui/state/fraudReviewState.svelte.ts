@@ -29,7 +29,7 @@ export function createFraudReviewState() {
   let auditEpoch = 0;
   let currentQuery = '';
 
-  async function load(warehouseId: number, query = currentQuery, requestedPage = 1) {
+  async function load(warehouseId: number, query = currentQuery, requestedPage = 1): Promise<boolean> {
     const epoch = ++listEpoch;
     currentQuery = query;
     page = requestedPage;
@@ -44,7 +44,7 @@ export function createFraudReviewState() {
       rows = [];
       error = 'Selecciona un almacén para consultar la bandeja';
       loading = false;
-      return;
+      return false;
     }
     loading = true;
     error = null;
@@ -55,9 +55,12 @@ export function createFraudReviewState() {
         page = result.page;
         pages = result.pages;
         total = result.total;
+        return true;
       }
+      return false;
     } catch (cause) {
       if (epoch === listEpoch) error = toUserMessage(cause, 'No se pudieron cargar los pedidos retenidos');
+      return false;
     } finally {
       if (epoch === listEpoch) loading = false;
     }
@@ -152,11 +155,13 @@ export function createFraudReviewState() {
       error = 'El pedido ya no pertenece al almacén seleccionado. Actualiza la bandeja.';
       return false;
     }
+    const contextEpoch = listEpoch;
     const expectedMemo = row.memo;
     saving = true;
     error = null;
     try {
       await dependencies.updateMemo.execute(id, memo, expectedMemo);
+      if (contextEpoch !== listEpoch || !isFraudReviewInWarehouse(row, warehouseId)) return false;
       rows = rows.map((candidate) => candidate.salesOrderId === id ? { ...candidate, memo } : candidate);
       if (selectedDetail?.order.salesOrderId === id) {
         selectedDetail = { ...selectedDetail, order: { ...selectedDetail.order, memo } };
@@ -177,12 +182,15 @@ export function createFraudReviewState() {
       error = 'El pedido ya no pertenece al almacén seleccionado. Actualiza la bandeja.';
       return false;
     }
+    const contextEpoch = listEpoch;
     saving = true;
     error = null;
     try {
       await dependencies.push.execute(id);
-      await load(warehouseId, currentQuery, page);
-      if (rows.length === 0 && page > 1) await load(warehouseId, currentQuery, page - 1);
+      if (contextEpoch !== listEpoch) return false;
+      const refreshed = await load(warehouseId, currentQuery, page);
+      if (!refreshed) return false;
+      if (rows.length === 0 && page > 1) return await load(warehouseId, currentQuery, page - 1);
       return true;
     } catch (cause) {
       error = toUserMessage(cause, 'No se pudo liberar el pedido a preparación');
