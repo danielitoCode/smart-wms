@@ -35,7 +35,11 @@ export class ReceivingRemoteDataSource {
 				bin_id: item.binId,
 				...(item.lotNumber != null && item.lotNumber !== ''
 					? { lot_number: item.lotNumber }
-					: {})
+					: {}),
+				...(item.serialNumber != null && item.serialNumber !== ''
+					? { serial_number: item.serialNumber }
+					: {}),
+				...(item.notes != null && item.notes !== '' ? { notes: item.notes } : {})
 			}))
 		});
 	}
