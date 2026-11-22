@@ -102,6 +102,8 @@ export function createReceivingState() {
 		lastCancel = null;
 		detail = null;
 		drafts = [];
+		receipts = [];
+		receiptsError = null;
 		try {
 			const result = await deps.lookupPurchaseOrder.execute(code);
 			if (!scope.isCurrent()) return false;
