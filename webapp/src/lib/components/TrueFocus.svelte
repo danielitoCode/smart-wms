@@ -261,7 +261,7 @@
 		return `filter: blur(${isActive ? 0 : blurAmount}px); opacity: ${isActive ? 1 : unfocusedOpacity}; ${transform} transition: filter ${duration}s ease, opacity ${duration}s ease, transform ${duration}s ${spring ? SPRING_CSS : SMOOTH_CSS};`;
 	};
 
-	const shapeParams = (target: Shape) => ({
+	const shapeParams = (target: Omit<Shape, 'opacity'>) => ({
 		initial: { ...target, opacity: 0 },
 		target: { ...target, opacity: 1 },
 		duration,
