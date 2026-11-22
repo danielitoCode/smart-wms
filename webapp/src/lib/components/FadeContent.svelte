@@ -38,7 +38,7 @@
 
 	let {
 		children,
-		effect = 'fade',
+		effect: effectType = 'fade',
 		blur = false,
 		duration = 1,
 		ease = 'cubic-bezier(0.23, 1, 0.32, 1)',
@@ -153,12 +153,12 @@
 
 			const from: Keyframe = {
 				opacity: startOpacity,
-				filter: fromFilter(effect, blurPx),
+				filter: fromFilter(effectType, blurPx),
 				transform: fromTransform(effect)
 			};
 			const to: Keyframe = {
 				opacity: 1,
-				filter: toFilter(effect),
+				filter: toFilter(effectType),
 				transform: 'scale(1)'
 			};
 
@@ -188,7 +188,7 @@
 					{ opacity: 1, filter: toFilter(effect), transform: 'scale(1)' },
 					{
 						opacity: startOpacity,
-						filter: fromFilter(effect, blurPx),
+						filter: fromFilter(effectType, blurPx),
 						transform: fromTransform(effect)
 					}
 				],
@@ -203,7 +203,7 @@
 	$effect(() => {
 		const node = el;
 		if (!node) return;
-		void effect;
+		void effectType;
 		void blur;
 		void duration;
 		void delay;
