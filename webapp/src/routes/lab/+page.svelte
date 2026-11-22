@@ -89,7 +89,8 @@
 		{ id: 'magic-bento', name: 'MagicBento', status: 'ready', href: '/lab/magic-bento', description: 'Bento WMS: throughput, ocupación, cycle count, wave pipeline, conectores y roles.' },
 		{ id: 'flowing-menu', name: 'FlowingMenu', status: 'ready', href: '/lab/flowing-menu', description: 'Menú ops WMS con band marquee spring, magnet al cursor e intro staggered.' },
 		{ id: 'true-focus', name: 'TrueFocus', status: 'ready', href: '/lab/true-focus', description: 'Foco animado sobre palabras: brackets, box, underline, highlight (WAAPI).' },
-		{ id: 'branched-menu', name: 'BranchedMenu', status: 'ready', href: '/lab/branched-menu', description: 'Árbol nav WMS con ramas SVG, fold animado y trazo de acento al seleccionar.' }
+		{ id: 'branched-menu', name: 'BranchedMenu', status: 'ready', href: '/lab/branched-menu', description: 'Árbol nav WMS con ramas SVG, fold animado y trazo de acento al seleccionar.' },
+		{ id: 'bell-toggle', name: 'BellToggle', status: 'ready', href: '/lab/bell-toggle', description: 'Toggle notificaciones: ring WAAPI, badge, waves y labels WMS.' }
 	] as const;
 </script>
 
