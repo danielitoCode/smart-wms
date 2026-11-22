@@ -80,7 +80,8 @@
 		{ id: 'transaction-list', name: 'TransactionList', status: 'ready', href: '/lab/transaction-list', description: 'Lista de transacciones con detalle (tarjeta, fecha) y transición CSS.' },
 		{ id: 'stacked-sections', name: 'StackedSections', status: 'ready', href: '/lab/stacked-sections', description: 'Paneles sticky apilados con drama scale al pin (sin Lenis/Motion).' },
 		{ id: 'stacked-sections-demo', name: 'StackedSections Demo', status: 'ready', href: '/lab/stacked-sections-demo', description: 'Release notes: 4 capítulos light/dark (tools, cycles, inbox, CTA).' },
-		{ id: 'delivery-card', name: 'DeliveryCard', status: 'ready', href: '/lab/delivery-card', description: 'Tracking: ETA, barra con camión, estado y ubicación (simulateProgress).' }
+		{ id: 'delivery-card', name: 'DeliveryCard', status: 'ready', href: '/lab/delivery-card', description: 'Tracking: ETA, barra con camión, estado y ubicación (simulateProgress).' },
+		{ id: 'aperture-reveal', name: 'ApertureReveal', status: 'ready', href: '/lab/aperture-reveal', description: 'Scroll sticky: diafragma circular abre la imagen (Lead + Opening + Trail, caption, hint).' }
 	] as const;
 </script>
 
