@@ -218,6 +218,9 @@ export function routeAccessPolicyForPath(pathname: string): RouteAccessPolicy | 
 	// Administrative endpoints return global data without warehouse scoping.
 	// Until Flask enforces row-level scope, these screens are ADMIN-only.
 	if (isPathOrChild(path, '/management/audit-log')) return { kind: 'admin' };
+	// Webhook subscriptions, DLQ and replay are global administration APIs.
+	// Their warehouse filters are not bound to the caller's assigned warehouses.
+	if (isPathOrChild(path, '/management/webhooks')) return { kind: 'admin' };
 	if (path === '/warehouses' || isPathOrChild(path, '/data/warehouses')) return { kind: 'admin' };
 
 	// Scanner workflows use the operational grants returned by /api/auth/me,
