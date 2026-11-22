@@ -454,11 +454,21 @@ def cancel_receiving(validated):
     username = g.current_user["username"]
     reversed_count = 0
 
-    # Collect PO IDs before deleting receipts
-    po_ids = set()
-    po_ids.add(validated.po_id)
-
+    # Validate the target PO inside the caller's warehouse scope before
+    # scheduling its status recomputation. A client-supplied po_id must
+    # never be enough to mutate an out-of-scope aggregate when receipt_ids
+    # are empty, invisible, or stale.
     scope_clause, scope_params = warehouse_scope_clause("warehouse_id")
+    visible_po = g.db.execute(
+        text(f"SELECT po_id FROM purchase_orders WHERE po_id = :po_id {scope_clause}"),
+        {"po_id": validated.po_id, **scope_params},
+    ).fetchone()
+    if visible_po is None:
+        return jsonify({"error": "Purchase order not found"}), 404
+
+    # Collect only the already-authorized target PO and any scoped
+    # receipt PO rows (the pre-flight guard below rejects cross-PO IDs).
+    po_ids = {validated.po_id}
 
     # Pre-flight cross-PO guard. The mobile receive screen accumulates
     # receipt_ids across every PO loaded in a session (sessionReceiptIds
