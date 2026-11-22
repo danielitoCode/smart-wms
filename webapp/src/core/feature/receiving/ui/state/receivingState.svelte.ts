@@ -1,5 +1,7 @@
 import { getContext } from 'svelte';
 import { createReceivingDependencies } from '../../di/receiving.dependencies';
+import { createWarehousesDependencies } from '../../../warehouses/di/warehouses.dependencies';
+import type { Bin } from '../../../warehouses/domain/entity/Warehouse';
 import type { ReceiptHistoryEntry, UnreceiveResult } from '../../domain/entity/ReceiptHistory';
 import type {
 	CancelReceiptsResult,
@@ -12,6 +14,7 @@ import { beginWarehouseScopedRequest } from '../../../../infrastructure/warehous
 import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
 
 const deps = createReceivingDependencies();
+const warehouseDeps = createWarehousesDependencies();
 
 export type LineDraft = {
 	itemId: number;
@@ -32,7 +35,7 @@ function isAbort(err: unknown): boolean {
 	);
 }
 
-function mapDrafts(detail: PurchaseOrderDetail): LineDraft[] {
+function mapDrafts(detail: PurchaseOrderDetail, defaultBinId = ''): LineDraft[] {
 	return detail.lines
 		.filter((line) => line.quantityRemaining > 0)
 		.map((line) => ({
@@ -41,7 +44,7 @@ function mapDrafts(detail: PurchaseOrderDetail): LineDraft[] {
 			itemName: line.itemName,
 			remaining: line.quantityRemaining,
 			quantity: line.quantityRemaining,
-			binId: '',
+			binId: defaultBinId,
 			lotNumber: '',
 			serialNumber: '',
 			notes: ''
@@ -71,6 +74,37 @@ export function createReceivingState() {
 	let unreceivingId = $state<number | null>(null);
 	let lastUnreceive = $state<UnreceiveResult | null>(null);
 	let receiptHistoryRequest = 0;
+	let bins = $state<Bin[]>([]);
+	let binsLoading = $state(false);
+	let binsError = $state<string | null>(null);
+	let binsRequest = 0;
+
+	async function loadBins(warehouseId: number): Promise<boolean> {
+		const requestId = ++binsRequest;
+		const scope = warehouseSelection?.beginScopedRequest() ?? beginWarehouseScopedRequest();
+		binsLoading = true;
+		binsError = null;
+		bins = [];
+		try {
+			const page = await warehouseDeps.listBins.execute({ warehouseId, page: 1, perPage: 1000 });
+			if (!scope.isCurrent() || requestId !== binsRequest) return false;
+			const scoped = page.items.filter(bin => bin.active && bin.warehouseId === warehouseId);
+			bins = scoped.sort((a, b) => {
+				const aStaging = a.binType === 'Staging' ? 0 : 1;
+				const bStaging = b.binType === 'Staging' ? 0 : 1;
+				return aStaging - bStaging || a.code.localeCompare(b.code);
+			});
+			if (scoped.length === 0) binsError = 'No hay bins activos en el almacén de esta orden.';
+			return true;
+		} catch (cause) {
+			if (!scope.isCurrent() || requestId !== binsRequest || isAbort(cause)) return false;
+			binsError = toUserMessage(cause, 'No se pudieron cargar los bins del almacén');
+			return false;
+		} finally {
+			scope.release();
+			if (requestId === binsRequest) binsLoading = false;
+		}
+	}
 
 	async function loadReceiptHistory(poId: number) {
 		const scope = warehouseSelection?.beginScopedRequest() ?? beginWarehouseScopedRequest();
@@ -108,13 +142,24 @@ export function createReceivingState() {
 		lastCancel = null;
 		detail = null;
 		drafts = [];
+		binsRequest += 1;
+		bins = [];
+		binsLoading = false;
+		binsError = null;
 		receipts = [];
 		receiptsError = null;
 		try {
 			const result = await deps.lookupPurchaseOrder.execute(code);
 			if (!scope.isCurrent()) return false;
+			if (warehouseSelection && warehouseSelection.warehouseId == null) throw new Error('Selecciona un almacén antes de recibir mercancía.');
+			if (warehouseSelection?.warehouseId != null && warehouseSelection.warehouseId !== result.purchaseOrder.warehouseId) {
+				throw new Error('La orden pertenece a otro almacén. Cambia el contexto de almacén antes de continuar.');
+			}
+			const binsLoaded = await loadBins(result.purchaseOrder.warehouseId);
+			if (!scope.isCurrent() || !binsLoaded) throw new Error(binsError ?? 'No se pudieron cargar los bins del almacén.');
+			const defaultBinId = String(bins.find(bin => bin.binType === 'Staging')?.id ?? bins[0]?.id ?? '');
 			detail = result;
-			drafts = mapDrafts(result);
+			drafts = mapDrafts(result, defaultBinId);
 			await loadReceiptHistory(result.purchaseOrder.poId);
 			return true;
 		} catch (err) {
@@ -163,7 +208,8 @@ export function createReceivingState() {
 		for (const draft of drafts) {
 			if (!draft.quantity || draft.quantity <= 0) continue;
 			const binId = Number(draft.binId);
-			if (!Number.isInteger(binId) || binId <= 0) {
+			const selectedBin = bins.find(bin => bin.id === binId && bin.warehouseId === detail!.purchaseOrder.warehouseId && bin.active);
+			if (!Number.isInteger(binId) || binId <= 0 || !selectedBin) {
 				error = `Bin inválido para ${draft.sku}`;
 				return false;
 			}
@@ -197,7 +243,7 @@ export function createReceivingState() {
 			const refreshed = await deps.lookupPurchaseOrder.execute(poNumber);
 			if (!scope.isCurrent()) return false;
 			detail = refreshed;
-			drafts = mapDrafts(refreshed);
+			drafts = mapDrafts(refreshed, String(bins.find(bin => bin.binType === 'Staging')?.id ?? bins[0]?.id ?? ''));
 			await loadReceiptHistory(refreshed.purchaseOrder.poId);
 			return true;
 		} catch (err) {
@@ -291,6 +337,9 @@ export function createReceivingState() {
 		get lastCancel() { return lastCancel; },
 		get receiptIdsInput() { return receiptIdsInput; },
 		get receipts() { return receipts; },
+		get bins() { return bins; },
+		get binsLoading() { return binsLoading; },
+		get binsError() { return binsError; },
 		get receiptsLoading() { return receiptsLoading; },
 		get receiptsError() { return receiptsError; },
 		get unreceivingId() { return unreceivingId; },
