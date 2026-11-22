@@ -185,14 +185,14 @@
 												disabled={vm.submitting}
 											/>
 										</td>
-										<td>
-											<input
-												type="text"
-												value={draft.binId}
-												oninput={(e) => vm.updateDraft(index, { binId: e.currentTarget.value })}
-												disabled={vm.submitting}
-											/>
-										</td>
+						<td>
+							<select value={draft.binId} onchange={(e) => vm.updateDraft(index, { binId: e.currentTarget.value })} disabled={vm.submitting || vm.binsLoading || vm.bins.length === 0} aria-label={i18n.t('Bin para') + ' ' + draft.sku}>
+								<option value="">{vm.binsLoading ? i18n.t('Cargando bins…') : i18n.t('Selecciona un bin')}</option>
+								{#each vm.bins as bin (bin.id)}
+									<option value={String(bin.id)}>{bin.code}{bin.binType === 'Staging' ? ' · Staging' : ''}</option>
+								{/each}
+							</select>
+						</td>
 										<td>
 											<input
 												type="text"
@@ -212,7 +212,8 @@
 							</tbody>
 						</table>
 					</div>
-					<button type="submit" class="primary" disabled={vm.submitting}>
+					{#if vm.binsError}<UiBanner tone="error" message={vm.binsError} />{/if}
+					<button type="submit" class="primary" disabled={vm.submitting || vm.binsLoading || vm.bins.length === 0}>
 						{vm.submitting ? i18n.t('Registrando…') : i18n.t('Confirmar recepción')}
 					</button>
 				</form>
