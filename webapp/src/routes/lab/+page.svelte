@@ -72,7 +72,8 @@
 		{ id: 'warp-background', name: 'WarpBackground', status: 'ready', href: '/lab/warp-background', description: 'Caja 3D con rejilla y beams de color en las caras (CSS, sin Motion).' },
 		{ id: 'backlight', name: 'Backlight', status: 'ready', href: '/lab/backlight', description: 'Glow SVG: blur + saturación detrás del contenido (feGaussianBlur).' },
 		{ id: 'get-started-button', name: 'GetStartedButton', status: 'ready', href: '/lab/get-started-button', description: 'CTA amber/orange con flecha deslizante al hover.' },
-		{ id: 'status-button', name: 'StatusButton', status: 'ready', href: '/lab/status-button', description: 'CTA teal: idle → loading spinner → success check → idle.' }
+		{ id: 'status-button', name: 'StatusButton', status: 'ready', href: '/lab/status-button', description: 'CTA teal: idle → loading spinner → success check → idle.' },
+		{ id: 'card-stack', name: 'CardStack', status: 'ready', href: '/lab/card-stack', description: 'Pila de cards con peek, throw-out, press y autoplay (CSS, reduced-motion).' }
 	] as const;
 </script>
 
