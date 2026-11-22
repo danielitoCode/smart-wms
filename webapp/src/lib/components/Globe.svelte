@@ -7,9 +7,12 @@
 	import { onMount } from 'svelte';
 	import createGlobe, { type COBEOptions } from 'cobe';
 
+	type GlobeRenderState = { phi: number; width: number; height: number };
+	type InteractiveCOBEOptions = COBEOptions & { onRender?: (state: GlobeRenderState) => void };
+
 	interface Props {
 		class?: string;
-		config?: COBEOptions;
+		config?: InteractiveCOBEOptions;
 	}
 
 	let { class: className = '', config }: Props = $props();
@@ -17,7 +20,7 @@
 	const MOVEMENT_DAMPING = 1400;
 
 	/** Config por defecto — alineada con el componente React de referencia. */
-	const GLOBE_CONFIG: COBEOptions = {
+	const GLOBE_CONFIG: InteractiveCOBEOptions = {
 		width: 800,
 		height: 800,
 		onRender: () => {},
@@ -75,7 +78,7 @@
 			...base,
 			width: width * 2,
 			height: width * 2,
-			onRender: (state) => {
+			onRender: (state: GlobeRenderState) => {
 				const force = -stiffness * (r - rTarget);
 				const damp = -damping * rVel;
 				rVel += (force + damp) / mass / 60;
@@ -88,7 +91,7 @@
 				state.width = width * 2;
 				state.height = width * 2;
 			}
-		});
+		} as COBEOptions);
 
 		const setCursor = (grabbing: boolean) => {
 			if (canvasEl) canvasEl.style.cursor = grabbing ? 'grabbing' : 'grab';
