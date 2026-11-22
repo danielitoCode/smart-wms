@@ -13,7 +13,7 @@ from constants import (
     POL_PENDING, POL_PARTIAL, POL_RECEIVED,
     ACTION_RECEIVE, ACTION_RECEIVE_CANCEL,
 )
-from middleware.auth_middleware import require_auth, warehouse_scope_clause
+from middleware.auth_middleware import require_admin_or_page_permission, require_auth, warehouse_scope_clause
 from middleware.db import with_db
 from schemas.receiving import CancelReceivingRequest, ReceiveItemsRequest
 from services.audit_service import write_audit_log
@@ -33,6 +33,7 @@ receiving_bp = Blueprint("receiving", __name__)
 
 @receiving_bp.route("/po/<barcode>")
 @require_auth
+@require_admin_or_page_permission("receiving")
 @with_db
 def lookup_po(barcode):
     # V-026: filter warehouse at SELECT time so non-admins cannot use
@@ -111,6 +112,7 @@ def lookup_po(barcode):
 
 @receiving_bp.route("/receive", methods=["POST"])
 @require_auth
+@require_admin_or_page_permission("receiving")
 @validate_body(ReceiveItemsRequest)
 @with_db
 def receive_items(validated):
@@ -439,6 +441,7 @@ def receive_items(validated):
 
 @receiving_bp.route("/cancel", methods=["POST"])
 @require_auth
+@require_admin_or_page_permission("receiving")
 @validate_body(CancelReceivingRequest)
 @with_db
 def cancel_receiving(validated):
