@@ -6,7 +6,7 @@
 		height: number;
 	}
 
-	type Shape = { x: number; y: number; width?: number; height?: number; opacity: number };
+	type Shape = { x: number; y: number; width?: number; height?: number; opacity?: number };
 	type ShapeKey = keyof Shape;
 	type ShapeParams = { initial: Shape; target: Shape; duration: number; spring: boolean };
 
@@ -27,7 +27,7 @@
 			node.style.transform = `translateX(${state.x}px) translateY(${state.y}px)`;
 			if (state.width !== undefined) node.style.width = `${state.width}px`;
 			if (state.height !== undefined) node.style.height = `${state.height}px`;
-			node.style.opacity = `${state.opacity}`;
+			node.style.opacity = `${state.opacity ?? 1}`;
 		};
 
 		const run = (p: ShapeParams) => {
@@ -261,7 +261,7 @@
 		return `filter: blur(${isActive ? 0 : blurAmount}px); opacity: ${isActive ? 1 : unfocusedOpacity}; ${transform} transition: filter ${duration}s ease, opacity ${duration}s ease, transform ${duration}s ${spring ? SPRING_CSS : SMOOTH_CSS};`;
 	};
 
-	const shapeParams = (target: Omit<Shape, 'opacity'>) => ({
+	const shapeParams = (target: Shape) => ({
 		initial: { ...target, opacity: 0 },
 		target: { ...target, opacity: 1 },
 		duration,
