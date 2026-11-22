@@ -204,7 +204,7 @@ def get_purchase_order(po_id):
             FROM purchase_order_lines pol JOIN items i ON i.item_id = pol.item_id
             WHERE pol.po_id = :pid ORDER BY pol.line_number
         """),
-        {"pid": po_id, **scope_params},
+        {"pid": po_id},
     ).fetchall()
 
     return jsonify({
@@ -808,7 +808,7 @@ def list_po_receipts(po_id):
              ORDER BY r.received_at DESC, r.receipt_id DESC
             """
         ),
-        {"pid": po_id, **scope_params},
+        {"pid": po_id, **receipt_scope_params},
     ).fetchall()
     return jsonify({
         "po_id": po_id,
