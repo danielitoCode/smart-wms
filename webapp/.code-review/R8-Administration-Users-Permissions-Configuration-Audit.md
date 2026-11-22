@@ -113,7 +113,7 @@ Confirmed gaps:
 
 - **Severity:** critical integrity.
 - **Evidence:** import route does not validate warehouse assignments per row and has no idempotency/replay token. PO/SO imports append lines to existing orders; adjustment imports reapply deltas.
-- **Required fix:** frontend preflight validates every row's warehouse/bin association against the authenticated user's assigned warehouse IDs and blocks non-ADMIN submission if scope cannot be proven. On uncertain network/timeout outcome, block whole-file retry and require operator reconciliation. Clearly label local preview versus server validation. Flask per-row scope and idempotency remain backend dependencies.
+- **Required fix:** frontend preflight constrains warehouse IDs to the active assigned warehouse and verifies bin/default_bin codes against the selected warehouse's operational bin catalog. It blocks when that catalog cannot be loaded. On uncertain network/timeout outcome, block same-file retry and require operator reconciliation. Clearly label local preview versus server validation. Flask per-row scope and idempotency remain backend dependencies.
 
 ### R8-FE-06 — Administrative mutations are not consistently audited server-side
 
@@ -191,3 +191,26 @@ At audited HEAD `5a2cb48adb09e2942f58eade176222744fb9b463`:
 **Estado de estos bloques:** `R8.1_FRONTEND_HARDENING_IMPLEMENTED` y `R8.2_FRONTEND_GUARDS_IMPLEMENTED`. La ejecución CI del HEAD que incluya estos cambios sigue siendo obligatoria; no se declara aún verificado.
 
 **Dependencias backend no resueltas:** las rutas Flask de audit-log y administración de almacenes siguen sin aislamiento por almacén. Por eso la restricción ADMIN-only es una mitigación frontend temporal, no una corrección de autorización del servidor. No se modificó Flask/Python.
+
+## 8. Implementación R8.3 y R8.4 (22-11-2026)
+
+### R8.3 — configuración global
+
+- La pantalla declara explícitamente que `/api/admin/settings` representa configuración global, no configuración por almacén. No se ofrece un selector que sugiera persistencia por warehouse.
+- El formulario queda bloqueado hasta que GET `/api/admin/settings` termina correctamente. Si la carga falla, se muestra el error y una acción de reintento; no se pueden editar defaults locales ni enviarlos accidentalmente al servidor.
+- Se conserva el draft tipado por claves conocidas, validación antes de guardar, confirmación para cambios sensibles, descarte y manejo de errores HTTP. El PUT envía únicamente las claves modificadas.
+- Pruebas añadidas en `src/test/unitTest/feature/settings/domain/SettingValidation.test.ts`: booleanos, ID de bin, URL segura, JSON de canales, claves desconocidas y defaults no mutables.
+- El backend no expone configuración por almacén. Esa capacidad queda fuera del contrato actual y no se simula en Svelte.
+
+### R8.4 — importaciones
+
+- La plantilla se adapta al almacén activo para `warehouse_id` y código de almacén; la plantilla de productos no propone cantidad inicial ni default_bin ficticios.
+- Preflight antes del POST: almacén activo válido; `warehouse_id` positivo y coincidente con el almacén activo en bins/órdenes; para ajustes y productos con bin/cantidad inicial, descarga paginada del catálogo de bins del almacén y validación de pertenencia de cada `bin`/`default_bin`.
+- Si el catálogo de bins no puede verificarse o el almacén cambia durante la comprobación, se bloquea la importación. El control es frontend; Flask sigue siendo la frontera de autorización y aún no valida por fila la relación warehouse/bin.
+- Se aplica el límite local de 10 MiB al archivo y al JSON serializado, además del límite de 5.000 filas del parser/caso de uso.
+- Se elimina el reintento automático de filas fallidas. Tras una respuesta parcial, se exige revisar los datos antes de preparar otro archivo. Si la petición falla sin resultado confirmado, el job queda `unknown` y no se permite reenviar ese archivo.
+- Pruebas añadidas en `src/test/unitTest/feature/imports/domain/ImportWarehouseScopePolicy.test.ts`: IDs de almacén, contexto no asignado, catálogo de bins, ajustes, stock inicial y default_bin.
+- Limitaciones Flask: no hay clave de idempotencia ni garantía de replay; no existe validación server-side por fila de la relación warehouse/bin. La vista previa sigue siendo local; validación final solo ocurre al ejecutar la petición.
+
+**Estado de estos bloques:** `R8.3_FRONTEND_HARDENING_IMPLEMENTED` y `R8.4_FRONTEND_GUARDS_IMPLEMENTED`. Pendiente CI Webapp completo sobre HEAD definitivo.
+
