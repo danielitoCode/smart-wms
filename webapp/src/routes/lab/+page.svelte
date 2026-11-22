@@ -85,7 +85,8 @@
 		{ id: 'cinema-row', name: 'CinemaRow', status: 'ready', href: '/lab/cinema-row', description: 'Hero WaveReveal + premieres Marquee + stills verticales (reduced-motion).' },
 		{ id: 'animated-counter', name: 'AnimatedCounter', status: 'ready', href: '/lab/animated-counter', description: 'Rueda de dígitos con spring CSS, separators western/indian, prefix/suffix.' },
 		{ id: 'grid-reveal', name: 'GridReveal', status: 'ready', href: '/lab/grid-reveal', description: 'Revelado BSP en canvas: celdas se separan, colorean y entregan la foto.' },
-		{ id: 'delete-button', name: 'DeleteButton', status: 'ready', href: '/lab/delete-button', description: 'Papelera expandible: confirmar / cancelar, tapa animada y check stroke.' }
+		{ id: 'delete-button', name: 'DeleteButton', status: 'ready', href: '/lab/delete-button', description: 'Papelera expandible: confirmar / cancelar, tapa animada y check stroke.' },
+		{ id: 'magic-bento', name: 'MagicBento', status: 'ready', href: '/lab/magic-bento', description: 'Bento WMS: throughput, ocupación, cycle count, wave pipeline, conectores y roles.' }
 	] as const;
 </script>
 
