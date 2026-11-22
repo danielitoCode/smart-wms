@@ -76,7 +76,8 @@
 		{ id: 'card-stack', name: 'CardStack', status: 'ready', href: '/lab/card-stack', description: 'Pila de cards con peek, throw-out, press y autoplay (CSS, reduced-motion).' },
 		{ id: 'collab-card', name: 'CollabCard', status: 'ready', href: '/lab/collab-card', description: 'Card multiplayer: presence, live ping y cursores animados (CSS @container).' },
 		{ id: 'swap-text', name: 'SwapText', status: 'ready', href: '/lab/swap-text', description: 'Texto que intercambia capa al hover (card + standalone click).' },
-		{ id: 'speed-dial', name: 'SpeedDial', status: 'ready', href: '/lab/speed-dial', description: 'FAB + acciones staggered (up/down/left/right), teclado y click-outside.' }
+		{ id: 'speed-dial', name: 'SpeedDial', status: 'ready', href: '/lab/speed-dial', description: 'FAB + acciones staggered (up/down/left/right), teclado y click-outside.' },
+		{ id: 'transaction-list', name: 'TransactionList', status: 'ready', href: '/lab/transaction-list', description: 'Lista de transacciones con detalle (tarjeta, fecha) y transición CSS.' }
 	] as const;
 </script>
 
