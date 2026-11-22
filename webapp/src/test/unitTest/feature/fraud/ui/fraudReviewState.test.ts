@@ -88,4 +88,31 @@ describe('Fraud review UI state', () => {
     expect(deps.list.execute).toHaveBeenLastCalledWith(4, '', 1);
     expect(state.page).toBe(1);
   });
+
+  it('does not apply a memo response after the warehouse context was cleared', async () => {
+    const state = createFraudReviewState();
+    await state.load(4);
+    let resolveMemo!: () => void;
+    deps.updateMemo.execute.mockReturnValueOnce(new Promise<void>((resolve) => { resolveMemo = resolve; }));
+    const saving = state.updateMemo(19, 'stale update', 4);
+    state.clear();
+    resolveMemo();
+    await expect(saving).resolves.toBe(false);
+    expect(state.rows).toEqual([]);
+    expect(state.selectedDetail).toBeNull();
+  });
+
+  it('does not refresh the previous warehouse after a push response races with a context change', async () => {
+    const state = createFraudReviewState();
+    await state.load(4);
+    let resolvePush!: () => void;
+    deps.push.execute.mockReturnValueOnce(new Promise<void>((resolve) => { resolvePush = resolve; }));
+    const pushing = state.push(19, 4);
+    state.clear();
+    resolvePush();
+    await expect(pushing).resolves.toBe(false);
+    expect(deps.list.execute).toHaveBeenCalledTimes(1);
+    expect(state.rows).toEqual([]);
+  });
+
 });
