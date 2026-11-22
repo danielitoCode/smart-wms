@@ -11,7 +11,7 @@
 
 	async function onSubmit(event: SubmitEvent) {
 		event.preventDefault();
-		if (await state.submit()) await goto('/login?passwordChanged=1', { replace: true });
+		if (await state.submit()) await goto('/login?passwordChanged=1', { replaceState: true });
 	}
 </script>
 
