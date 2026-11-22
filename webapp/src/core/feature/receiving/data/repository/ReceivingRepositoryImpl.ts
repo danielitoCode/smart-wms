@@ -1,3 +1,4 @@
+import { ReceiptHistoryMapper } from '../dto/ReceiptHistoryDto';
 import type { ReceivingRepository } from '../../domain/repository/ReceivingRepository';
 import type {
 	CancelReceiptsResult,
@@ -10,6 +11,16 @@ import { ReceivingMapper } from '../mapper/ReceivingMapper';
 
 export class ReceivingRepositoryImpl implements ReceivingRepository {
 	constructor(private readonly datasource: ReceivingRemoteDataSource) {}
+
+	async listReceipts(poId: number) {
+		const dto = await this.datasource.listReceipts(poId);
+		return dto.receipts.map(ReceiptHistoryMapper.toEntry);
+	}
+
+	async unreceive(receiptId: number, reason?: string) {
+		const dto = await this.datasource.unreceive(receiptId, reason);
+		return ReceiptHistoryMapper.toUnreceiveResult(dto);
+	}
 
 	async lookupByBarcode(barcode: string): Promise<PurchaseOrderDetail> {
 		const dto = await this.datasource.lookupByBarcode(barcode);
