@@ -185,7 +185,7 @@
 		for (const t of targets) {
 			t.animate(
 				[
-					{ opacity: 1, filter: toFilter(effect), transform: 'scale(1)' },
+					{ opacity: 1, filter: toFilter(effectType), transform: 'scale(1)' },
 					{
 						opacity: startOpacity,
 						filter: fromFilter(effectType, blurPx),
