@@ -5,6 +5,8 @@ export type ImportWarehouseContext = {
 	role: string;
 	assignedWarehouseIds: readonly number[];
 	activeWarehouse: { id: number; code: string } | null;
+	availableBinCodes?: readonly string[];
+	binCatalogVerified?: boolean;
 };
 
 export type ImportPreflightIssue = {
@@ -23,10 +25,15 @@ function positiveId(value: unknown): number | null {
 	return Number.isSafeInteger(id) ? id : null;
 }
 
+function hasBin(context: ImportWarehouseContext, code: string): boolean {
+	return context.binCatalogVerified === true &&
+		(context.availableBinCodes ?? []).some((item) => item.toLocaleLowerCase() === code.toLocaleLowerCase());
+}
+
 /**
  * Client-side safety check only. Flask remains the authorization boundary.
- * Multi-warehouse rows are deliberately constrained to the currently selected
- * warehouse because the import endpoint does not enforce each row's warehouse.
+ * Rows are constrained to the selected warehouse because the import endpoint
+ * does not enforce each row's warehouse/bin relationship.
  */
 export function validateImportWarehouseScope(
 	importType: CsvImportType,
@@ -59,15 +66,13 @@ export function validateImportWarehouseScope(
 	}
 
 	if (importType === 'inventory-adjustments') {
-		if (context.role !== 'ADMIN') {
-			return [{
-				row: null,
-				message: 'Importación bloqueada para usuarios no ADMIN: el servidor no valida que cada bin pertenezca al almacén asignado.'
-			}];
+		if (!context.binCatalogVerified) {
+			return [{ row: null, message: 'No se pudo verificar el catálogo de bins del almacén activo. La importación queda bloqueada.' }];
 		}
 		const issues: ImportPreflightIssue[] = [];
 		records.forEach((record, index) => {
 			const rowWarehouse = normalized(record.warehouse);
+			const bin = normalized(record.bin);
 			if (!rowWarehouse) {
 				issues.push({ row: index + 1, message: 'La columna warehouse es obligatoria.' });
 			} else if (rowWarehouse.toLocaleLowerCase() !== active.code.toLocaleLowerCase()) {
@@ -76,24 +81,25 @@ export function validateImportWarehouseScope(
 					message: `warehouse (${rowWarehouse}) no coincide con el almacén activo (${active.code}).`
 				});
 			}
-			if (!normalized(record.bin)) {
-				issues.push({ row: index + 1, message: 'La columna bin es obligatoria.' });
-			}
+			if (!bin) issues.push({ row: index + 1, message: 'La columna bin es obligatoria.' });
+			else if (!hasBin(context, bin)) issues.push({ row: index + 1, message: `El bin ${bin} no pertenece al catálogo del almacén activo.` });
 		});
 		return issues;
 	}
 
-	if (importType === 'items' && context.role !== 'ADMIN') {
-		const unsafeRow = records.findIndex((record) =>
-			normalized(record.default_bin) !== '' ||
-			(Number(record.quantity) > 0 && Number.isFinite(Number(record.quantity)))
-		);
-		if (unsafeRow >= 0) {
-			return [{
-				row: unsafeRow + 1,
-				message: 'La importación de productos con ubicación o cantidad inicial requiere validación de almacén/bin que el servidor no garantiza para cada fila.'
-			}];
-		}
+	if (importType === 'items') {
+		const issues: ImportPreflightIssue[] = [];
+		records.forEach((record, index) => {
+			const defaultBin = normalized(record.default_bin);
+			const quantity = Number(record.quantity);
+			if (context.role !== 'ADMIN' && Number.isFinite(quantity) && quantity > 0 && !defaultBin) {
+				issues.push({ row: index + 1, message: 'La cantidad inicial requiere un default_bin del almacén activo.' });
+			}
+			if (defaultBin && !hasBin(context, defaultBin)) {
+				issues.push({ row: index + 1, message: `El default_bin ${defaultBin} no pertenece al catálogo del almacén activo o no pudo verificarse.` });
+			}
+		});
+		return issues;
 	}
 
 	return [];
