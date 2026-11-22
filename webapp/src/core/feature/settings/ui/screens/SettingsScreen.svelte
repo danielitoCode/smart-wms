@@ -142,13 +142,14 @@
 			<p class="eyebrow">ABELLIS · SMART WMS</p>
 			<h1>{i18n.t('Ajustes')}</h1>
 			<p>{i18n.t('Parámetros operativos y comportamiento de la plataforma.')}</p>
+			<p class="scope-note">{i18n.t('Configuración global del sistema: estos valores no se guardan por almacén.')}</p>
 		</div>
 		<div class="actions">
 			{#if vm.hasChanges}<span class="dirty">{i18n.t('Cambios sin guardar')}</span>{/if}
-			<button class="secondary" type="button" onclick={vm.discard} disabled={!vm.hasChanges || vm.saving}>
+			<button class="secondary" type="button" onclick={vm.discard} disabled={!vm.loaded || !vm.hasChanges || vm.saving}>
 				{i18n.t('Descartar')}
 			</button>
-			<button class="primary" type="button" onclick={requestSave} disabled={!vm.hasChanges || vm.loading || vm.saving}>
+			<button class="primary" type="button" onclick={requestSave} disabled={!vm.loaded || !vm.hasChanges || vm.loading || vm.saving}>
 				{vm.saving ? i18n.t('Guardando…') : i18n.t('Guardar cambios')}
 			</button>
 		</div>
@@ -159,6 +160,11 @@
 
 	{#if vm.loading}
 		<UiStatePanel kind="loading" title={i18n.t('Cargando configuración')} message={i18n.t('Estamos recuperando la configuración del sistema.')} />
+	{:else if !vm.loaded}
+		<div class="load-failed" role="alert">
+			<strong>{i18n.t('No se puede editar la configuración sin cargar primero los valores del servidor.')}</strong>
+			<button class="secondary" type="button" onclick={() => void vm.load()} disabled={vm.loading || vm.saving}>{i18n.t('Reintentar carga')}</button>
+		</div>
 	{:else}
 		<div class="category-list">
 			{#each categories as category}
@@ -239,14 +245,14 @@
 	.page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1.2rem;margin-bottom:1.35rem}
 	.eyebrow{margin:0 0 .3rem;font-size:.66rem;font-weight:700;letter-spacing:.14em;color:var(--slate)}
 	h1{margin:0;font:700 1.7rem var(--disp)}
-	.page-head>div:first-child>p:last-child{margin:.35rem 0 0;color:var(--slate);font-size:.9rem}
+	.page-head>div:first-child>p:last-child{margin:.35rem 0 0;color:var(--slate);font-size:.9rem}.scope-note{font-size:.78rem!important;color:var(--copper)!important}
 	.actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:.5rem}
 	button{border-radius:8px;padding:.55rem .85rem;font:inherit;font-size:.82rem;cursor:pointer}
 	button:disabled{opacity:.5;cursor:not-allowed}
 	.primary{border:1px solid var(--navy);background:var(--navy);color:white}
 	.secondary{border:1px solid var(--line);background:var(--surface);color:var(--ink)}
 	.dirty{font-size:.75rem;color:var(--copper);font-weight:600}
-	.category-list{display:grid;gap:1rem}
+	.load-failed{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem;border:1px solid var(--danger);border-radius:10px;background:var(--surface);font-size:.85rem}.category-list{display:grid;gap:1rem}
 	.settings-card{border:1px solid var(--line);border-radius:13px;background:var(--surface);padding:1.1rem 1.2rem}
 	.section-heading{display:flex;justify-content:space-between;gap:1rem;padding-bottom:.85rem;border-bottom:1px solid var(--line)}
 	h2{margin:0;font-size:1.05rem}
