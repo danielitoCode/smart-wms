@@ -4,6 +4,7 @@ import { ReceivingRepositoryImpl } from '../data/repository/ReceivingRepositoryI
 import { LookupPurchaseOrderUseCase } from '../domain/usecase/LookupPurchaseOrderUseCase';
 import { ReceiveGoodsUseCase } from '../domain/usecase/ReceiveGoodsUseCase';
 import { CancelReceiptsUseCase } from '../domain/usecase/CancelReceiptsUseCase';
+import { ListReceiptHistoryUseCase, UnreceiveReceiptUseCase } from '../domain/usecase/ReceiptHistoryUseCases';
 
 export function createReceivingDependencies() {
 	const datasource = new ReceivingRemoteDataSource(apiClient);
@@ -12,7 +13,9 @@ export function createReceivingDependencies() {
 	return {
 		lookupPurchaseOrder: new LookupPurchaseOrderUseCase(repository),
 		receiveGoods: new ReceiveGoodsUseCase(repository),
-		cancelReceipts: new CancelReceiptsUseCase(repository)
+		cancelReceipts: new CancelReceiptsUseCase(repository),
+		listReceipts: new ListReceiptHistoryUseCase(repository),
+		unreceiveReceipt: new UnreceiveReceiptUseCase(repository)
 	};
 }
 
