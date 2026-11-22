@@ -115,3 +115,47 @@ Estos guards son mitigaciones de interfaz. El backend sigue aceptando page grant
 - Webapp CI del HEAD previo 4ee1428ff66a672125dcde6c4e27b967c9f6892b, run [45042682060](https://github.com/danielitoCode/smart-wms/actions/runs/45042682060), falló en typecheck antes de build/tests: 26 errores y 122 warnings en 53 archivos. Los errores visibles corresponden a componentes/rutas de laboratorio (BranchedMenu ausente, props de FlowingMenu/MagicBento incompatibles, entre otros); no se reportaron errores en Fraud/Customers en el log inspeccionado. Las suites no se ejecutaron, por tanto no hay aceptación R9.6.
 - Lockfile Version Check, Dependency Audit y gitleaks finalizaron correctamente en ese HEAD. El workflow Tests separado seguía en curso y no forma parte de la aceptación frontend.
 - El nuevo HEAD con el hardening de errores stale es 37d2f3577f8fcfd221a59f5c3abca5a91baf37ef; su CI debe completar para evaluar si los cambios nuevos están limpios. No se modificó Flask/Python.
+
+
+## Cierre de aceptación frontend — 22-11-2026
+
+**HEAD verificado:** `f8602108587c00b8ed73eba7e54a755ddb962c07`.
+
+**Resultado:** `R9_FRONTEND_ACCEPTED`. La entrada histórica que dejaba R9.6 pendiente queda supersedida por el resultado siguiente:
+
+- [Webapp CI run 45045373539](https://github.com/danielitoCode/smart-wms/actions/runs/45045373539): `success`.
+- Typecheck, build de producción y todas las suites Domain, Application, Infrastructure, UI/presentation, i18n, Integration, Full regression y Coverage by feature paths: `success`.
+- [Secret scan run 45045373504](https://github.com/danielitoCode/smart-wms/actions/runs/45045373504): `success`.
+- [Lockfile Version Check run 45045373564](https://github.com/danielitoCode/smart-wms/actions/runs/45045373564): `success`.
+- [Dependency Audit run 45045373540](https://github.com/danielitoCode/smart-wms/actions/runs/45045373540): los cuatro jobs (pip-audit y auditorías npm admin/mobile/mobile-dev) terminaron en `success`.
+
+### Matriz final de R9
+
+| Subfeature | Estado frontend | Evidencia/alcance |
+|---|---|---|
+| R9.1 Webhooks | Aceptado | Secretos one-time/rotación y limpieza, CRUD, DLQ, stats, errores, filtros/paginación, replay simple/lote y límites/acknowledgement con pruebas |
+| R9.2 Connectors | Aceptado | Secretos enmascarados, operaciones scoped por warehouse, limpieza de drafts, errores y estado asíncrono con pruebas |
+| R9.3 Audit Log | Aceptado dentro del contrato | Filtros, paginación, sorting, redacción de presentación, ADMIN-only y protección frente a respuestas obsoletas |
+| R9.4 Fraud | Aceptado | Warehouse context, memo/push manual, invalidación y errores/respuestas stale; sin score/recommendation inventados |
+| R9.5 Customers | Aceptado como proyección read-only | Búsqueda/listado/detalle con invalidación y control de carreras; sin customer ID canónico ni CRUD/merge |
+| R9.6 Regresión | Aceptado | Webapp CI completo en verde en el HEAD verificado |
+
+### Dos expectativas de tests corregidas
+
+- Imports: el límite funcional sigue siendo 5.000; la expectativa se ajustó al mensaje real `5000`.
+- AccessPolicy: la ruta `/data` conserva `bins`, `zones`, `preferred-bins`; no se amplió con el grant `warehouses`.
+- Commits: [d22d426](https://github.com/danielitoCode/smart-wms/commit/d22d426a79d8bf9bc84cbddb56480b3f46430606) y [f860210](https://github.com/danielitoCode/smart-wms/commit/f8602108587c00b8ed73eba7e54a755ddb962c07).
+
+### Limitaciones que no deben confundirse con defectos frontend
+
+- Webhooks y Audit Log administrativos son globales en Flask y no tienen aislamiento completo por almacén; ADMIN-only en la ruta Svelte es solo mitigación frontend.
+- Audit Log no admite warehouse filter/scope y su redacción en el mapper es solo de presentación.
+- Flask no audita todas las mutaciones de conectores/administración.
+- Fraud no expone score ni recommendation; las acciones son manuales.
+- Customers es una proyección read-only de sales orders sin ID canónico ni paginación global por cliente.
+
+**Deuda puntual:** el método legacy `IntegrationsRemoteDataSource.test(name)` sin `warehouse_id` permanece sin eliminar; no se encontró evidencia suficiente de consumidores en esta revisión. Debe confirmarse con una búsqueda en la rama de trabajo antes de retirarlo.
+
+**Workflow Python separado:** [Tests run 45045373500](https://github.com/danielitoCode/smart-wms/actions/runs/45045373500) no es la suite Svelte. Su paso de pruebas seguía en ejecución al momento de registrar esta revisión y no forma parte de la aceptación de `webapp/`.
+
+**Alcance:** solo frontend/documentación en `webapp/`; no se modificó Flask/Python.
