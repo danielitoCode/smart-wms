@@ -17,7 +17,7 @@ describe('ExecuteImportUseCase', () => {
 	it('rejects more than 5,000 records before calling the repository', () => {
 		const repository = { importRows: vi.fn() } as unknown as ImportsRepository;
 		const rows = Array.from({ length: 5001 }, (_, index) => ({ sku: `SKU-${index}` }));
-		expect(() => new ExecuteImportUseCase(repository).execute('items', rows)).toThrow(/5.000/);
+		expect(() => new ExecuteImportUseCase(repository).execute('items', rows)).toThrow(/5000/);
 		expect(repository.importRows).not.toHaveBeenCalled();
 	});
 	it('rejects a JSON request body above the Flask 10 MiB cap', () => {
