@@ -1,14 +1,32 @@
 <script lang="ts">
 	import UiStatePanel from '#lib/components/UiStatePanel.svelte';
-	import { getContext } from 'svelte';
+	import { getContext, onMount } from 'svelte';
 	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
 	import PageHeader from '../../../../../lib/components/PageHeader.svelte';
 	import UiBanner from '../../../../../lib/components/UiBanner.svelte';
 	import { pushToast } from '../../../../../lib/ui/toast.svelte';
 	const i18n = getContext<I18nState>('i18n');
 	import { createReceivingState } from '../state/receivingState.svelte';
+	import { createPurchaseOrdersState } from '../../../purchase-orders/ui/state/purchaseOrdersState.svelte';
 
 	const vm = createReceivingState();
+	const poList = createPurchaseOrdersState();
+	const warehouseSelection = getContext<{ warehouseId: number | null } | undefined>('warehouseSelection');
+	let poSearch = $state('');
+	let poStatus = $state('');
+
+	onMount(() => { void poList.load(warehouseSelection?.warehouseId ?? null); });
+
+	async function refreshPoList() {
+		poList.setFilter('search', poSearch);
+		poList.setFilter('status', poStatus as any);
+		await poList.load(warehouseSelection?.warehouseId ?? null);
+	}
+
+	async function openListedPo(poNumber: string) {
+		vm.setBarcode(poNumber);
+		await vm.lookup();
+	}
 	let receiptReasons = $state<Record<number, string>>({});
 
 	async function onUnreceive(receiptId: number) {
@@ -56,6 +74,48 @@
 		title={i18n.t('Recepción')}
 		subtitle={i18n.t('Consulta órdenes de compra, registra las cantidades recibidas y gestiona anulaciones.')}
 	/>
+
+	<section class="po-list" aria-labelledby="po-list-title">
+		<div class="history-heading">
+			<h3 id="po-list-title">{i18n.t('Órdenes de compra')}</h3>
+			<button type="button" class="secondary" onclick={refreshPoList} disabled={poList.loading}>{poList.loading ? i18n.t('Actualizando…') : i18n.t('Actualizar lista')}</button>
+		</div>
+		<div class="po-filters">
+			<input type="search" placeholder={i18n.t('Buscar número o proveedor')} value={poSearch} oninput={(e) => poSearch = e.currentTarget.value} />
+			<select value={poStatus} onchange={(e) => poStatus = e.currentTarget.value}>
+				<option value="">{i18n.t('Todos los estados')}</option>
+				<option value="OPEN">OPEN</option><option value="PARTIAL">PARTIAL</option>
+				<option value="RECEIVED">RECEIVED</option><option value="CLOSED">CLOSED</option>
+			</select>
+			<button type="button" onclick={refreshPoList} disabled={poList.loading}>{i18n.t('Filtrar')}</button>
+		</div>
+		{#if poList.error}
+			<UiBanner tone="error" message={poList.error} />
+		{:else if poList.loading}
+			<UiStatePanel kind="loading" title={i18n.t('Cargando órdenes')} message={i18n.t('Consultando órdenes del almacén seleccionado.')} />
+		{:else if poList.rows.length === 0}
+			<UiStatePanel kind="empty" title={i18n.t('No hay órdenes de compra')} message={i18n.t('No se encontraron órdenes con los filtros actuales.')} />
+		{:else}
+			<div class="table-wrap">
+				<table>
+					<thead><tr><th>{i18n.t('Orden')}</th><th>{i18n.t('Proveedor')}</th><th>{i18n.t('Estado')}</th><th>{i18n.t('Almacén')}</th><th>{i18n.t('Entrega esperada')}</th><th>{i18n.t('Acción')}</th></tr></thead>
+					<tbody>
+						{#each poList.rows as po (po.poId)}
+							<tr>
+							<td>{po.poNumber}</td><td>{po.vendorName ?? '—'}</td><td>{po.status}</td><td>{po.warehouseId}</td><td>{po.expectedDate ?? '—'}</td>
+							<td><button type="button" class="secondary" onclick={() => openListedPo(po.poNumber)} disabled={vm.loading || vm.submitting || vm.cancelling}>{i18n.t('Abrir')}</button></td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+			<div class="pagination">
+				<span>{poList.pagination.page} / {poList.pagination.pages} · {poList.pagination.total}</span>
+				<button type="button" class="secondary" onclick={() => { poList.setPage(Math.max(1, poList.pagination.page - 1)); void poList.load(warehouseSelection?.warehouseId ?? null); }} disabled={poList.pagination.page <= 1 || poList.loading}>{i18n.t('Anterior')}</button>
+				<button type="button" class="secondary" onclick={() => { poList.setPage(Math.min(poList.pagination.pages, poList.pagination.page + 1)); void poList.load(warehouseSelection?.warehouseId ?? null); }} disabled={poList.pagination.page >= poList.pagination.pages || poList.loading}>{i18n.t('Siguiente')}</button>
+			</div>
+		{/if}
+	</section>
 
 	<form class="lookup" onsubmit={onLookup}>
 		<input
@@ -201,6 +261,28 @@
 </section>
 
 <style>
+	.po-list {
+		margin-bottom: 1rem;
+		padding: 1rem;
+		border: 1px solid var(--line);
+		border-radius: var(--radius-card);
+		background: var(--surface);
+	}
+	.po-filters, .pagination {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.6rem;
+		margin-bottom: 0.75rem;
+	}
+	.po-filters input { flex: 1 1 14rem; }
+	.po-filters input, .po-filters select {
+		min-height: 40px;
+		padding: 0.4rem 0.65rem;
+		border: 1px solid var(--line);
+		border-radius: var(--radius-field);
+	}
+	.pagination { justify-content: flex-end; margin: 0.75rem 0 0; }
 	.lookup {
 		display: flex;
 		flex-wrap: wrap;
