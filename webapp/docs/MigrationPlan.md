@@ -1254,3 +1254,14 @@ La ejecución R1–R9 sigue pendiente. Los casos bloqueados por limitaciones Fla
 - Seguimiento: CI run `45049207492` sobre `854d850` falló en Typecheck con 29 imports no resueltos de `$lib/navigation/legacyRouteRedirects`. El proyecto solo define `#lib/*`; los wrappers se corrigieron para usar el alias configurado en `16381ef`.
 - Se añadió un test que verifica el alias de importación de los 29 wrappers (`fdff7d9`) y se amplió la matriz con el inventario real de UseCases/tests por feature (`70212a8`).
 - HEAD actual: `70212a8431182a3f2f4c5ce7dda32b78a3be0eed`. CI posterior a la corrección y validación HTTP/browser todavía pendientes.
+
+
+### R10.1 — ampliación de trazabilidad R1.5 y R2 (22-11-2026)
+
+- HEAD base auditado: `9b4fed2e67ed1a14048f25ddace383a7e8c5cc49`; commit de esta ampliación: `93902fcbb430d8bd06bc83fd1710125b72ea9b85`.
+- R1.5 Preferred Bins: cotejados handlers React de listado/búsqueda, alta, edición de prioridad, eliminación y CSV con los UseCases, datasource, DTO, mapper y state Svelte. Se documentan diferencias de catálogo, filtro Pickable/activo, validación de prioridad y formato CSV.
+- R2 Receiving: cotejados listado/estados, detalle, recepción por línea, historial y reversión individual React frente al lookup/recepción múltiple/cancelación batch de Svelte. Se identifica un gap de paridad concreto: React llama `POST /admin/receipts/{receipt_id}/unreceive` con motivo opcional e historial visible; Svelte llama `POST /api/receiving/cancel` con `receipt_ids`, sin motivo ni proyección del historial. También difieren los recorridos de listado/detalle administrativo frente a lookup por barcode.
+- Matriz ampliada: `.code-review/R10.1-Operation-Traceability-Matrix.md`, sección 8. Estado: `TRACEABILITY_PARTIAL — R1.5_CODE_CROSSCHECKED; R2_PARITY_GAP_IDENTIFIED`. No hay aún operaciones marcadas `VERIFIED_PARITY`.
+- CI del HEAD `9b4fed2`: [Webapp CI](https://github.com/danielitoCode/smart-wms/actions/runs/45049861361) pasó typecheck, build, suites Domain/Application/Infrastructure/UI/i18n/Integration, Full regression y Coverage by feature paths. [Tests](https://github.com/danielitoCode/smart-wms/actions/runs/45049861332) falló en el workflow Python/backend; es independiente del job Webapp y no se atribuye a Svelte. Lockfile, gitleaks y Dependency Audit pasaron.
+- No se modificó Flask/Python ni se retiró React.
+- Siguiente trabajo: leer aserciones de tests de Preferred Bins/Receiving, completar decorators/permisos/warehouse scope, decidir y resolver el gap de R2 dentro del frontend según el contrato existente, y continuar R2.4 antes de extender la auditoría a R3–R9. Ejecutar E2E contra Flask sigue pendiente.
