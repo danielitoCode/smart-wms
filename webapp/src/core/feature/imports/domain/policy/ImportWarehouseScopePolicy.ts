@@ -92,7 +92,7 @@ export function validateImportWarehouseScope(
 		records.forEach((record, index) => {
 			const defaultBin = normalized(record.default_bin);
 			const quantity = Number(record.quantity);
-			if (context.role !== 'ADMIN' && Number.isFinite(quantity) && quantity > 0 && !defaultBin) {
+			if (Number.isFinite(quantity) && quantity > 0 && !defaultBin) {
 				issues.push({ row: index + 1, message: 'La cantidad inicial requiere un default_bin del almacén activo.' });
 			}
 			if (defaultBin && !hasBin(context, defaultBin)) {
