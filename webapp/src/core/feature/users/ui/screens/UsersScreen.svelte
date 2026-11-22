@@ -4,6 +4,7 @@
  import type {I18nState} from '../../../../../lib/i18n/i18n.svelte';
  import {createManagedUsersState} from '../state/managedUsersState.svelte';
  import type {ManagedUser} from '../../domain/entity/UserManagement';
+ import {editableUserPageGrantKeys} from '../../domain/policy/UserPageGrantPolicy';
  import type {AuthUser} from '../../../../infrastructure/auth/AuthSession';
  import type {WarehouseSelectionState} from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
  import {MANAGED_USER_PERMISSION_GROUPS,MANAGED_USER_PERMISSION_KEYS,type ManagedUserPermissionGroup} from '../config/userPermissionGroups';
