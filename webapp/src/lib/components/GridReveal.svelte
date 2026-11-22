@@ -558,13 +558,7 @@
 
 	const finished = $derived(reduced ? loaded : revealed);
 
-	const combinedStyle = $derived(
-		typeof style === 'string'
-			? `aspect-ratio: ${ratio}; ${style}`
-			: style
-				? { aspectRatio: String(ratio), ...(style as Record<string, string>) }
-				: { aspectRatio: String(ratio) }
-	);
+	const combinedStyle = $derived(`aspect-ratio: ${ratio}; ${typeof style === 'string' ? style : ''}`);
 </script>
 
 <div
