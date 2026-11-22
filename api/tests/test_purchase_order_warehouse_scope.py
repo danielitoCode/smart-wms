@@ -1,8 +1,14 @@
 """Warehouse-isolation regression tests for admin purchase orders and receiving reversals."""
 
+import os
+import sys
 import uuid
 
 import pytest
+
+os.environ.setdefault("DATABASE_URL", "postgresql://sentry:sentry@localhost:5432/sentry")
+os.environ.setdefault("JWT_SECRET", "NEVER_USE_THIS_IN_PRODUCTION_32!")
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from db_test_context import get_raw_connection
 
@@ -108,3 +114,17 @@ def test_receipt_history_unreceive_and_batch_cancel_respect_warehouse_scope(clie
     )
     assert cancel.status_code == 404
     assert _query_one("SELECT 1 FROM item_receipts WHERE receipt_id = %s", (receipt_id,)) is not None
+
+
+def test_create_purchase_order_rejects_unassigned_warehouse(client):
+    user = _user_headers(client, [1], ["purchase-orders"])
+    response = client.post(
+        "/api/admin/purchase-orders",
+        headers=user,
+        json={
+            "po_number": f"PO-WH-DENIED-{uuid.uuid4().hex[:8]}",
+            "warehouse_id": 2,
+            "lines": [{"item_id": 1, "quantity_ordered": 1}],
+        },
+    )
+    assert response.status_code == 403
