@@ -1,4 +1,4 @@
-import type { ReceiptHistoryEntry, UnreceiveResult } from '../../domain/entity/ReceiptHistory';
+import type { ReceiptHistoryEntry } from '../../domain/entity/ReceiptHistory';
 
 export type ReceiptHistoryEntryDto = {
   receipt_id: number;
