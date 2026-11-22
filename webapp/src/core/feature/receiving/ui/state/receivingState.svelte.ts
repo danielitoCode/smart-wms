@@ -35,7 +35,11 @@ function isAbort(err: unknown): boolean {
 	);
 }
 
-function mapDrafts(detail: PurchaseOrderDetail, defaultBinId = ''): LineDraft[] {
+function preferredBinId(): string {
+	return String(bins.find(bin => bin.binType === 'Staging')?.id ?? bins[0]?.id ?? '');
+}
+
+function mapDrafts(detail: PurchaseOrderDetail, defaultBinId = preferredBinId()): LineDraft[] {
 	return detail.lines
 		.filter((line) => line.quantityRemaining > 0)
 		.map((line) => ({
@@ -243,7 +247,7 @@ export function createReceivingState() {
 			const refreshed = await deps.lookupPurchaseOrder.execute(poNumber);
 			if (!scope.isCurrent()) return false;
 			detail = refreshed;
-			drafts = mapDrafts(refreshed, String(bins.find(bin => bin.binType === 'Staging')?.id ?? bins[0]?.id ?? ''));
+			drafts = mapDrafts(refreshed);
 			await loadReceiptHistory(refreshed.purchaseOrder.poId);
 			return true;
 		} catch (err) {
