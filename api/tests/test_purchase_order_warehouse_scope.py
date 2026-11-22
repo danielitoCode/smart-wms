@@ -164,6 +164,9 @@ def test_receiving_grant_can_list_only_bins_in_assigned_warehouse(client):
     assert own.status_code == 200, own.get_json()
     assert all(row["warehouse_id"] == 1 for row in own.get_json()["bins"])
 
+    scoped = client.get("/api/admin/bins?per_page=1000", headers=user)
+    assert scoped.status_code == 200, scoped.get_json()
+    assert all(row["warehouse_id"] == 1 for row in scoped.get_json()["bins"])
+
     foreign = client.get("/api/admin/bins?warehouse_id=2&per_page=1000", headers=user)
-    assert foreign.status_code == 200, foreign.get_json()
-    assert foreign.get_json()["bins"] == []
+    assert foreign.status_code == 403
