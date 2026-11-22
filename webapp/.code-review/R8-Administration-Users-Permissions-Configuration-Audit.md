@@ -214,3 +214,55 @@ At audited HEAD `5a2cb48adb09e2942f58eade176222744fb9b463`:
 
 **Estado de estos bloques:** `R8.3_FRONTEND_HARDENING_IMPLEMENTED` y `R8.4_FRONTEND_GUARDS_IMPLEMENTED`. Pendiente CI Webapp completo sobre HEAD definitivo.
 
+
+
+## 9. R8.5 — integraciones y secretos
+
+**Estado:** `FRONTEND_HARDENING_IMPLEMENTED / CI_PENDING / BACKEND_AUDIT_GAP`.
+
+- El contrato Flask de credenciales es de escritura y metadatos: POST cifra cada valor con el vault y devuelve solo nombres de claves; GET devuelve `value: "****"` y timestamps; no existe lectura de plaintext. El mapper Svelte convierte la respuesta en `CredentialMetadata` y descarta el campo `value`; ni el dominio ni la pantalla conservan el valor devuelto por GET.
+- El formulario solo envía valores nuevos no vacíos. Los campos sensibles usan `type=password` y `autocomplete=new-password`; la detección por nombre (`secret|token|key|password|credential`) prevalece incluso si el schema marca `secret: false`. Después de guardar se vacía el draft; al cambiar conector/almacén y al destruir la pantalla también se descarta.
+- Credenciales, prueba de conexión, estado, reset y sync se consultan/ejecutan con `warehouse_id` explícito. Flask valida ese ID frente a los almacenes asignados del usuario en el middleware; Svelte invalida las respuestas de una selección anterior mediante `epoch` y detiene el polling al cambiar de almacén/conector.
+- No se implementa ni se simula readback de secretos. El operador puede reemplazar una clave dejando el campo vacío para conservar la existente, o eliminar todas las claves del conector para el almacén actual.
+- Pruebas: `IntegrationsData.test.ts` verifica que ni siquiera una respuesta inesperada con plaintext se incorpora al modelo de dominio; `integrationsState.test.ts` cubre respuestas obsoletas, cambio de almacén, errores de conexión, 409 y polling; `integrationsScreen.test.ts` cubre el enmascaramiento y la limpieza del draft.
+- Límite de Flask: save/delete credentials y test connection no escriben audit log en `admin_connectors.py`; `sync-reset` sí escribe `SYNC_RESET`. El disparo manual de sync no escribe audit log en ese handler. El frontend no crea eventos locales para suplirlo.
+
+## 10. R8.6 — matriz de auditoría y limitaciones Flask
+
+La matriz se refiere a eventos persistidos por Flask en `audit_log`, no a mensajes de UI ni a eventos de dominio/webhooks. La inspección cubre las rutas administrativas actuales y las llamadas explícitas a `write_audit_log` en sus módulos.
+
+| Área / operación mutante | Endpoint Flask | ¿Escribe audit_log en el handler? | Evidencia / limitación | Tratamiento Svelte |
+|---|---|---:|---|---|
+| Crear/editar/eliminar usuario | `POST/PUT/DELETE /api/admin/users` | No | `admin_users.py` no escribe evento en esos handlers | No fabricar evento; indicar que el ledger no cubre esta mutación |
+| Reemplazar grants de usuario | `PUT /api/admin/users/{id}/permissions` | No | Lectura y reemplazo existen; operación separada del CRUD | Refrescar sesión propia; registrar brecha de auditoría |
+| Actualizar ajustes globales | `PUT /api/admin/settings` | No | Configuración global, sin scope por almacén | Etiquetar global; no mostrarlo como cambio auditado |
+| CRUD de almacenes | `POST/PUT/DELETE /api/admin/warehouses` | No | Rutas sin warehouse scope en el módulo inspeccionado | UI ADMIN-only como mitigación temporal; falta enforcement server-side |
+| CRUD de zonas y bins | `POST/PUT/DELETE /api/admin/zones`, `/api/admin/bins` | No | No hay `write_audit_log` en esos handlers; los writes de transferencia en el mismo módulo son operaciones distintas | No inferir que CRUD de ubicaciones queda auditado por el log de transferencias |
+| Importar artículos, bins, órdenes | `POST /api/admin/import/{entity_type}` | No | En el handler inspeccionado no hay evento por fila para items, bins, purchase-orders ni sales-orders | Mostrar resultado/errores de importación, sin crear eventos sintéticos |
+| Importar ajustes de inventario | Mismo endpoint, tipo `inventory-adjustments` | Sí, por ajuste aplicado | El handler escribe evento para cada ajuste exitoso; no convierte otros tipos en auditados | Presentar solo el evento que el servidor efectivamente persiste |
+| Guardar/eliminar credenciales | `POST/DELETE /api/admin/connectors/{name}/credentials` | No | POST cifra y devuelve claves; GET solo devuelve máscara; handlers save/delete sin evento audit | No conservar plaintext ni inventar auditoría |
+| Probar conexión | `POST /api/admin/connectors/{name}/test` | No | Usa credenciales del vault en servidor; sin evento audit en handler | Mostrar resultado operativo, no evento de auditoría |
+| Encolar sincronización | `POST /api/admin/connectors/{name}/sync/{type}` | No | Respuesta incluye task ID; el handler no registra audit_log | Mostrar tarea/estado, no afirmar que la acción quedó auditada |
+| Restablecer estado de sync | `POST /api/admin/connectors/{name}/sync-reset` | Sí | Escribe `SYNC_RESET` con connector, sync_type y rows_reset | Evento visible solo cuando el GET de audit lo devuelve |
+| Leer registro de auditoría | `GET /api/admin/audit-log` | No aplica | Tiene page grant, pero no warehouse filter/scope | Ruta y navegación ADMIN-only; no descargar y filtrar datos globales en cliente |
+
+### Limitaciones transversales que bloquean la aceptación integral
+
+1. **Cobertura incompleta de mutaciones:** usuarios/grants, settings, warehouses/zones/bins, varios tipos de importación y operaciones de credenciales/conexión/sync no tienen eventos explícitos en los handlers inspeccionados. La cobertura del log no es un ledger completo de administración.
+2. **Aislamiento del audit log:** Flask no ofrece filtro ni scope por almacén para `GET /api/admin/audit-log`. La política ADMIN-only en Svelte reduce exposición desde esta UI, pero no sustituye autorización del servidor.
+3. **Aislamiento del CRUD de almacenes:** list/detail y mutaciones administrativas no aplican scope por warehouse en Flask. La pantalla se restringe a ADMIN hasta que el backend imponga ese límite.
+4. **Importaciones:** falta validación server-side por fila de warehouse/bin e idempotency key/replay; los guards de Svelte no son una frontera de seguridad.
+5. **Configuración:** `/api/admin/settings` es global; no existe variante por warehouse.
+6. **Credenciales:** el servidor cifra y enmascara correctamente el readback, pero no registra save/delete/test; tampoco debe devolver plaintext para habilitar edición de secretos.
+7. **Sesiones:** las mutaciones de usuario y grants son requests separados; no existe invalidación inmediata de otra sesión ya abierta. La sesión propia se refresca con `/api/auth/me`.
+
+### Trabajo backend necesario para cerrar R8 integral
+
+- Añadir eventos audit transaccionales para create/update/delete user, replace grants, settings update, warehouse/zone/bin CRUD, importaciones de items/bins/PO/SO, credentials save/delete, test connection y sync enqueue; definir explícitamente qué lecturas no requieren evento.
+- Incluir actor, acción estable, entidad/ID, warehouse cuando aplique, correlación/request ID y metadata redactada. Nunca registrar passwords, tokens, API keys, credential payloads ni secretos de webhook.
+- Añadir warehouse scope/filter al audit-log y a CRUD administrativo de warehouses/zones/bins, con pruebas de aislamiento para usuarios asignados y no asignados.
+- Añadir idempotencia y validación por fila warehouse/bin en importaciones.
+- Definir atomicidad de update user + grants y mecanismo de revocación/invalidación de sesiones remotas.
+- Añadir pruebas Flask/PostgreSQL que verifiquen tanto la presencia del evento como la ausencia de secretos en audit details.
+
+**Criterio R8.6:** matriz documentada y frontend no fabrica evidencia. La cobertura integral queda `BLOCKED_BACKEND` hasta que los handlers Flask implementen y prueben los eventos y scopes anteriores. No se modificó Flask/Python.
