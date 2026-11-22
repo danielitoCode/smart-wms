@@ -4,28 +4,39 @@
 	import { createImportsState } from '../state/importsState.svelte';
 	import type { CsvImportType } from '../../domain/entity/CsvImport';
 	import { IMPORT_PREVIEW_ROWS } from '../../domain/entity/CsvImport';
+	import { validateImportWarehouseScope, type ImportPreflightIssue } from '../../domain/policy/ImportWarehouseScopePolicy';
+	import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
+	import type { AuthUser } from '../../../../infrastructure/auth/AuthSession';
 
 	const i18n = getContext<I18nState>('i18n');
 	const vm = createImportsState();
+	const warehouseSelection = getContext<WarehouseSelectionState>('warehouseSelection');
+	const authGuard = getContext<{ user: AuthUser | null }>('authGuard');
+	let preflightIssues = $state<ImportPreflightIssue[]>([]);
 	let fileInput: HTMLInputElement | null = $state(null);
 
 	function onImportTypeChange(event: Event) {
 		vm.setImportType((event.currentTarget as HTMLSelectElement).value as CsvImportType);
+		preflightIssues = [];
 		if (fileInput) fileInput.value = '';
 	}
 
 	async function onFileChange(event: Event) {
 		const file = (event.currentTarget as HTMLInputElement).files?.[0];
+		preflightIssues = [];
 		if (file) await vm.prepareFile(file);
 	}
 
 	function downloadTemplate() {
+		const activeWarehouse = warehouseSelection.warehouses.find((item) => item.id === warehouseSelection.warehouseId);
+		const warehouseId = warehouseSelection.warehouseId ?? '';
+		const warehouseCode = activeWarehouse?.code ?? '';
 		const templates: Record<CsvImportType, string> = {
 			items: 'sku,name,description,category,upc,default_bin,weight,quantity\nWIDGET-001,Blue Widget,Standard blue widget,Widgets,012345678901,A-01-01-01,0.50,100',
-			bins: 'bin_code,bin_barcode,zone,warehouse_id,aisle,bin_type,pick_sequence,putaway_sequence,description\nC-01-01-01,C-01-01-01,STORAGE,1,C,Pickable,100,100,Shelf C Row 1 Level 1',
-			'purchase-orders': 'po_number,warehouse_id,vendor,sku,quantity,expected_date\nPO-1001,1,Acme Supply Co,WIDGET-001,100,2026-05-01',
-			'sales-orders': 'so_number,warehouse_id,customer,customer_phone,customer_address,sku,quantity\nSO-5001,1,John Smith,555-0101,123 Main St,WIDGET-001,2',
-			'inventory-adjustments': 'sku,warehouse,bin,qty,memo\nWIDGET-001,WH-01,PICK-01,5,Found stock during cycle count'
+			bins: 'bin_code,bin_barcode,zone,warehouse_id,aisle,bin_type,pick_sequence,putaway_sequence,description\nC-01-01-01,C-01-01-01,STORAGE,${warehouseId},C,Pickable,100,100,Shelf C Row 1 Level 1',
+			'purchase-orders': 'po_number,warehouse_id,vendor,sku,quantity,expected_date\nPO-1001,${warehouseId},Acme Supply Co,WIDGET-001,100,2026-05-01',
+			'sales-orders': 'so_number,warehouse_id,customer,customer_phone,customer_address,sku,quantity\nSO-5001,${warehouseId},John Smith,555-0101,123 Main St,WIDGET-001,2',
+			'inventory-adjustments': 'sku,warehouse,bin,qty,memo\nWIDGET-001,${warehouseCode},PICK-01,5,Found stock during cycle count'
 		};
 		const blob = new Blob([templates[vm.importType]], { type: 'text/csv;charset=utf-8' });
 		const url = URL.createObjectURL(blob);
@@ -34,6 +45,23 @@
 		anchor.download = `import-${vm.importType}.csv`;
 		anchor.click();
 		URL.revokeObjectURL(url);
+	}
+
+	function executeImport() {
+		const user = authGuard.user;
+		preflightIssues = validateImportWarehouseScope(vm.importType, vm.records, {
+			role: user?.role ?? 'USER',
+			assignedWarehouseIds: user?.warehouseIds ?? [],
+			activeWarehouse: warehouseSelection.warehouses.find((item) => item.id === warehouseSelection.warehouseId) ?? null
+		});
+		if (preflightIssues.length) return;
+		void vm.executeImport();
+	}
+
+	function clearFile() {
+		vm.clearFile();
+		preflightIssues = [];
+		if (fileInput) fileInput.value = '';
 	}
 
 	function downloadErrorReport() {
@@ -69,6 +97,7 @@
 			</select>
 		</label>
 		<p class="hint">{i18n.t('Cada tipo utiliza un contrato y unas columnas diferentes. Descarga la plantilla correspondiente antes de preparar el archivo.')}</p>
+		<p class="scope-warning">{i18n.t('La importación queda limitada al almacén activo. La vista previa es local; Flask realiza la validación definitiva.')}</p>
 		<div class="actions">
 			<button class="secondary" type="button" onclick={downloadTemplate}>{i18n.t('Descargar plantilla CSV')}</button>
 		</div>
@@ -78,6 +107,7 @@
 		<p class="hint">{i18n.t('Límite del servidor: 5.000 registros y 10 MiB por petición.')}</p>
 		{#if vm.source}
 			<p class="file-meta">{vm.source.name} · {(vm.source.size / 1024).toFixed(1)} KB · {vm.records.length} {i18n.t('registros preparados')}</p>
+			<button class="secondary" type="button" onclick={clearFile} disabled={vm.importing}>{i18n.t('Cambiar archivo')}</button>
 		{/if}
 	</section>
 
@@ -85,8 +115,11 @@
 		<section class="panel">
 			<div class="section-heading">
 				<div><h2>{i18n.t('Vista previa')}</h2><p class="hint">{i18n.t('Primeras')} {Math.min(vm.records.length, IMPORT_PREVIEW_ROWS)} {i18n.t('filas de')} {vm.records.length}. {i18n.t('La validación definitiva ocurre al enviar al servidor.')}</p></div>
-				<button class="primary" type="button" disabled={vm.importing} onclick={() => void vm.executeImport()}>{vm.importing ? i18n.t('Importando…') : i18n.t('Ejecutar importación')}</button>
+				<button class="primary" type="button" disabled={vm.importing || vm.attempted} onclick={executeImport}>{vm.importing ? i18n.t('Importando…') : i18n.t('Ejecutar importación')}</button>
 			</div>
+			{#if preflightIssues.length}
+				<div class="preflight-errors" role="alert"><strong>{i18n.t('No se puede ejecutar la importación')}</strong><ul>{#each preflightIssues as issue}<li>{issue.row ? `Fila ${issue.row}: ` : ''}{i18n.t(issue.message)}</li>{/each}</ul></div>
+			{/if}
 			<div class="table-wrap">
 				<table>
 					<thead><tr><th>#</th>{#each Object.keys(vm.records[0]) as header}<th>{header}</th>{/each}</tr></thead>
@@ -110,11 +143,13 @@
 				<div><strong>{vm.result.skipped}</strong><span>{i18n.t('Omitidas')}</span></div>
 			</div>
 			{#if vm.result.errors.length}
-				<div class="section-heading"><h3>{i18n.t('Errores por fila')}</h3><div class="actions"><button class="secondary" type="button" onclick={downloadErrorReport}>{i18n.t('Descargar informe CSV')}</button><button class="secondary" type="button" disabled={vm.importing || !vm.failedRows.length} onclick={() => void vm.retryFailedRows()}>{i18n.t('Reintentar filas fallidas')}</button></div></div>
+				<div class="section-heading"><h3>{i18n.t('Errores por fila')}</h3><div class="actions"><button class="secondary" type="button" onclick={downloadErrorReport}>{i18n.t('Descargar informe CSV')}</button></div></div>
+				<p class="hint">{i18n.t('No se reintentan automáticamente las filas fallidas: el servidor no ofrece claves de idempotencia. Revisa y prepara un nuevo archivo tras comprobar los datos persistidos.')}</p>
 				<ul class="errors">{#each vm.result.errors as item}<li><strong>{i18n.t('Fila')} {item.row}:</strong> {item.message}</li>{/each}</ul>
 			{:else}
 				<p class="success">{i18n.t('Todas las filas se importaron correctamente.')}</p>
 			{/if}
+			{#if vm.job?.status === 'unknown'}<p class="error" role="alert">{i18n.t('Resultado incierto: no vuelvas a enviar este archivo hasta verificar en el servidor qué filas se procesaron.')}</p>{/if}
 		</section>
 	{/if}
 </section>
@@ -126,7 +161,7 @@
 	.panel{padding:1.1rem;border:1px solid var(--line);border-radius:12px;background:var(--surface, white);display:grid;gap:.8rem}
 	label{display:flex;flex-direction:column;gap:.35rem;font-size:.88rem;color:var(--slate);font-weight:600}
 	select,input{max-width:100%;padding:.6rem .7rem;border:1px solid var(--line);border-radius:var(--radius-field);background:var(--surface, white);color:inherit}
-	.hint,.file-meta{margin:0;color:var(--slate);font-size:.82rem}.actions{display:flex;gap:.55rem;flex-wrap:wrap}
+	.hint,.file-meta{margin:0;color:var(--slate);font-size:.82rem}.scope-warning{margin:0;padding:.65rem .75rem;border-left:3px solid var(--copper);background:var(--surface-2);font-size:.8rem;color:var(--slate)}.preflight-errors{padding:.75rem;border:1px solid var(--danger);border-radius:8px;color:var(--danger);font-size:.82rem}.preflight-errors ul{margin:.35rem 0 0;padding-left:1.2rem}.actions{display:flex;gap:.55rem;flex-wrap:wrap}
 	.primary,.secondary{padding:.55rem .85rem;border:1px solid var(--line);border-radius:8px;cursor:pointer;font:inherit}
 	.primary{background:var(--navy);border-color:var(--navy);color:#fff}.secondary{background:transparent;color:inherit}
 	button:disabled{opacity:.55;cursor:not-allowed}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
