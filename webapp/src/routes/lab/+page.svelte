@@ -83,7 +83,8 @@
 		{ id: 'delivery-card', name: 'DeliveryCard', status: 'ready', href: '/lab/delivery-card', description: 'Tracking: ETA, barra con camión, estado y ubicación (simulateProgress).' },
 		{ id: 'aperture-reveal', name: 'ApertureReveal', status: 'ready', href: '/lab/aperture-reveal', description: 'Scroll sticky: diafragma circular abre la imagen (Lead + Opening + Trail, caption, hint).' },
 		{ id: 'cinema-row', name: 'CinemaRow', status: 'ready', href: '/lab/cinema-row', description: 'Hero WaveReveal + premieres Marquee + stills verticales (reduced-motion).' },
-		{ id: 'animated-counter', name: 'AnimatedCounter', status: 'ready', href: '/lab/animated-counter', description: 'Rueda de dígitos con spring CSS, separators western/indian, prefix/suffix.' }
+		{ id: 'animated-counter', name: 'AnimatedCounter', status: 'ready', href: '/lab/animated-counter', description: 'Rueda de dígitos con spring CSS, separators western/indian, prefix/suffix.' },
+		{ id: 'grid-reveal', name: 'GridReveal', status: 'ready', href: '/lab/grid-reveal', description: 'Revelado BSP en canvas: celdas se separan, colorean y entregan la foto.' }
 	] as const;
 </script>
 
