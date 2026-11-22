@@ -1249,3 +1249,8 @@ La ejecución R1–R9 sigue pendiente. Los casos bloqueados por limitaciones Fla
 - El mapa de compatibilidad crece de 28 a 29 paths. Se amplió `legacyRouteRedirects.test.ts` para comprobar que cada destino existe como ruta Svelte concreta o como feature explícita de `management/[feature]`.
 - Commits de implementación: `4dffe2a` (mapa), `2be3a07` (wrapper /warehouses), `edd5492` (landing canónico), `fe72974` (test de destinos). Documentación: `e2a38b5` (matriz), `e698747` (auditoría R10).
 - **Pendiente:** Webapp CI para el nuevo HEAD y validación HTTP/browser (direct URL, refresh, query string, sesión y permisos). Las pruebas añadidas son estáticas; no certifican E2E. No se modificó Flask/Python ni se retiró React.
+
+
+- Seguimiento: CI run `45049207492` sobre `854d850` falló en Typecheck con 29 imports no resueltos de `$lib/navigation/legacyRouteRedirects`. El proyecto solo define `#lib/*`; los wrappers se corrigieron para usar el alias configurado en `16381ef`.
+- Se añadió un test que verifica el alias de importación de los 29 wrappers (`fdff7d9`) y se amplió la matriz con el inventario real de UseCases/tests por feature (`70212a8`).
+- HEAD actual: `70212a8431182a3f2f4c5ce7dda32b78a3be0eed`. CI posterior a la corrección y validación HTTP/browser todavía pendientes.
