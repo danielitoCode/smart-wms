@@ -1,6 +1,6 @@
 <script lang="ts">
 	import UiStatePanel from '#lib/components/UiStatePanel.svelte';
-	import { getContext, onMount } from 'svelte';
+	import { getContext } from 'svelte';
 	import type { I18nState } from '../../../../../lib/i18n/i18n.svelte';
 	import PageHeader from '../../../../../lib/components/PageHeader.svelte';
 	import UiBanner from '../../../../../lib/components/UiBanner.svelte';
@@ -15,7 +15,14 @@
 	let poSearch = $state('');
 	let poStatus = $state<'' | 'OPEN' | 'PARTIAL' | 'RECEIVED' | 'CLOSED'>('');
 
-	onMount(() => { void poList.load(warehouseSelection?.warehouseId ?? null); });
+	let lastListedWarehouse: number | null | undefined = undefined;
+	$effect(() => {
+		const warehouseId = warehouseSelection?.warehouseId ?? null;
+		if (lastListedWarehouse !== warehouseId) {
+			lastListedWarehouse = warehouseId;
+			void poList.load(warehouseId);
+		}
+	});
 
 	async function refreshPoList() {
 		poList.setFilter('search', poSearch);
