@@ -1274,3 +1274,12 @@ La ejecución R1–R9 sigue pendiente. Los casos bloqueados por limitaciones Fla
 - Diferencias registradas: selección de producto por SKU typeahead en React frente a ID numérico en Svelte; edición de status vía PUT frente a lifecycle endpoints explícitos; export CSV de detalle React no localizado en la pantalla Svelte revisada; historial de receipts está presente en PurchaseOrders pero no en el flujo barcode de Receiving.
 - Matriz: sección 8.3 de `.code-review/R10.1-Operation-Traceability-Matrix.md`. Estado R2.4: `CODE_CROSSCHECK_PARTIAL`.
 - Commit: `efc1cc8777fe4830450a30ddbf31d2abf7a05cc2`. No se modifica Flask/Python.
+
+
+### R2.5 — lectura de pruebas y contratos Flask (22-11-2026)
+
+- Commit de auditoría: `b4f6324ac143957e7cd62f3227e19c7370be67d5`.
+- Tests frontend leídos: PurchaseOrderUseCases (5), PurchaseOrderMapper (3), LookupPurchaseOrderUseCase (2), ReceiveGoodsUseCase (3). Tests backend leídos: `test_admin_purchase_orders.py` (7), `test_receiving.py` (22), `test_admin_unreceive.py` (12). Se inspeccionaron aserciones y no solo nombres; no se ejecutaron en este tramo.
+- Contratos revisados: lookup/receive, cancel batch, GET receipt history, unreceive individual, close/reopen y PUT lifecycle. Confirmado que batch cancel `/api/receiving/cancel` y admin unreceive `/api/admin/receipts/{id}/unreceive` son operaciones diferentes. Svelte Receiving datasource llama al batch cancel correctamente, pero no tiene tests propios para ese contrato y no cubre el flujo admin original.
+- Hallazgo de seguridad bloqueante: rutas administrativas PO y receipt history/unreceive usan page grant pero no warehouse scope; la cancelación batch filtra receipt rows, pero recalcula la PO ID recibida en body sin validar que esa PO esté dentro del warehouse scope. Tests revisados no cubren USER con warehouses parciales/cross-warehouse. No se modifica Flask: requiere corrección backend separada.
+- Estado: `R2_AUDIT_COMPLETE — R2_NOT_CLOSED`. No se puede cerrar R2 funcionalmente ni por aislamiento de almacén hasta resolver paridad Receiving, cobertura de tests y el hallazgo backend. Ver sección 8.4 de `.code-review/R10.1-Operation-Traceability-Matrix.md`.
