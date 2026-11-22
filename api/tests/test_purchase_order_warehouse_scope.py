@@ -82,8 +82,33 @@ def test_admin_purchase_order_reads_and_lifecycle_are_warehouse_scoped(client):
     assert po_id not in {row["po_id"] for row in listing.get_json()["purchase_orders"]}
 
     assert client.get(f"/api/admin/purchase-orders/{po_id}", headers=user).status_code == 404
+    assert client.put(
+        f"/api/admin/purchase-orders/{po_id}", json={"notes": "must not change"}, headers=user
+    ).status_code == 404
+    assert client.post(
+        f"/api/admin/purchase-orders/{po_id}/lines",
+        json={"item_id": 1, "quantity_ordered": 1}, headers=user,
+    ).status_code == 404
+    line_id = _query_one(
+        "SELECT po_line_id FROM purchase_order_lines WHERE po_id = %s ORDER BY po_line_id LIMIT 1",
+        (po_id,),
+    )[0]
+    assert client.patch(
+        f"/api/admin/purchase-orders/{po_id}/lines/{line_id}",
+        json={"quantity_ordered": 6}, headers=user,
+    ).status_code == 404
+    assert client.delete(
+        f"/api/admin/purchase-orders/{po_id}/lines/{line_id}", headers=user
+    ).status_code == 404
     assert client.post(f"/api/admin/purchase-orders/{po_id}/close", headers=user).status_code == 404
     assert client.post(f"/api/admin/purchase-orders/{po_id}/reopen", headers=user).status_code == 404
+    assert _query_one(
+        "SELECT notes FROM purchase_orders WHERE po_id = %s", (po_id,)
+    )[0] is None
+    assert _query_one(
+        "SELECT quantity_ordered FROM purchase_order_lines WHERE po_id = %s", (po_id,)
+    )[0] == 5
+    assert client.get("/api/admin/bins?warehouse_id=1", headers=user).status_code == 403
 
 
 def test_receipt_history_unreceive_and_batch_cancel_respect_warehouse_scope(client):
