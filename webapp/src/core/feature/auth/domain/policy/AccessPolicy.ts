@@ -193,10 +193,15 @@ export { ALL_OVERRIDE_KEYS };
  */
 export type RouteAccessPolicy =
 	| { kind: 'authenticated' }
+	| { kind: 'admin' }
 	| { kind: 'function'; functionKey: OperationalFunctionKey }
 	| { kind: 'all'; pageKeys: readonly string[] }
 	| { kind: 'any'; pageKeys: readonly string[] }
 	| { kind: 'allAndAny'; allPageKeys: readonly string[]; anyPageKeys: readonly string[] };
+
+export function canAccessAdminRoute(role: AccessRole): boolean {
+	return role === 'ADMIN';
+}
 
 export function canAccessAnyPages(
 	role: AccessRole,
@@ -210,6 +215,11 @@ export function canAccessAnyPages(
 export function routeAccessPolicyForPath(pathname: string): RouteAccessPolicy | null {
 	const path = pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
 
+	// Administrative endpoints return global data without warehouse scoping.
+	// Until Flask enforces row-level scope, these screens are ADMIN-only.
+	if (isPathOrChild(path, '/management/audit-log')) return { kind: 'admin' };
+	if (path === '/warehouses' || isPathOrChild(path, '/data/warehouses')) return { kind: 'admin' };
+
 	// Scanner workflows use the operational grants returned by /api/auth/me,
 	// not the administrative page-permission catalog.
 	if (path === '/picking' || path.startsWith('/picking/')) return { kind: 'function', functionKey: 'pick' };
@@ -220,7 +230,7 @@ export function routeAccessPolicyForPath(pathname: string): RouteAccessPolicy | 
 	// The Data landing page is a tab container: any one of these page grants
 	// is sufficient to enter it; each child route still has its own gate.
 	if (path === '/data') {
-		return { kind: 'any', pageKeys: ['warehouses', 'bins', 'zones', 'preferred-bins'] };
+		return { kind: 'any', pageKeys: ['bins', 'zones', 'preferred-bins'] };
 	}
 	// The printable queue lists through sales-orders (or fraud), while ticket detail/print requires picking-tickets.
 	if (isPathOrChild(path, '/picking-tickets')) {
