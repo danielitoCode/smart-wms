@@ -17,4 +17,19 @@ describe('Webhooks Flask data contracts',()=>{
  expect(patch).toHaveBeenCalledWith('/api/admin/webhooks/sid',{});expect(del).toHaveBeenCalledWith('/api/admin/webhooks/sid');
  });
  it('does not leak a secret through list/detail mapping',()=>{expect(WebhookMapper.toDomain(row)).not.toHaveProperty('secret');});
+
+ it('serializes webhook error filters and bounded DLQ pagination into the Flask query contract',async()=>{
+  const get=vi.fn().mockResolvedValueOnce({deliveries:[],total:0,limit:25,offset:50,error_kinds:[]})
+   .mockResolvedValueOnce({subscription_id:'sid',deliveries:[],total:0,limit:100,offset:200});
+  const source=new WebhooksRemoteDataSource({get} as unknown as ApiClient);
+  await source.errors({limit:25,offset:50,subscriptionId:'sub/1',errorKind:'5xx',from:'2026-11-01T00:00:00Z',to:'2026-11-02T00:00:00Z'});
+  await source.dlq('sid',100,200);
+  const errorsUrl=new URL(get.mock.calls[0][0],'https://example.test');
+  expect(errorsUrl.pathname).toBe('/api/admin/webhook-errors');
+  expect(Object.fromEntries(errorsUrl.searchParams.entries())).toEqual({
+   limit:'25',offset:'50',subscription_id:'sub/1',error_kind:'5xx',
+   from:'2026-11-01T00:00:00Z',to:'2026-11-02T00:00:00Z'
+  });
+  expect(get.mock.calls[1][0]).toBe('/api/admin/webhooks/sid/dlq?limit=100&offset=200');
+ });
 });
