@@ -154,8 +154,16 @@ Estos guards son mitigaciones de interfaz. El backend sigue aceptando page grant
 - Fraud no expone score ni recommendation; las acciones son manuales.
 - Customers es una proyección read-only de sales orders sin ID canónico ni paginación global por cliente.
 
-**Deuda puntual:** el método legacy `IntegrationsRemoteDataSource.test(name)` sin `warehouse_id` permanece sin eliminar; no se encontró evidencia suficiente de consumidores en esta revisión. Debe confirmarse con una búsqueda en la rama de trabajo antes de retirarlo.
+**Deuda puntual resuelta:** se inspeccionaron `IntegrationsRemoteDataSource`, `IntegrationsRepositoryImpl` y `integrations.dependencies.ts`. La ruta activa usa `testConnection(name, warehouseId)`; el método legacy `test(name)` no tenía consumidores en repository/DI y enviaba el POST sin `warehouse_id`. Se eliminó para evitar una vía de llamada incompatible con el contrato scoped. Commit: [a20220f](https://github.com/danielitoCode/smart-wms/commit/a20220f95fc29c5639c7f7f180ef2e7f6f3f46f0).
 
 **Workflow Python separado:** [Tests run 45045373500](https://github.com/danielitoCode/smart-wms/actions/runs/45045373500) no es la suite Svelte. Su paso de pruebas seguía en ejecución al momento de registrar esta revisión y no forma parte de la aceptación de `webapp/`.
 
 **Alcance:** solo frontend/documentación en `webapp/`; no se modificó Flask/Python.
+
+
+### R9.2 — eliminación del método legacy no scoped
+
+- Se verificó el flujo de composición: `integrations.dependencies.ts` crea `IntegrationsRepositoryImpl`; el repositorio solo llama a `remote.testConnection(name, warehouseId)`.
+- El método `remote.test(name)` no estaba expuesto por el puerto de dominio, no era usado por repository/DI y enviaba `POST /test` sin `warehouse_id`.
+- Se eliminó el método huérfano; las pruebas de contrato ya verifican que el test de conexión envía el warehouse_id.
+- Commit: [a20220f](https://github.com/danielitoCode/smart-wms/commit/a20220f95fc29c5639c7f7f180ef2e7f6f3f46f0).
