@@ -9,6 +9,14 @@
 	import { createReceivingState } from '../state/receivingState.svelte';
 
 	const vm = createReceivingState();
+	let receiptReasons = $state<Record<number, string>>({});
+
+	async function onUnreceive(receiptId: number) {
+		if (!window.confirm(i18n.t('¿Revertir esta recepción? Se actualizará el inventario y la orden de compra.'))) return;
+		const ok = await vm.unreceiveReceipt(receiptId, receiptReasons[receiptId] ?? '');
+		if (ok && vm.lastUnreceive) pushToast(vm.lastUnreceive.message, 'success');
+		else if (vm.error) pushToast(vm.error, 'error');
+	}
 
 	let lastGeneration = $state(-1);
 	$effect(() => {
@@ -132,6 +140,45 @@
 				</form>
 			{/if}
 
+			<section class="receipt-history" aria-labelledby="receipt-history-title">
+				<div class="history-heading">
+					<h3 id="receipt-history-title">{i18n.t('Historial de recepciones')}</h3>
+					<button type="button" class="secondary" onclick={() => vm.loadReceiptHistory(vm.detail!.purchaseOrder.poId)} disabled={vm.receiptsLoading || vm.submitting || vm.cancelling || vm.unreceivingId !== null}>
+						{vm.receiptsLoading ? i18n.t('Actualizando…') : i18n.t('Actualizar historial')}
+					</button>
+				</div>
+				{#if vm.receiptsError}
+					<UiBanner tone="error" message={vm.receiptsError} />
+				{:else if vm.receiptsLoading}
+					<UiStatePanel kind="loading" title={i18n.t('Cargando historial')} message={i18n.t('Consultando las recepciones registradas.')} />
+				{:else if vm.receipts.length === 0}
+					<UiStatePanel kind="empty" title={i18n.t('Sin recepciones registradas')} message={i18n.t('Esta orden todavía no tiene recepciones que puedan revertirse.')} />
+				{:else}
+					<div class="table-wrap">
+						<table>
+							<thead><tr>
+								<th>{i18n.t('Receipt')}</th><th>{i18n.t('Línea / SKU')}</th><th>{i18n.t('Cantidad')}</th>
+								<th>{i18n.t('Bin')}</th><th>{i18n.t('Recibido por')}</th><th>{i18n.t('Fecha')}</th><th>{i18n.t('Motivo de reversión')}</th><th>{i18n.t('Acción')}</th>
+							</tr></thead>
+							<tbody>
+								{#each vm.receipts as receipt (receipt.receiptId)}
+									<tr>
+									<td>#{receipt.receiptId}</td>
+									<td>{receipt.sku} · {receipt.itemName}</td>
+									<td>{receipt.quantityReceived}</td>
+									<td>{receipt.binCode}</td>
+									<td>{receipt.receivedBy}</td>
+									<td>{receipt.receivedAt ? new Date(receipt.receivedAt).toLocaleString() : '—'}</td>
+									<td><input aria-label={i18n.t('Motivo para receipt') + ' ' + receipt.receiptId} maxlength="500" value={receiptReasons[receipt.receiptId] ?? ''} oninput={(e) => receiptReasons[receipt.receiptId] = e.currentTarget.value} disabled={vm.unreceivingId !== null} /></td>
+									<td><button type="button" class="danger" onclick={() => onUnreceive(receipt.receiptId)} disabled={vm.unreceivingId !== null || vm.submitting || vm.cancelling}>{vm.unreceivingId === receipt.receiptId ? i18n.t('Revirtiendo…') : i18n.t('Revertir')}</button></td>
+								</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				{/if}
+			</section>
+
 			<form class="cancel" onsubmit={onCancel}>
 				<label>
 					{i18n.t('IDs de recepción a anular')}
@@ -181,6 +228,26 @@
 		margin: 0 0 1rem;
 		color: var(--slate);
 		font-size: var(--fs-sm, 0.8125rem);
+	}
+	.receipt-history {
+		margin-top: 1.25rem;
+		padding-top: 1rem;
+		border-top: 1px solid var(--line);
+	}
+	.history-heading {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		margin-bottom: 0.75rem;
+	}
+	.history-heading h3 { margin: 0; }
+	.receipt-history input {
+		min-width: 9rem;
+		max-width: 15rem;
+		padding: 0.35rem 0.45rem;
+		border: 1px solid var(--line);
+		border-radius: 8px;
 	}
 	.cancel {
 		display: flex;
