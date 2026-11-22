@@ -9,7 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from constants import ACTION_TRANSFER
-from middleware.auth_middleware import check_warehouse_access, require_admin_or_page_permission, require_auth, warehouse_scope_clause
+from middleware.auth_middleware import check_warehouse_access, require_admin_or_any_page_permission, require_admin_or_page_permission, require_auth, warehouse_scope_clause
 from middleware.db import with_db
 from routes.admin import VALID_BIN_TYPES, VALID_ZONE_TYPES, admin_bp
 from schemas.bins import CreateBinRequest, UpdateBinRequest
