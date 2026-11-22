@@ -168,7 +168,7 @@ export function createFraudReviewState() {
       }
       return true;
     } catch (cause) {
-      error = toUserMessage(cause, 'No se pudo guardar la observación');
+      if (contextEpoch === listEpoch) error = toUserMessage(cause, 'No se pudo guardar la observación');
       return false;
     } finally {
       saving = false;
@@ -193,7 +193,7 @@ export function createFraudReviewState() {
       if (rows.length === 0 && page > 1) return await load(warehouseId, currentQuery, page - 1);
       return true;
     } catch (cause) {
-      error = toUserMessage(cause, 'No se pudo liberar el pedido a preparación');
+      if (contextEpoch === listEpoch) error = toUserMessage(cause, 'No se pudo liberar el pedido a preparación');
       return false;
     } finally {
       saving = false;
