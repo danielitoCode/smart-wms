@@ -471,7 +471,7 @@ def add_purchase_order_line(po_id, validated):
 
     next_ln = g.db.execute(
         text("SELECT COALESCE(MAX(line_number), 0) + 1 FROM purchase_order_lines WHERE po_id = :pid"),
-        {"pid": po_id, **scope_params},
+        {"pid": po_id},
     ).scalar()
 
     result = g.db.execute(
