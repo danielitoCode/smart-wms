@@ -75,4 +75,21 @@ describe('Customers UI state', () => {
     expect(state.selectedCustomer).toBeNull();
     expect(state.customerOrders).toBeNull();
   });
+
+  it('keeps the newest search result when an older query resolves last', async () => {
+    const state = createCustomersState();
+    const oldSearch = deferred<ReturnType<typeof page>['customers']>();
+    state.setWarehouseId(1);
+    state.setQuery('first');
+    deps.searchCustomers.execute.mockReturnValueOnce(oldSearch.promise);
+    const first = state.load(1);
+    state.setQuery('second');
+    deps.searchCustomers.execute.mockResolvedValueOnce(page('Second query').customers);
+    await state.load(1);
+    oldSearch.resolve(page('First query').customers);
+    await first;
+    expect(state.customers.map((customer) => customer.name)).toEqual(['Second query']);
+    expect(state.loading).toBe(false);
+  });
+
 });
