@@ -61,4 +61,18 @@ describe('Audit log Flask data contract', () => {
 			nested: { api_key: '[REDACTED]', email: '[REDACTED]', safe: 'ok' }
 		});
 	});
+
+  it('redacts sensitive keys recursively inside arrays while preserving safe siblings', async () => {
+    const get = vi.fn().mockResolvedValue({
+      entries: [{
+        log_id: 4, action_type: 'CONNECTOR_UPDATE', entity_type: 'CONNECTOR',
+        details: { attempts: [{ api_key: 'secret', result: 'ok' }, { nested: { recipient_email: 'private@example.test', count: 2 } }] }
+      }], page: 1, per_page: 50, total: 1, pages: 1
+    });
+    const repository = new AuditLogRepositoryImpl(new AuditLogRemoteDataSource({ get } as unknown as ApiClient));
+    const [row] = (await repository.list()).rows;
+    expect(row.metadata).toEqual({
+      attempts: [{ api_key: '[REDACTED]', result: 'ok' }, { nested: { recipient_email: '[REDACTED]', count: 2 } }]
+    });
+  });
 });
