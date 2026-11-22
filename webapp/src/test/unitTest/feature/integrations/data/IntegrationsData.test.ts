@@ -55,9 +55,12 @@ describe('Integrations Flask contracts', () => {
     await source.deleteCredentials('erp', 7);
     expect(request.mock.calls[0][1]).toMatchObject({ method: 'DELETE', body: { warehouse_id: 7 } });
   });
-  it('never maps or stores plaintext credential values', () => {
-    const mapped = ConnectorMapper.credentials({ connector: 'erp', warehouse_id: 4, credentials: [{ key: 'token', value: '****', created_at: null, updated_at: null }] });
-    expect(mapped).toEqual([{ key: 'token', configured: true, createdAt: null, updatedAt: null }]);
-    expect(JSON.stringify(mapped)).not.toContain('****');
+  it('never maps or stores plaintext credential values, even if the server violates masking', () => {
+    const masked = ConnectorMapper.credentials({ connector: 'erp', warehouse_id: 4, credentials: [{ key: 'token', value: '****', created_at: null, updated_at: null }] });
+    const unexpectedPlaintext = ConnectorMapper.credentials({ connector: 'erp', warehouse_id: 4, credentials: [{ key: 'token', value: 'must-not-enter-domain-secret', created_at: null, updated_at: null }] });
+    expect(masked).toEqual([{ key: 'token', configured: true, createdAt: null, updatedAt: null }]);
+    expect(unexpectedPlaintext).toEqual([{ key: 'token', configured: false, createdAt: null, updatedAt: null }]);
+    expect(JSON.stringify([...masked, ...unexpectedPlaintext])).not.toContain('must-not-enter-domain-secret');
+    expect(JSON.stringify([...masked, ...unexpectedPlaintext])).not.toContain('****');
   });
 });
