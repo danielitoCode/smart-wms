@@ -25,7 +25,7 @@ import pytest
 from db_test_context import get_raw_connection
 
 
-def _login_as(client, username, warehouse_ids):
+def _login_as(client, username, warehouse_ids, page_keys=None):
     """Create a non-admin PICKER user assigned only to ``warehouse_ids``
     and return an auth headers dict."""
     conn = get_raw_connection()
@@ -40,6 +40,15 @@ def _login_as(client, username, warehouse_ids):
         (username, warehouse_ids[0], wids),
     )
     cur.close()
+    for page_key in page_keys or []:
+        conn = get_raw_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO user_page_permissions (user_id, page_key) "
+            "SELECT user_id, %s FROM users WHERE username = %s",
+            (page_key, username),
+        )
+        cur.close()
     resp = client.post("/api/auth/login", json={"username": username, "password": "admin"})
     token = resp.get_json()["token"]
     return {"Authorization": f"Bearer {token}"}
@@ -88,7 +97,7 @@ class TestReceivingNoExistenceOracle:
     """lookup_po must not distinguish 'wrong warehouse' from 'not found'."""
 
     def test_wrong_warehouse_returns_404_not_403(self, client, warehouse_2_setup):
-        headers = _login_as(client, "wh1_recv_user", [1])
+        headers = _login_as(client, "wh1_recv_user", [1], page_keys=["receiving"])
         resp = client.get(
             f"/api/receiving/po/{warehouse_2_setup['po_barcode']}",
             headers=headers,
@@ -97,7 +106,7 @@ class TestReceivingNoExistenceOracle:
         assert "not found" in resp.get_json()["error"].lower()
 
     def test_missing_barcode_returns_same_404(self, client):
-        headers = _login_as(client, "wh1_recv_missing", [1])
+        headers = _login_as(client, "wh1_recv_missing", [1], page_keys=["receiving"])
         resp = client.get(
             "/api/receiving/po/THIS-BARCODE-DOES-NOT-EXIST",
             headers=headers,
