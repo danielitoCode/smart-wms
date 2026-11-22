@@ -1,5 +1,6 @@
 import type { ApiClient } from '../../../../infrastructure/api/ApiClient';
 import type { ReceiveLineInput } from '../../domain/entity/PurchaseOrder';
+import type { ReceiptHistoryDto, UnreceiveResponseDto } from '../dto/ReceiptHistoryDto';
 import type {
 	CancelResponseDto,
 	PurchaseOrderLookupDto,
@@ -8,6 +9,16 @@ import type {
 
 export class ReceivingRemoteDataSource {
 	constructor(private readonly api: ApiClient) {}
+
+	listReceipts(poId: number): Promise<ReceiptHistoryDto> {
+		return this.api.get<ReceiptHistoryDto>(`/api/admin/purchase-orders/${poId}/receipts`);
+	}
+
+	unreceive(receiptId: number, reason?: string): Promise<UnreceiveResponseDto> {
+		return this.api.post<UnreceiveResponseDto>(`/api/admin/receipts/${receiptId}/unreceive`,
+			reason?.trim() ? { reason: reason.trim() } : {}
+		);
+	}
 
 	lookupByBarcode(barcode: string): Promise<PurchaseOrderLookupDto> {
 		return this.api.get<PurchaseOrderLookupDto>(
