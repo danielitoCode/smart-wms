@@ -77,7 +77,9 @@
 				}
 				binCatalogVerified = true;
 			}
-			if (warehouseSelection.warehouseId !== warehouseId) {
+			const currentUser = authGuard.user;
+			if (warehouseSelection.warehouseId !== warehouseId || currentUser?.userId !== user?.userId || currentUser?.role !== user?.role ||
+				JSON.stringify(currentUser?.warehouseIds ?? []) !== JSON.stringify(user?.warehouseIds ?? [])) {
 				preflightIssues = [{ row: null, message: 'El almacén activo cambió durante la validación. Vuelve a ejecutar la validación.' }];
 				return;
 			}
