@@ -18,9 +18,11 @@ describe('Integrations screen accessibility contract', () => {
     expect(screen).toContain('<UiStatePanel kind="error"');
     expect(screen).toContain('role="status"');
   });
-  it('does not reveal existing credential values in the form', () => {
+  it('does not reveal existing credential values and clears plaintext drafts on destroy', () => {
     expect(screen).toContain("return 'password'");
     expect(screen).toContain('Deja vacío para conservar el valor actual');
     expect(screen).not.toContain('value={item.value}');
+    expect(screen).toContain('form = {};');
+    expect(screen).toContain('onDestroy(() => {');
   });
 });
