@@ -1151,3 +1151,43 @@ El alcance frontend R7 está implementado: contratos y políticas de Returns/RMA
 - Lockfile Version Check, Dependency Audit y gitleaks: SUCCESS en ese HEAD. El nuevo HEAD 37d2f3577f8fcfd221a59f5c3abca5a91baf37ef necesita su propia ejecución CI; no se extrapola el resultado anterior.
 
 **Estado:** R9.4 y R9.5 con hardening/pruebas de concurrencia implementados, sujetos a regresión; R9.6 BLOCKED_TYPECHECK_BASELINE hasta resolver los errores de laboratorio y ejecutar toda la matriz frontend. No se modifica Flask/Python.
+
+
+## 28. R9 — cierre de aceptación frontend en HEAD `f8602108587c00b8ed73eba7e54a755ddb962c07` (22-11-2026)
+
+**Estado actualizado:** `WEBAPP_CI_GREEN / R9_FRONTEND_ACCEPTED_WITH_BACKEND_LIMITATIONS`.
+
+La entrada histórica R9.6 que indicaba CI pendiente queda supersedida por esta verificación del HEAD definitivo:
+
+- **Webapp CI:** [run 45045373539](https://github.com/danielitoCode/smart-wms/actions/runs/45045373539), job `Typecheck · Build · Test`, conclusión `success`.
+- Pasaron instalación, SvelteKit sync, `svelte-check + TypeScript`, build de producción, Domain, Application, Infrastructure, UI/presentation, i18n, Integration, Full regression y Coverage by feature paths. No hubo etapas omitidas por fallo de typecheck.
+- **Secret scan:** [run 45045373504](https://github.com/danielitoCode/smart-wms/actions/runs/45045373504), `success`.
+- **Lockfile Version Check:** [run 45045373564](https://github.com/danielitoCode/smart-wms/actions/runs/45045373564), `success`.
+- **Dependency Audit:** [run 45045373540](https://github.com/danielitoCode/smart-wms/actions/runs/45045373540), jobs pip-audit, npm-audit-admin, npm-audit-mobile y npm-audit-mobile-dev en `success`.
+
+### Resolución de los dos fallos de pruebas observados localmente
+
+- Imports: la política sigue limitando a 5.000 filas; el test se alineó con el mensaje real sin separador de millares (`5000`). No se cambió el límite funcional.
+- AccessPolicy: la expectativa de la ruta `/data` se alineó con sus grants de datos reales (`bins`, `zones`, `preferred-bins`); no se amplió la ruta para incluir `warehouses`.
+- Commits: [d22d426](https://github.com/danielitoCode/smart-wms/commit/d22d426a79d8bf9bc84cbddb56480b3f46430606) y [f860210](https://github.com/danielitoCode/smart-wms/commit/f8602108587c00b8ed73eba7e54a755ddb962c07).
+
+### Aceptación por subfeature
+
+- **R9.1 Webhooks — aceptado en frontend:** CRUD y estados expuestos por Flask, secreto one-time/rotación con limpieza de plaintext, replay simple/lote y acknowledgement, DLQ, estadísticas, errores, filtros/paginación y validaciones/límites tienen implementación y pruebas frontend. La pantalla global queda ADMIN-only como mitigación de interfaz.
+- **R9.2 Connectors — aceptado en frontend:** catálogo/schema global; credenciales y operaciones de conector asociadas al warehouse; tratamiento de secretos enmascarados y limpieza de drafts; manejo de errores y estados asíncronos cubiertos por pruebas. El método legacy `IntegrationsRemoteDataSource.test(name)` sin warehouse no se ha eliminado en este cierre: su uso en la rama no quedó demostrado por la búsqueda disponible y permanece como deuda de revisión, no como una capacidad nueva ni como prueba de scope.
+- **R9.3 Audit Log — aceptado en frontend dentro del contrato:** filtros, paginación, sorting, redacción de presentación, route policy ADMIN-only y descarte de respuestas obsoletas cubiertos. La pantalla global no se presenta como aislada por almacén.
+- **R9.4 Fraud — aceptado en frontend:** cola/acciones manuales conforme a Flask; guards de warehouse y concurrencia para memo/push; respuestas y errores stale no contaminan contexto nuevo. No se inventa score ni recommendation.
+- **R9.5 Customers — aceptado como proyección read-only:** invalidación por cambio de almacén y control de carreras de búsqueda/listado/detalle. No se afirma identidad canónica, paginación global de clientes ni CRUD/merge.
+- **R9.6 Regresión — aceptado:** la matriz Webapp CI completa quedó verde en el HEAD señalado.
+
+### Limitaciones backend que permanecen abiertas (fuera del alcance de esta migración)
+
+1. Webhooks y Audit Log exponen datos/operaciones globales sin aislamiento completo por warehouse del actor en las rutas administrativas inspeccionadas. ADMIN-only en Svelte es una mitigación UX; no sustituye autorización del servidor.
+2. Audit Log no ofrece filtro/scope por warehouse; la redacción de detalles en el mapper protege presentación, no almacenamiento/API.
+3. Flask no registra todas las operaciones relevantes de conectores y administración; el frontend no fabrica eventos.
+4. Customers sigue siendo una proyección por nombre desde sales orders, sin identidad canónica ni paginación por cliente.
+5. Fraud no dispone de score/recommendation en el contrato actual y solo admite las acciones manuales expuestas.
+
+**Workflow separado `Tests`:** [run 45045373500](https://github.com/danielitoCode/smart-wms/actions/runs/45045373500) corresponde a otro job Python (lint, OpenAPI/schema y pruebas Python), no a la suite Svelte. Al registrar este cierre, su paso `Run tests` seguía en ejecución; no se usa para bloquear ni certificar la aceptación de `webapp/`.
+
+**Decisión:** R9 queda aceptado para el frontend SvelteKit en el HEAD indicado, con las limitaciones backend anteriores registradas como dependencias explícitas. No se modificó Flask/Python.
