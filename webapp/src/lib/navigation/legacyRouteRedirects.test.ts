@@ -60,6 +60,16 @@ describe('React-era route compatibility (R10)', () => {
     }
   });
 
+  it('uses the configured #lib alias in every legacy server redirect wrapper', () => {
+    for (const legacyPath of Object.keys(LEGACY_ROUTE_REDIRECTS)) {
+      const serverPage = join(process.cwd(), 'src/routes/(app)', legacyPath.slice(1), '+page.server.ts');
+      const source = readFileSync(serverPage, 'utf8');
+
+      expect(source, legacyPath).toContain("#lib/navigation/legacyRouteRedirects");
+      expect(source, legacyPath).not.toContain("$lib/navigation/legacyRouteRedirects");
+    }
+  });
+
   it('resolves every canonical destination to a concrete or explicitly catalogued Svelte route', () => {
     const appRoutes = join(process.cwd(), 'src/routes/(app)');
     const managementPage = join(appRoutes, 'management/[feature]/+page.svelte');
