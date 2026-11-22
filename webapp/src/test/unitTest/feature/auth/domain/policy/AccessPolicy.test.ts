@@ -155,7 +155,7 @@ describe('explicit app route access policies', () => {
 		const policy = routeAccessPolicyForPath('/data');
 		expect(policy).toEqual({
 			kind: 'any',
-			pageKeys: ['warehouses', 'bins', 'zones', 'preferred-bins']
+			pageKeys: ['bins', 'zones', 'preferred-bins']
 		});
 		expect(canAccessAnyPages('USER', ['bins'], policy?.kind === 'any' ? policy.pageKeys : [])).toBe(true);
 		expect(canAccessAnyPages('USER', ['inventory'], policy?.kind === 'any' ? policy.pageKeys : [])).toBe(false);
