@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ApiClient } from '../../../../../core/infrastructure/api/ApiClient';
-import { ReceivingRemoteDataSource } from '../../../../../../core/feature/receiving/data/datasource/ReceivingRemoteDataSource';
+import { ReceivingRemoteDataSource } from '../../../../../core/feature/receiving/data/datasource/ReceivingRemoteDataSource';
 
 describe('ReceivingRemoteDataSource receipt administration contracts', () => {
   it('preserves lot, serial and notes when submitting a receiving batch', async () => {
