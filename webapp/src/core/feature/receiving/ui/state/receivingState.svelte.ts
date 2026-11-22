@@ -66,9 +66,11 @@ export function createReceivingState() {
 	let receiptsError = $state<string | null>(null);
 	let unreceivingId = $state<number | null>(null);
 	let lastUnreceive = $state<UnreceiveResult | null>(null);
+	let receiptHistoryRequest = 0;
 
 	async function loadReceiptHistory(poId: number) {
 		const scope = warehouseSelection?.beginScopedRequest() ?? beginWarehouseScopedRequest();
+		const requestId = ++receiptHistoryRequest;
 		receiptsLoading = true;
 		receiptsError = null;
 		try {
@@ -82,7 +84,7 @@ export function createReceivingState() {
 			return false;
 		} finally {
 			scope.release();
-			if (scope.isCurrent()) receiptsLoading = false;
+			if (requestId === receiptHistoryRequest) receiptsLoading = false;
 		}
 	}
 
