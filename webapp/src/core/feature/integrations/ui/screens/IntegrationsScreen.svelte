@@ -54,7 +54,8 @@
   }
   function syncTypeLabel(type: SyncType) { return i18n.t(({ orders: 'Pedidos', items: 'Artículos', inventory: 'Inventario', fulfillment: 'Cumplimiento' })[type]); }
   function credentialInputType(key: string, secret?: boolean) {
-    if (secret ?? /secret|token|key|password|credential/i.test(key)) return 'password';
+    // A schema's false flag must not downgrade obviously sensitive field names.
+    if (secret === true || /secret|token|key|password|credential/i.test(key)) return 'password';
     return 'text';
   }
   function statusLabel(type: SyncType) {
