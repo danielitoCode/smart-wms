@@ -1,5 +1,6 @@
 import { getContext } from 'svelte';
 import { createReceivingDependencies } from '../../di/receiving.dependencies';
+import type { ReceiptHistoryEntry, UnreceiveResult } from '../../domain/entity/ReceiptHistory';
 import type {
 	CancelReceiptsResult,
 	PurchaseOrderDetail,
@@ -60,6 +61,26 @@ export function createReceivingState() {
 	let lastCancel = $state<CancelReceiptsResult | null>(null);
 	let receiptIdsInput = $state('');
 	let cancelling = $state(false);
+	let receipts = $state<ReceiptHistoryEntry[]>([]);
+	let receiptsLoading = $state(false);
+	let receiptsError = $state<string | null>(null);
+	let unreceivingId = $state<number | null>(null);
+	let lastUnreceive = $state<UnreceiveResult | null>(null);
+
+	async function loadReceiptHistory(poId: number) {
+		receiptsLoading = true;
+		receiptsError = null;
+		try {
+			const result = await deps.listReceipts.execute(poId);
+			receipts = result;
+			return true;
+		} catch (err) {
+			receiptsError = toUserMessage(err, 'No se pudo cargar el historial de recepciones');
+			return false;
+		} finally {
+			receiptsLoading = false;
+		}
+	}
 
 	async function lookup() {
 		if (loading || submitting || cancelling) return false;
@@ -80,6 +101,7 @@ export function createReceivingState() {
 			if (!scope.isCurrent()) return false;
 			detail = result;
 			drafts = mapDrafts(result);
+			await loadReceiptHistory(result.purchaseOrder.poId);
 			return true;
 		} catch (err) {
 			if (!scope.isCurrent() || isAbort(err)) return false;
@@ -106,6 +128,9 @@ export function createReceivingState() {
 	function invalidate() {
 		detail = null;
 		drafts = [];
+		receipts = [];
+		receiptsError = null;
+		lastUnreceive = null;
 		lastResult = null;
 		lastCancel = null;
 		error = null;
@@ -155,6 +180,7 @@ export function createReceivingState() {
 			if (!scope.isCurrent()) return false;
 			detail = refreshed;
 			drafts = mapDrafts(refreshed);
+			await loadReceiptHistory(refreshed.purchaseOrder.poId);
 			return true;
 		} catch (err) {
 			if (!scope.isCurrent() || isAbort(err)) return false;
@@ -163,6 +189,32 @@ export function createReceivingState() {
 		} finally {
 			scope.release();
 			if (scope.isCurrent()) submitting = false;
+		}
+	}
+
+	async function unreceiveReceipt(receiptId: number, reason: string): Promise<boolean> {
+		if (unreceivingId !== null || loading || submitting || cancelling) return false;
+		if (!detail) { error = 'Busca un PO primero'; return false; }
+		const scope = warehouseSelection?.beginScopedRequest() ?? beginWarehouseScopedRequest();
+		unreceivingId = receiptId;
+		error = null;
+		lastUnreceive = null;
+		try {
+			lastUnreceive = await deps.unreceiveReceipt.execute(receiptId, reason);
+			if (!scope.isCurrent()) return false;
+			const refreshed = await deps.lookupPurchaseOrder.execute(detail.purchaseOrder.poNumber);
+			if (!scope.isCurrent()) return false;
+			detail = refreshed;
+			drafts = mapDrafts(refreshed);
+			await loadReceiptHistory(refreshed.purchaseOrder.poId);
+			return true;
+		} catch (err) {
+			if (!scope.isCurrent() || isAbort(err)) return false;
+			error = toUserMessage(err, 'No se pudo revertir la recepción');
+			return false;
+		} finally {
+			scope.release();
+			if (scope.isCurrent()) unreceivingId = null;
 		}
 	}
 
@@ -219,6 +271,11 @@ export function createReceivingState() {
 		get lastResult() { return lastResult; },
 		get lastCancel() { return lastCancel; },
 		get receiptIdsInput() { return receiptIdsInput; },
+		get receipts() { return receipts; },
+		get receiptsLoading() { return receiptsLoading; },
+		get receiptsError() { return receiptsError; },
+		get unreceivingId() { return unreceivingId; },
+		get lastUnreceive() { return lastUnreceive; },
 		get generation() { return warehouseSelection?.generation ?? 0; },
 		setBarcode,
 		setReceiptIdsInput,
@@ -226,6 +283,8 @@ export function createReceivingState() {
 		updateDraft,
 		submitReceive,
 		cancelReceipts,
+		unreceiveReceipt,
+		loadReceiptHistory,
 		invalidate
 	};
 }
