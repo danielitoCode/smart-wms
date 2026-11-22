@@ -21,7 +21,12 @@
     ] as [SyncType,string][]).filter(([,cap]) => caps.includes(cap)).map(([type]) => type);
   });
   onMount(() => { void vm.load(); });
-  onDestroy(() => vm.destroy());
+  onDestroy(() => {
+    // Credential drafts are plaintext in this component's transient form state.
+    // Drop them when leaving the screen; never persist them in the view model.
+    form = {};
+    vm.destroy();
+  });
   $effect(() => {
     const wid = warehouse.warehouseId;
     const name = selectedName;
