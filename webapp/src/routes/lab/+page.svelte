@@ -74,7 +74,8 @@
 		{ id: 'get-started-button', name: 'GetStartedButton', status: 'ready', href: '/lab/get-started-button', description: 'CTA amber/orange con flecha deslizante al hover.' },
 		{ id: 'status-button', name: 'StatusButton', status: 'ready', href: '/lab/status-button', description: 'CTA teal: idle → loading spinner → success check → idle.' },
 		{ id: 'card-stack', name: 'CardStack', status: 'ready', href: '/lab/card-stack', description: 'Pila de cards con peek, throw-out, press y autoplay (CSS, reduced-motion).' },
-		{ id: 'collab-card', name: 'CollabCard', status: 'ready', href: '/lab/collab-card', description: 'Card multiplayer: presence, live ping y cursores animados (CSS @container).' }
+		{ id: 'collab-card', name: 'CollabCard', status: 'ready', href: '/lab/collab-card', description: 'Card multiplayer: presence, live ping y cursores animados (CSS @container).' },
+		{ id: 'swap-text', name: 'SwapText', status: 'ready', href: '/lab/swap-text', description: 'Texto que intercambia capa al hover (card + standalone click).' }
 	] as const;
 </script>
 
