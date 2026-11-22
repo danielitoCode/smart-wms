@@ -16,14 +16,21 @@ export function createPurchaseOrdersState() {
   let error = $state<string | null>(null);
   let receiptsError = $state<string | null>(null);
   let filters = $state<ListPurchaseOrdersParams>({ page: 1, perPage: 50, status: '', includeArchived: false });
+  let listRequestId = 0;
 
   async function load(warehouseId: number | null) {
+    const requestId = ++listRequestId;
     loading = true; error = null;
     try {
-      page = await dependencies.list.execute({ ...filters, warehouseId });
+      const result = await dependencies.list.execute({ ...filters, warehouseId });
+      if (requestId !== listRequestId) return;
+      page = result;
     } catch (cause) {
+      if (requestId !== listRequestId) return;
       error = toUserMessage(cause, 'No se pudieron cargar las órdenes de compra');
-    } finally { loading = false; }
+    } finally {
+      if (requestId === listRequestId) loading = false;
+    }
   }
 
   async function detail(id: number) {
