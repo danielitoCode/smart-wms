@@ -21,6 +21,8 @@ export type LineDraft = {
 	quantity: number;
 	binId: string;
 	lotNumber: string;
+	serialNumber: string;
+	notes: string;
 };
 
 function isAbort(err: unknown): boolean {
@@ -40,7 +42,9 @@ function mapDrafts(detail: PurchaseOrderDetail): LineDraft[] {
 			remaining: line.quantityRemaining,
 			quantity: line.quantityRemaining,
 			binId: '',
-			lotNumber: ''
+			lotNumber: '',
+			serialNumber: '',
+			notes: ''
 		}));
 }
 
@@ -163,7 +167,9 @@ export function createReceivingState() {
 				itemId: draft.itemId,
 				quantity: draft.quantity,
 				binId,
-				lotNumber: draft.lotNumber.trim() || null
+				lotNumber: draft.lotNumber.trim() || null,
+				serialNumber: draft.serialNumber.trim() || null,
+				notes: draft.notes.trim() || null
 			});
 		}
 
