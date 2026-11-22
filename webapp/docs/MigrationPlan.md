@@ -1115,7 +1115,7 @@ El alcance frontend R7 está implementado: contratos y políticas de Returns/RMA
 
 ## 27. R9 — Integraciones, webhooks, auditoría y operaciones complementarias (22-11-2026)
 
-**Estado:** `BASELINE_AUDITED / R9.3_REQUEST_RACE_FIXED / ACCEPTANCE_PENDING`. La regresión CI sobre el HEAD definitivo aún está pendiente.
+**Estado:** `R9.4_FRAUD_CONTEXT_GUARDS / R9.5_CUSTOMERS_RACE_FIXED / R9.6_CI_PENDING`. La aceptación integrada continúa pendiente del Webapp CI en el HEAD definitivo.
 
 - R9.1 baseline: Flask soporta Webhooks CRUD, secreto one-time, rotación, DLQ paginada, stats, errores y replay simple/lote. Las rutas usan page grant `webhooks`, pero el conjunto es global y no valida scope de warehouses del actor; por ello `/management/webhooks` queda ADMIN-only en AccessPolicy como mitigación de interfaz.
 - El secreto one-time se elimina del estado de pantalla al desmontar WebhooksScreen. Se añadieron pruebas de policy ADMIN-only y limpieza del secreto.
@@ -1126,3 +1126,11 @@ El alcance frontend R7 está implementado: contratos y políticas de Returns/RMA
 - Auditoría detallada: `.code-review/R9-Integrations-Webhooks-Audit-Customers-Fraud.md`.
 
 **No se modifica Flask/Python.** Los guards frontend no sustituyen scope/autorización backend. Pendiente completar pruebas por subfeature y regresión Webapp CI en HEAD definitivo.
+
+
+### Evidencia de implementación R9.4–R9.6
+
+- Commits funcionales: `dee436f` (invalidación inmediata de Customers al cambiar almacén), `87a7912` (pruebas de contexto Customers), `1321af6` (guards de mutaciones Fraud), `e9b5904` (pruebas de contexto Fraud), `0e83523` (respuestas stale de búsqueda/listado), `2eae4a5` (prueba de carrera de búsqueda).
+- La prueba de Customers verifica que una búsqueda antigua que termina después no sustituye la consulta nueva. La invalidación del almacén borra inmediatamente lista, selección e historial y aumenta los epochs de lista/detalle.
+- Fraud conserva la semántica del servidor: la acción manual push solo se considera refrescada cuando la recarga devuelve un resultado vigente. Una respuesta de memo/push posterior a un cambio de contexto no modifica el estado visible.
+- No se ha afirmado éxito de CI: el workflow Webapp CI del commit `2eae4a5` estaba pendiente/en curso al consultar; la rama avanzó después con un commit adicional de laboratorio `6f01b0d`, por lo que el HEAD definitivo debe verificarse de nuevo.
