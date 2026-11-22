@@ -100,6 +100,8 @@ export function createReceivingState() {
 			return false;
 		}
 		const scope = warehouseSelection?.beginScopedRequest() ?? beginWarehouseScopedRequest();
+		receiptHistoryRequest += 1;
+		receiptsLoading = false;
 		loading = true;
 		error = null;
 		lastResult = null;
@@ -138,6 +140,8 @@ export function createReceivingState() {
 	}
 
 	function invalidate() {
+		receiptHistoryRequest += 1;
+		receiptsLoading = false;
 		detail = null;
 		drafts = [];
 		receipts = [];
