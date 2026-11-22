@@ -13,7 +13,7 @@ describe('Webhooks state',()=>{
   const d=deps();const vm=createWebhooksState(d as never);
   await vm.create({connectorId:'erp',displayName:'ERP',deliveryUrl:'https://example.com',subscriptionFilter:{},rateLimitPerSecond:10,pendingCeiling:20,dlqCeiling:5});
   expect(vm.secret?.secret).toBe('one-time');
-  d.create.execute.mockRejectedValueOnce(new ApiError(400,'Invalid webhook configuration','validation'));
+  d.create.execute.mockRejectedValueOnce(new ApiError(400,'Invalid webhook configuration','bad_request'));
   expect(await vm.create({connectorId:'erp',displayName:'ERP 2',deliveryUrl:'https://example.com/2',subscriptionFilter:{},rateLimitPerSecond:10,pendingCeiling:20,dlqCeiling:5})).toBe(false);
   expect(vm.secret).toBeNull();
  });
