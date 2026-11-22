@@ -190,6 +190,10 @@ export function createReceivingState() {
 
 	function invalidate() {
 		receiptHistoryRequest += 1;
+		binsRequest += 1;
+		bins = [];
+		binsLoading = false;
+		binsError = null;
 		receiptsLoading = false;
 		detail = null;
 		drafts = [];
