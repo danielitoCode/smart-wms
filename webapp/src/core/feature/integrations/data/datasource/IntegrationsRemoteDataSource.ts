@@ -11,5 +11,4 @@ export class IntegrationsRemoteDataSource {
   resetSync(name: string, wid: number, syncType?: string|null) { return this.api.post<SyncActionResponseDto>(`/api/admin/connectors/${encodeURIComponent(name)}/sync-reset`, { warehouse_id: wid, sync_type: syncType ?? null }); }
   executeSync(name: string, wid: number, type: string) { return this.api.post<SyncActionResponseDto>(`/api/admin/connectors/${encodeURIComponent(name)}/sync/${encodeURIComponent(type)}`, { warehouse_id: wid }); }
   deleteCredentials(name: string, wid: number) { return this.api.request<{message:string}>(`/api/admin/connectors/${encodeURIComponent(name)}/credentials`, { method: 'DELETE', body: { warehouse_id: wid } }); }
-  test(name: string) { return this.api.post<{ connected?: boolean; message?: string }>(`/api/admin/connectors/${encodeURIComponent(name)}/test`, {}); }
 }
