@@ -868,7 +868,7 @@ def unreceive_receipt(receipt_id):
         {"rid": receipt_id, **scope_params},
     ).fetchone()
     if visible_receipt is None:
-        return jsonify({"error": "Receipt not found"}), 404
+        return jsonify({"error": "Receipt not found", "kind": "not_found"}), 404
 
     body = request.get_json(silent=True) or {}
     reason = body.get("reason")
