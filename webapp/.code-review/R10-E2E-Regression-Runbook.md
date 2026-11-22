@@ -1,6 +1,6 @@
 # R10 — Runbook de regresión E2E R1–R9
 
-**Estado:** preparado; ejecución manual/E2E pendiente de entorno y usuarios de prueba.  
+**Estado:** API-level R2 ADMIN/USER verificado en CI; browser E2E R1–R9 pendiente de entorno aislado, usuarios de prueba y runner de navegador.  
 **Objetivo:** comparar resultados y transiciones React vs SvelteKit sobre el mismo dataset y con el mismo usuario/grants/almacén. No aceptar capturas visuales como única evidencia.
 
 ## 1. Preparación del entorno
@@ -78,4 +78,11 @@ Clasificaciones válidas: `VERIFIED_PARITY`, `FRONTEND_DEFECT`, `BACKEND_LIMITAT
 - Las pruebas backend/Python no son gate de aceptación de Svelte, pero Flask debe estar disponible y con datos coherentes para las pruebas E2E de contrato.
 - Los bloqueos ya documentados en R3, R5 y R6 se verifican como acciones correctamente deshabilitadas; no se reinterpretan como paridad de una operación que el servidor no soporta.
 
+## 6.1 Snapshot de ejecución R2.7–R2.11
+
+- HEAD: `6a62b9b876999fc49a4ae9bcd34923dd82903292`.
+- Webapp CI: [45075037579](https://github.com/danielitoCode/smart-wms/actions/runs/45075037579), completo en verde (Typecheck, build y todas las suites frontend).
+- API R2 ADMIN/USER: [Tests run 45075037495](https://github.com/danielitoCode/smart-wms/actions/runs/45075037495), paso dirigido de warehouse scope/receiving completado correctamente. Cubre creación ADMIN, aislamiento USER por warehouse, grant receiving requerido, recepción persistida en WH-A, denegación de PO WH-B, historial/unreceive/cancel fuera de scope y bin listing.
+- El fixture de WH-B crea una zona y un bin Staging propios, de modo que el test de recibos cruzados se ejecuta sin skip por falta de bin.
+- **No confundir API integration con browser E2E:** no hay Playwright/Cypress ni script E2E en `webapp/package.json`. Los recorridos con usuario real en navegador siguen pendientes de entorno aislado, URL, usuarios ADMIN/USER y dataset equivalente. No declarar R2 cerrado ni retirar React.
 **Criterio de salida:** los nueve recorridos ejecutados con datos equivalentes; diferencias resueltas o clasificadas; rutas, responsive, accesibilidad, estados e i18n comprobados; matriz firmada. La retirada de React continúa bloqueada hasta aprobación explícita.
