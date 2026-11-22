@@ -112,10 +112,14 @@ from utils.validation import validate_body
 @require_admin_or_page_permission("purchase-orders")
 @with_db
 def list_purchase_orders():
+	 scope_clause, scope_params = warehouse_scope_clause("warehouse_id")
     page = max(1, request.args.get("page", 1, type=int))
     per_page = min(1000, max(1, request.args.get("per_page", 50, type=int)))
 
     where_clauses, params = [], {}
+    if scope_clause:
+        where_clauses.append(scope_clause.removeprefix("AND "))
+        params.update(scope_params)
     status = request.args.get("status")
     warehouse_id = request.args.get("warehouse_id", type=int)
     search = (request.args.get("q") or "").strip()
@@ -185,9 +189,10 @@ def list_purchase_orders():
 @require_admin_or_page_permission("purchase-orders")
 @with_db
 def get_purchase_order(po_id):
+	 scope_clause, scope_params = warehouse_scope_clause("warehouse_id")
     po = g.db.execute(
-        text("SELECT po_id, po_number, po_barcode, vendor_name, vendor_id, status, expected_date, warehouse_id, notes, created_at, received_at, created_by FROM purchase_orders WHERE po_id = :pid"),
-        {"pid": po_id},
+        text("SELECT po_id, po_number, po_barcode, vendor_name, vendor_id, status, expected_date, warehouse_id, notes, created_at, received_at, created_by FROM purchase_orders WHERE po_id = :pid {scope_clause}"),
+        {"pid": po_id, **scope_params},
     ).fetchone()
     if not po:
         return jsonify({"error": "Purchase order not found"}), 404
@@ -199,7 +204,7 @@ def get_purchase_order(po_id):
             FROM purchase_order_lines pol JOIN items i ON i.item_id = pol.item_id
             WHERE pol.po_id = :pid ORDER BY pol.line_number
         """),
-        {"pid": po_id},
+        {"pid": po_id, **scope_params},
     ).fetchall()
 
     return jsonify({
@@ -319,15 +324,16 @@ def _emit_po_edit(db, *, po_id, po_external_id, po_number, warehouse_id,
 @validate_body(UpdatePurchaseOrderRequest)
 @with_db
 def update_purchase_order(po_id, validated):
+	 scope_clause, scope_params = warehouse_scope_clause("warehouse_id")
     data = validated.model_dump(exclude_unset=True)
 
     po = g.db.execute(
         text(
             "SELECT po_id, po_number, po_barcode, vendor_name, expected_date, "
             "notes, external_id, status, warehouse_id "
-            "FROM purchase_orders WHERE po_id = :pid FOR UPDATE"
+            "FROM purchase_orders WHERE po_id = :pid {scope_clause} FOR UPDATE"
         ),
-        {"pid": po_id},
+        {"pid": po_id, **scope_params},
     ).fetchone()
     if not po:
         return jsonify({"error": "Purchase order not found"}), 404
@@ -412,8 +418,8 @@ def update_purchase_order(po_id, validated):
     g.db.commit()
 
     row = g.db.execute(
-        text("SELECT po_id, po_number, po_barcode, vendor_name, status, expected_date, warehouse_id, notes, created_at FROM purchase_orders WHERE po_id = :pid"),
-        {"pid": po_id},
+        text("SELECT po_id, po_number, po_barcode, vendor_name, status, expected_date, warehouse_id, notes, created_at FROM purchase_orders WHERE po_id = :pid {scope_clause}"),
+        {"pid": po_id, **scope_params},
     ).fetchone()
     return jsonify({
         "po_id": row.po_id, "po_number": row.po_number, "po_barcode": row.po_barcode,
@@ -432,11 +438,12 @@ def update_purchase_order(po_id, validated):
 @validate_body(AddPOLineRequest)
 @with_db
 def add_purchase_order_line(po_id, validated):
+	 scope_clause, scope_params = warehouse_scope_clause("warehouse_id")
     data = validated.model_dump()
 
     po = g.db.execute(
-        text("SELECT po_id, po_number, external_id, status, warehouse_id FROM purchase_orders WHERE po_id = :pid FOR UPDATE"),
-        {"pid": po_id},
+        text("SELECT po_id, po_number, external_id, status, warehouse_id FROM purchase_orders WHERE po_id = :pid {scope_clause} FOR UPDATE"),
+        {"pid": po_id, **scope_params},
     ).fetchone()
     if not po:
         return jsonify({"error": "Purchase order not found"}), 404
@@ -464,7 +471,7 @@ def add_purchase_order_line(po_id, validated):
 
     next_ln = g.db.execute(
         text("SELECT COALESCE(MAX(line_number), 0) + 1 FROM purchase_order_lines WHERE po_id = :pid"),
-        {"pid": po_id},
+        {"pid": po_id, **scope_params},
     ).scalar()
 
     result = g.db.execute(
@@ -535,11 +542,12 @@ def add_purchase_order_line(po_id, validated):
 @validate_body(UpdatePOLineRequest)
 @with_db
 def update_purchase_order_line(po_id, po_line_id, validated):
+	 scope_clause, scope_params = warehouse_scope_clause("warehouse_id")
     data = validated.model_dump()
 
     po = g.db.execute(
-        text("SELECT po_id, po_number, external_id, status, warehouse_id FROM purchase_orders WHERE po_id = :pid FOR UPDATE"),
-        {"pid": po_id},
+        text("SELECT po_id, po_number, external_id, status, warehouse_id FROM purchase_orders WHERE po_id = :pid {scope_clause} FOR UPDATE"),
+        {"pid": po_id, **scope_params},
     ).fetchone()
     if not po:
         return jsonify({"error": "Purchase order not found"}), 404
@@ -634,9 +642,10 @@ def update_purchase_order_line(po_id, po_line_id, validated):
 @require_admin_or_page_permission("purchase-orders")
 @with_db
 def delete_purchase_order_line(po_id, po_line_id):
+	 scope_clause, scope_params = warehouse_scope_clause("warehouse_id")
     po = g.db.execute(
-        text("SELECT po_id, po_number, external_id, status, warehouse_id FROM purchase_orders WHERE po_id = :pid FOR UPDATE"),
-        {"pid": po_id},
+        text("SELECT po_id, po_number, external_id, status, warehouse_id FROM purchase_orders WHERE po_id = :pid {scope_clause} FOR UPDATE"),
+        {"pid": po_id, **scope_params},
     ).fetchone()
     if not po:
         return jsonify({"error": "Purchase order not found"}), 404
@@ -715,9 +724,10 @@ def delete_purchase_order_line(po_id, po_line_id):
 @require_admin_or_page_permission("purchase-orders")
 @with_db
 def close_purchase_order(po_id):
+	 scope_clause, scope_params = warehouse_scope_clause("warehouse_id")
     po = g.db.execute(
-        text("SELECT po_id, status FROM purchase_orders WHERE po_id = :pid FOR UPDATE"),
-        {"pid": po_id},
+        text("SELECT po_id, status FROM purchase_orders WHERE po_id = :pid {scope_clause} FOR UPDATE"),
+        {"pid": po_id, **scope_params},
     ).fetchone()
     if not po:
         return jsonify({"error": "Purchase order not found"}), 404
@@ -737,9 +747,10 @@ def close_purchase_order(po_id):
 @require_admin_or_page_permission("purchase-orders")
 @with_db
 def reopen_purchase_order(po_id):
+	 scope_clause, scope_params = warehouse_scope_clause("warehouse_id")
     po = g.db.execute(
-        text("SELECT po_id, status FROM purchase_orders WHERE po_id = :pid FOR UPDATE"),
-        {"pid": po_id},
+        text("SELECT po_id, status FROM purchase_orders WHERE po_id = :pid {scope_clause} FOR UPDATE"),
+        {"pid": po_id, **scope_params},
     ).fetchone()
     if not po:
         return jsonify({"error": "Purchase order not found"}), 404
@@ -770,9 +781,18 @@ def list_po_receipts(po_id):
     (sku + bin code + receiver + when). Excludes RMA goods-in rows
     (po_id IS NULL) by virtue of the WHERE filter.
     """
+    po_scope_clause, po_scope_params = warehouse_scope_clause("warehouse_id")
+    visible_po = g.db.execute(
+        text(f"SELECT po_id FROM purchase_orders WHERE po_id = :pid {po_scope_clause}"),
+        {"pid": po_id, **po_scope_params},
+    ).fetchone()
+    if visible_po is None:
+        return jsonify({"error": "Purchase order not found"}), 404
+
+    receipt_scope_clause, receipt_scope_params = warehouse_scope_clause("r.warehouse_id")
     rows = g.db.execute(
         text(
-            """
+            f"""
             SELECT r.receipt_id, r.po_line_id, r.item_id, r.quantity_received,
                    r.bin_id, r.warehouse_id, r.received_by, r.received_at,
                    r.lot_number, r.serial_number, r.notes, r.external_id,
@@ -784,11 +804,11 @@ def list_po_receipts(po_id):
               JOIN bins  b  ON b.bin_id   = r.bin_id
               LEFT JOIN purchase_order_lines pol
                 ON pol.po_line_id = r.po_line_id
-             WHERE r.po_id = :pid
+             WHERE r.po_id = :pid {receipt_scope_clause}
              ORDER BY r.received_at DESC, r.receipt_id DESC
             """
         ),
-        {"pid": po_id},
+        {"pid": po_id, **scope_params},
     ).fetchall()
     return jsonify({
         "po_id": po_id,
@@ -842,6 +862,14 @@ def unreceive_receipt(receipt_id):
     (already deleted by the first), so the client gets a clear error
     on the second click rather than a silent double-reverse.
     """
+    scope_clause, scope_params = warehouse_scope_clause("warehouse_id")
+    visible_receipt = g.db.execute(
+        text(f"SELECT receipt_id FROM item_receipts WHERE receipt_id = :rid {scope_clause}"),
+        {"rid": receipt_id, **scope_params},
+    ).fetchone()
+    if visible_receipt is None:
+        return jsonify({"error": "Receipt not found"}), 404
+
     body = request.get_json(silent=True) or {}
     reason = body.get("reason")
     if reason is not None and not isinstance(reason, str):
