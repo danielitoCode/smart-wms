@@ -69,7 +69,7 @@ def _create_warehouse_two_po(client, admin_headers):
         },
     )
     assert response.status_code == 200, response.get_json()
-    return response.get_json()["po_id"]
+    return response.get_json()["purchase_order"]["po_id"]
 
 
 def test_admin_purchase_order_reads_and_lifecycle_are_warehouse_scoped(client):
@@ -186,7 +186,7 @@ def test_receiving_grant_can_list_only_bins_and_purchase_orders_in_assigned_ware
     orders = client.get("/api/admin/purchase-orders?per_page=1000", headers=user)
     assert orders.status_code == 200, orders.get_json()
     listed_ids = {row["po_id"] for row in orders.get_json()["purchase_orders"]}
-    assert own_po.get_json()["po_id"] in listed_ids
+    assert own_po.get_json()["purchase_order"]["po_id"] in listed_ids
     assert foreign_po_id not in listed_ids
 
     denied_foreign_filter = client.get(
