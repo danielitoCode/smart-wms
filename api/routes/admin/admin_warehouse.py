@@ -358,7 +358,7 @@ def delete_zone(zone_id):
 
 @admin_bp.route("/bins", methods=["GET"])
 @require_auth
-@require_admin_or_page_permission("bins")
+@require_admin_or_any_page_permission("bins", "receiving")
 @with_db
 def list_bins():
     try:
