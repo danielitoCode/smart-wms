@@ -18,7 +18,7 @@
  function toggle<T>(a:T[],v:T):T[]{return a.includes(v)?a.filter(x=>x!==v):[...a,v];}
  function reset(){formOpen=false;editing=null;username='';password='';fullName='';role='USER';warehouseIds=[];functions=[];active=true;mustChangePassword=false;pageKeys=[];permissionLoading=false;permissionsReady=true;localError=null;}
  function openCreate(){reset();formOpen=true;}
- async function openEdit(u:ManagedUser){reset();editing=u;username=u.username;fullName=u.fullName;role=u.role;warehouseIds=[...u.warehouseIds];functions=[...u.allowedFunctions];active=u.isActive;mustChangePassword=u.mustChangePassword;formOpen=true;permissionsReady=false;permissionLoading=true;const p=await vm.loadPermissions(u.userId);permissionsReady=!!p;pageKeys=p?[...p.pageKeys]:[];permissionLoading=false;}
+ async function openEdit(u:ManagedUser){reset();editing=u;username=u.username;fullName=u.fullName;role=u.role;warehouseIds=[...u.warehouseIds];functions=[...u.allowedFunctions];active=u.isActive;mustChangePassword=u.mustChangePassword;formOpen=true;permissionsReady=false;permissionLoading=true;const p=await vm.loadPermissions(u.userId);permissionsReady=!!p;pageKeys=p && p.role === 'USER' && !p.isFullAccess ? [...p.pageKeys] : [];permissionLoading=false;}
  async function save(){
   localError=null;if(editing&&(!permissionsReady||permissionLoading)){localError='No se pudieron cargar los permisos; vuelve a abrir el usuario antes de guardar.';return;}if(!fullName.trim()){localError='El nombre completo es obligatorio';return;}
   if(!editing&&(!username.trim()||!password)){localError='Usuario y contraseña son obligatorios';return;}
@@ -34,7 +34,7 @@
   if(ok)reset();
  }
  function toggleGroup(g:ManagedUserPermissionGroup,on:boolean){const keys=g.pages.map(p=>p[0]);pageKeys=on?[...new Set([...pageKeys,...keys])]:pageKeys.filter(k=>!keys.includes(k));}
- async function editPermissions(u:ManagedUser){permissionsUser=u;permissionsReady=false;permissionLoading=true;const p=await vm.loadPermissions(u.userId);permissionsReady=!!p;pageKeys=p?[...p.pageKeys]:[];permissionLoading=false;}
+ async function editPermissions(u:ManagedUser){permissionsUser=u;permissionsReady=false;permissionLoading=true;const p=await vm.loadPermissions(u.userId);permissionsReady=!!p;pageKeys=p && p.role === 'USER' && !p.isFullAccess ? [...p.pageKeys] : [];permissionLoading=false;}
  async function savePerms(){if(permissionsUser&&permissionsReady&&await vm.savePermissions(permissionsUser.userId,pageKeys))permissionsUser=null;}
  async function confirmDelete(){if(deleteTarget&&await vm.remove(deleteTarget.userId))deleteTarget=null;}
  function whName(id:number){const w=vm.warehouses.find(x=>x.warehouseId===id);return w?w.warehouseCode+' · '+w.warehouseName:String(id);}
