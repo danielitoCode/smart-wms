@@ -7,11 +7,14 @@
 	import { validateImportWarehouseScope, type ImportPreflightIssue } from '../../domain/policy/ImportWarehouseScopePolicy';
 	import type { WarehouseSelectionState } from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
 	import type { AuthUser } from '../../../../infrastructure/auth/AuthSession';
+	import { createWarehousesDependencies } from '../../../warehouses/di/warehouses.dependencies';
 
 	const i18n = getContext<I18nState>('i18n');
 	const vm = createImportsState();
 	const warehouseSelection = getContext<WarehouseSelectionState>('warehouseSelection');
 	const authGuard = getContext<{ user: AuthUser | null }>('authGuard');
+	const warehouseDependencies = createWarehousesDependencies();
+	let preflightLoading = $state(false);
 	let preflightIssues = $state<ImportPreflightIssue[]>([]);
 	let fileInput: HTMLInputElement | null = $state(null);
 
@@ -24,7 +27,10 @@
 	async function onFileChange(event: Event) {
 		const file = (event.currentTarget as HTMLInputElement).files?.[0];
 		preflightIssues = [];
-		if (file) await vm.prepareFile(file);
+		if (file) {
+			const prepared = await vm.prepareFile(file);
+			if (!prepared && fileInput) fileInput.value = '';
+		}
 	}
 
 	function downloadTemplate() {
@@ -47,15 +53,48 @@
 		URL.revokeObjectURL(url);
 	}
 
-	function executeImport() {
+	async function executeImport() {
+		if (preflightLoading || vm.attempted) return;
+		preflightLoading = true;
+		preflightIssues = [];
 		const user = authGuard.user;
-		preflightIssues = validateImportWarehouseScope(vm.importType, vm.records, {
-			role: user?.role ?? 'USER',
-			assignedWarehouseIds: user?.warehouseIds ?? [],
-			activeWarehouse: warehouseSelection.warehouses.find((item) => item.id === warehouseSelection.warehouseId) ?? null
-		});
-		if (preflightIssues.length) return;
-		void vm.executeImport();
+		const warehouseId = warehouseSelection.warehouseId;
+		const activeWarehouse = warehouseSelection.warehouses.find((item) => item.id === warehouseId) ?? null;
+		let availableBinCodes: string[] = [];
+		let binCatalogVerified = false;
+		try {
+			const needsBinCatalog = vm.importType === 'inventory-adjustments' ||
+				(vm.importType === 'items' && vm.records.some((record) =>
+					String(record.default_bin ?? '').trim() !== '' ||
+					(Number(record.quantity) > 0 && Number.isFinite(Number(record.quantity)))
+				));
+			if (needsBinCatalog && warehouseId != null) {
+				const firstPage = await warehouseDependencies.listBins.execute({ warehouseId, page: 1, perPage: 1000 });
+				availableBinCodes = firstPage.items.map((bin) => bin.code);
+				for (let page = 2; page <= firstPage.pages; page += 1) {
+					const nextPage = await warehouseDependencies.listBins.execute({ warehouseId, page, perPage: 1000 });
+					availableBinCodes.push(...nextPage.items.map((bin) => bin.code));
+				}
+				binCatalogVerified = true;
+			}
+			if (warehouseSelection.warehouseId !== warehouseId) {
+				preflightIssues = [{ row: null, message: 'El almacén activo cambió durante la validación. Vuelve a ejecutar la validación.' }];
+				return;
+			}
+			preflightIssues = validateImportWarehouseScope(vm.importType, vm.records, {
+				role: user?.role ?? 'USER',
+				assignedWarehouseIds: user?.warehouseIds ?? [],
+				activeWarehouse,
+				availableBinCodes,
+				binCatalogVerified
+			});
+			if (preflightIssues.length) return;
+			await vm.executeImport();
+		} catch {
+			preflightIssues = [{ row: null, message: 'No se pudo validar el almacén y sus bins. La importación queda bloqueada.' }];
+		} finally {
+			preflightLoading = false;
+		}
 	}
 
 	function clearFile() {
@@ -115,7 +154,7 @@
 		<section class="panel">
 			<div class="section-heading">
 				<div><h2>{i18n.t('Vista previa')}</h2><p class="hint">{i18n.t('Primeras')} {Math.min(vm.records.length, IMPORT_PREVIEW_ROWS)} {i18n.t('filas de')} {vm.records.length}. {i18n.t('La validación definitiva ocurre al enviar al servidor.')}</p></div>
-				<button class="primary" type="button" disabled={vm.importing || vm.attempted} onclick={executeImport}>{vm.importing ? i18n.t('Importando…') : i18n.t('Ejecutar importación')}</button>
+				<button class="primary" type="button" disabled={vm.importing || vm.attempted || preflightLoading} onclick={executeImport}>{vm.importing ? i18n.t('Importando…') : preflightLoading ? i18n.t('Validando almacén…') : i18n.t('Ejecutar importación')}</button>
 			</div>
 			{#if preflightIssues.length}
 				<div class="preflight-errors" role="alert"><strong>{i18n.t('No se puede ejecutar la importación')}</strong><ul>{#each preflightIssues as issue}<li>{issue.row ? `Fila ${issue.row}: ` : ''}{i18n.t(issue.message)}</li>{/each}</ul></div>
