@@ -195,7 +195,7 @@
 		measure();
 		if (typeof ResizeObserver === 'undefined') return;
 		const observer = new ResizeObserver(measure);
-		obserser.observe(container);
+		observer.observe(container);
 		wordEls.forEach((node) => node && observer.observe(node));
 		return () => observer.disconnect();
 	});
