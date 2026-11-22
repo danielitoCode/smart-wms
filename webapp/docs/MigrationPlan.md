@@ -1283,3 +1283,13 @@ La ejecución R1–R9 sigue pendiente. Los casos bloqueados por limitaciones Fla
 - Contratos revisados: lookup/receive, cancel batch, GET receipt history, unreceive individual, close/reopen y PUT lifecycle. Confirmado que batch cancel `/api/receiving/cancel` y admin unreceive `/api/admin/receipts/{id}/unreceive` son operaciones diferentes. Svelte Receiving datasource llama al batch cancel correctamente, pero no tiene tests propios para ese contrato y no cubre el flujo admin original.
 - Hallazgo de seguridad bloqueante: rutas administrativas PO y receipt history/unreceive usan page grant pero no warehouse scope; la cancelación batch filtra receipt rows, pero recalcula la PO ID recibida en body sin validar que esa PO esté dentro del warehouse scope. Tests revisados no cubren USER con warehouses parciales/cross-warehouse. No se modifica Flask: requiere corrección backend separada.
 - Estado: `R2_AUDIT_COMPLETE — R2_NOT_CLOSED`. No se puede cerrar R2 funcionalmente ni por aislamiento de almacén hasta resolver paridad Receiving, cobertura de tests y el hallazgo backend. Ver sección 8.4 de `.code-review/R10.1-Operation-Traceability-Matrix.md`.
+
+
+### R2.6 — Receiving parity y warehouse scope (22-11-2026)
+
+- Se amplió Receiving Svelte con lista/paginación/filtros de Purchase Orders, lookup por barcode/número, recepción batch con lot/serial/notes, historial de receipts, unreceive individual con reason y cancelación batch preservada como operación separada.
+- Se añadieron tests frontend para use cases y datasource; se añadió `api/tests/test_purchase_order_warehouse_scope.py` para usuarios no ADMIN con warehouses disjuntos.
+- Se corrigió warehouse scope en endpoints admin PO: list/detail/update/line mutations/close/reopen; en historial de receipts y preflight de unreceive; y en `POST /api/receiving/cancel` para validar PO target antes de recalcular estado. Los grants de página originales se mantienen.
+- Matriz: sección 8.5 de `.code-review/R10.1-Operation-Traceability-Matrix.md`.
+- HEAD de implementación al iniciar el siguiente ciclo de CI: `db0e626c1b67c173621637da49720f8f13b3b487` (este commit de documentación).
+- Estado: `R2_FRONTEND_AND_SCOPE_IMPLEMENTED_PENDING_CI_E2E — R2_NOT_CLOSED`. Aún no hay CI verde del HEAD final ni E2E real con ADMIN y USER en warehouses disjuntos. No declarar R2 cerrado hasta obtener esa evidencia.
