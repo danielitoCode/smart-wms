@@ -1191,3 +1191,8 @@ La entrada histórica R9.6 que indicaba CI pendiente queda supersedida por esta 
 **Workflow separado `Tests`:** [run 45045373500](https://github.com/danielitoCode/smart-wms/actions/runs/45045373500) corresponde a otro job Python (lint, OpenAPI/schema y pruebas Python), no a la suite Svelte. Al registrar este cierre, su paso `Run tests` seguía en ejecución; no se usa para bloquear ni certificar la aceptación de `webapp/`.
 
 **Decisión:** R9 queda aceptado para el frontend SvelteKit en el HEAD indicado, con las limitaciones backend anteriores registradas como dependencias explícitas. No se modificó Flask/Python.
+
+
+### R9.2 — cierre del adaptador legacy sin warehouse (22-11-2026)
+
+La revisión de `IntegrationsRemoteDataSource`, `IntegrationsRepositoryImpl` y `integrations.dependencies.ts` confirmó que el método legacy `test(name)` no tenía consumidores en el flujo de repository/DI y enviaba la petición sin `warehouse_id`. Se eliminó; el flujo soportado `testConnection(name, warehouseId)` permanece y su prueba verifica el contexto de almacén. Commit: [a20220f](https://github.com/danielitoCode/smart-wms/commit/a20220f95fc29c5639c7f7f180ef2e7f6f3f46f0).
