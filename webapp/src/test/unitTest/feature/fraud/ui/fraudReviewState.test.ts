@@ -115,4 +115,30 @@ describe('Fraud review UI state', () => {
     expect(state.rows).toEqual([]);
   });
 
+  it('does not expose a stale memo failure after the warehouse context was cleared', async () => {
+    const state = createFraudReviewState();
+    await state.load(4);
+    let rejectMemo!: (reason: Error) => void;
+    deps.updateMemo.execute.mockReturnValueOnce(new Promise<void>((_resolve, reject) => { rejectMemo = reject; }));
+    const saving = state.updateMemo(19, 'stale update', 4);
+    state.clear();
+    rejectMemo(new Error('old warehouse failure'));
+    await expect(saving).resolves.toBe(false);
+    expect(state.error).toBeNull();
+    expect(state.rows).toEqual([]);
+  });
+
+  it('does not expose a stale push failure after the warehouse context was cleared', async () => {
+    const state = createFraudReviewState();
+    await state.load(4);
+    let rejectPush!: (reason: Error) => void;
+    deps.push.execute.mockReturnValueOnce(new Promise<void>((_resolve, reject) => { rejectPush = reject; }));
+    const pushing = state.push(19, 4);
+    state.clear();
+    rejectPush(new Error('old warehouse failure'));
+    await expect(pushing).resolves.toBe(false);
+    expect(state.error).toBeNull();
+    expect(state.rows).toEqual([]);
+  });
+
 });
