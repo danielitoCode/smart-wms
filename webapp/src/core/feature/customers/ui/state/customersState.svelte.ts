@@ -32,11 +32,15 @@ export function createCustomersState(t: (source: string) => string = (source) =>
 		page = nextPage;
 		try {
 			if (query.trim()) {
-				customers = await deps.searchCustomers.execute({ search: query.trim(), warehouseId: warehouseId ?? undefined });
+				const result = await deps.searchCustomers.execute({ search: query.trim(), warehouseId: warehouseId ?? undefined });
+				if (version !== requestVersion) return;
+				customers = result;
 				customerPage = null;
 			} else {
-				customerPage = await deps.listCustomers.execute({ page: nextPage, perPage: PER_PAGE, warehouseId: warehouseId ?? undefined });
-				customers = customerPage.customers;
+				const result = await deps.listCustomers.execute({ page: nextPage, perPage: PER_PAGE, warehouseId: warehouseId ?? undefined });
+				if (version !== requestVersion) return;
+				customerPage = result;
+				customers = result.customers;
 			}
 		} catch (err) {
 			if (version === requestVersion) {
