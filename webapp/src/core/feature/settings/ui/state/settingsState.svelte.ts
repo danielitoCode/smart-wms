@@ -15,22 +15,29 @@ export function createSettingsState() {
 	let values = $state<SettingsMap>({});
 	let draft = $state<SettingsMap>({});
 	let loading = $state(false);
+	let loaded = $state(false);
+	let loadEpoch = 0;
 	let saving = $state(false);
 	let error = $state<string | null>(null);
 	let saved = $state(false);
 	let validationErrors = $state<Record<string, string>>({});
 
 	async function load() {
-		if (loading) return;
+		if (loading || saving) return;
+		const epoch = ++loadEpoch;
 		loading = true;
+		loaded = false;
 		error = null;
 		saved = false;
 		try {
 			const persisted = await deps.getSettings.execute();
+			if (epoch !== loadEpoch) return;
 			values = withSettingDefaults(persisted);
 			draft = { ...values };
 			validationErrors = {};
+			loaded = true;
 		} catch (e) {
+			if (epoch !== loadEpoch) return;
 			error = toUserMessage(e, 'No se pudieron cargar los ajustes');
 		} finally {
 			loading = false;
@@ -77,7 +84,7 @@ export function createSettingsState() {
 	}
 
 	async function save() {
-		if (saving) return false;
+		if (saving || !loaded) return false;
 		const invalid = validateDraft();
 		if (Object.keys(invalid).length > 0) {
 			error = 'Corrige los valores indicados antes de guardar.';
@@ -113,6 +120,7 @@ export function createSettingsState() {
 		get values() { return values; },
 		get draft() { return draft; },
 		get loading() { return loading; },
+		get loaded() { return loaded; },
 		get saving() { return saving; },
 		get error() { return error; },
 		get saved() { return saved; },
