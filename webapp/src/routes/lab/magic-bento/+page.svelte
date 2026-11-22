@@ -44,7 +44,6 @@
 			disableAnimations={!motion}
 			enableSpotlight={true}
 			enableBorderGlow={true}
-			enableTilt={false}
 			columns={4}
 			rowHeight={180}
 			gap={12}
