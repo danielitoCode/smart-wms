@@ -57,6 +57,24 @@ def _query_one(sql, params=()):
         cur.close()
 
 
+
+
+def _create_warehouse_two_staging_bin():
+    suffix = uuid.uuid4().hex[:8]
+    zone_id = _query_one(
+        """INSERT INTO zones (warehouse_id, zone_code, zone_name, zone_type)
+           VALUES (2, %s, %s, 'RECEIVING') RETURNING zone_id""",
+        (f"R2-{suffix}", "R2 receiving test zone"),
+    )[0]
+    return _query_one(
+        """INSERT INTO bins (
+               zone_id, warehouse_id, bin_code, bin_barcode, bin_type,
+               pick_sequence, putaway_sequence, external_id
+           ) VALUES (%s, 2, %s, %s, 'Staging', 0, 0, %s)
+           RETURNING bin_id""",
+        (zone_id, f"R2-{suffix}", f"R2-{suffix}", str(uuid.uuid4())),
+    )[0]
+
 def _create_warehouse_two_po(client, admin_headers):
     po_number = f"PO-WH-SCOPE-{uuid.uuid4().hex[:8]}"
     response = client.post(
@@ -114,13 +132,11 @@ def test_admin_purchase_order_reads_and_lifecycle_are_warehouse_scoped(client):
 def test_receipt_history_unreceive_and_batch_cancel_respect_warehouse_scope(client):
     admin = _admin_headers(client)
     po_id = _create_warehouse_two_po(client, admin)
-    bin_row = _query_one("SELECT bin_id FROM bins WHERE warehouse_id = 2 ORDER BY bin_id LIMIT 1")
-    if bin_row is None:
-        pytest.skip("warehouse 2 has no bin available for receiving test")
+    bin_id = _create_warehouse_two_staging_bin()
     received = client.post(
         "/api/receiving/receive",
         headers=admin,
-        json={"po_id": po_id, "items": [{"item_id": 1, "quantity": 1, "bin_id": bin_row[0]}]},
+        json={"po_id": po_id, "items": [{"item_id": 1, "quantity": 1, "bin_id": bin_id}]},
     )
     assert received.status_code == 200, received.get_json()
     receipt_id = received.get_json()["receipt_ids"][0]
