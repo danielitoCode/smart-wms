@@ -1229,3 +1229,12 @@ Se añadieron redirects HTTP 308 para 28 URLs antiguas de React hacia las rutas 
 **Estado:** `IMPLEMENTED_PENDING_CI_AND_BROWSER`. El Webapp CI sobre `bc3d84a` debe terminar antes de aceptar este bloque; también se requiere prueba en navegador de acceso directo, refresh y permisos. No se considera paridad E2E.
 
 Se mantiene React como referencia; no se ha borrado ni modificado `admin/`.
+
+
+### R10.3 — preparación de recorridos E2E R1–R9
+
+Se creó el runbook `.code-review/R10-E2E-Regression-Runbook.md` con perfiles representativos (ADMIN multi-almacén, USER de WH-A, USER de WH-B, usuario sin grant y operador scanner), precondiciones de datos y recorridos en orden R1–R9. Define comparación de estado persistido y transiciones, pruebas negativas de permisos/scope, navegación directa/refresh, responsive, teclado/ARIA, reduced motion e i18n.
+
+**Estado:** `RUNBOOK_READY / EXECUTION_BLOCKED_BY_TEST_ENVIRONMENT`. En `webapp/package.json` no hay Playwright/Cypress ni script E2E; los tests Vitest no prueban por sí solos un navegador autenticado contra Flask. Para ejecutar se necesita un entorno de pruebas con backend/dataset reiniciable y cuentas de prueba para los perfiles indicados. No se deben usar credenciales de producción ni guardarlas en el repositorio.
+
+La ejecución R1–R9 sigue pendiente. Los casos bloqueados por limitaciones Flask se validarán como acciones deshabilitadas y ausencia de mutación, no como operaciones completas.
