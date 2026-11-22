@@ -1238,3 +1238,14 @@ Se creó el runbook `.code-review/R10-E2E-Regression-Runbook.md` con perfiles re
 **Estado:** `RUNBOOK_READY / EXECUTION_BLOCKED_BY_TEST_ENVIRONMENT`. En `webapp/package.json` no hay Playwright/Cypress ni script E2E; los tests Vitest no prueban por sí solos un navegador autenticado contra Flask. Para ejecutar se necesita un entorno de pruebas con backend/dataset reiniciable y cuentas de prueba para los perfiles indicados. No se deben usar credenciales de producción ni guardarlas en el repositorio.
 
 La ejecución R1–R9 sigue pendiente. Los casos bloqueados por limitaciones Flask se validarán como acciones deshabilitadas y ausencia de mutación, no como operaciones completas.
+
+
+### R10.1/R10.2 — primera pasada de trazabilidad y compatibilidad (22-11-2026)
+
+- Se creó `.code-review/R10.1-Operation-Traceability-Matrix.md`: matriz inicial por operación de negocio para R1–R9, con rutas React/Svelte, caso de uso/regla, endpoint/DTO Flask, grants, warehouse scope, pruebas y evidencia.
+- R10.1 queda `BASELINE_CREATED — TRACEABILITY_PARTIAL`, no cerrada. Faltan cotejo handler por handler de React, nombres exactos de UseCases, respuesta DTO/códigos HTTP y referencias concretas a tests para cada acción. No se marca ninguna operación como `VERIFIED_PARITY` solo por existir ruta o test unitario.
+- R1 y R3/R8/R9 conservan explícitas las limitaciones Flask ya documentadas: scope incompleto en endpoints administrativos de warehouses/zones/bins e inventario, ausencia de preview/ledger completo, audit log global, import scope por fila, Customers sin identidad canónica y Webhooks globales.
+- R10.2: React redirigía `/warehouses` a `/data/warehouses`, mientras Svelte servía el primero directamente. Se alineó la URL con redirect HTTP 308; el landing interno de usuarios con grant `warehouses` ahora usa el destino canónico.
+- El mapa de compatibilidad crece de 28 a 29 paths. Se amplió `legacyRouteRedirects.test.ts` para comprobar que cada destino existe como ruta Svelte concreta o como feature explícita de `management/[feature]`.
+- Commits de implementación: `4dffe2a` (mapa), `2be3a07` (wrapper /warehouses), `edd5492` (landing canónico), `fe72974` (test de destinos). Documentación: `e2a38b5` (matriz), `e698747` (auditoría R10).
+- **Pendiente:** Webapp CI para el nuevo HEAD y validación HTTP/browser (direct URL, refresh, query string, sesión y permisos). Las pruebas añadidas son estáticas; no certifican E2E. No se modificó Flask/Python ni se retiró React.
