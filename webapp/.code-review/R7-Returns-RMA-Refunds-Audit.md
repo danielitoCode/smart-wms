@@ -2,7 +2,7 @@
 
 **Scope:** SvelteKit frontend only (webapp/, branch svelte-webapp).  
 **Traceability:** F3.5 Returns, F3.6 RMA, F3.7 Refunds, Inventory, Orders, Audit.  
-**Status:** FRONTEND_IMPLEMENTATION_IN_PROGRESS / BLOCKED_BACKEND.  
+**Status:** FRONTEND_IMPLEMENTATION_COMPLETE / VERIFICATION_BLOCKED (CI dependency installation). Backend limitations remain separate and documented.  
 **Backend changes:** none. Flask/Python was inspected as the source of truth and was not modified.
 
 ## 1. Verified Flask contracts
@@ -58,6 +58,7 @@
 - Refunds remain read-only; family reconciliation is ADMIN-only because related lacks warehouse scope.
 - GetRefund is supported. CreateRefund throws RefundCapabilityNotSupportedError before any request.
 - ApproveRMA, ClassifyReturnedItem and separate RestockReturn throw ReturnCapabilityNotSupportedError; no fake mutations are exposed.
+- Added state-level regression tests for voided-RMA receipt/void guards, refusal to repeat create-RMA after an uncertain response, refusal to void an RMA with receipts, stale detail response ordering and closing a pending detail.
 
 ## 5. Required next backend work before integral R7 acceptance
 
@@ -69,6 +70,16 @@
 - Define whether approval is a separate workflow; if so, add endpoint/state and audit.
 - Add PostgreSQL integration tests for concurrent create-RMA allowance, duplicate receipt/replay, receive-vs-void, repeated-item lines, cross-warehouse access, and refund-vs-return stock reconciliation.
 
-## 6. Verification
+## 6. Frontend verification status
 
-CI has not yet been run for the current R7 implementation. Typecheck, build and all frontend suites must be checked on the final HEAD before marking the frontend slice complete. No backend tests are claimed here.
+**Latest R7 test commit:** `5ef2ae98f23eb8f4ce345a71ddb33a45740b8f93`.
+
+- Added `src/test/unitTest/feature/returns/ui/returnsState.test.ts` with five state-level tests: voided RMA guards, no void when receipts exist, uncertain create-RMA retry protection, latest-detail response ordering and close-during-request behavior.
+- The tests are included by the existing `test:ui` and full Vitest suites.
+- Webapp CI: [45028167255](https://github.com/danielitoCode/smart-wms/actions/runs/45028167255) — **FAIL before tests**, at `Install dependencies` (`npm ci`). The failure reports package-lock entries missing for versions declared in `webapp/package.json` (including undici-types, esbuild and rollup); it is a repository dependency-manifest/lockfile mismatch, not an R7 assertion or typecheck result.
+- Lockfile Version Check: [45028167292](https://github.com/danielitoCode/smart-wms/actions/runs/45028167292) — SUCCESS. This check validates lockfile format/version, not package graph consistency.
+- Dependency Audit: [45028167300](https://github.com/danielitoCode/smart-wms/actions/runs/45028167300) — SUCCESS.
+- gitleaks: [45028167359](https://github.com/danielitoCode/smart-wms/actions/runs/45028167359) — SUCCESS.
+- The separate `Tests` workflow is backend-oriented and is not used as frontend acceptance evidence. No backend tests are claimed here.
+
+**Acceptance remaining:** repair/regenerate `webapp/package-lock.json` against the current `webapp/package.json`, then rerun Webapp CI on the resulting HEAD. Require successful dependency installation, typecheck, build, UI suite (including the new state tests), and complete frontend regression. Until those checks pass, R7 frontend implementation is complete but not CI-verified. Flask/Python remains untouched.
