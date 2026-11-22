@@ -27,7 +27,8 @@ export const LEGACY_ROUTE_REDIRECTS = {
   "/transfer-orders": "/management/transfer-orders",
   "/bins": "/data/bins",
   "/zones": "/data/zones",
-  "/preferred-bins": "/data/preferred-bins"
+  "/preferred-bins": "/data/preferred-bins",
+  "/warehouses": "/data/warehouses"
 } as const;
 
 export type LegacyRoutePath = keyof typeof LEGACY_ROUTE_REDIRECTS;
