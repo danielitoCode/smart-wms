@@ -1031,3 +1031,19 @@ Se incorporan contratos y gates explícitos para R7:
 **Bloqueos backend críticos:** create/receive/return-receipts/related carecen de warehouse scope; receive no rechaza un RMA anulado y no identifica una línea por so_line_id; idempotency_key de recepción es opcional; create-rma no tiene idempotencia ni audit de creación dedicado; no existe clasificación/disposición por condición; RMA físico y refund POS pueden incrementar inventario de forma separada sin conciliación de unidades. Los hallazgos y el plan de pruebas PostgreSQL están en .code-review/R7-Returns-RMA-Refunds-Audit.md.
 
 **Criterio:** no declarar R7 integral VERIFIED hasta corregir los bloqueos server-side y ejecutar pruebas PostgreSQL de concurrencia/aislamiento/reconciliación. No se modifica Flask/Python ni se simulan operaciones sin endpoint. La certificación CI del frontend queda pendiente del HEAD definitivo de esta iteración.
+
+
+## 24. R7 — cierre de implementación frontend y bloqueo de verificación (22-11-2026)
+
+**HEAD de implementación:** `5ef2ae98f23eb8f4ce345a71ddb33a45740b8f93` (rama `svelte-webapp`).
+
+El alcance frontend R7 está implementado: contratos y políticas de Returns/RMA, cantidades autorizables, consulta y creación de RMA conforme al contrato existente, recepción física con clave idempotente estable en el cliente, guards por rol/contexto, restricciones fail-closed para operaciones no soportadas y Refunds de solo lectura desde la sesión administrativa. Se añadieron cinco pruebas de estado en `src/test/unitTest/feature/returns/ui/returnsState.test.ts` para RMA anulado, anulación con recepciones, respuesta incierta de create-RMA, orden de respuestas de detalle y cierre durante una consulta pendiente.
+
+**Verificación del HEAD:**
+- Webapp CI [45028167255](https://github.com/danielitoCode/smart-wms/actions/runs/45028167255): FAIL en `Install dependencies`, antes de typecheck/build/tests. `npm ci` detecta que `webapp/package-lock.json` no contiene las versiones requeridas por el manifiesto actual (entre ellas undici-types, esbuild y rollup). Es un bloqueo de dependencias del workspace, no un fallo demostrado de R7.
+- Lockfile Version Check [45028167292](https://github.com/danielitoCode/smart-wms/actions/runs/45028167292): SUCCESS; solo valida versión/formato del lockfile.
+- Dependency Audit [45028167300](https://github.com/danielitoCode/smart-wms/actions/runs/45028167300): SUCCESS.
+- gitleaks [45028167359](https://github.com/danielitoCode/smart-wms/actions/runs/45028167359): SUCCESS.
+- El workflow separado `Tests` ejecuta pruebas backend y no forma parte del criterio de aceptación frontend de esta migración.
+
+**Estado:** `FRONTEND_IMPLEMENTATION_COMPLETE / CI_BLOCKED_BY_LOCKFILE`. No declarar `FRONTEND_VERIFIED` hasta regenerar el lockfile coherente con `webapp/package.json` y ejecutar satisfactoriamente en el HEAD resultante la instalación limpia, typecheck, build, suites UI y regresión completa de `webapp/`. Las limitaciones Flask/Python continúan en `.code-review/R7-Returns-RMA-Refunds-Audit.md`; no se modificó backend ni se usaron pruebas backend para aceptar Svelte.
