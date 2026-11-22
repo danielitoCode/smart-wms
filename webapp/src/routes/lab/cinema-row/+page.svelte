@@ -101,33 +101,7 @@
 	<title>CinemaRow · Component Lab</title>
 </svelte:head>
 
-<style>
-	@keyframes cinema-hero-rise {
-		from {
-			opacity: 0;
-			transform: translateY(14px);
-			filter: blur(8px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-			filter: blur(0);
-		}
-	}
 
-	:global(.cinema-hero-rise) {
-		animation: cinema-hero-rise 580ms cubic-bezier(0.22, 1, 0.36, 1) both;
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		:global(.cinema-hero-rise) {
-			animation: none !important;
-			opacity: 1 !important;
-			filter: none !important;
-			transform: none !important;
-		}
-	}
-</style>
 
 <section class="detail-intro">
 	<a class="detail-back" href="/lab">← Lab</a>
@@ -330,6 +304,34 @@
 </div>
 
 <style>
+
+	@keyframes cinema-hero-rise {
+		from {
+			opacity: 0;
+			transform: translateY(14px);
+			filter: blur(8px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+			filter: blur(0);
+		}
+	}
+
+	:global(.cinema-hero-rise) {
+		animation: cinema-hero-rise 580ms cubic-bezier(0.22, 1, 0.36, 1) both;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		:global(.cinema-hero-rise) {
+			animation: none !important;
+			opacity: 1 !important;
+			filter: none !important;
+			transform: none !important;
+		}
+	}
+
+
 	.detail-intro { margin-bottom: 1.25rem; }
 	.detail-back {
 		display: inline-block; margin-bottom: 0.65rem; font-size: 0.8125rem; font-weight: 600;
