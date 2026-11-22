@@ -5,7 +5,8 @@
 	import { createSettingsState } from '../state/settingsState.svelte';
 	import {
 		SETTING_DEFINITIONS,
-		type KnownSettingKey
+		type KnownSettingKey,
+		validateSettingValue
 	} from '../../domain/entity/Setting';
 
 	const i18n = getContext<I18nState>('i18n');
@@ -101,6 +102,7 @@
 	}
 
 	const bubbleRows = $derived(parseBubbleRows(vm.draft.dashboard_bubble_origins ?? '[]'));
+	const bubbleJsonInvalid = $derived(validateSettingValue('dashboard_bubble_origins', vm.draft.dashboard_bubble_origins ?? '[]') !== null);
 
 	function updateBubble(index: number, field: 'origin' | 'label', value: string) {
 		const rows = parseBubbleRows(vm.draft.dashboard_bubble_origins ?? '[]').map((row) => ({ ...row }));
@@ -196,6 +198,9 @@
 										value={vm.draft[key] ?? ''}
 										oninput={(event) => vm.setDraft(key, event.currentTarget.value)} />
 								{:else if key === 'dashboard_bubble_origins'}
+									{#if bubbleJsonInvalid}
+										<textarea id={'setting-' + key} rows="5" value={vm.draft[key] ?? '[]'} oninput={(event) => vm.setDraft(key, event.currentTarget.value)} aria-label={i18n.t('JSON de canales: corrige el formato para continuar')} />
+									{:else}
 									<div class="bubble-editor">
 										{#each bubbleRows as bubble, index (index)}
 											<div class="bubble-row">
@@ -210,6 +215,7 @@
 										{/each}
 										<button class="secondary add" type="button" onclick={addBubble}>{i18n.t('Añadir canal')}</button>
 									</div>
+									{/if}
 								{:else}
 									<input id={'setting-' + key} type="text" inputmode={key === 'picking_ticket_logo_url' ? 'url' : undefined}
 										value={vm.draft[key] ?? ''} oninput={(event) => vm.setDraft(key, event.currentTarget.value)} />
