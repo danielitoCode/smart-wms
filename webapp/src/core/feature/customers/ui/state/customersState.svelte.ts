@@ -91,7 +91,25 @@ export function createCustomersState(t: (source: string) => string = (source) =>
 	}
 
 	function setQuery(value: string) { query = value; }
-	function setWarehouseId(value: number | null) { warehouseId = value; }
+
+	function setWarehouseId(value: number | null) {
+		if (warehouseId === value) return;
+		warehouseId = value;
+		// Invalidate list/detail requests immediately, before the screen effect
+		// schedules the next load for the new warehouse.
+		++requestVersion;
+		++detailRequestVersion;
+		customers = [];
+		customerPage = null;
+		selectedCustomer = null;
+		customerOrders = null;
+		page = 1;
+		ordersPage = 1;
+		loading = false;
+		detailLoading = false;
+		error = null;
+		detailError = null;
+	}
 	function closeDetail() { ++detailRequestVersion; selectedCustomer = null; customerOrders = null; detailLoading = false; }
 
 	return {
