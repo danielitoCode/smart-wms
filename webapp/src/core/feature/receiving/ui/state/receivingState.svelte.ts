@@ -35,11 +35,7 @@ function isAbort(err: unknown): boolean {
 	);
 }
 
-function preferredBinId(): string {
-	return String(bins.find(bin => bin.binType === 'Staging')?.id ?? bins[0]?.id ?? '');
-}
-
-function mapDrafts(detail: PurchaseOrderDetail, defaultBinId = preferredBinId()): LineDraft[] {
+function mapDrafts(detail: PurchaseOrderDetail, defaultBinId = ''): LineDraft[] {
 	return detail.lines
 		.filter((line) => line.quantityRemaining > 0)
 		.map((line) => ({
@@ -82,6 +78,10 @@ export function createReceivingState() {
 	let binsLoading = $state(false);
 	let binsError = $state<string | null>(null);
 	let binsRequest = 0;
+
+	function preferredBinId(): string {
+		return String(bins.find(bin => bin.binType === 'Staging')?.id ?? bins[0]?.id ?? '');
+	}
 
 	async function loadBins(warehouseId: number): Promise<boolean> {
 		const requestId = ++binsRequest;
@@ -251,7 +251,7 @@ export function createReceivingState() {
 			const refreshed = await deps.lookupPurchaseOrder.execute(poNumber);
 			if (!scope.isCurrent()) return false;
 			detail = refreshed;
-			drafts = mapDrafts(refreshed);
+			drafts = mapDrafts(refreshed, preferredBinId());
 			await loadReceiptHistory(refreshed.purchaseOrder.poId);
 			return true;
 		} catch (err) {
