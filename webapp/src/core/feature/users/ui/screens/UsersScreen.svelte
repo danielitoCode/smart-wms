@@ -4,8 +4,13 @@
  import type {I18nState} from '../../../../../lib/i18n/i18n.svelte';
  import {createManagedUsersState} from '../state/managedUsersState.svelte';
  import type {ManagedUser} from '../../domain/entity/UserManagement';
+ import type {AuthUser} from '../../../../infrastructure/auth/AuthSession';
+ import type {WarehouseSelectionState} from '../../../warehouses/ui/state/warehouseSelectionState.svelte';
  import {MANAGED_USER_PERMISSION_GROUPS,MANAGED_USER_PERMISSION_KEYS,type ManagedUserPermissionGroup} from '../config/userPermissionGroups';
+ type AuthGuardContext={user:AuthUser|null;revalidatePermissions:()=>Promise<void>};
  const i18n=getContext<I18nState>('i18n'),vm=createManagedUsersState();
+ const authGuard=getContext<AuthGuardContext>('authGuard');
+ const warehouseSelection=getContext<WarehouseSelectionState>('warehouseSelection');
  const FUNCTIONS=[['pick','Pick'],['pack','Pack'],['ship','Ship'],['receive','Receive'],['putaway','Put-Away'],['count','Count'],['transfer','Transfer'],['sell','Sell (POS)']] as const;
  const GROUPS=MANAGED_USER_PERMISSION_GROUPS;
  const ALL_KEYS=MANAGED_USER_PERMISSION_KEYS;
@@ -13,29 +18,31 @@
  let username=$state(''),password=$state(''),fullName=$state(''),role=$state<'ADMIN'|'USER'>('USER');
  let warehouseIds=$state<number[]>([]),functions=$state<string[]>([]),active=$state(true),mustChangePassword=$state(false),pageKeys=$state<string[]>([]);
  let permissionsUser=$state<ManagedUser|null>(null),permissionLoading=$state(false),permissionsReady=$state(true),deleteTarget=$state<ManagedUser|null>(null),localError=$state<string|null>(null);
+ let permissionLoadEpoch=0;
  const filtered=$derived(vm.users.filter(u=>[u.username,u.fullName,u.role].join(' ').toLowerCase().includes(search.trim().toLowerCase())));
  onMount(()=>{void vm.load();void vm.loadWarehouses();});
  function toggle<T>(a:T[],v:T):T[]{return a.includes(v)?a.filter(x=>x!==v):[...a,v];}
- function reset(){formOpen=false;editing=null;username='';password='';fullName='';role='USER';warehouseIds=[];functions=[];active=true;mustChangePassword=false;pageKeys=[];permissionLoading=false;permissionsReady=true;localError=null;}
+ function reset(){permissionLoadEpoch++;formOpen=false;editing=null;username='';password='';fullName='';role='USER';warehouseIds=[];functions=[];active=true;mustChangePassword=false;pageKeys=[];permissionLoading=false;permissionsReady=true;localError=null;}
  function openCreate(){reset();formOpen=true;}
- async function openEdit(u:ManagedUser){reset();editing=u;username=u.username;fullName=u.fullName;role=u.role;warehouseIds=[...u.warehouseIds];functions=[...u.allowedFunctions];active=u.isActive;mustChangePassword=u.mustChangePassword;formOpen=true;permissionsReady=false;permissionLoading=true;const p=await vm.loadPermissions(u.userId);permissionsReady=!!p;pageKeys=editableUserPageGrantKeys(p);permissionLoading=false;}
+ async function openEdit(u:ManagedUser){reset();const epoch=++permissionLoadEpoch;editing=u;username=u.username;fullName=u.fullName;role=u.role;warehouseIds=[...u.warehouseIds];functions=[...u.allowedFunctions];active=u.isActive;mustChangePassword=u.mustChangePassword;formOpen=true;permissionsReady=false;permissionLoading=true;const p=await vm.loadPermissions(u.userId);if(epoch!==permissionLoadEpoch||editing?.userId!==u.userId)return;permissionsReady=!!p;pageKeys=editableUserPageGrantKeys(p);permissionLoading=false;}
+ async function refreshOwnAccess(userId:number){if(authGuard.user?.userId!==userId)return;await authGuard.revalidatePermissions();if(authGuard.user)await warehouseSelection.syncFromUser(authGuard.user);}
  async function save(){
   localError=null;if(editing&&(!permissionsReady||permissionLoading)){localError='No se pudieron cargar los permisos; vuelve a abrir el usuario antes de guardar.';return;}if(!fullName.trim()){localError='El nombre completo es obligatorio';return;}
   if(!editing&&(!username.trim()||!password)){localError='Usuario y contraseña son obligatorios';return;}
   let ok=false;
   let savedUserId=editing?.userId;
-  if(editing){ok=await vm.update({userId:editing.userId,fullName:fullName.trim(),role,warehouseIds:[...warehouseIds],allowedFunctions:[...functions],isActive:active,mustChangePassword,password:password||undefined});}
+  if(editing){ok=await vm.update({userId:editing.userId,fullName:fullName.trim(),role,warehouseIds:[...warehouseIds],allowedFunctions:[...functions],isActive:active,mustChangePassword,password:password||undefined});if(ok)await refreshOwnAccess(editing.userId);}
   else {
    const created=await vm.create({username:username.trim(),password,fullName:fullName.trim(),role,warehouseIds:[...warehouseIds],allowedFunctions:[...functions],mustChangePassword});
    ok=!!created;
    if(created){savedUserId=created.userId;editing=created;}
   }
-  if(ok&&savedUserId&&role==='USER'){const savedPermissions=await vm.savePermissions(savedUserId,pageKeys);if(!savedPermissions)return;}
+  if(ok&&savedUserId&&role==='USER'){const savedPermissions=await vm.savePermissions(savedUserId,pageKeys);if(!savedPermissions){await refreshOwnAccess(savedUserId);return;}await refreshOwnAccess(savedUserId);}
   if(ok)reset();
  }
  function toggleGroup(g:ManagedUserPermissionGroup,on:boolean){const keys=g.pages.map(p=>p[0]);pageKeys=on?[...new Set([...pageKeys,...keys])]:pageKeys.filter(k=>!keys.includes(k));}
- async function editPermissions(u:ManagedUser){permissionsUser=u;permissionsReady=false;permissionLoading=true;const p=await vm.loadPermissions(u.userId);permissionsReady=!!p;pageKeys=editableUserPageGrantKeys(p);permissionLoading=false;}
- async function savePerms(){if(permissionsUser&&permissionsReady&&await vm.savePermissions(permissionsUser.userId,pageKeys))permissionsUser=null;}
+ async function editPermissions(u:ManagedUser){const epoch=++permissionLoadEpoch;permissionsUser=u;permissionsReady=false;permissionLoading=true;const p=await vm.loadPermissions(u.userId);if(epoch!==permissionLoadEpoch||permissionsUser?.userId!==u.userId)return;permissionsReady=!!p;pageKeys=editableUserPageGrantKeys(p);permissionLoading=false;}
+ async function savePerms(){const target=permissionsUser;if(target&&permissionsReady&&await vm.savePermissions(target.userId,pageKeys)){await refreshOwnAccess(target.userId);if(permissionsUser?.userId===target.userId)permissionsUser=null;}}
  async function confirmDelete(){if(deleteTarget&&await vm.remove(deleteTarget.userId))deleteTarget=null;}
  function whName(id:number){const w=vm.warehouses.find(x=>x.warehouseId===id);return w?w.warehouseCode+' · '+w.warehouseName:String(id);}
 </script>
