@@ -35,7 +35,7 @@ Inventario extraído de `admin/src/App.jsx` en el baseline. El path Svelte indic
 | Fraud | `/fraud` | `/management/fraud` | CONSOLIDATED |
 | Backorders | `/backorders` | `/management/backorders` + `/management/backorders/:id` | CONSOLIDATED |
 | Returns | `/returns` | `/management/returns` | CONSOLIDATED |
-| RMA | `/returns/rma` (también redirect legacy `/rma`) | función incluida en `ReturnsScreen`; no se encontró ruta hija equivalente | COMPATIBILITY_GAP |
+| RMA | `/returns/rma` (también redirect legacy `/rma`) | alias HTTP 308 `/returns/rma` y `/rma` → `/management/returns` (`ReturnsScreen`) | ROUTE_MAPPED — PENDING_BROWSER_E2E |
 | Refunds | `/returns/refunds` | `/management/refunds` | CONSOLIDATED |
 | PickingTickets | `/picking-tickets` | `/picking-tickets` | ROUTE_MAPPED |
 | PickingTicketPrint | `/picking-tickets/:soId/print` | `/picking-tickets/:id/print` | ROUTE_MAPPED |
@@ -138,3 +138,30 @@ Se añadieron redirects HTTP 308 para 28 rutas antiguas que no tenían una pági
 **Estado de validación:** implementación y pruebas del mapa añadidas; Webapp CI del HEAD `bc3d84ac4dcb429a8e0383715ad6a9da557fe099` pendiente al registrar esta nota. Aún falta probar navegación real/refresh en navegador y validar permisos por rol en los destinos. Por tanto, el gap de URL queda `IMPLEMENTED_PENDING_CI_AND_BROWSER`, no `VERIFIED_PARITY`.
 
 **No se ha retirado React.**
+
+
+## 8. Revisión de implementación R10 (22-11-2026)
+
+**HEAD inspeccionado:** `ce6b7277dc5598c26ca8725c541b7f8e740e7752`.
+
+### Verificado estáticamente
+- Las 28 claves del mapa `LEGACY_ROUTE_REDIRECTS` tienen wrappers `+page.server.ts` y `+page.svelte`.
+- Los wrappers usan `redirect(308, LEGACY_ROUTE_REDIRECTS[...])`; el test recorre el mapa y comprueba que cada wrapper referencia la clave correspondiente.
+- RMA y Refunds están consolidados en las pantallas `ReturnsScreen` y `RefundsScreen` servidas por `/management/returns` y `/management/refunds`.
+- `AdminOperationScreen` comprueba la feature contra `ADMIN_OPERATION_CATALOG` y muestra estado «Módulo no encontrado» si no está catalogada.
+- React permanece en el repositorio. No se ha eliminado `admin/`.
+
+### Hallazgos y límites
+- El test de compatibilidad es una prueba estática de mapa/wrappers; no prueba una respuesta HTTP 308 real, navegación del navegador, query strings, refresh con sesión ni permisos en destino.
+- Diferencia pendiente de comprobar: React redirige `/warehouses` a `/data/warehouses`; Svelte sirve `/warehouses` con `WarehousesScreen` directamente. La pantalla puede ser funcionalmente equivalente, pero no se ha probado el contenedor/tab ni el resultado de navegación.
+- No hay Playwright/Cypress ni script `test:e2e` declarado en `webapp/package.json`. No existe evidencia de ejecución de los recorridos autenticados R1–R9 contra Flask.
+- No se ha completado todavía una auditoría exhaustiva de mocks/fixtures/adaptadores en runtime ni la matriz de negocio por operación/endpoints/permisos/scope.
+
+### Estado de aceptación
+- `R10.0 ROUTE INVENTORY`: implementado.
+- `R10.2 LEGACY URL WRAPPERS`: implementación estática completada; CI y navegador pendientes.
+- `R10.3 E2E RUNBOOK`: preparado; ejecución bloqueada hasta disponer de entorno Flask de pruebas, dataset reiniciable y cuentas representativas.
+- `R10.1, R10.4–R10.7`: pendientes.
+- `R10.8 React retirement`: bloqueado; requiere evidencia completa y aprobación explícita.
+
+No declarar R10 completa ni paridad funcional a partir de estos checks estáticos.
