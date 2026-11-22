@@ -60,7 +60,7 @@ const HOME_ROUTE_CANDIDATES: { pageKey: string; path: string }[] = [
 	{ pageKey: 'purchase-orders', path: '/management/purchase-orders' },
 	{ pageKey: 'items', path: '/items' },
 	{ pageKey: 'preferred-bins', path: '/data/preferred-bins' },
-	{ pageKey: 'warehouses', path: '/warehouses' },
+	{ pageKey: 'warehouses', path: '/data/warehouses' },
 	{ pageKey: 'vendors', path: '/management/vendors' },
 	{ pageKey: 'users', path: '/management/users' },
 	{ pageKey: 'settings', path: '/management/settings' }
