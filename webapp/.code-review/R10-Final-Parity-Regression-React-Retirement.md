@@ -187,3 +187,18 @@ La revisión de React confirmó que `/warehouses` es un alias histórico hacia `
 **Límite:** son pruebas estáticas de filesystem/catálogo. No prueban el status HTTP observado en servidor, la navegación del browser, query strings, refresh autenticado ni la autorización efectiva Flask. Esas comprobaciones siguen en R10.2/R10.3 E2E. Estado: `IMPLEMENTED_PENDING_CI_AND_BROWSER`.
 
 **React sigue intacto.**
+
+
+## 11. R10.1 — inventario real de UseCases y tests
+
+En `.code-review/R10.1-Operation-Traceability-Matrix.md` se añadió el inventario de archivos UseCase y tests presentes por feature, con rutas exactas de filesystem para R1–R9. También se inspeccionaron implementaciones de validación en Items, Receiving, Cycle Count, Sales Orders, Picking, Packing, Shipping, Returns, Refunds, Webhooks, Integrations y Audit Log.
+
+Esto eleva la trazabilidad a `USECASE_AND_TEST_INVENTORY_ADDED`, pero **no** cierra el enlace uno-a-uno React handler → UseCase → endpoint → test. Los tests existentes son unitarios/feature y no prueban persistencia Flask. El estado de R10.1 sigue parcial.
+
+## 12. R10.2 — fallo CI y corrección de imports
+
+Webapp CI run [45049207492](https://github.com/danielitoCode/smart-wms/actions/runs/45049207492), commit `854d850`, falló en `svelte-check`: 29 errores idénticos `Cannot find module '$lib/navigation/legacyRouteRedirects'`. El proyecto configura el alias `#lib/*` en `webapp/tsconfig.json`; no configura el alias `$lib` porque sus paths personalizados lo sustituyen.
+
+Se corrigieron los wrappers heredados para importar `#lib/navigation/legacyRouteRedirects` y se añadió una aserción que impide volver a introducir el alias incorrecto en cualquier wrapper. Commit correctivo `16381ef`; test de regresión `fdff7d9`.
+
+**Pendiente:** CI del HEAD `70212a8` y navegación HTTP/browser. Hasta entonces R10.2 queda `IMPLEMENTED_PENDING_CI_AND_BROWSER`, no validada. React y Flask siguen sin modificarse.
