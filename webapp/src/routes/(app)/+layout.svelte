@@ -11,7 +11,7 @@
 	import type { I18nState } from '../../lib/i18n/i18n.svelte';
 	import { createAuthGuardState } from '../../core/feature/auth/ui/state/authGuardState.svelte';
 	import { createWarehouseSelectionState } from '../../core/feature/warehouses/ui/state/warehouseSelectionState.svelte';
-	import { canAccessAnyPages, canAccessOperationalFunction, canAccessPages, routeAccessPolicyForPath } from '../../core/feature/auth/domain/policy/AccessPolicy';
+	import { canAccessAdminRoute, canAccessAnyPages, canAccessOperationalFunction, canAccessPages, routeAccessPolicyForPath } from '../../core/feature/auth/domain/policy/AccessPolicy';
 
 	const i18n = getContext<I18nState>('i18n');
 	let { children } = $props();
@@ -100,6 +100,7 @@
 		if (guard.user?.mustChangePassword) return page.url.pathname === '/change-password';
 		if (!routeAccess) return false;
 		if (routeAccess.kind === 'authenticated') return true;
+		if (routeAccess.kind === 'admin') return canAccessAdminRoute(guard.user?.role ?? 'USER');
 		if (routeAccess.kind === 'function') return canAccessOperationalFunction(guard.user?.role ?? 'USER', guard.user?.allowedFunctions ?? [], routeAccess.functionKey);
 		if (routeAccess.kind === 'all') {
 			return canAccessPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], routeAccess.pageKeys);
@@ -113,6 +114,9 @@
 	});
 
 	function canSeeNavItem(item: NavItem) {
+		if (item.href === '/management/audit-log' || item.href === '/warehouses') {
+			return canAccessAdminRoute(guard.user?.role ?? 'USER');
+		}
 		if (item.functionKey) return canAccessOperationalFunction(guard.user?.role ?? 'USER', guard.user?.allowedFunctions ?? [], item.functionKey);
 		if (item.pageKey) {
 			const role = guard.user?.role ?? 'USER';
@@ -122,7 +126,7 @@
 		}
 		if (item.href === '/data') {
 			return canAccessAnyPages(guard.user?.role ?? 'USER', guard.user?.allowedPages ?? [], [
-				'warehouses', 'bins', 'zones', 'preferred-bins'
+				'bins', 'zones', 'preferred-bins'
 			]);
 		}
 		return true;
