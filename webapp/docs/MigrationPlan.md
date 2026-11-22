@@ -1051,3 +1051,14 @@ El alcance frontend R7 está implementado: contratos y políticas de Returns/RMA
 - El workflow separado `Tests` ejecuta pruebas backend y no forma parte del criterio de aceptación frontend de esta migración.
 
 **Estado:** `FRONTEND_IMPLEMENTATION_COMPLETE / CI_BLOCKED_BY_LOCKFILE`. No declarar `FRONTEND_VERIFIED` hasta regenerar el lockfile coherente con `webapp/package.json` y ejecutar satisfactoriamente en el HEAD resultante la instalación limpia, typecheck, build, suites UI y regresión completa de `webapp/`. Las limitaciones Flask/Python continúan en `.code-review/R7-Returns-RMA-Refunds-Audit.md`; no se modificó backend ni se usaron pruebas backend para aceptar Svelte.
+
+## R8.1 y R8.2 — hardening de usuarios y aislamiento administrativo (22-11-2026)
+
+**Estado:** `FRONTEND_HARDENING_IMPLEMENTED / CI_PENDING / BACKEND_SCOPE_LIMITATIONS`.
+
+- R8.1: los grants sintéticos de ADMIN no se reutilizan como permisos USER al degradar el rol; las cargas asíncronas de grants descartan respuestas obsoletas; después de modificar la cuenta propia o sus permisos se refresca `/api/auth/me` y el contexto de almacén. El guardado de usuario y el reemplazo de grants siguen siendo dos operaciones separadas y el UI conserva el error/estado parcial si falla la segunda.
+- R8.2: Audit log y las vistas administrativas globales de almacenes quedan restringidas a ADMIN en route policy, shell y navegación. El page grant `warehouses` no amplía el selector operativo: USER queda limitado a los almacenes asignados en `/api/auth/me` y disponibles en el catálogo operativo; ADMIN mantiene alcance global.
+- Pruebas nuevas: `src/test/unitTest/feature/auth/domain/AccessPolicy.test.ts`; se mantienen las pruebas de `src/test/unitTest/feature/users/domain/UserPageGrantPolicy.test.ts`.
+- Auditoría detallada: `.code-review/R8-Administration-Users-Permissions-Configuration-Audit.md`.
+
+**No cerrar R8 todavía:** CI Webapp debe pasar sobre el HEAD definitivo. Flask continúa sin scope por almacén para audit-log y CRUD administrativo de almacenes; ADMIN-only es una barrera frontend, no enforcement server-side. No se modifica Flask/Python.
