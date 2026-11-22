@@ -14,6 +14,9 @@
 	const warehouseSelection = getContext<{ warehouseId: number | null } | undefined>('warehouseSelection');
 	let poSearch = $state('');
 	let poStatus = $state<'' | 'OPEN' | 'PARTIAL' | 'RECEIVED' | 'CLOSED'>('');
+	function setPoStatus(value: string) {
+		if (value === '' || value === 'OPEN' || value === 'PARTIAL' || value === 'RECEIVED' || value === 'CLOSED') poStatus = value;
+	}
 
 	let lastListedWarehouse: number | null | undefined = undefined;
 	$effect(() => {
@@ -89,7 +92,7 @@
 		</div>
 		<div class="po-filters">
 			<input type="search" placeholder={i18n.t('Buscar número o proveedor')} value={poSearch} oninput={(e) => poSearch = e.currentTarget.value} />
-			<select value={poStatus} onchange={(e) => poStatus = e.currentTarget.value}>
+			<select value={poStatus} onchange={(e) => setPoStatus(e.currentTarget.value)}>
 				<option value="">{i18n.t('Todos los estados')}</option>
 				<option value="OPEN">OPEN</option><option value="PARTIAL">PARTIAL</option>
 				<option value="RECEIVED">RECEIVED</option><option value="CLOSED">CLOSED</option>
