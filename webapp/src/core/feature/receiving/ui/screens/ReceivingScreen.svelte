@@ -13,13 +13,13 @@
 	const poList = createPurchaseOrdersState();
 	const warehouseSelection = getContext<{ warehouseId: number | null } | undefined>('warehouseSelection');
 	let poSearch = $state('');
-	let poStatus = $state('');
+	let poStatus = $state<'' | 'OPEN' | 'PARTIAL' | 'RECEIVED' | 'CLOSED'>('');
 
 	onMount(() => { void poList.load(warehouseSelection?.warehouseId ?? null); });
 
 	async function refreshPoList() {
 		poList.setFilter('search', poSearch);
-		poList.setFilter('status', poStatus as any);
+		poList.setFilter('status', poStatus);
 		await poList.load(warehouseSelection?.warehouseId ?? null);
 	}
 
