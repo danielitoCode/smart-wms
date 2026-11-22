@@ -79,11 +79,18 @@ Estos guards son mitigaciones de interfaz. El backend sigue aceptando page grant
 - Customers continúa read-only y etiqueta correctamente el alcance de deduplicación y conteos.
 - Las capacidades inexistentes se etiquetan como futuras/no disponibles; no se simula éxito.
 
+
+### Revisión adicional R9.1–R9.3 (HEAD d3e9d53027a2)
+
+- **R9.1 Webhooks:** los schemas Flask fijan `rate_limit_per_second` entre 1 y 100; `pending_ceiling` y `dlq_ceiling` son enteros >= 1. El caso de uso Svelte valida estos rangos y el límite de página DLQ (1–500). El replay por lotes usa estados permitidos (`dlq`, `failed`, `succeeded`), rango temporal y warehouse opcional; el UI conserva el acknowledgement del replay masivo. Los endpoints de errores y replay siguen siendo globales y dependen de la mitigación ADMIN-only.
+- **R9.2 Connectors:** catálogo/schema globales; credenciales, test, sync-status, reset y execute incluyen `warehouse_id` y el middleware Flask aplica validación de almacén. GET solo devuelve claves enmascaradas. El método legacy `IntegrationsRemoteDataSource.test(name)` no incluye warehouse_id y no forma parte del flujo DI actual; verificar consumidores y eliminarlo antes del cierre.
+- **R9.3 Audit Log:** el backend admite action/user/date/item, page/per_page y sort whitelist (`created_at`, `action_type`, `user_id`, `entity_type`). No hay filtro ni scope por warehouse. La UI conserva ADMIN-only. Se corrigió una carrera frontend: una respuesta antigua ya no puede sobrescribir el resultado de un filtro posterior; se añadió prueba de regresión. La redacción de `details` es de presentación, no protección de almacenamiento ni API.
+
 ## Pendientes para siguientes incrementos
 
-- R9.1: endurecer y probar ciclo de vida del secreto, replay simple/lote, DLQ/errores y permisos globales de Webhooks.
-- R9.2: regresión de Connectors y errores/estado por warehouse, integrando las protecciones R8.5.
-- R9.3: verificar filtros, paginación, redacción y ADMIN-only de Audit Log; documentar el límite de scope global.
+- R9.1: completar matriz de pruebas de secreto/rotación, replay simple/lote, DLQ/errores, límites y errores HTTP; confirmar el guard ADMIN-only en pruebas de rutas.
+- R9.2: completar regresión de errores 400/403/404 por almacén, confirmar cambio rápido de almacén y limpiar el método legacy de test sin warehouse si no tiene consumidores.
+- R9.3: ampliar pruebas de filtros/paginación/sorting/redacción, verificar ADMIN-only y mantener explícito que el aislamiento por almacén no existe en Flask.
 - R9.4: comprobar ausencia de score inventado y reforzar pruebas de warehouse scope y transiciones Fraud.
 - R9.5: probar la proyección de Customers y hacer explícitos los límites de identidad, deduplicación y conteo.
 - R9.6: regresión integrada de R9 y verificación Webapp CI sobre HEAD definitivo.
