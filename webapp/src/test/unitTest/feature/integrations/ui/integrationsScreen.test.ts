@@ -19,6 +19,7 @@ describe('Integrations screen accessibility contract', () => {
     expect(screen).toContain('role="status"');
   });
   it('does not reveal existing credential values and clears plaintext drafts on destroy', () => {
+    expect(screen).toContain("secret === true || /secret|token|key|password|credential/i.test(key)");
     expect(screen).toContain("return 'password'");
     expect(screen).toContain('Deja vacío para conservar el valor actual');
     expect(screen).not.toContain('value={item.value}');
