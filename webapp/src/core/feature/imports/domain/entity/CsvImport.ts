@@ -28,7 +28,7 @@ export type ImportResult = {
 export type ImportJob = {
 	source: ImportSource;
 	importType: CsvImportType;
-	status: 'ready' | 'running' | 'completed' | 'partial' | 'failed';
+	status: 'ready' | 'running' | 'completed' | 'partial' | 'failed' | 'unknown';
 	result: ImportResult | null;
 };
 
