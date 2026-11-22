@@ -96,3 +96,13 @@ Estos guards son mitigaciones de interfaz. El backend sigue aceptando page grant
 - R9.6: regresión integrada de R9 y verificación Webapp CI sobre HEAD definitivo.
 
 **No se modificó Flask/Python.**
+
+
+### Revisión adicional R9.4–R9.6 (22-11-2026)
+
+- **Fraud — contrato real:** cola por `status=FRAUD_REVIEW`, `warehouse_id`, `page` y `per_page=50`; detalle, memo con `expected_memo`, historial paginado y `push-to-queue` usan los endpoints existentes. El mapper rechaza el detalle si el pedido ya no está en `FRAUD_REVIEW`. La transición disponible es manual: `push-to-queue` devuelve el pedido a la cola de preparación; no es una decisión de un modelo antifraude. No hay score ni recommendation en DTO.
+- **Fraud — endurecimiento:** las mutaciones memo/push ya no actualizan ni recargan el estado si el contexto de almacén/lista fue invalidado mientras la petición estaba en vuelo. El resultado de `push` queda condicionado a que la recarga de la bandeja se complete; si no puede verificarse el estado nuevo, no se reporta la operación como refrescada. Pruebas nuevas cubren el cambio de contexto durante memo y push.
+- **Customers — contrato real:** `/api/admin/search` exige al menos dos caracteres y devuelve hasta 10 coincidencias de customer por consulta; cada resultado es `DISTINCT customer_name` más un count de sales orders dentro del warehouse consultado, sin ID canónico. `/api/admin/sales-orders` pagina pedidos, no clientes. El UI limita la página de origen a 50 pedidos; la deduplicación por nombre normalizado y los conteos derivados de filas quedan explícitamente limitados a esa página. El historial filtra por nombre exacto sobre candidatos `q`, cuyo total puede incluir coincidencias por número de pedido.
+- **Customers — endurecimiento:** `setWarehouseId` invalida inmediatamente solicitudes y detalle anteriores y limpia datos del almacén previo. Se corrigió además una carrera real: las respuestas de búsqueda/listado ahora se aplican solo si su request version sigue vigente; anteriormente la versión protegía errores/loading pero no impedía que una respuesta vieja sobrescribiera resultados recientes. Pruebas nuevas cubren respuesta antigua de búsqueda, cambio de almacén y detalle tardío.
+- **R9.6 — regresión:** añadidas pruebas unitarias de estado para los casos de concurrencia anteriores, manteniendo pruebas existentes de DTO/mapper, límites, paginación, scope y transiciones. La matriz completa y la aceptación CI permanecen pendientes hasta obtener un resultado exitoso en el HEAD definitivo.
+- **Límite de alcance:** no se modificó Flask/Python. No se simula una evaluación antifraude ni un CRUD/merge de clientes. Las comprobaciones frontend no reemplazan las validaciones warehouse-scoped del servidor.
