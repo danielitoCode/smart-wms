@@ -23,14 +23,16 @@
 		const warehouseId = warehouseSelection?.warehouseId ?? null;
 		if (lastListedWarehouse !== warehouseId) {
 			lastListedWarehouse = warehouseId;
-			void poList.load(warehouseId);
+			if (warehouseId != null) void poList.load(warehouseId);
 		}
 	});
 
 	async function refreshPoList() {
+		const warehouseId = warehouseSelection?.warehouseId ?? null;
+		if (warehouseId == null) return;
 		poList.setFilter('search', poSearch);
 		poList.setFilter('status', poStatus);
-		await poList.load(warehouseSelection?.warehouseId ?? null);
+		await poList.load(warehouseId);
 	}
 
 	async function openListedPo(poNumber: string) {
@@ -86,6 +88,9 @@
 	/>
 
 	<section class="po-list" aria-labelledby="po-list-title">
+		{#if warehouseSelection?.warehouseId == null}
+			<UiStatePanel kind="empty" title={i18n.t('Selecciona un almacén')} message={i18n.t('La recepción y los bins se cargarán únicamente para el almacén activo.')} />
+		{:else}
 		<div class="history-heading">
 			<h3 id="po-list-title">{i18n.t('Órdenes de compra')}</h3>
 			<button type="button" class="secondary" onclick={refreshPoList} disabled={poList.loading}>{poList.loading ? i18n.t('Actualizando…') : i18n.t('Actualizar lista')}</button>
@@ -124,6 +129,7 @@
 				<button type="button" class="secondary" onclick={() => { poList.setPage(Math.max(1, poList.pagination.page - 1)); void poList.load(warehouseSelection?.warehouseId ?? null); }} disabled={poList.pagination.page <= 1 || poList.loading}>{i18n.t('Anterior')}</button>
 				<button type="button" class="secondary" onclick={() => { poList.setPage(Math.min(poList.pagination.pages, poList.pagination.page + 1)); void poList.load(warehouseSelection?.warehouseId ?? null); }} disabled={poList.pagination.page >= poList.pagination.pages || poList.loading}>{i18n.t('Siguiente')}</button>
 			</div>
+		{/if}
 		{/if}
 	</section>
 
