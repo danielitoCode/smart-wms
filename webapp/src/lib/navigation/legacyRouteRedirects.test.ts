@@ -33,6 +33,7 @@ describe('React-era route compatibility (R10)', () => {
       '/users',
       '/vendors',
       '/webhooks',
+      '/warehouses',
       '/zones'
     ].sort());
   });
@@ -59,6 +60,28 @@ describe('React-era route compatibility (R10)', () => {
     }
   });
 
+  it('resolves every canonical destination to a concrete or explicitly catalogued Svelte route', () => {
+    const appRoutes = join(process.cwd(), 'src/routes/(app)');
+    const managementPage = join(appRoutes, 'management/[feature]/+page.svelte');
+    const managementSource = readFileSync(managementPage, 'utf8');
+
+    for (const [legacyPath, destination] of Object.entries(LEGACY_ROUTE_REDIRECTS)) {
+      const segments = destination.split('/').filter(Boolean);
+      const routeDirectory = join(appRoutes, ...segments);
+      const concretePage =
+        existsSync(join(routeDirectory, '+page.svelte')) ||
+        existsSync(join(routeDirectory, '+page.server.ts'));
+
+      if (concretePage) continue;
+
+      expect(segments[0], legacyPath).toBe('management');
+      expect(existsSync(managementPage), legacyPath).toBe(true);
+      expect(managementSource, legacyPath).toContain(
+        `page.params.feature === '${segments[1]}'`
+      );
+    }
+  });
+
   it('preserves the RMA and master-data destinations', () => {
     expect(LEGACY_ROUTE_REDIRECTS['/rma']).toBe('/management/returns');
     expect(LEGACY_ROUTE_REDIRECTS['/returns/rma']).toBe('/management/returns');
@@ -66,5 +89,6 @@ describe('React-era route compatibility (R10)', () => {
     expect(LEGACY_ROUTE_REDIRECTS['/bins']).toBe('/data/bins');
     expect(LEGACY_ROUTE_REDIRECTS['/zones']).toBe('/data/zones');
     expect(LEGACY_ROUTE_REDIRECTS['/preferred-bins']).toBe('/data/preferred-bins');
+    expect(LEGACY_ROUTE_REDIRECTS['/warehouses']).toBe('/data/warehouses');
   });
 });
