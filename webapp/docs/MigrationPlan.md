@@ -1265,3 +1265,12 @@ La ejecución R1–R9 sigue pendiente. Los casos bloqueados por limitaciones Fla
 - CI del HEAD `9b4fed2`: [Webapp CI](https://github.com/danielitoCode/smart-wms/actions/runs/45049861361) pasó typecheck, build, suites Domain/Application/Infrastructure/UI/i18n/Integration, Full regression y Coverage by feature paths. [Tests](https://github.com/danielitoCode/smart-wms/actions/runs/45049861332) falló en el workflow Python/backend; es independiente del job Webapp y no se atribuye a Svelte. Lockfile, gitleaks y Dependency Audit pasaron.
 - No se modificó Flask/Python ni se retiró React.
 - Siguiente trabajo: leer aserciones de tests de Preferred Bins/Receiving, completar decorators/permisos/warehouse scope, decidir y resolver el gap de R2 dentro del frontend según el contrato existente, y continuar R2.4 antes de extender la auditoría a R3–R9. Ejecutar E2E contra Flask sigue pendiente.
+
+
+### R10.1 — ampliación R2.4 Purchase Orders (22-11-2026)
+
+- Se cotejó `admin/src/pages/PurchaseOrders.jsx` con `PurchaseOrderUseCases.ts`, `PurchaseOrdersRemoteDataSource.ts`, state y pantalla Svelte.
+- Acciones trazadas: listado/paginación/filtros, detalle, edición de cabecera, add/update/delete line, close/reopen y export CSV.
+- Diferencias registradas: selección de producto por SKU typeahead en React frente a ID numérico en Svelte; edición de status vía PUT frente a lifecycle endpoints explícitos; export CSV de detalle React no localizado en la pantalla Svelte revisada; historial de receipts está presente en PurchaseOrders pero no en el flujo barcode de Receiving.
+- Matriz: sección 8.3 de `.code-review/R10.1-Operation-Traceability-Matrix.md`. Estado R2.4: `CODE_CROSSCHECK_PARTIAL`.
+- Commit: `efc1cc8777fe4830450a30ddbf31d2abf7a05cc2`. No se modifica Flask/Python.
