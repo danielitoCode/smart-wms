@@ -70,7 +70,8 @@
 		{ id: 'interactive-grid', name: 'InteractiveGridPattern', status: 'ready', href: '/lab/interactive-grid', description: 'Rejilla SVG interactiva: celdas con hover fill (fade-in rápido / fade-out lento).' },
 		{ id: 'pixel-image', name: 'PixelImage', status: 'ready', href: '/lab/pixel-image', description: 'Imagen que se revela por celdas (clip-path) con delays y paso grayscale → color.' },
 		{ id: 'warp-background', name: 'WarpBackground', status: 'ready', href: '/lab/warp-background', description: 'Caja 3D con rejilla y beams de color en las caras (CSS, sin Motion).' },
-		{ id: 'backlight', name: 'Backlight', status: 'ready', href: '/lab/backlight', description: 'Glow SVG: blur + saturación detrás del contenido (feGaussianBlur).' }
+		{ id: 'backlight', name: 'Backlight', status: 'ready', href: '/lab/backlight', description: 'Glow SVG: blur + saturación detrás del contenido (feGaussianBlur).' },
+		{ id: 'get-started-button', name: 'GetStartedButton', status: 'ready', href: '/lab/get-started-button', description: 'CTA amber/orange con flecha deslizante al hover.' }
 	] as const;
 </script>
 
