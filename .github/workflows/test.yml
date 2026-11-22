@@ -204,6 +204,22 @@ jobs:
           psql -h localhost -U sentry -d sentry -c "CREATE DATABASE sentry_test;"
           psql -h localhost -U sentry -d sentry_test -f db/schema.sql
 
+      - name: R2 warehouse scope and receiving contract regression
+        env:
+          DATABASE_URL: postgresql://sentry:sentry@localhost:5432/sentry
+          TEST_DATABASE_URL: postgresql://sentry:sentry@localhost:5432/sentry_test
+          JWT_SECRET: test-secret
+          REDIS_URL: redis://localhost:6379/0
+          SENTRY_PUBSUB_HMAC_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef
+        run: >-
+          cd api &&
+          python -m pytest
+          tests/test_purchase_order_warehouse_scope.py
+          tests/test_receiving.py
+          tests/test_admin_purchase_orders.py
+          tests/test_admin_unreceive.py
+          -q --tb=short
+
       - name: Run tests
         env:
           DATABASE_URL: postgresql://sentry:sentry@localhost:5432/sentry
