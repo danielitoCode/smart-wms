@@ -192,7 +192,7 @@
 											/>
 										</td>
 										<td>
-											<input type="text" value={draft.serialNumber} oninput={(e) => vm.updateDraft(index, { serialNumber: e.currentTarget.value })} disabled={vm.submitting} />
+											<input type="text" maxlength="100" value={draft.serialNumber} oninput={(e) => vm.updateDraft(index, { serialNumber: e.currentTarget.value })} disabled={vm.submitting} />
 										</td>
 										<td>
 											<input type="text" maxlength="1000" value={draft.notes} oninput={(e) => vm.updateDraft(index, { notes: e.currentTarget.value })} disabled={vm.submitting} />
