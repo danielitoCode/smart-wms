@@ -7,6 +7,8 @@ function createRepo(overrides: Partial<ReceivingRepository> = {}): ReceivingRepo
 		lookupByBarcode: vi.fn(),
 		receive: vi.fn(),
 		cancelReceipts: vi.fn(),
+		listReceipts: vi.fn(),
+		unreceive: vi.fn(),
 		...overrides
 	};
 }
