@@ -249,6 +249,7 @@ export function createReceivingState() {
 			if (!scope.isCurrent()) return false;
 			detail = refreshed;
 			drafts = mapDrafts(refreshed);
+			await loadReceiptHistory(refreshed.purchaseOrder.poId);
 			return true;
 		} catch (err) {
 			if (!scope.isCurrent() || isAbort(err)) return false;
