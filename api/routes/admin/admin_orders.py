@@ -331,7 +331,7 @@ def update_purchase_order(po_id, validated):
         text(
             "SELECT po_id, po_number, po_barcode, vendor_name, expected_date, "
             "notes, external_id, status, warehouse_id "
-            "FROM purchase_orders WHERE po_id = :pid {scope_clause} FOR UPDATE"
+            f"FROM purchase_orders WHERE po_id = :pid {scope_clause} FOR UPDATE"
         ),
         {"pid": po_id, **scope_params},
     ).fetchone()
