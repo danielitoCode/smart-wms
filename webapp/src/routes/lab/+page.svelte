@@ -78,7 +78,8 @@
 		{ id: 'swap-text', name: 'SwapText', status: 'ready', href: '/lab/swap-text', description: 'Texto que intercambia capa al hover (card + standalone click).' },
 		{ id: 'speed-dial', name: 'SpeedDial', status: 'ready', href: '/lab/speed-dial', description: 'FAB + acciones staggered (up/down/left/right), teclado y click-outside.' },
 		{ id: 'transaction-list', name: 'TransactionList', status: 'ready', href: '/lab/transaction-list', description: 'Lista de transacciones con detalle (tarjeta, fecha) y transición CSS.' },
-		{ id: 'stacked-sections', name: 'StackedSections', status: 'ready', href: '/lab/stacked-sections', description: 'Paneles sticky apilados con drama scale al pin (sin Lenis/Motion).' }
+		{ id: 'stacked-sections', name: 'StackedSections', status: 'ready', href: '/lab/stacked-sections', description: 'Paneles sticky apilados con drama scale al pin (sin Lenis/Motion).' },
+		{ id: 'delivery-card', name: 'DeliveryCard', status: 'ready', href: '/lab/delivery-card', description: 'Tracking: ETA, barra con camión, estado y ubicación (simulateProgress).' }
 	] as const;
 </script>
 
