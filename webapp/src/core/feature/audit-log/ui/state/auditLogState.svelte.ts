@@ -20,6 +20,7 @@ export function createAuditLogState() {
 	let pages = $state(1);
 	let sortBy = $state<NonNullable<AuditLogQuery['sortBy']>>('created_at');
 	let sortDirection = $state<NonNullable<AuditLogQuery['sortDirection']>>('desc');
+	let requestId = 0;
 
 	function query(): AuditLogQuery {
 		return {
@@ -33,11 +34,12 @@ export function createAuditLogState() {
 	}
 
 	async function load() {
-		if (loading) return;
+		const currentRequest = ++requestId;
 		loading = true;
 		error = null;
 		try {
 			const result = await deps.list.execute(query());
+			if (currentRequest !== requestId) return;
 			rows = result.rows;
 			page = result.page;
 			perPage = result.perPage;
@@ -45,9 +47,9 @@ export function createAuditLogState() {
 			pages = result.pages;
 			if (selected) selected = rows.find((row) => row.logId === selected?.logId) ?? selected;
 		} catch (e) {
-			error = toUserMessage(e, 'No se pudo cargar el registro de auditoría');
+			if (currentRequest === requestId) error = toUserMessage(e, 'No se pudo cargar el registro de auditoría');
 		} finally {
-			loading = false;
+			if (currentRequest === requestId) loading = false;
 		}
 	}
 
