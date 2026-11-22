@@ -169,3 +169,25 @@ At audited HEAD `5a2cb48adb09e2942f58eade176222744fb9b463`:
 7. **R8.7 — React parity and regression:** compare every route/action/validation/state; add Domain/Application/Data/UI/Integration tests and run all required Webapp CI jobs on final HEAD.
 
 **R8 closure rule:** frontend implementation can be marked complete only when all frontend guards, tests and CI pass. Integral R8 acceptance remains blocked where Flask does not enforce warehouse scope or record administrative audit events. Do not modify Flask/Python in this migration.
+
+## 7. Implementación R8.1 y R8.2 (22-11-2026)
+
+### R8.1 — usuarios y grants
+
+- `editableUserPageGrantKeys` trata la respuesta sintética `ADMIN/isFullAccess` como catálogo de visualización, nunca como grants persistidos. Al abrir un ADMIN, la selección editable queda vacía; al pasar a USER no se convierte el catálogo completo en permisos explícitos.
+- `UsersScreen` descarta respuestas tardías de carga de permisos mediante una generación local y verifica que el usuario abierto siga siendo el mismo antes de actualizar el formulario.
+- Después de modificar la cuenta propia o sus grants, el frontend vuelve a consultar `/api/auth/me` mediante `revalidatePermissions` y sincroniza el selector/contexto de almacén. Si el reemplazo de grants falla después de guardar la cuenta, el formulario permanece abierto y el error se conserva; no se presenta la operación como atómica.
+- Prueba unitaria `src/test/unitTest/feature/users/domain/UserPageGrantPolicy.test.ts` cubre USER con grants persistidos, ADMIN con catálogo sintético y carga fallida. La protección de rutas/contexto se cubre en `src/test/unitTest/feature/auth/domain/AccessPolicy.test.ts`.
+- Límite restante: Flask ejecuta la mutación de cuenta y el PUT de grants como requests separados. El frontend no puede garantizar atomicidad ni invalidar inmediatamente la sesión de otro navegador que ya esté abierto.
+
+### R8.2 — aislamiento de auditoría y administración de almacenes
+
+- `routeAccessPolicyForPath` devuelve política `admin` para `/management/audit-log`, `/warehouses` y `/data/warehouses` (incluidos sus descendientes). El shell deniega el render para USER aunque posea el page grant correspondiente.
+- La navegación oculta Audit log y administración de almacenes a no-ADMIN. La página de datos maestros no se habilita únicamente por el grant `warehouses`.
+- `resolveWarehouseSelection` y `canSelectWarehouse` ya no interpretan el page grant `warehouses` como permiso para ampliar el selector operativo a todo el catálogo. ADMIN conserva selección global; USER solo puede seleccionar IDs asignados y presentes en el catálogo operativo devuelto por el servidor.
+- No se filtran en cliente registros globales de auditoría ni se consulta el listado administrativo global de almacenes para ocultar filas después: las rutas se bloquean antes de montar sus pantallas.
+- Pruebas añadidas: ADMIN/USER para rutas, audit-log incluso con su grant, `/warehouses` y `/data/warehouses`, landing `/data`, selector USER limitado a `warehouseIds` y selector ADMIN global.
+
+**Estado de estos bloques:** `R8.1_FRONTEND_HARDENING_IMPLEMENTED` y `R8.2_FRONTEND_GUARDS_IMPLEMENTED`. La ejecución CI del HEAD que incluya estos cambios sigue siendo obligatoria; no se declara aún verificado.
+
+**Dependencias backend no resueltas:** las rutas Flask de audit-log y administración de almacenes siguen sin aislamiento por almacén. Por eso la restricción ADMIN-only es una mitigación frontend temporal, no una corrección de autorización del servidor. No se modificó Flask/Python.
