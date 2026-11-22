@@ -1115,12 +1115,12 @@ El alcance frontend R7 está implementado: contratos y políticas de Returns/RMA
 
 ## 27. R9 — Integraciones, webhooks, auditoría y operaciones complementarias (22-11-2026)
 
-**Estado:** `BASELINE_AUDITED / R9.1_FRONTEND_GUARDS_APPLIED / CI_PENDING`.
+**Estado:** `BASELINE_AUDITED / R9.3_REQUEST_RACE_FIXED / ACCEPTANCE_PENDING`. La regresión CI sobre el HEAD definitivo aún está pendiente.
 
 - R9.1 baseline: Flask soporta Webhooks CRUD, secreto one-time, rotación, DLQ paginada, stats, errores y replay simple/lote. Las rutas usan page grant `webhooks`, pero el conjunto es global y no valida scope de warehouses del actor; por ello `/management/webhooks` queda ADMIN-only en AccessPolicy como mitigación de interfaz.
 - El secreto one-time se elimina del estado de pantalla al desmontar WebhooksScreen. Se añadieron pruebas de policy ADMIN-only y limpieza del secreto.
 - R9.2: Connectors mantiene las defensas de R8.5: secretos enmascarados, contexto warehouse_id, limpieza del draft y errores/estado separados de ejecución de sync.
-- R9.3: Audit Log es global y no ofrece filtro/scope warehouse_id; route policy sigue ADMIN-only. La historia de auditoría de un SO sí valida scope del pedido y warehouse_id.
+- R9.3: Audit Log es global y no ofrece filtro/scope warehouse_id; route policy sigue ADMIN-only. La historia de auditoría de un SO sí valida scope del pedido y warehouse_id. Se corrigió la carrera de solicitudes de listado: solo la respuesta más reciente actualiza estado y loading.
 - R9.4: Fraud representa pedidos en estado `FRAUD_REVIEW` y acciones manuales soportadas; Flask no devuelve score ni recommendation. No se inventará evaluación.
 - R9.5: Customers es una proyección read-only de sales_orders/customer_name; no hay ID canónico ni paginación global de clientes. Dedupe/counts no se presentan como identidad/total global.
 - Auditoría detallada: `.code-review/R9-Integrations-Webhooks-Audit-Customers-Fraud.md`.
