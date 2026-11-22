@@ -2,6 +2,8 @@
 	"extends": "./.svelte-kit/tsconfig.json",
 	"compilerOptions": {
 		"strict": true,
+		"allowImportingTsExtensions": true,
+		"skipLibCheck": true,
 		"paths": {
 			"#core/*": ["./src/core/*"],
 			"#shared/*": ["./src/shared/*"],
