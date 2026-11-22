@@ -157,6 +157,22 @@ def test_receipt_history_unreceive_and_batch_cancel_respect_warehouse_scope(clie
     assert _query_one("SELECT 1 FROM item_receipts WHERE receipt_id = %s", (receipt_id,)) is not None
 
 
+def test_receiving_routes_require_receiving_page_grant(client):
+    user = _user_headers(client, [1], [])
+    headers = user
+    assert client.get("/api/receiving/po/PO-2026-001", headers=headers).status_code == 403
+    assert client.post(
+        "/api/receiving/receive",
+        headers=headers,
+        json={"po_id": 1, "items": [{"item_id": 1, "quantity": 1, "bin_id": 1}]},
+    ).status_code == 403
+    assert client.post(
+        "/api/receiving/cancel",
+        headers=headers,
+        json={"po_id": 1, "receipt_ids": [999999999]},
+    ).status_code == 403
+
+
 def test_create_purchase_order_rejects_unassigned_warehouse(client):
     user = _user_headers(client, [1], ["purchase-orders"])
     response = client.post(
@@ -173,11 +189,12 @@ def test_create_purchase_order_rejects_unassigned_warehouse(client):
 
 def test_receiving_grant_can_list_only_bins_and_purchase_orders_in_assigned_warehouse(client):
     admin = _admin_headers(client)
+    own_po_number = f"PO-WH-OWN-{uuid.uuid4().hex[:8]}"
     own_po = client.post(
         "/api/admin/purchase-orders",
         headers=admin,
         json={
-            "po_number": f"PO-WH-OWN-{uuid.uuid4().hex[:8]}",
+            "po_number": own_po_number,
             "warehouse_id": 1,
             "lines": [{"item_id": 1, "quantity_ordered": 2}],
         },
@@ -200,8 +217,49 @@ def test_receiving_grant_can_list_only_bins_and_purchase_orders_in_assigned_ware
     orders = client.get("/api/admin/purchase-orders?per_page=1000", headers=user)
     assert orders.status_code == 200, orders.get_json()
     listed_ids = {row["po_id"] for row in orders.get_json()["purchase_orders"]}
-    assert own_po.get_json()["purchase_order"]["po_id"] in listed_ids
+    own_po_id = own_po.get_json()["purchase_order"]["po_id"]
+    assert own_po_id in listed_ids
     assert foreign_po_id not in listed_ids
+
+    lookup = client.get(f"/api/receiving/po/{own_po_number}", headers=user)
+    assert lookup.status_code == 200, lookup.get_json()
+    assert lookup.get_json()["purchase_order"]["warehouse_id"] == 1
+
+    own_bin_id = _query_one(
+        """SELECT bin_id FROM bins
+           WHERE warehouse_id = 1 AND is_active = TRUE AND bin_type = 'Staging'
+           ORDER BY bin_id LIMIT 1"""
+    )[0]
+    own_receive = client.post(
+        "/api/receiving/receive",
+        headers=user,
+        json={"po_id": own_po_id, "items": [{"item_id": 1, "quantity": 1, "bin_id": own_bin_id}]},
+    )
+    assert own_receive.status_code == 200, own_receive.get_json()
+    own_receipt_id = own_receive.get_json()["receipt_ids"][0]
+    assert _query_one(
+        "SELECT warehouse_id FROM item_receipts WHERE receipt_id = %s AND po_id = %s",
+        (own_receipt_id, own_po_id),
+    )[0] == 1
+    assert _query_one(
+        "SELECT quantity_received FROM purchase_order_lines WHERE po_id = %s AND item_id = 1",
+        (own_po_id,),
+    )[0] == 1
+
+    foreign_bin_id = _create_warehouse_two_staging_bin()
+    foreign_receive = client.post(
+        "/api/receiving/receive",
+        headers=user,
+        json={"po_id": foreign_po_id, "items": [{"item_id": 1, "quantity": 1, "bin_id": foreign_bin_id}]},
+    )
+    assert foreign_receive.status_code == 404
+    assert _query_one(
+        "SELECT COUNT(*) FROM item_receipts WHERE po_id = %s", (foreign_po_id,)
+    )[0] == 0
+    assert _query_one(
+        "SELECT quantity_received FROM purchase_order_lines WHERE po_id = %s AND item_id = 1",
+        (foreign_po_id,),
+    )[0] == 0
 
     denied_foreign_filter = client.get(
         "/api/admin/purchase-orders?warehouse_id=2", headers=user
