@@ -22,3 +22,10 @@ describe('Webhooks screen contract and safety',()=>{
   expect(screen).not.toContain('getSecret');
  });
 });
+
+
+describe('Webhook secret lifecycle', () => {
+	it('clears the one-time plaintext secret when the screen is destroyed', () => {
+		expect(screen).toContain('onDestroy(()=>{vm.clearSecret();});');
+	});
+});
