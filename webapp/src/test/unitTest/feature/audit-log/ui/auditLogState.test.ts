@@ -52,4 +52,16 @@ describe('Audit log UI state', () => {
 		expect(state.error).toContain('entero positivo');
 		expect(deps.list.execute).not.toHaveBeenCalled();
 	});
+
+  it('rejects out-of-range pagination and invalid date ranges without issuing requests', async () => {
+    const state = createAuditLogState();
+    await state.changePage(0);
+    await state.changePage(2);
+    expect(deps.list.execute).not.toHaveBeenCalled();
+    state.setStartDate('2026-11-18');
+    state.setEndDate('2026-11-01');
+    await state.applyFilters();
+    expect(state.error).toContain('fecha inicial');
+    expect(deps.list.execute).not.toHaveBeenCalled();
+  });
 });
