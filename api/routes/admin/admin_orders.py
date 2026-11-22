@@ -109,7 +109,7 @@ from utils.validation import validate_body
 
 @admin_bp.route("/purchase-orders", methods=["GET"])
 @require_auth
-@require_admin_or_page_permission("purchase-orders")
+@require_admin_or_any_page_permission("purchase-orders", "receiving")
 @with_db
 def list_purchase_orders():
     scope_clause, scope_params = warehouse_scope_clause("warehouse_id")
