@@ -1062,3 +1062,15 @@ El alcance frontend R7 está implementado: contratos y políticas de Returns/RMA
 - Auditoría detallada: `.code-review/R8-Administration-Users-Permissions-Configuration-Audit.md`.
 
 **No cerrar R8 todavía:** CI Webapp debe pasar sobre el HEAD definitivo. Flask continúa sin scope por almacén para audit-log y CRUD administrativo de almacenes; ADMIN-only es una barrera frontend, no enforcement server-side. No se modifica Flask/Python.
+
+## R8.3 y R8.4 — configuración e importaciones (22-11-2026)
+
+**Estado:** `FRONTEND_HARDENING_IMPLEMENTED / CI_PENDING / BACKEND_LIMITATIONS`.
+
+- R8.3: ajustes etiquetados como globales; edición y guardado bloqueados hasta carga correcta del servidor; reintento de carga; validación de claves conocidas y confirmación de cambios sensibles conservadas. El PUT envía solo claves modificadas. No se representa configuración por almacén porque Flask no ofrece ese scope.
+- R8.4: preflight limita filas con `warehouse_id` al almacén activo y valida bins/default_bin mediante el catálogo operativo paginado del almacén. La operación se bloquea si no puede verificarse el catálogo o cambia el almacén durante el preflight. Se valida 10 MiB de archivo y payload serializado, además de 5.000 filas.
+- R8.4: eliminado el reintento de filas fallidas. Un resultado parcial requiere reconciliación manual; un fallo sin resultado confirmado se representa como `unknown` y bloquea el reenvío del mismo archivo. Plantillas de almacén usan el contexto activo y la de productos no incluye stock inicial/bin de ejemplo.
+- Pruebas añadidas: `src/test/unitTest/feature/settings/domain/SettingValidation.test.ts` y `src/test/unitTest/feature/imports/domain/ImportWarehouseScopePolicy.test.ts`.
+- Auditoría detallada: `.code-review/R8-Administration-Users-Permissions-Configuration-Audit.md`.
+
+**No cerrar R8 todavía:** CI Webapp completo debe pasar sobre HEAD definitivo. Flask aún carece de idempotencia de importación y de validación por fila de la relación warehouse/bin; los guards Svelte son una defensa de UX/datos, no sustituyen autorización backend.
