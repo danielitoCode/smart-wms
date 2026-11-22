@@ -1095,3 +1095,19 @@ El alcance frontend R7 está implementado: contratos y políticas de Returns/RMA
 - Para cerrar integralmente R8 se requieren eventos transaccionales con redacción de secretos, aislamiento por almacén, idempotencia/validación por fila de importaciones y política de invalidación de sesiones.
 
 **No se modifica Flask/Python.** La matriz documenta las limitaciones; no equivale a una certificación backend ni a un ledger completo.
+
+
+## 26. R8.7 — diagnóstico del bloqueo global y regresión (22-11-2026)
+
+**Cambios frontend aplicados para desbloquear Webapp CI:**
+- Se actualizó `src/test/unitTest/feature/imports/ui/importsState.test.ts`: el test antiguo esperaba `failedRows/retryFailedRows`, APIs eliminadas intencionalmente por R8.4. Ahora verifica que no se reenvía el mismo archivo y que solo tras reconciliar y preparar otro archivo puede ejecutarse una nueva importación.
+- Se corrigió el tipo de `combinedStyle` en `src/lib/components/GridReveal.svelte`: el atributo Svelte `style` recibe una cadena CSS válida, no una unión string/objeto incompatible.
+- Se reforzó la máscara de credenciales: los nombres sensibles siempre usan input password aunque el schema declare `secret: false`; el draft se descarta al destruir la pantalla. Se añadieron aserciones de integración para que plaintext inesperado no pase al modelo de dominio.
+
+**Diagnóstico del último Webapp CI completado antes de estas correcciones:** run [45037456473](https://github.com/danielitoCode/smart-wms/actions/runs/45037456473), HEAD `06bf86d00b6260dbeaa009f65175a0fe1a697156`. Instalación y SvelteKit sync pasaron; typecheck falló con 3 errores (dos referencias obsoletas a `failedRows/retryFailedRows` y el tipo de `GridReveal.style`). Build y suites frontend se omitieron por el fallo de typecheck. Lockfile Version Check, Dependency Audit y gitleaks pasaron.
+
+**Workflow backend separado:** [45037456503](https://github.com/danielitoCode/smart-wms/actions/runs/45037456503), mismo HEAD, terminó con **122 failed / 3.049 passed / 1.519 warnings**. Los fallos incluyen incompatibilidades de resultados con `batch_id` y aserciones de inventario/transferencias. Este workflow ejecuta pytest/Flask, no Svelte. No se modifica Python/Flask ni se usa ese resultado como aceptación frontend.
+
+**Verificación del HEAD actual de esta actualización:** `e562108fd62a29fc834804d52e7dde1e5b047ece`. Webapp CI [45039317140](https://github.com/danielitoCode/smart-wms/actions/runs/45039317140) estaba en estado `pending` al registrar este diagnóstico; no se afirma que typecheck, build o regresión hayan pasado. Lockfile Version Check [45039317213](https://github.com/danielitoCode/smart-wms/actions/runs/45039317213) y gitleaks [45039317215](https://github.com/danielitoCode/smart-wms/actions/runs/45039317215) finalizaron correctamente. Dependency Audit y Tests seguían en ejecución.
+
+**Criterio de cierre R8.7:** Webapp CI debe completar en el HEAD final con install, typecheck, build, Domain, Application, Infrastructure, UI, i18n, Integration y Full regression en verde. El workflow Flask/Python permanece como bloqueo global independiente y requiere un trabajo backend separado; no se puede declarar todo el repositorio verde desde una migración limitada a `webapp/`.
