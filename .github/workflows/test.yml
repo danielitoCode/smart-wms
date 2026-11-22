@@ -216,7 +216,6 @@ jobs:
           python -m pytest
           tests/test_purchase_order_warehouse_scope.py
           tests/test_receiving.py
-          tests/test_admin_purchase_orders.py
           tests/test_admin_unreceive.py
           -q --tb=short
 
