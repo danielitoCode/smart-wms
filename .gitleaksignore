@@ -5,3 +5,6 @@
 6f75d2c403b320c8f70e47030ed79b17c2e611f1:wms-twin/internal/application/pos/pos_test.go:generic-api-key:118
 6f75d2c403b320c8f70e47030ed79b17c2e611f1:wms-twin/internal/application/pos/pos_test.go:generic-api-key:123
 6f75d2c403b320c8f70e47030ed79b17c2e611f1:wms-twin/internal/application/pos/pos_test.go:generic-api-key:129
+
+# Short deterministic dummy HMAC key introduced by the R2 targeted CI step; exact historical finding only.
+335ce125f2c126762dce2354f849d21175e598fb:.github/workflows/test.yml:generic-api-key:213
