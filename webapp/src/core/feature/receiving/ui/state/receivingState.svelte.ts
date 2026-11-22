@@ -68,17 +68,21 @@ export function createReceivingState() {
 	let lastUnreceive = $state<UnreceiveResult | null>(null);
 
 	async function loadReceiptHistory(poId: number) {
+		const scope = warehouseSelection?.beginScopedRequest() ?? beginWarehouseScopedRequest();
 		receiptsLoading = true;
 		receiptsError = null;
 		try {
 			const result = await deps.listReceipts.execute(poId);
+			if (!scope.isCurrent()) return false;
 			receipts = result;
 			return true;
 		} catch (err) {
+			if (!scope.isCurrent() || isAbort(err)) return false;
 			receiptsError = toUserMessage(err, 'No se pudo cargar el historial de recepciones');
 			return false;
 		} finally {
-			receiptsLoading = false;
+			scope.release();
+			if (scope.isCurrent()) receiptsLoading = false;
 		}
 	}
 
