@@ -1196,3 +1196,26 @@ La entrada histórica R9.6 que indicaba CI pendiente queda supersedida por esta 
 ### R9.2 — cierre del adaptador legacy sin warehouse (22-11-2026)
 
 La revisión de `IntegrationsRemoteDataSource`, `IntegrationsRepositoryImpl` y `integrations.dependencies.ts` confirmó que el método legacy `test(name)` no tenía consumidores en el flujo de repository/DI y enviaba la petición sin `warehouse_id`. Se eliminó; el flujo soportado `testConnection(name, warehouseId)` permanece y su prueba verifica el contexto de almacén. Commit: [a20220f](https://github.com/danielitoCode/smart-wms/commit/a20220f95fc29c5639c7f7f180ef2e7f6f3f46f0).
+
+
+## R10 — Paridad final, regresión y retirada segura de React
+
+**Estado:** `IN_PROGRESS — ROUTE INVENTORY STARTED`  
+**Baseline de inicio:** `e01b3250faa218fd04a2c48dc019d4e08c17b744`  
+**Matriz de auditoría:** `.code-review/R10-Final-Parity-Regression-React-Retirement.md`  
+**Primer inventario:** commit `3649fc88c268575e59855ce87a72dd50a0bd0486`.
+
+Se inicia R10 sin retirar ni modificar el frontend React. Se inventariaron las 41 pantallas declaradas en `admin/src/App.jsx` y sus destinos canónicos en SvelteKit. El inventario detecta consolidaciones bajo `/management/[feature]`, rutas de flujo operativo separadas y una brecha que requiere resolver compatibilidad de navegación para RMA. También quedan por verificar los aliases históricos de datos y los deep links de las pantallas consolidadas.
+
+**Reglas de aceptación R10:**
+- La paridad se demuestra por acción/recorrido y resultado de negocio, no por existencia de ruta, captura o test de render.
+- Cada acción debe vincular pantalla React, destino Svelte, transición, caso de uso, endpoint/DTO Flask, permiso, warehouse scope y pruebas.
+- Los recorridos E2E se ejecutan con usuarios y almacenes representativos; las limitaciones Flask se registran como tales y sus acciones quedan deshabilitadas en frontend.
+- Navegación directa, refresh, responsive, accesibilidad, estados UI e i18n se validan de forma explícita.
+- Los mocks/fixtures/adaptadores de prueba no pueden llegar al runtime de producción.
+- La matriz de regresión se congela y protege invariantes de R1–R9.
+- React permanece intacto hasta completar evidencia y recibir aprobación explícita para retirarlo.
+
+**Primer hallazgo:** React ofrece `/rma → /returns/rma`, pero el árbol Svelte inspeccionado no contiene esas rutas. `ReturnsScreen` contiene capacidades RMA, pero eso no demuestra compatibilidad de URL. Este gap se investigará y corregirá con redirect y pruebas si no existe una decisión de producto documentada que lo sustituya.
+
+**No se declara R10 completada ni se afirma que se hayan ejecutado recorridos E2E.** El Webapp CI verde de R9 es la línea base técnica; no sustituye la comparación integral de negocio de R10.
