@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { ApiClient } from '../../../../../../core/infrastructure/api/ApiClient';
+import type { ApiClient } from '../../../../../core/infrastructure/api/ApiClient';
 import { ReceivingRemoteDataSource } from '../../../../../../core/feature/receiving/data/datasource/ReceivingRemoteDataSource';
 
 describe('ReceivingRemoteDataSource receipt administration contracts', () => {
