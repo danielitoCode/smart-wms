@@ -122,3 +122,19 @@ Hasta entonces, React permanece como referencia funcional y de comparación.
 - No se ejecutaron navegadores ni recorridos autenticados en esta auditoría inicial.
 - Las pruebas unitarias y el Webapp CI verde reportados para R9 no certifican por sí solos la matriz de rutas ni E2E.
 - Los endpoints/permisos de cada acción se completarán desde el contrato Flask específico; no se infieren desde el catálogo de UI.
+
+
+## 8. R10.2 — compatibilidad de URLs React
+
+Se añadieron redirects HTTP 308 para 28 rutas antiguas que no tenían una página canónica directa en SvelteKit. Los destinos son rutas Svelte actuales; el acceso final sigue pasando por las guardas y permisos del destino. Las rutas que ya existen con el mismo path (`/login`, `/inventory`, `/sales-orders`, `/items`, `/warehouses`, `/picking-tickets`, etc.) no se duplicaron.
+
+- Mapa central: `src/lib/navigation/legacyRouteRedirects.ts`.
+- Wrappers SvelteKit: `+page.server.ts` por URL antigua.
+- Cobertura de contrato del mapa: `src/lib/navigation/legacyRouteRedirects.test.ts`.
+- Se incluyen `/rma`, `/returns/rma` y `/returns/refunds`; las funciones RMA se consolidan en `/management/returns`, y Refunds en `/management/refunds`.
+- Se preservan aliases de datos `/bins`, `/zones`, `/preferred-bins` hacia sus tabs `/data/*`; `/warehouses` ya tiene ruta Svelte propia y no se duplica.
+- Se preservan rutas top-level React de gestión hacia `/management/*`, además de `/cycle-counts → /cycle-count`.
+
+**Estado de validación:** implementación y pruebas del mapa añadidas; Webapp CI del HEAD `bc3d84ac4dcb429a8e0383715ad6a9da557fe099` pendiente al registrar esta nota. Aún falta probar navegación real/refresh en navegador y validar permisos por rol en los destinos. Por tanto, el gap de URL queda `IMPLEMENTED_PENDING_CI_AND_BROWSER`, no `VERIFIED_PARITY`.
+
+**No se ha retirado React.**
