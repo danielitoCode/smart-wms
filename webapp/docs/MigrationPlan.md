@@ -1219,3 +1219,13 @@ Se inicia R10 sin retirar ni modificar el frontend React. Se inventariaron las 4
 **Primer hallazgo:** React ofrece `/rma → /returns/rma`, pero el árbol Svelte inspeccionado no contiene esas rutas. `ReturnsScreen` contiene capacidades RMA, pero eso no demuestra compatibilidad de URL. Este gap se investigará y corregirá con redirect y pruebas si no existe una decisión de producto documentada que lo sustituya.
 
 **No se declara R10 completada ni se afirma que se hayan ejecutado recorridos E2E.** El Webapp CI verde de R9 es la línea base técnica; no sustituye la comparación integral de negocio de R10.
+
+
+### R10.2 — compatibilidad de deep links (implementada, pendiente de CI)
+
+Se añadieron redirects HTTP 308 para 28 URLs antiguas de React hacia las rutas canónicas SvelteKit. Incluye aliases top-level de gestión, conteo cíclico, datos maestros y las rutas antiguas RMA/Refunds. El mapa está centralizado en `src/lib/navigation/legacyRouteRedirects.ts`, con prueba unitaria de integridad. Los redirects llevan al destino protegido; no replican ni relajan permisos.
+
+**Commits de implementación:** mapa `480d6ace`, test `dff600df` y wrappers/rutas de compatibilidad hasta `bc3d84a`.  
+**Estado:** `IMPLEMENTED_PENDING_CI_AND_BROWSER`. El Webapp CI sobre `bc3d84a` debe terminar antes de aceptar este bloque; también se requiere prueba en navegador de acceso directo, refresh y permisos. No se considera paridad E2E.
+
+Se mantiene React como referencia; no se ha borrado ni modificado `admin/`.
