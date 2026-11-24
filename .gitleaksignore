@@ -8,3 +8,6 @@
 
 # Short deterministic dummy HMAC key introduced by the R2 targeted CI step; exact historical finding only.
 335ce125f2c126762dce2354f849d21175e598fb:.github/workflows/test.yml:generic-api-key:213
+
+# Historical synthetic Fernet test key in the first local E2E bootstrap commit; the key is now generated per run.
+f23e91930b35c8a6070f6e94f213820ad33796b3:scripts/r2-e2e/Start-R2E2E.ps1:generic-api-key:36
