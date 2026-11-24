@@ -1,0 +1,47 @@
+# Isolated R2 browser-E2E dependencies. Never merge this into the normal stack.
+# Start/stop only with -f docker-compose.r2-e2e.yml -p smart-wms-r2-e2e.
+services:
+  db:
+    image: postgres:16
+    container_name: smart-wms-r2-e2e-db
+    environment:
+      POSTGRES_USER: sentry
+      POSTGRES_PASSWORD: sentry
+      POSTGRES_DB: sentry_test
+      ADMIN_PASSWORD: admin
+      SKIP_SEED: "false"
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - smart-wms-r2-e2e-pgdata:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./db/seed-apartment-lab.sql:/seed-data/seed-apartment-lab.sql:ro
+      - ./db/seed.sh:/docker-entrypoint-initdb.d/02-seed.sh:ro
+      - ./db/r2-e2e/03-test-users.sql:/docker-entrypoint-initdb.d/03-test-users.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentry -d sentry_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    networks: [r2-e2e]
+
+  redis:
+    image: redis:7-alpine
+    container_name: smart-wms-r2-e2e-redis
+    command: ["redis-server", "--requirepass", "r2-e2e-local-only"]
+    ports:
+      - "127.0.0.1:56379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a r2-e2e-local-only --no-auth-warning ping | grep -q PONG"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    networks: [r2-e2e]
+
+networks:
+  r2-e2e:
+    name: smart-wms-r2-e2e-net
+
+volumes:
+  smart-wms-r2-e2e-pgdata:
+    name: smart-wms-r2-e2e-pgdata
