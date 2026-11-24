@@ -2,6 +2,8 @@ import adapter from '@sveltejs/adapter-auto';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vitest/config';
 
+const apiProxyTarget = process.env.VITE_API_PROXY_TARGET ?? 'http://127.0.0.1:5000';
+
 export default defineConfig({
 	plugins: [
 		sveltekit({
@@ -18,7 +20,7 @@ export default defineConfig({
 		proxy: {
 			// Same-origin /api in dev → avoids CORS against Flask on :5000
 			'/api': {
-				target: 'http://127.0.0.1:5000',
+				target: apiProxyTarget,
 				changeOrigin: true
 			}
 		}
@@ -27,7 +29,7 @@ export default defineConfig({
 		port: 4173,
 		proxy: {
 			'/api': {
-				target: 'http://127.0.0.1:5000',
+				target: apiProxyTarget,
 				changeOrigin: true
 			}
 		}
