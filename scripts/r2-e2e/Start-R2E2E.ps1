@@ -42,7 +42,18 @@ $previousEnvironment = @{}
 foreach ($name in $environmentKeys) {
     $previousEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, "Process")
 }
+function Restore-CallerEnvironment {
+    foreach ($name in $environmentKeys) {
+        $value = $previousEnvironment[$name]
+        if ($null -eq $value) {
+            Remove-Item "Env:$name" -ErrorAction SilentlyContinue
+        } else {
+            Set-Item "Env:$name" $value
+        }
+    }
+}
 
+try {
 # These overrides are inherited by Flask/Vite only and point Flask at the disposable DB.
 $env:DATABASE_URL = "postgresql://sentry:sentry@127.0.0.1:55432/sentry_test"
 $env:REDIS_URL = "redis://:r2-e2e-local-only@127.0.0.1:56379/0"
@@ -84,15 +95,10 @@ if (!(Test-TcpPort 55000) -or !(Test-TcpPort 5173)) {
 
 @{ ApiPid = $api.Id; WebPid = $web.Id } | ConvertTo-Json | Set-Content (Join-Path $RuntimeDir "processes.json")
 
-# Restore the interactive shell. The already-started child processes retain
-# their isolated environment snapshot.
-foreach ($name in $environmentKeys) {
-    $value = $previousEnvironment[$name]
-    if ($null -eq $value) {
-        Remove-Item "Env:$name" -ErrorAction SilentlyContinue
-    } else {
-        Set-Item "Env:$name" $value
-    }
+} finally {
+    # Restore the interactive shell even if Flask/Vite fails to start.
+    # Already-started child processes retain their isolated environment snapshot.
+    Restore-CallerEnvironment
 }
 
 Write-Host ""
