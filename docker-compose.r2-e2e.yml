@@ -18,6 +18,7 @@ services:
       - ./db/seed-apartment-lab.sql:/seed-data/seed-apartment-lab.sql:ro
       - ./db/seed.sh:/docker-entrypoint-initdb.d/02-seed.sh:ro
       - ./db/r2-e2e/03-test-users.sql:/docker-entrypoint-initdb.d/03-test-users.sql:ro
+      - ./db/r2-e2e/03-test-users.sql:/seed-data/03-test-users.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sentry -d sentry_test"]
       interval: 3s
