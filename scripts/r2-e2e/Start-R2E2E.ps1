@@ -29,8 +29,21 @@ if ($LASTEXITCODE -ne 0) { throw "No se pudo iniciar el PostgreSQL/Redis aislado
 docker compose -f $ComposeFile -p smart-wms-r2-e2e exec -T db psql -v ON_ERROR_STOP=1 -U sentry -d sentry_test -f /seed-data/03-test-users.sql
 if ($LASTEXITCODE -ne 0) { throw "No se pudieron preparar las cuentas sintéticas R2 E2E." }
 
-# Flask reads the repository .env for non-DB secrets. These process-level
-# overrides always win over .env and point the API only at the disposable DB.
+# Flask reads the repository .env for non-DB secrets. Save the caller's
+# environment first: child processes inherit these overrides, but the
+# interactive PowerShell session must not retain them (pytest uses its own
+# TEST_DATABASE_URL safety gate afterwards).
+$environmentKeys = @(
+    "DATABASE_URL", "REDIS_URL", "CELERY_BROKER_URL", "CELERY_RESULT_BACKEND",
+    "DISPATCHER_ENABLED", "API_BIND_HOST", "JWT_SECRET", "SENTRY_ENCRYPTION_KEY",
+    "SENTRY_TOKEN_PEPPER", "SENTRY_PUBSUB_HMAC_KEY", "VITE_API_PROXY_TARGET"
+)
+$previousEnvironment = @{}
+foreach ($name in $environmentKeys) {
+    $previousEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, "Process")
+}
+
+# These overrides are inherited by Flask/Vite only and point Flask at the disposable DB.
 $env:DATABASE_URL = "postgresql://sentry:sentry@127.0.0.1:55432/sentry_test"
 $env:REDIS_URL = "redis://:r2-e2e-local-only@127.0.0.1:56379/0"
 $env:CELERY_BROKER_URL = $env:REDIS_URL
@@ -70,6 +83,18 @@ if (!(Test-TcpPort 55000) -or !(Test-TcpPort 5173)) {
 }
 
 @{ ApiPid = $api.Id; WebPid = $web.Id } | ConvertTo-Json | Set-Content (Join-Path $RuntimeDir "processes.json")
+
+# Restore the interactive shell. The already-started child processes retain
+# their isolated environment snapshot.
+foreach ($name in $environmentKeys) {
+    $value = $previousEnvironment[$name]
+    if ($null -eq $value) {
+        Remove-Item "Env:$name" -ErrorAction SilentlyContinue
+    } else {
+        Set-Item "Env:$name" $value
+    }
+}
+
 Write-Host ""
 Write-Host "R2.11 E2E local listo:" -ForegroundColor Green
 Write-Host "  Webapp:   http://127.0.0.1:5173"
