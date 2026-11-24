@@ -33,7 +33,8 @@ $env:CELERY_RESULT_BACKEND = $env:REDIS_URL
 $env:DISPATCHER_ENABLED = "false"
 $env:API_BIND_HOST = "127.0.0.1"
 $env:JWT_SECRET = "R2_E2E_ONLY_JWT_SECRET_NEVER_USE_IN_PRODUCTION_2026"
-$env:SENTRY_ENCRYPTION_KEY = "t5hPIEVn_O41qfiMqAiPEnwzQh68o3Es46YfSOBvEK8="
+$env:SENTRY_ENCRYPTION_KEY = (& python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())").Trim()
+if (!$env:SENTRY_ENCRYPTION_KEY) { throw "No se pudo generar la clave Fernet efímera para el proceso E2E." }
 $env:SENTRY_TOKEN_PEPPER = "R2_E2E_ONLY_TOKEN_PEPPER_NEVER_USE_IN_PRODUCTION"
 $env:SENTRY_PUBSUB_HMAC_KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
