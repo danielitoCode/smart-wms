@@ -9,6 +9,27 @@ INSERT INTO warehouses (warehouse_code, warehouse_name, address)
 VALUES ('WH-R2-E2E', 'R2 E2E Test Warehouse', 'Local isolated test environment')
 ON CONFLICT (warehouse_code) DO NOTHING;
 
+-- Keep the harness self-contained even when the optional demo seed has not
+-- populated its default admin identity.
+INSERT INTO users (
+    username, password_hash, full_name, role, warehouse_id,
+    warehouse_ids, allowed_functions, must_change_password, external_id
+)
+VALUES (
+    'admin', crypt('admin', gen_salt('bf')), 'R2 E2E Administrator',
+    'ADMIN',
+    (SELECT warehouse_id FROM warehouses WHERE warehouse_code = 'WH-R2-E2E'),
+    ARRAY[(SELECT warehouse_id FROM warehouses WHERE warehouse_code = 'WH-R2-E2E')],
+    '{}', FALSE, gen_random_uuid()
+)
+ON CONFLICT (username) DO UPDATE SET
+    password_hash = EXCLUDED.password_hash,
+    full_name = EXCLUDED.full_name,
+    role = 'ADMIN',
+    warehouse_id = EXCLUDED.warehouse_id,
+    warehouse_ids = EXCLUDED.warehouse_ids,
+    must_change_password = FALSE;
+
 INSERT INTO users (
     username, password_hash, full_name, role, warehouse_id,
     warehouse_ids, allowed_functions, must_change_password, external_id
