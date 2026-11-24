@@ -24,6 +24,11 @@ foreach ($port in @(55432, 56379, 55000, 5173)) {
 docker compose -f $ComposeFile -p smart-wms-r2-e2e up -d --wait db redis
 if ($LASTEXITCODE -ne 0) { throw "No se pudo iniciar el PostgreSQL/Redis aislado." }
 
+# Recreate the synthetic browser identities on every start. The API pytest
+# conftest truncates users during its own isolated regression run.
+docker compose -f $ComposeFile -p smart-wms-r2-e2e exec -T db psql -v ON_ERROR_STOP=1 -U sentry -d sentry_test -f /seed-data/03-test-users.sql
+if ($LASTEXITCODE -ne 0) { throw "No se pudieron preparar las cuentas sintéticas R2 E2E." }
+
 # Flask reads the repository .env for non-DB secrets. These process-level
 # overrides always win over .env and point the API only at the disposable DB.
 $env:DATABASE_URL = "postgresql://sentry:sentry@127.0.0.1:55432/sentry_test"
