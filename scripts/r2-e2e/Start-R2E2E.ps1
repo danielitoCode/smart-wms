@@ -15,7 +15,10 @@ function Test-TcpPort([int]$Port) {
     finally { $client.Dispose() }
 }
 
-foreach ($port in @(55432, 56379, 55000, 5173)) {
+# Flask/Vite must be free before launching local processes. The two Docker
+# ports may already be occupied by this harness after a partial startup; Compose
+# reuses its own healthy containers and reports conflicts with unrelated owners.
+foreach ($port in @(55000, 5173)) {
     if (Test-TcpPort $port) {
         throw "El puerto $port ya está ocupado. No se detendrá ningún proceso existente. Libéralo o ajusta los puertos antes de continuar."
     }
