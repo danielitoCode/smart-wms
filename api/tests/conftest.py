@@ -1,5 +1,6 @@
 import os
 import sys
+from urllib.parse import unquote, urlsplit
 
 # v1.7.0 test-DB isolation gate. Pre-v1.7.0 conftest connected to the
 # application database via DATABASE_URL and TRUNCATEd 39 tables at
@@ -23,10 +24,29 @@ if not _TEST_DATABASE_URL:
         "(see docs/deployment.md). The default docker-compose stack "
         "creates the sentry_test database in the db init."
     )
-if _REAL_DATABASE_URL and _TEST_DATABASE_URL == _REAL_DATABASE_URL:
+def _postgres_identity(database_url):
+    """Compare DB targets independent of credentials/query-string formatting."""
+    parsed = urlsplit(database_url)
+    host = (parsed.hostname or "").lower()
+    if host in {"localhost", "127.0.0.1", "::1"}:
+        host = "<loopback>"
+    port = parsed.port or 5432
+    database = unquote(parsed.path.lstrip("/")).lower()
+    return host, port, database
+
+
+_test_identity = _postgres_identity(_TEST_DATABASE_URL)
+if not _test_identity[2].endswith(("_test", "_e2e")):
     raise RuntimeError(
-        "TEST_DATABASE_URL must NOT equal DATABASE_URL. Use a separate "
-        "test database. Refusing to TRUNCATE the application DB."
+        "TEST_DATABASE_URL must target a database whose name ends in "
+        "'_test' or '_e2e'. The test fixture TRUNCATEs 39 tables; refusing "
+        f"to use database '{_test_identity[2]}'."
+    )
+if _REAL_DATABASE_URL and _test_identity == _postgres_identity(_REAL_DATABASE_URL):
+    raise RuntimeError(
+        "TEST_DATABASE_URL resolves to the same PostgreSQL host/port/database "
+        "as DATABASE_URL (credentials are ignored for this comparison). "
+        "Use a separate test database. Refusing to TRUNCATE the application DB."
     )
 # All downstream code reads DATABASE_URL; route it at the test DB so
 # create_app() / SessionLocal / direct psycopg2.connect(DATABASE_URL)
