@@ -95,6 +95,10 @@ if (!(Test-TcpPort 55000) -or !(Test-TcpPort 5173)) {
 
 @{ ApiPid = $api.Id; WebPid = $web.Id } | ConvertTo-Json | Set-Content (Join-Path $RuntimeDir "processes.json")
 
+} catch {
+    if ($web -and !$web.HasExited) { & taskkill.exe /PID $web.Id /T /F | Out-Null }
+    if ($api -and !$api.HasExited) { & taskkill.exe /PID $api.Id /T /F | Out-Null }
+    throw
 } finally {
     # Restore the interactive shell even if Flask/Vite fails to start.
     # Already-started child processes retain their isolated environment snapshot.
