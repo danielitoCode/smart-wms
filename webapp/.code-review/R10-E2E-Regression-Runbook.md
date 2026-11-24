@@ -162,7 +162,7 @@ Después, volver a arrancar con `Start-R2E2E.ps1` para repetir browser E2E. El `
 .\scripts\r2-e2e\Stop-R2E2E.ps1
 ```
 
-La parada termina los procesos Flask/Vite registrados y detiene solo los dos servicios del Compose E2E. **Conserva** `smart-wms-r2-e2e-pgdata`. Para borrar los datos de laboratorio se requerirá una operación explícita y separada sobre el proyecto/volumen E2E; no forma parte del flujo normal.
+La parada termina los árboles de procesos Flask/Vite registrados y detiene solo los dos servicios del Compose E2E. **Conserva** `smart-wms-r2-e2e-pgdata`. Para borrar los datos de laboratorio se requerirá una operación explícita y separada sobre el proyecto/volumen E2E; no forma parte del flujo normal. El script de arranque vuelve a aplicar idempotentemente los usuarios sintéticos, incluso después de que pytest haya truncado/resembrado las tablas. Las variables temporales se restauran en la consola PowerShell; solo los procesos hijos reciben los overrides de DB.
 
 ### Estado de preparación
 
