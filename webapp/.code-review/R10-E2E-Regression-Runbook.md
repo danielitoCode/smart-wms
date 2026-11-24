@@ -1,6 +1,6 @@
 # R10 — Runbook de regresión E2E R1–R9
 
-**Estado:** API-level R2 ADMIN/USER verificado en CI; browser E2E R1–R9 pendiente de entorno aislado, usuarios de prueba y runner de navegador.  
+**Estado:** API-level R2 ADMIN/USER verificado en CI; harness local aislado R2.11 preparado; browser E2E pendiente de ejecución y evidencia.  
 **Objetivo:** comparar resultados y transiciones React vs SvelteKit sobre el mismo dataset y con el mismo usuario/grants/almacén. No aceptar capturas visuales como única evidencia.
 
 ## 1. Preparación del entorno
@@ -96,3 +96,83 @@ Clasificaciones válidas: `VERIFIED_PARITY`, `FRONTEND_DEFECT`, `BACKEND_LIMITAT
 - Baseline previo a R2.7 [45070599723](https://github.com/danielitoCode/smart-wms/actions/runs/45070599723): 125 failed / 3049 passed / 1525 warnings. Comparación por identificador de test: 122 fallos comunes, 0 nuevos y 3 resueltos (dos casos de `test_purchase_order_warehouse_scope.py` y `test_admin_unreceive.py::TestUnreceiveGuards::test_receipt_not_found_returns_404`).
 - No se han ejecutado browser E2E: el paquete webapp carece de Playwright/Cypress/script E2E y el runbook no registra URL/credenciales/dataset aislado. No etiquetar API tests como E2E.
 - **Estado: `R2_API_REGRESSION_VERIFIED / R2_BROWSER_E2E_BLOCKED / R2_NOT_CLOSED`.** Para ejecutar se necesita URL del entorno aislado y perfiles de prueba ADMIN/USER; secretos siempre fuera del repositorio. React permanece intacto.
+
+
+## 6.3 Preparación local aislada R2.11 — PostgreSQL + Flask + SvelteKit
+
+La ejecución local usa una infraestructura independiente del stack habitual:
+
+- Compose exclusivo: `docker-compose.r2-e2e.yml`, proyecto `smart-wms-r2-e2e`.
+- PostgreSQL 16: contenedor `smart-wms-r2-e2e-db`, puerto loopback `55432`, base `sentry_test`, volumen exclusivo `smart-wms-r2-e2e-pgdata`.
+- Redis exclusivo: contenedor `smart-wms-r2-e2e-redis`, puerto loopback `56379`.
+- Flask local: `127.0.0.1:55000`; su `DATABASE_URL` se sobrescribe en el proceso hijo para apuntar a `sentry_test`.
+- SvelteKit/Vite: `127.0.0.1:5173`; proxy configurable con `VITE_API_PROXY_TARGET`, apuntando al Flask E2E.
+- Datos sintéticos: seed Apartment Lab y usuarios `admin`, `r2_user` (grant receiving) y `r2_limited` (sin grant). Contraseña de laboratorio: `admin`.
+
+**Protecciones:** no se reutiliza el contenedor, puerto, volumen ni base de datos del Compose habitual. Los puertos se comprueban antes de iniciar; si están ocupados, el script aborta sin detener procesos existentes. El script de parada usa `docker compose stop` y conserva el volumen. No ejecutar `down -v` sobre el stack normal. Los datos de E2E son descartables y no contienen datos reales.
+
+### Requisitos previos
+
+1. Docker Desktop/Engine iniciado y Docker Compose v2 disponible.
+2. Node/npm compatibles con `webapp/package.json` (Node >=26 y npm >=10.9).
+3. Entorno Python local del proyecto activado y dependencias de `api/requirements.txt` instaladas.
+4. Ejecutar desde PowerShell en la raíz del repositorio. No copiar credenciales reales a scripts ni al repositorio.
+
+### Arranque
+
+```powershell
+# Instalar el runner aislado de Playwright una sola vez
+cd webapp/e2e
+npm install
+npm run install:browsers
+cd ../..
+
+# Activar previamente el venv de api si no está activo
+.\scripts\r2-e2e\Start-R2E2E.ps1
+```
+
+El script comprueba que los puertos 55432, 56379, 55000 y 5173 estén libres, levanta únicamente el Compose R2 E2E y arranca Flask/Vite. URLs y logs se muestran al finalizar. La primera inicialización crea el volumen y ejecuta schema + seed. Las siguientes ejecuciones conservan el volumen; no se vuelve a sembrar automáticamente.
+
+### Ejecución browser E2E
+
+```powershell
+cd webapp/e2e
+npm test
+```
+
+Suite inicial: login ADMIN y apertura de Recepción; login USER con grant receiving; comprobación de 403 del endpoint de recepción para USER sin grant. Son pruebas de navegador/contrato iniciales, no certifican todavía todos los nueve recorridos R1–R9 ni paridad completa React/Svelte.
+
+### Regresión Python R2 en la base aislada
+
+No ejecutar pytest mientras Flask E2E está levantado: el fixture mantiene transacciones por test y la suite requiere acceso exclusivo a la base.
+
+```powershell
+.\scripts\r2-e2e\Stop-R2E2E.ps1
+docker compose -f docker-compose.r2-e2e.yml -p smart-wms-r2-e2e up -d --wait db redis
+$env:TEST_DATABASE_URL = "postgresql://sentry:sentry@127.0.0.1:55432/sentry_test"
+python -m pytest api/tests/test_purchase_order_warehouse_scope.py api/tests/test_admin_unreceive.py -q
+Remove-Item Env:TEST_DATABASE_URL
+```
+
+Después, volver a arrancar con `Start-R2E2E.ps1` para repetir browser E2E. El `conftest.py` truncará y volverá a sembrar únicamente la base indicada por `TEST_DATABASE_URL`; no debe apuntarse a la base de datos habitual.
+
+### Parada
+
+```powershell
+.\scripts\r2-e2e\Stop-R2E2E.ps1
+```
+
+La parada termina los procesos Flask/Vite registrados y detiene solo los dos servicios del Compose E2E. **Conserva** `smart-wms-r2-e2e-pgdata`. Para borrar los datos de laboratorio se requerirá una operación explícita y separada sobre el proyecto/volumen E2E; no forma parte del flujo normal.
+
+### Estado de preparación
+
+- [x] PostgreSQL y Redis aislados en Compose/volumen/puertos propios.
+- [x] Seed de laboratorio y perfiles ADMIN/USER/USER sin grant.
+- [x] Flask aislado por variable de entorno; proxy Vite configurable.
+- [x] Runner Playwright separado de las dependencias de producción de webapp.
+- [x] Scripts PowerShell de arranque/parada sin borrar volúmenes.
+- [ ] Ejecutar localmente instalación, arranque y browser E2E en la máquina del usuario.
+- [ ] Revisar y corregir los fallos reales del navegador; ampliar cobertura a los recorridos R2 completos y luego R1–R9.
+- [ ] Guardar evidencia, resultado persistido y actualizar matriz.
+
+**Estado actual: `R2.11_LOCAL_HARNESS_PREPARED / BROWSER_E2E_NOT_RUN / R2_NOT_CLOSED`.** No se declara éxito de ejecución hasta recibir reportes reales de Playwright y de las suites Flask.
