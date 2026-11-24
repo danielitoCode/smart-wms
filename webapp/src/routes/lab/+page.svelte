@@ -2,40 +2,6 @@
 	/**
 	 * Component Lab — overview de componentes migrados React → Svelte.
 	 */
-	import TaskWidget from '../../lib/components/TaskWidget.svelte';
-	import type { TaskData } from '../../lib/components/taskWidget.types';
-	import HoverExpand from '../../lib/components/HoverExpand.svelte';
-	import type { HoverExpandImage } from '../../lib/components/hoverExpand.types';
-
-	const MOCK_TASK: TaskData = {
-		title: 'Design System',
-		progress: 75,
-		completedCount: 3,
-		totalCount: 4,
-		priority: 'Urgent',
-		status: 'In Progress',
-		subtasks: [
-			{ id: '1', title: 'Design Tokens', completed: true },
-			{ id: '2', title: 'Color System', completed: true },
-			{ id: '3', title: 'Type System', completed: true },
-			{ id: '4', title: 'Documentation', completed: false }
-		],
-		assignees: [
-			{ name: 'Chloe', avatar: 'https://i.pravatar.cc/150?u=chloe' },
-			{ name: 'Anna', avatar: 'https://i.pravatar.cc/150?u=anna' },
-			{ name: 'Ramesh', avatar: 'https://i.pravatar.cc/150?u=ramesh' }
-		]
-	};
-
-	const DEMO_IMAGES: HoverExpandImage[] = [
-		{ src: 'https://picsum.photos/seed/he01/600/900', alt: 'Panel 1', code: '# 01' },
-		{ src: 'https://picsum.photos/seed/he02/600/900', alt: 'Panel 2', code: '# 23' },
-		{ src: 'https://picsum.photos/seed/he03/600/900', alt: 'Panel 3', code: '# 07' },
-		{ src: 'https://picsum.photos/seed/he04/600/900', alt: 'Panel 4', code: '# 12' },
-		{ src: 'https://picsum.photos/seed/he05/600/900', alt: 'Panel 5', code: '# 18' },
-		{ src: 'https://picsum.photos/seed/he06/600/900', alt: 'Panel 6', code: '# 04' }
-	];
-
 	const components = [
 		{ id: 'task-widget', name: 'TaskWidget', status: 'ready', href: '/lab/task-widget', description: 'Tarjeta expandible de tarea con progreso, subtasks, priority/status y assignees.' },
 		{ id: 'hover-expand', name: 'HoverExpand', status: 'ready', href: '/lab/hover-expand', description: 'Franja de imágenes: el panel activo se ensancha al hover o click (CSS, sin Framer).' },
@@ -93,7 +59,8 @@
 		{ id: 'bell-toggle', name: 'BellToggle', status: 'ready', href: '/lab/bell-toggle', description: 'Toggle notificaciones: ring WAAPI, badge, waves y labels WMS.' },
 		{ id: 'animated-content', name: 'AnimatedContent', status: 'ready', href: '/lab/animated-content', description: 'Reveal scroll/mount: stagger, blur, wipe mask (WAAPI, sin GSAP).' },
 		{ id: 'fade-content', name: 'FadeContent', status: 'ready', href: '/lab/fade-content', description: 'Reveal fade/focus/develop/mist/dissolve/pixel (WAAPI, sin GSAP).' },
-		{ id: 'partylabs-hero', name: 'PartyLabs Hero', status: 'ready', href: '/lab/partylabs-hero', description: 'Hero 3D: campo de fotos por profundidad, nav glass, search y parallax (WAAPI).' }
+		{ id: 'partylabs-hero', name: 'PartyLabs Hero', status: 'ready', href: '/lab/partylabs-hero', description: 'Hero 3D: campo de fotos por profundidad, nav glass, search y parallax (WAAPI).' },
+		{ id: 'luna-hero', name: 'Luna Hero', status: 'ready', href: '/lab/luna-hero', description: 'Storefront hero: nav glass, mega categorías, búsqueda Ctrl+K y drawer móvil.' }
 	] as const;
 </script>
 
