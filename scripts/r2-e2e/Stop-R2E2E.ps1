@@ -10,7 +10,9 @@ if (Test-Path $ProcessFile) {
     foreach ($id in @($pids.WebPid, $pids.ApiPid)) {
         if ($id) {
             $proc = Get-Process -Id ([int]$id) -ErrorAction SilentlyContinue
-            if ($proc) { Stop-Process -Id ([int]$id) -Force }
+            if ($proc) {
+                & taskkill.exe /PID ([int]$id) /T /F | Out-Null
+            }
         }
     }
     Remove-Item $ProcessFile -Force
