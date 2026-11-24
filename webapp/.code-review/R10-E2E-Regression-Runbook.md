@@ -86,3 +86,13 @@ Clasificaciones válidas: `VERIFIED_PARITY`, `FRONTEND_DEFECT`, `BACKEND_LIMITAT
 - El fixture de WH-B crea una zona y un bin Staging propios, de modo que el test de recibos cruzados se ejecuta sin skip por falta de bin.
 - **No confundir API integration con browser E2E:** no hay Playwright/Cypress ni script E2E en `webapp/package.json`. Los recorridos con usuario real en navegador siguen pendientes de entorno aislado, URL, usuarios ADMIN/USER y dataset equivalente. No declarar R2 cerrado ni retirar React.
 **Criterio de salida:** los nueve recorridos ejecutados con datos equivalentes; diferencias resueltas o clasificadas; rutas, responsive, accesibilidad, estados e i18n comprobados; matriz firmada. La retirada de React continúa bloqueada hasta aprobación explícita.
+
+
+## 6.2 Revalidación R2.10/R2.11 — 24-11-2026
+
+- HEAD evaluado: `17d1730a48142a0571d24c5a27f4daf859d67cda`.
+- Webapp CI [45075646591](https://github.com/danielitoCode/smart-wms/actions/runs/45075646591): todas las etapas, incluido build y Full regression, SUCCESS.
+- Python [45075646702](https://github.com/danielitoCode/smart-wms/actions/runs/45075646702): el paso específico R2 pasó; suite global: 122 failed / 3054 passed / 1529 warnings.
+- Baseline previo a R2.7 [45070599723](https://github.com/danielitoCode/smart-wms/actions/runs/45070599723): 125 failed / 3049 passed / 1525 warnings. Comparación por identificador de test: 122 fallos comunes, 0 nuevos y 3 resueltos (dos casos de `test_purchase_order_warehouse_scope.py` y `test_admin_unreceive.py::TestUnreceiveGuards::test_receipt_not_found_returns_404`).
+- No se han ejecutado browser E2E: el paquete webapp carece de Playwright/Cypress/script E2E y el runbook no registra URL/credenciales/dataset aislado. No etiquetar API tests como E2E.
+- **Estado: `R2_API_REGRESSION_VERIFIED / R2_BROWSER_E2E_BLOCKED / R2_NOT_CLOSED`.** Para ejecutar se necesita URL del entorno aislado y perfiles de prueba ADMIN/USER; secretos siempre fuera del repositorio. React permanece intacto.
