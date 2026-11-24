@@ -3,13 +3,22 @@
 -- Idempotent: Start-R2E2E.ps1 reapplies this after API pytest reseeds the DB.
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+-- Do not assume warehouse_id=1: SERIAL values can differ, and a failed or
+-- intentionally minimal seed may leave the E2E database without a warehouse.
+INSERT INTO warehouses (warehouse_code, warehouse_name, address)
+VALUES ('WH-R2-E2E', 'R2 E2E Test Warehouse', 'Local isolated test environment')
+ON CONFLICT (warehouse_code) DO NOTHING;
+
 INSERT INTO users (
     username, password_hash, full_name, role, warehouse_id,
     warehouse_ids, allowed_functions, must_change_password, external_id
 )
 VALUES (
     'r2_user', crypt('admin', gen_salt('bf')), 'R2 E2E Receiving User',
-    'USER', 1, ARRAY[1], '{receive}', FALSE, gen_random_uuid()
+    'USER',
+    (SELECT warehouse_id FROM warehouses WHERE warehouse_code = 'WH-R2-E2E'),
+    ARRAY[(SELECT warehouse_id FROM warehouses WHERE warehouse_code = 'WH-R2-E2E')],
+    '{receive}', FALSE, gen_random_uuid()
 )
 ON CONFLICT (username) DO UPDATE SET
     password_hash = EXCLUDED.password_hash,
@@ -31,7 +40,10 @@ INSERT INTO users (
 )
 VALUES (
     'r2_limited', crypt('admin', gen_salt('bf')), 'R2 E2E Limited User',
-    'USER', 1, ARRAY[1], '{}', FALSE, gen_random_uuid()
+    'USER',
+    (SELECT warehouse_id FROM warehouses WHERE warehouse_code = 'WH-R2-E2E'),
+    ARRAY[(SELECT warehouse_id FROM warehouses WHERE warehouse_code = 'WH-R2-E2E')],
+    '{}', FALSE, gen_random_uuid()
 )
 ON CONFLICT (username) DO UPDATE SET
     password_hash = EXCLUDED.password_hash,
