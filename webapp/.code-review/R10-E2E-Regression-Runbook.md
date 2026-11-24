@@ -150,8 +150,12 @@ No ejecutar pytest mientras Flask E2E está levantado: el fixture mantiene trans
 .\scripts\r2-e2e\Stop-R2E2E.ps1
 docker compose -f docker-compose.r2-e2e.yml -p smart-wms-r2-e2e up -d --wait db redis
 $env:TEST_DATABASE_URL = "postgresql://sentry:sentry@127.0.0.1:55432/sentry_test"
+$env:REDIS_URL = "redis://:r2-e2e-local-only@127.0.0.1:56379/0"
+$env:CELERY_BROKER_URL = $env:REDIS_URL
+$env:CELERY_RESULT_BACKEND = $env:REDIS_URL
+$env:DISPATCHER_ENABLED = "false"
 python -m pytest api/tests/test_purchase_order_warehouse_scope.py api/tests/test_admin_unreceive.py -q
-Remove-Item Env:TEST_DATABASE_URL
+Remove-Item Env:TEST_DATABASE_URL, Env:REDIS_URL, Env:CELERY_BROKER_URL, Env:CELERY_RESULT_BACKEND, Env:DISPATCHER_ENABLED
 ```
 
 Después, volver a arrancar con `Start-R2E2E.ps1` para repetir browser E2E. El `conftest.py` truncará y volverá a sembrar únicamente la base indicada por `TEST_DATABASE_URL`; no debe apuntarse a la base de datos habitual.
