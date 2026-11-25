@@ -60,7 +60,8 @@
 		{ id: 'animated-content', name: 'AnimatedContent', status: 'ready', href: '/lab/animated-content', description: 'Reveal scroll/mount: stagger, blur, wipe mask (WAAPI, sin GSAP).' },
 		{ id: 'fade-content', name: 'FadeContent', status: 'ready', href: '/lab/fade-content', description: 'Reveal fade/focus/develop/mist/dissolve/pixel (WAAPI, sin GSAP).' },
 		{ id: 'partylabs-hero', name: 'PartyLabs Hero', status: 'ready', href: '/lab/partylabs-hero', description: 'Hero 3D: campo de fotos por profundidad, nav glass, search y parallax (WAAPI).' },
-		{ id: 'luna-hero', name: 'Luna Hero', status: 'ready', href: '/lab/luna-hero', description: 'Storefront hero: nav glass, mega categorías, búsqueda Ctrl+K y drawer móvil.' }
+		{ id: 'luna-hero', name: 'Luna Hero', status: 'ready', href: '/lab/luna-hero', description: 'Storefront hero: nav glass, mega categorías, búsqueda Ctrl+K y drawer móvil.' },
+		{ id: 'orbit-hero', name: 'Orbit Hero', status: 'ready', href: '/lab/orbit-hero', description: 'Hero espacial: Tierra estática → WebGL2, headline gradient, nav brackets y Enter Orbit.' }
 	] as const;
 </script>
 
