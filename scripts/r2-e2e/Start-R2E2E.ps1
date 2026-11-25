@@ -14,7 +14,7 @@ $PythonExe = Join-Path $RepoRoot "api/.venv/Scripts/python.exe"
 if (!(Test-Path $PythonExe -PathType Leaf)) {
     throw "No existe el Python del proyecto: $PythonExe. Créalo con: python -m venv .\\api\\.venv; después instala .\\api\\requirements.txt."
 }
-$pythonCheck = & $PythonExe -c "import flask, cryptography; print('Python E2E:', __import__('sys').executable); print('Flask:', flask.__version__)" 2>&1
+$pythonCheck = & $PythonExe -W ignore::DeprecationWarning -c "from importlib.metadata import version; import cryptography, sys; print('Python E2E:', sys.executable); print('Flask:', version('flask')); print('Cryptography:', cryptography.__version__)" 2>&1
 if ($LASTEXITCODE -ne 0) {
     throw "El entorno api/.venv no tiene las dependencias necesarias o no puede importarlas: $pythonCheck"
 }
