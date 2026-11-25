@@ -1,1 +1,168 @@
-PLACEHOLDER
+/* Sling slider — bars + red ball; drag or slingshot aim. */
+.psling {
+  --psling-ink: #f4f4f5;
+  --psling-muted: #71717a;
+  --psling-bar: #e4e4e7;
+  --psling-bar-dim: #3f3f46;
+  --psling-ball: #ef4444;
+  --psling-aim: #f87171;
+  --psling-arc: #fca5a5;
+  --psling-band: #fafafa;
+  --psling-ghost: rgb(239 68 68 / 0.35);
+  --psling-trail: rgb(252 165 165 / 0.45);
+  --psling-value: #fafafa;
+  color: var(--psling-ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.psling[data-theme="light"] {
+  --psling-ink: #18181b;
+  --psling-muted: #71717a;
+  --psling-bar: #27272a;
+  --psling-bar-dim: #d4d4d8;
+  --psling-ball: #dc2626;
+  --psling-aim: #b91c1c;
+  --psling-arc: #f87171;
+  --psling-band: #3f3f46;
+  --psling-ghost: rgb(220 38 38 / 0.3);
+  --psling-trail: rgb(248 113 113 / 0.4);
+  --psling-value: #18181b;
+}
+
+.psling__fit {
+  --psling-scale: 1;
+  position: relative;
+  transform-origin: top left;
+  max-width: 100%;
+}
+.psling__body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 150px;
+  padding-bottom: 8px;
+  transform: scale(var(--psling-scale));
+  transform-origin: top left;
+  width: max-content;
+}
+
+.psling__stage {
+  position: relative;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+  outline: none;
+}
+.psling__stage:focus-visible {
+  outline: 2px solid var(--psling-ball);
+  outline-offset: 8px;
+  border-radius: 4px;
+}
+
+.psling__bar {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 3px;
+  height: 48px;
+  margin-top: -24px;
+  border-radius: 2px;
+  background: var(--psling-bar);
+  transform-origin: center center;
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+
+.psling__arcs {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.psling__arc {
+  fill: none;
+  stroke: var(--psling-arc);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 5;
+  stroke-linecap: round;
+  opacity: 0;
+}
+.psling__trail {
+  fill: none;
+  stroke: var(--psling-trail);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  opacity: 0.7;
+}
+.psling__band {
+  fill: none;
+  stroke: var(--psling-band);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 4;
+  stroke-linecap: round;
+  opacity: 0;
+}
+
+.psling__ball,
+.psling__ghost {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform;
+}
+.psling__ball {
+  background: var(--psling-ball);
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.12),
+    0 2px 6px rgb(239 68 68 / 0.45);
+  z-index: 2;
+}
+.psling__ghost {
+  background: transparent;
+  border: 1.5px solid var(--psling-ball);
+  box-shadow: 0 0 0 3px var(--psling-ghost);
+  opacity: 0;
+  z-index: 1;
+}
+
+.psling__value {
+  display: block;
+  margin-top: 14px;
+  min-width: 2ch;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--psling-value);
+  transition: color 0.15s ease;
+}
+.psling__value[data-aim] {
+  color: var(--psling-aim);
+}
+
+.psling__hint {
+  margin: 16px 0 0;
+  max-width: 36ch;
+  color: var(--psling-muted);
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .psling__bar,
+  .psling__ball,
+  .psling__ghost {
+    transition: none;
+  }
+}
