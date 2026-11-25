@@ -6,7 +6,7 @@ async function login(page: Page, username: string) {
   await page.goto('/login');
   await page.locator('#login-username').fill(username);
   await page.locator('#login-password').fill('admin');
-  // El nombre visible del botón cambia según el idioma activo (IT/ES/EN).
+  // El nombre visible del botón cambia según el idioma activo.
   // Acotamos al main para seleccionar el botón de envío sin depender del texto traducido.
   const submitButton = page.getByRole('main').getByRole('button');
   await expect(submitButton).toHaveCount(1);
