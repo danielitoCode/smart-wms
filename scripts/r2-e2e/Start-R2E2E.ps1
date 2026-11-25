@@ -8,6 +8,17 @@ $ComposeFile = Join-Path $RepoRoot "docker-compose.r2-e2e.yml"
 $RuntimeDir = Join-Path $RepoRoot "webapp/e2e/.runtime"
 New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
 
+# Always use the repository-local backend environment. Never resolve Python
+# through PATH: developer shells may point to unrelated tools/agents.
+$PythonExe = Join-Path $RepoRoot "api/.venv/Scripts/python.exe"
+if (!(Test-Path $PythonExe -PathType Leaf)) {
+    throw "No existe el Python del proyecto: $PythonExe. Créalo con: python -m venv .\\api\\.venv; después instala .\\api\\requirements.txt."
+}
+$pythonCheck = & $PythonExe -c "import flask, cryptography; print('Python E2E:', __import__('sys').executable); print('Flask:', flask.__version__)" 2>&1
+if ($LASTEXITCODE -ne 0) {
+    throw "El entorno api/.venv no tiene las dependencias necesarias o no puede importarlas: $pythonCheck"
+}
+
 function Test-TcpPort([int]$Port) {
     $client = [System.Net.Sockets.TcpClient]::new()
     try { $client.Connect("127.0.0.1", $Port); return $true }
@@ -65,7 +76,7 @@ $env:CELERY_RESULT_BACKEND = $env:REDIS_URL
 $env:DISPATCHER_ENABLED = "false"
 $env:API_BIND_HOST = "127.0.0.1"
 $env:JWT_SECRET = "R2_E2E_ONLY_JWT_SECRET_NEVER_USE_IN_PRODUCTION_2026"
-$env:SENTRY_ENCRYPTION_KEY = (& python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())").Trim()
+$env:SENTRY_ENCRYPTION_KEY = (& $PythonExe -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())").Trim()
 if (!$env:SENTRY_ENCRYPTION_KEY) { throw "No se pudo generar la clave Fernet efímera para el proceso E2E." }
 $env:SENTRY_TOKEN_PEPPER = "R2_E2E_ONLY_TOKEN_PEPPER_NEVER_USE_IN_PRODUCTION"
 $env:SENTRY_PUBSUB_HMAC_KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
@@ -75,7 +86,7 @@ $apiErr = Join-Path $RuntimeDir "flask.stderr.log"
 $webOut = Join-Path $RuntimeDir "vite.stdout.log"
 $webErr = Join-Path $RuntimeDir "vite.stderr.log"
 
-$api = Start-Process -FilePath "python" -ArgumentList @(
+$api = Start-Process -FilePath $PythonExe -ArgumentList @(
     "-m", "flask", "--app", "app:create_app", "run",
     "--host", "127.0.0.1", "--port", "55000"
 ) -WorkingDirectory (Join-Path $RepoRoot "api") -PassThru -RedirectStandardOutput $apiOut -RedirectStandardError $apiErr
