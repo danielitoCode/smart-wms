@@ -64,7 +64,8 @@
 		{ id: 'orbit-hero', name: 'Orbit Hero', status: 'ready', href: '/lab/orbit-hero', description: 'Hero espacial: Tierra estática → WebGL2, headline gradient, nav brackets y Enter Orbit.' },
 		{ id: 'odometer-pricing', name: 'Odometer Pricing', status: 'ready', href: '/lab/odometer-pricing', description: 'Planes con precios tipo odómetro, toggle mensual/anual, glow + trail en plan popular.' },
 		{ id: 'smart-pricing', name: 'Smart Pricing', status: 'ready', href: '/lab/smart-pricing', description: 'Planes lime, switch mensual/anual −20%, precio animado y CTA con roll + flecha.' },
-		{ id: 'halo-sign-in', name: 'Halo Sign In', status: 'ready', href: '/lab/halo-sign-in', description: 'Card de login en bandeja: halo de puntos, show password, social y estados Sign In → Welcome back.' }
+		{ id: 'halo-sign-in', name: 'Halo Sign In', status: 'ready', href: '/lab/halo-sign-in', description: 'Card de login en bandeja: halo de puntos, show password, social y estados Sign In → Welcome back.' },
+		{ id: 'synais-footer', name: 'Synais Footer', status: 'ready', href: '/lab/synais-footer', description: 'Footer finance dark: newsletter, 4 columnas, wordmark cream letter-by-letter.' }
 	] as const;
 </script>
 
