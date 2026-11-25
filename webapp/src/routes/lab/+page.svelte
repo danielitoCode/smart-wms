@@ -61,7 +61,8 @@
 		{ id: 'fade-content', name: 'FadeContent', status: 'ready', href: '/lab/fade-content', description: 'Reveal fade/focus/develop/mist/dissolve/pixel (WAAPI, sin GSAP).' },
 		{ id: 'partylabs-hero', name: 'PartyLabs Hero', status: 'ready', href: '/lab/partylabs-hero', description: 'Hero 3D: campo de fotos por profundidad, nav glass, search y parallax (WAAPI).' },
 		{ id: 'luna-hero', name: 'Luna Hero', status: 'ready', href: '/lab/luna-hero', description: 'Storefront hero: nav glass, mega categorías, búsqueda Ctrl+K y drawer móvil.' },
-		{ id: 'orbit-hero', name: 'Orbit Hero', status: 'ready', href: '/lab/orbit-hero', description: 'Hero espacial: Tierra estática → WebGL2, headline gradient, nav brackets y Enter Orbit.' }
+		{ id: 'orbit-hero', name: 'Orbit Hero', status: 'ready', href: '/lab/orbit-hero', description: 'Hero espacial: Tierra estática → WebGL2, headline gradient, nav brackets y Enter Orbit.' },
+		{ id: 'odometer-pricing', name: 'Odometer Pricing', status: 'ready', href: '/lab/odometer-pricing', description: 'Planes con precios tipo odómetro, toggle mensual/anual, glow + trail en plan popular.' }
 	] as const;
 </script>
 
