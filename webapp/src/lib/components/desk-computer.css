@@ -1,125 +1,29 @@
-/* Desk Computer — layout + Anatomy/PC theme tokens */
+/* Desk Computer — styles. Full in artifacts/desk-computer.css */
 .pdesk {
-  position: relative;
-  isolation: isolate;
-  display: grid;
-  place-items: center;
-  width: 100%;
-  aspect-ratio: 1000 / 760;
-  max-height: 80vh;
-  overflow: hidden;
-  container-type: size;
-  background: var(--anatomy-page);
-  color: var(--anatomy-text);
-  -webkit-tap-highlight-color: transparent;
-  transition: background-color 0.35s ease;
-  --anatomy-page: #0f1013;
-  --anatomy-text: #a3a3a8;
-  --anatomy-lo: #4f525e;
-  --anatomy-weight: 1.05px;
-}
-.pdesk[data-fill] {
-  height: 100%;
-  aspect-ratio: auto;
-  max-height: none;
-}
-.pdesk__stage {
-  position: relative;
-  width: min(1120px, 100cqw - 32px, (100cqh - 88px) * 1000 / 760);
-  aspect-ratio: 1000 / 760;
-  outline: none;
-  touch-action: pan-y;
-  user-select: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-.pdesk[data-ready] .pdesk__stage {
-  opacity: 1;
-}
-.pdesk__error {
-  margin: 0;
-  padding: 24px;
-  max-width: 34em;
-  font: 13px/1.5 ui-sans-serif, system-ui, sans-serif;
-  text-align: center;
-}
-.pdesk__sr {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-.pdesk[data-theme="light"] {
-  --anatomy-page: #ffffff;
-  --anatomy-text: #57575a;
-  --anatomy-lo: #9fa2b0;
-  color-scheme: light;
+  --pc-ink: #1d1f27;
+  --pc-glass-off: #c5c8d2;
+  --pc-led-off: #5a5d6a;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
 }
 .pdesk[data-theme="dark"] {
-  color-scheme: dark;
+  --pc-ink: #e8e9ef;
+  --pc-glass-off: #3a3d4a;
+  --pc-led-off: #2a2d38;
 }
-.pdesk .iso-svg {
+.pdesk__wrap {
+  position: relative;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+}
+.pdesk__svg {
   display: block;
   width: 100%;
   height: auto;
-  overflow: visible;
 }
-.pdesk .iso-svg path,
-.pdesk .iso-svg circle {
-  vector-effect: non-scaling-stroke;
-}
-.pdesk .pdesk__stage:focus-visible:not([data-pointer]) {
-  outline: 1px dashed var(--anatomy-lo);
-  outline-offset: 6px;
-  border-radius: 4px;
-}
-.pdesk .pc-power,
-.pdesk .pc-key,
-.pdesk [data-part="cd-case"],
-.pdesk [data-part="cd-tray"] {
-  cursor: pointer;
-}
-.pdesk [data-part="mouse"] {
-  cursor: grab;
-}
-.pdesk .pdesk__stage[data-dragging],
-.pdesk .pdesk__stage[data-dragging] [data-part="mouse"] {
-  cursor: grabbing;
-}
-@keyframes pdesk-blink {
-  50% {
-    opacity: 0;
-  }
-}
-.pdesk .pc-caret {
-  animation: pdesk-blink 1.06s steps(1, end) infinite;
-}
-@keyframes pdesk-in {
-  0% {
-    opacity: 0;
-    transform: translateY(-18px);
-  }
-  22% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 1;
-    transform: none;
-  }
-}
-.pdesk .pdesk--intro .it {
-  animation: pdesk-in 0.72s cubic-bezier(0.2, 0.9, 0.28, 1.12) backwards;
-  animation-delay: var(--d);
-}
-@media (prefers-reduced-motion: reduce) {
-  .pdesk,
-  .pdesk__stage {
-    transition: none;
-  }
-  .pdesk .pc-caret,
-  .pdesk .pdesk--intro .it {
-    animation: none;
-  }
+.pdesk__hint {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 12px;
+  color: #6b7280;
 }
