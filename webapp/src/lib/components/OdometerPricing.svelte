@@ -270,6 +270,8 @@
 
 		<div class="op-pricing__track" bind:this={trackEl} data-lenis-prevent-horizontal="">
 			{#each PLANS as plan, i (plan.id)}
+				{@const value = plan.price[billing]}
+				{@const digits = String(value).split('').map(Number)}
 				<article
 					class="op-plan"
 					class:op-plan--popular={plan.popular}
@@ -342,8 +344,6 @@
 							{/if}
 						</div>
 
-						{@const value = plan.price[billing]}
-						{@const digits = String(value).split('').map(Number)}
 						<p class="op-plan__price">
 							<span
 								class="op-plan__amount"
