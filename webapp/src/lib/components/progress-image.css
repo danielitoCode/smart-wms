@@ -1,57 +1,255 @@
-/* Progress Image — full styles also in artifacts/progress-image.css */
+/* Progress Image — rollout card; photo is the progress bar */
+
 .ppimg {
-  --ppimg-ink: #1a1a1a;
-  --ppimg-soft: #6b7280;
-  --ppimg-bar: #f3f4f6;
-  --ppimg-active: #111827;
-  --ppimg-active-ink: #fff;
-  --ppimg-line: rgb(0 0 0 / 0.06);
-  --ppimg-bar-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
-  --ppimg-go: 59 130 246;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  --ppimg-surface: #f9f9f9;
+  --ppimg-ink: #1f1f1f;
+  --ppimg-muted: #5c5c5c;
+  --ppimg-soft: #8a8a8a;
+  --ppimg-line: #e7e7e7;
+  --ppimg-pill: #ffffff;
+  --ppimg-pill-ink: #3a3a3a;
+  --ppimg-active: linear-gradient(180deg, #5a5a5a 0%, #2a2a2a 55%, #141414 100%);
+  --ppimg-active-ink: #ffffff;
+  --ppimg-track: #ececec;
+  --ppimg-skeleton: #e6e6e6;
+  --ppimg-shimmer: rgb(255 255 255 / 0.55);
+  --ppimg-tip: #1f1f1f;
+  --ppimg-tip-ink: #f4f4f4;
+  --ppimg-bar: #ffffff;
+  --ppimg-bar-shadow: 4px 4px 0 0 #ebebeb;
+  --ppimg-go: 37 99 235;
+  --ppimg-shadow:
+    0 40px 80px -24px rgb(0 0 0 / 0.1),
+    0 8px 24px -8px rgb(0 0 0 / 0.06),
+    0 0 0 1px rgb(0 0 0 / 0.02);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 400px;
+  min-width: 0;
   color: var(--ppimg-ink);
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
+
 .ppimg[data-theme="dark"] {
-  --ppimg-ink: #f3f4f6;
-  --ppimg-soft: #9ca3af;
-  --ppimg-bar: #1f2937;
-  --ppimg-active: #f9fafb;
-  --ppimg-active-ink: #111827;
-  --ppimg-line: rgb(255 255 255 / 0.08);
-  --ppimg-bar-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+  --ppimg-surface: #18181a;
+  --ppimg-ink: #f1f1f1;
+  --ppimg-muted: #a3a3a3;
+  --ppimg-soft: #8c8c8c;
+  --ppimg-line: #2c2c2f;
+  --ppimg-pill: #202023;
+  --ppimg-pill-ink: #d6d6d6;
+  --ppimg-active: linear-gradient(180deg, #ffffff 0%, #ececec 55%, #d4d4d4 100%);
+  --ppimg-active-ink: #141414;
+  --ppimg-track: #26262a;
+  --ppimg-skeleton: #222225;
+  --ppimg-shimmer: rgb(255 255 255 / 0.07);
+  --ppimg-tip: #f1f1f1;
+  --ppimg-tip-ink: #0e0e0f;
+  --ppimg-bar: #1c1c1f;
+  --ppimg-bar-shadow: 4px 4px 0 0 #050505;
+  --ppimg-shadow:
+    0 40px 80px -24px rgb(0 0 0 / 0.7),
+    0 8px 24px -8px rgb(0 0 0 / 0.5),
+    0 0 0 1px rgb(255 255 255 / 0.05);
 }
+
+.ppimg *,
+.ppimg *::before,
+.ppimg *::after {
+  box-sizing: border-box;
+}
+
+.ppimg button {
+  font: inherit;
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.ppimg__defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
 .ppimg__card {
-  position: relative;
-  overflow: hidden;
+  width: 100%;
+  padding: 14px;
   border-radius: 20px;
-  background: #0a0a0a;
-  aspect-ratio: 4/3;
+  background: var(--ppimg-surface);
+  box-shadow: var(--ppimg-shadow);
 }
-.ppimg__canvas {
-  display: block;
+
+.ppimg__scene {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1200 / 620;
+  overflow: hidden;
+  border-radius: 11px;
+  background: var(--ppimg-skeleton);
+}
+
+.ppimg__photo {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
+  opacity: 0;
+  transition: opacity 0.5s ease-out;
 }
+
+.ppimg__photo.is-ready {
+  opacity: 1;
+}
+
+.ppimg__shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    var(--ppimg-shimmer) 50%,
+    transparent 60%
+  );
+  background-size: 200% 100%;
+  animation: ppimg-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes ppimg-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+.ppimg__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 .ppimg__meta {
-  position: absolute;
-  left: 16px;
-  bottom: 16px;
   display: flex;
-  gap: 10px;
-  align-items: baseline;
-  color: #fff;
-  text-shadow: 0 1px 3px rgb(0 0 0 / 0.5);
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  gap: 12px;
 }
-.ppimg__pct { font-size: 28px; font-weight: 600; letter-spacing: -0.03em; }
-.ppimg__fx-label { font-size: 13px; opacity: 0.85; }
-.ppimg__slider {
+
+.ppimg__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.ppimg__caption {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--ppimg-muted);
+}
+
+.ppimg__pct-pill {
+  flex: none;
+  min-width: 52px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--ppimg-pill);
+  color: var(--ppimg-pill-ink);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  box-shadow: inset 0 0 0 1px var(--ppimg-line);
+}
+
+.ppimg__slider-wrap {
+  position: relative;
+  margin-top: 16px;
+  height: 44px;
+}
+
+.ppimg__track {
   position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: 52px;
-  width: auto;
-  accent-color: rgb(var(--ppimg-go));
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 10px;
+  margin-top: -5px;
+  border-radius: 999px;
+  background: var(--ppimg-track);
+  overflow: hidden;
 }
+
+.ppimg__fill {
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  transition: width 0.05s linear;
+}
+
+.ppimg__range {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 3;
+}
+
+.ppimg__knob-wrap {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 44px;
+  height: 44px;
+  margin-top: -22px;
+  margin-left: -22px;
+  pointer-events: none;
+  z-index: 2;
+  transition: left 0.05s linear;
+}
+
+.ppimg__knob {
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.18), inset 0 -2px 3px rgb(0 0 0 / 0.06);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.ppimg__knob.is-down {
+  transform: scale(0.88);
+}
+
+.ppimg__pct {
+  position: absolute;
+  right: 50px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
 .ppimg__fx {
   position: relative;
   display: flex;
@@ -65,7 +263,29 @@
   box-shadow: var(--ppimg-bar-shadow), inset 0 0 0 1px var(--ppimg-line);
   scrollbar-width: none;
 }
-.ppimg__fx::-webkit-scrollbar { display: none; }
+
+.ppimg__fx::-webkit-scrollbar {
+  display: none;
+}
+
+.ppimg__fx-ind {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--ppimg-active);
+  pointer-events: none;
+  opacity: 0;
+  transition: transform 0.35s cubic-bezier(0.23, 1, 0.32, 1),
+    width 0.35s cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 0.2s ease;
+}
+
+.ppimg__fx-ind.is-on {
+  opacity: 1;
+}
+
 .ppimg__fx-btn {
   position: relative;
   z-index: 1;
@@ -82,16 +302,50 @@
   white-space: nowrap;
   cursor: pointer;
   outline: none;
-  transition: color 0.2s ease, background 0.2s ease;
+  transition: color 0.2s ease, transform 0.15s ease;
 }
-.ppimg__fx-btn:hover { color: var(--ppimg-ink); }
+
+.ppimg__fx-btn:hover {
+  color: var(--ppimg-ink);
+}
+
 .ppimg__fx-btn[aria-checked="true"] {
   color: var(--ppimg-active-ink);
-  background: var(--ppimg-active);
 }
+
+.ppimg__fx-btn:active {
+  transform: scale(0.94);
+}
+
 .ppimg__fx-btn:focus-visible {
   box-shadow: 0 0 0 2px rgb(var(--ppimg-go) / 0.4);
 }
+
+.ppimg [data-enter] {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.23, 1, 0.32, 1), filter 0.55s ease;
+  filter: blur(8px);
+}
+
+.ppimg [data-enter].is-in {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .ppimg * { transition: none !important; }
+  .ppimg [data-enter] {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    transition: none !important;
+  }
+  .ppimg__shimmer {
+    animation: none;
+  }
+  .ppimg__fx-ind,
+  .ppimg__fill {
+    transition: none !important;
+  }
 }
