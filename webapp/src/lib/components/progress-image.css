@@ -1,1 +1,97 @@
-PLACEHOLDER_WILL_UPDATE
+/* Progress Image — full styles also in artifacts/progress-image.css */
+.ppimg {
+  --ppimg-ink: #1a1a1a;
+  --ppimg-soft: #6b7280;
+  --ppimg-bar: #f3f4f6;
+  --ppimg-active: #111827;
+  --ppimg-active-ink: #fff;
+  --ppimg-line: rgb(0 0 0 / 0.06);
+  --ppimg-bar-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+  --ppimg-go: 59 130 246;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  color: var(--ppimg-ink);
+}
+.ppimg[data-theme="dark"] {
+  --ppimg-ink: #f3f4f6;
+  --ppimg-soft: #9ca3af;
+  --ppimg-bar: #1f2937;
+  --ppimg-active: #f9fafb;
+  --ppimg-active-ink: #111827;
+  --ppimg-line: rgb(255 255 255 / 0.08);
+  --ppimg-bar-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+}
+.ppimg__card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  background: #0a0a0a;
+  aspect-ratio: 4/3;
+}
+.ppimg__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.ppimg__meta {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  color: #fff;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.5);
+}
+.ppimg__pct { font-size: 28px; font-weight: 600; letter-spacing: -0.03em; }
+.ppimg__fx-label { font-size: 13px; opacity: 0.85; }
+.ppimg__slider {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 52px;
+  width: auto;
+  accent-color: rgb(var(--ppimg-go));
+}
+.ppimg__fx {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  max-width: 100%;
+  margin-top: 16px;
+  padding: 4px;
+  overflow-x: auto;
+  border-radius: 999px;
+  background: var(--ppimg-bar);
+  box-shadow: var(--ppimg-bar-shadow), inset 0 0 0 1px var(--ppimg-line);
+  scrollbar-width: none;
+}
+.ppimg__fx::-webkit-scrollbar { display: none; }
+.ppimg__fx-btn {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ppimg-soft);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  outline: none;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+.ppimg__fx-btn:hover { color: var(--ppimg-ink); }
+.ppimg__fx-btn[aria-checked="true"] {
+  color: var(--ppimg-active-ink);
+  background: var(--ppimg-active);
+}
+.ppimg__fx-btn:focus-visible {
+  box-shadow: 0 0 0 2px rgb(var(--ppimg-go) / 0.4);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ppimg * { transition: none !important; }
+}
