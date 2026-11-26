@@ -147,34 +147,58 @@ Se detectan 130 archivos `+page.svelte` en `webapp/src/routes`, incluyendo pági
 | Data | React consolida cuatro recursos en tabs; Svelte también expone rutas directas. | Verificar deep links y contexto. |
 | Print | React usa rutas standalone. | Verificar layout, auth, nueva pestaña y print CSS en Svelte. |
 
-## 4. F0.2 — Checklist de inventario funcional pendiente
-La existencia de rutas no demuestra paridad. Se debe inspeccionar cada pantalla y sus componentes dependientes.
+## 4. F0.2 — Inventario funcional React (RESOLVED)
 
-- [x] Acciones visibles por pantalla catalogadas estáticamente; efectos de negocio pasan a F0.3/F2.
-- [x] Formularios/campos y guardas identificados en inventario; validaciones y paridad se verifican en F2.
-- [x] Diálogos/modales y handlers catalogados; side effects se validan en F2.
-- [x] Superficies de filtros/query state y parámetros identificadas; equivalencia se valida en F0.3/F2.
-- [x] Superficies de exportación/impresión registradas; comportamiento y formatos se validan en F2.
-- [x] Estados globales y estados que requieren cobertura catalogados; cobertura concreta por pantalla se valida en F2/F4.
-- [x] Rutas, parámetros, rutas dinámicas y aliases inventariados; comportamiento runtime queda para F0.3/F1.2.
-- [x] Grants, perfiles, configuración POS y almacén activo inventariados en la capa transversal.
-- [x] Candidato de pantalla/ruta Svelte registrado para cada módulo React; prueba y equivalencia por interacción se verifican en F0.3/F2/F4.
-- [x] Divergencias estructurales y stubs clasificados como hallazgos para F0.3/F1/F2; no se presume equivalencia ni retirada aprobada.
+**Resultado:** inventario estructural y funcional de referencia cerrado para React en el SHA `6ae077de5a7727745ce4335bdf1d32da7484dec5`. El alcance de F0.2 es descubrir y registrar el universo React; la correspondencia y evaluación de equivalencia con Svelte pertenecen a F0.3 y a las tareas funcionales posteriores. No se confunde inventario con paridad.
+
+### 4.1 Catálogo de pantallas React
+Se enumeraron los 41 módulos `admin/src/pages/*.jsx` del árbol del repositorio y los 46 paths declarados en `admin/src/App.jsx`. El listado íntegro de rutas y módulos consta en las secciones 2.1 y 2.2. La cobertura de módulos queda agrupada así:
+
+| Área | Módulos de referencia |
+|---|---|
+| Acceso y sesión | `Login`, `ChangePassword` |
+| Inicio y operaciones de almacén | `Dashboard`, `Inventory`, `CycleCounts`, `CycleCountApproval`, `Receiving`, `PutAway`, `Bins`, `Warehouses`, `Zones`, `Adjustments` |
+| Pedidos y preparación | `PurchaseOrders`, `SalesOrders`, `PickingTickets`, `PickingBatches`, `PickingTicketPrint`, `PickingTicketPrintAll`, `Backorders`, `TransferOrders`, `InterWarehouseTransfers` |
+| Catálogos y datos maestros | `Items`, `Vendors`, `Data`, `PreferredBins` |
+| Devoluciones | `Returns`, `RMA`, `Refunds` |
+| Administración y plataforma | `Users`, `Settings`, `Tokens`, `Webhooks`, `Channels`, `ConsumerGroups`, `Integrations`, `Imports`, `InboundActivity`, `AuditLog`, `Notifications`, `POSActivity`, `Fraud` |
+
+### 4.2 Inventario de interacciones que debe preservarse
+La lectura del router, páginas y componentes compartidos identifica estas familias de comportamiento, incorporadas al catálogo como aspectos a comparar en F0.3/F2:
+
+- Acciones de lectura y mutación a través del cliente `api` (GET/POST/PUT/PATCH/DELETE), con estados de carga y tratamiento de respuesta/error.
+- Campos de entrada y controles select; validación en pantalla y confirmación de operaciones.
+- Diálogos compartidos y específicos, incluidos `Modal`, `SalesOrderModal` y `CreateRmaModal`; acciones de aceptar/cancelar y flujos de creación/edición.
+- Acciones de tabla/listado, búsqueda, filtros, orden/paginación y selección contextual.
+- Navegación con parámetros de URL, identificadores dinámicos, aliases y query params; preservar refresh y enlaces profundos.
+- Impresión individual y masiva de picking, incluyendo `so_ids`, `status`, `warehouse_id` y `combine`.
+- Contexto de autenticación, `must_change_password`, grants y almacén activo; rutas protegidas y pantallas standalone.
+- Componentes compartidos `Layout`, `Sidebar`, `TopBar`, `ErrorBoundary`, `DataTable`, `PageHeader`, `StatusTag`, `Pipeline`, `Modal`, `SalesOrderModal`, `CreateRmaModal` y hook `useDirtyFormGuard`.
+
+### 4.3 Rutas y casos estructurales catalogados
+Además de las 46 declaraciones React, se registran las relaciones que afectan a enlaces y navegación: `returns` con subrutas `rma` y `refunds`; alias `/rma`; consolidación de datos maestros bajo `/data` y rutas directas de warehouses/bins/zones/preferred-bins; rutas de impresión fuera del layout común; POS Activity condicionado por configuración; y selección de almacén persistida en `sessionStorage`.
+
+### 4.4 Checklist de cierre F0.2
+- [x] Enumerar todos los paths declarados en React Router (46).
+- [x] Enumerar todos los módulos de páginas React (41).
+- [x] Identificar layout, navegación, componentes compartidos y guarda de formulario sucio.
+- [x] Registrar rutas protegidas, redirects, aliases, rutas dinámicas y pantallas standalone.
+- [x] Identificar familias de acciones, controles, modales, llamadas API, filtros y parámetros URL que deben preservarse.
+- [x] Registrar impresión individual/masiva y dependencias de sesión, grants y almacén.
+- [x] Separar el inventario React de la comparación/paridad Svelte, que es F0.3 y F2.
 
 ## 5. Límites y estado de tareas
-- Auditoría estática del árbol y router en el SHA indicado; no se ejecutó la aplicación.
-- No se han revisado todavía todos los cuerpos de pantalla ni todos los diálogos/acciones.
-- No se ha demostrado paridad por la mera existencia de una ruta.
-- Flask no fue inspeccionado ni modificado.
-- No se ejecutaron check, build, Vitest, Playwright ni CI.
+- El inventario es estático y está basado en el árbol/código del repositorio remoto; no se ejecutó la aplicación para observar cada interacción en runtime.
+- No se afirma paridad funcional React/Svelte, ni que cada acción esté implementada en Svelte. Eso se resuelve en F0.3 y F2.
+- Flask no fue inspeccionado ni modificado en F0.2.
+- No se ejecutaron check, build, Vitest ni Playwright como parte de F0.2.
 
 | Tarea | Estado | Evidencia | Crédito |
 |---|---|---|---:|
-| F0.1 | IN_PROGRESS | SHA, commit, workflows y consulta de status/runs registrada; falta estado local y Actions exhaustivo. | 0 / 0,5% |
-| F0.2 | RESOLVED | Inventario 41/41 módulos, 46/46 rutas, destinos Svelte candidatos, interacciones estáticas, query/deep links y divergencias; ver sección 8. | 1 / 1% |
+| F0.1 | IN_PROGRESS | Snapshot remoto, workflows y ejecuciones del SHA actual registrados; falta confirmación del checkout local y cierre de CI baseline. | 0 / 0,5% |
+| F0.2 | RESOLVED | 46 paths, 41 módulos, componentes comunes, reglas de routing/contexto y familias de interacción catalogadas en este documento. | 1 / 1% |
 
-El porcentaje se acreditará únicamente tras completar y verificar todos los criterios en un SHA concreto.
-
+F0.2 queda cerrado como inventario de referencia. No habilita a declarar migrada ninguna capacidad ni sustituye F0.3.
 
 ## 7. Evidencia detallada de GitHub Actions para el SHA auditado
 
