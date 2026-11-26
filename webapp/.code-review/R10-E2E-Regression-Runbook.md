@@ -109,7 +109,7 @@ La ejecución local usa una infraestructura independiente del stack habitual:
 - SvelteKit/Vite: dirección definida por `webBaseUrl`; el modo `r2-e2e` toma el destino del proxy desde el mismo archivo. El modo de desarrollo normal conserva el proxy Flask `127.0.0.1:5000`.
 - Datos sintéticos: seed Apartment Lab y usuarios `admin`, `r2_user` (grant receiving) y `r2_limited` (sin grant). Contraseña de laboratorio: `admin`.
 
-**Protecciones:** no se reutiliza el contenedor, puerto, volumen ni base de datos del Compose habitual. Los puertos se comprueban antes de iniciar; si están ocupados, el script aborta sin detener procesos existentes. El script de parada usa `docker compose stop` y conserva el volumen. No ejecutar `down -v` sobre el stack normal. Los datos de E2E son descartables y no contienen datos reales.
+**Protecciones:** no se reutiliza el contenedor, puerto, volumen ni base de datos del Compose habitual. Los puertos se comprueban antes de iniciar; si están ocupados, el script aborta sin detener procesos existentes. El script de parada verifica la línea de comandos de los PID registrados antes de terminarlos, usa `docker compose stop` y conserva el volumen. No ejecutar `down -v` sobre el stack normal. Los datos de E2E son descartables y no contienen datos reales.
 
 ### Requisitos previos
 
@@ -121,10 +121,11 @@ La ejecución local usa una infraestructura independiente del stack habitual:
 ### Arranque
 
 ```powershell
-# Instalar el runner aislado de Playwright una sola vez
+# Instalar dependencias solo si aún no existe webapp/e2e/node_modules
 cd webapp/e2e
 npm install
-npm run install:browsers
+# Instalar Chromium solo en una máquina nueva y si Playwright lo solicita.
+# No repetir si el navegador ya está instalado.
 cd ../..
 
 # Activar previamente el venv de api si no está activo
