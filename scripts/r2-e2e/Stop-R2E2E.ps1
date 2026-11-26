@@ -38,7 +38,7 @@ if (Test-Path $ProcessFile) {
             & taskkill.exe /PID $id /T /F | Out-Null
             Write-Host "Detenido $($entry.Kind) E2E (PID $id)."
         } else {
-            Write-Warning "No se detuvo PID $id: ya no coincide con el comando esperado de $($entry.Kind). Se deja intacto."
+            Write-Warning "No se detuvo PID ${id}: ya no coincide con el comando esperado de $($entry.Kind). Se deja intacto."
         }
     }
 
