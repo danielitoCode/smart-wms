@@ -69,7 +69,8 @@
 		{ id: 'sling-slider', name: 'Sling Slider', status: 'ready', href: '/lab/sling-slider', description: 'Slider de barras con wake spring; bola roja tipo honda con arco de puntería y rebote.' },
 		{ id: 'desk-computer', name: 'Desk Computer', status: 'ready', href: '/lab/desk-computer', description: 'PC isométrico: teclado, ratón, CRT y CD-ROM interactivos (SVG + engine rAF, Web Audio).' },
 		{ id: 'scroll-snap-list', name: 'ScrollSnapList', status: 'ready', href: '/lab/scroll-snap-list', description: 'Lista snap vertical + timeline + card 9:16; demo series TV o flujo ops WMS.' },
-		{ id: 'duo-flip', name: 'DuoFlip', status: 'ready', href: '/lab/duo-flip', description: 'Galería WebGL: pliegue líquido entre fotos, drag, teclado y autoplay (sin motion/react).' }
+		{ id: 'duo-flip', name: 'DuoFlip', status: 'ready', href: '/lab/duo-flip', description: 'Galería WebGL: pliegue líquido entre fotos, drag, teclado y autoplay (sin motion/react).' },
+		{ id: 'pixel-feature-card', name: 'PixelFeatureCard', status: 'ready', href: '/lab/pixel-feature-card', description: 'Nubes dithered (Bayer) + teléfono 3D; hover glow, press ripple, pantalla health demo.' }
 	] as const;
 </script>
 
