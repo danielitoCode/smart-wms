@@ -91,11 +91,13 @@ $api = Start-Process -FilePath $PythonExe -ArgumentList @(
     "--host", "127.0.0.1", "--port", "56000"
 ) -WorkingDirectory (Join-Path $RepoRoot "api") -PassThru -RedirectStandardOutput $apiOut -RedirectStandardError $apiErr
 
-# E2E uses same-origin /api; Vite proxies to the isolated Flask API.
+# Windows removes process environment variables assigned an empty string.
+# The dedicated Vite mode file therefore supplies the empty API base URL,
+# overriding webapp/.env without changing normal development configuration.
 $env:VITE_API_BASE_URL = ""
 $env:VITE_API_PROXY_TARGET = "http://127.0.0.1:56000"
 $web = Start-Process -FilePath "cmd.exe" -ArgumentList @(
-    "/c", "npm run dev -- --host 127.0.0.1 --port 5173"
+    "/c", "npm run dev -- --mode r2-e2e --host 127.0.0.1 --port 5173"
 ) -WorkingDirectory (Join-Path $RepoRoot "webapp") -PassThru -RedirectStandardOutput $webOut -RedirectStandardError $webErr
 
 $deadline = (Get-Date).AddSeconds(90)
