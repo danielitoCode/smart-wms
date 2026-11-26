@@ -174,3 +174,32 @@ La existencia de rutas no demuestra paridad. Se debe inspeccionar cada pantalla 
 | F0.2 | IN_PROGRESS | Router, módulos de página, componentes compartidos y divergencias estructurales identificados; falta catálogo de interacciones y comparación funcional Svelte. | 0 / 1% |
 
 El porcentaje se acreditará únicamente tras completar y verificar todos los criterios en un SHA concreto.
+
+
+## 7. Evidencia detallada de GitHub Actions para el SHA auditado
+
+Consulta exhaustiva por `head_sha=fd5d42be3329e074caf0196c0a4d1cbe7c4c442b`:
+
+| Workflow | Estado observado | URL |
+|---|---|---|
+| gitleaks | success | https://github.com/danielitoCode/smart-wms/actions/runs/45880855555 |
+| Tests | in_progress en la consulta; R2 warehouse scope/receiving pasó, suite general aún ejecutándose | https://github.com/danielitoCode/smart-wms/actions/runs/45880855716 |
+| Webapp CI | **failure** | https://github.com/danielitoCode/smart-wms/actions/runs/45880855677 |
+| Lockfile Version Check | success | https://github.com/danielitoCode/smart-wms/actions/runs/45880855670 |
+| Dependency Audit | success | https://github.com/danielitoCode/smart-wms/actions/runs/45880855715 |
+
+### Fallo Webapp CI
+
+Job `Typecheck · Build · Test`:
+- Checkout, detección de webapp, Node 26, instalación y SvelteKit sync: success.
+- `npm run check`: failure.
+- Build y suites Domain/Application/Infrastructure/UI/i18n/Integration/Full regression/Coverage: skipped por el fallo anterior.
+- Diagnóstico final: **5 errores y 151 advertencias en 61 archivos**.
+- Errores concretos destacados en el log:
+  - `webapp/src/routes/lab/dynamic-drop-zone/+page.svelte`: `demoFile` no existe en `DynamicDropZoneProps`; `files` y `f` tienen tipo implícito `any`.
+  - `webapp/src/routes/lab/presence-cards/+page.svelte`: `autoplay` no existe en `PresenceCardsProps`.
+- También aparecen advertencias de accesibilidad, selectores CSS no utilizados y referencias reactivas inicializadas solo con el valor inicial.
+
+Este resultado es baseline del SHA `fd5d42be3329e074caf0196c0a4d1cbe7c4c442b`, anterior al commit que añadió este informe. No se debe atribuir a F0 ni corregir dentro de F0.1/F0.2; se registrará como hallazgo para la tarea de calidad correspondiente, con seguimiento por archivo y regresión propia.
+
+La consulta del workflow general `Tests` se realizó mientras seguía en curso; no se declara su resultado final.
