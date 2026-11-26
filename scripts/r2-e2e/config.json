@@ -1,0 +1,6 @@
+{
+  "apiBaseUrl": "http://127.0.0.1:56000",
+  "webBaseUrl": "http://127.0.0.1:5173",
+  "databaseUrl": "postgresql://sentry:sentry@127.0.0.1:55432/sentry_test",
+  "redisUrl": "redis://:r2-e2e-local-only@127.0.0.1:56379/0"
+}
