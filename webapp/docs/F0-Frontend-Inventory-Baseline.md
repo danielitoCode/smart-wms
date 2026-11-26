@@ -1,6 +1,6 @@
 # F0 — Inventario y baseline inicial del frontend
 
-> Estado: **F0.2 RESOLVED; F0.1 IN_PROGRESS**. El inventario funcional React y el catálogo de destinos candidatos Svelte están documentados. No certifica paridad funcional ni estado local.
+> Estado: **F0.1 RESOLVED; F0.2 RESOLVED; F0.3 RESOLVED**. La matriz de correspondencia estática React/Svelte se encuentra en la sección 9; no certifica paridad runtime.
 
 ## 1. Snapshot
 
@@ -430,3 +430,97 @@ Estos fallos se registran como baseline existente en el SHA auditado. No se corr
 - [x] Limitación explícita: no se puede consultar el working tree local desde GitHub remoto.
 
 F0.1 se cierra como captura de baseline remoto. La corrección de los fallos, la ejecución reproducible local y la certificación de gates pertenecen a F0.5/F4, no a F0.1.
+
+
+## 9. F0.3 — Matriz de correspondencia React → Svelte
+
+**Estado: F0.3 RESOLVED (inventario estático de correspondencias y divergencias).** Snapshot inspeccionado: rama `svelte-webapp`, HEAD remoto `01601718ce835cb4d0e6f252c6df4698b81e626d` (26-11-2026), commit [feat(lab): index entry for PrivacyBanner](https://github.com/danielitoCode/smart-wms/commit/01601718ce835cb4d0e6f252c6df4698b81e626d). El mapeo describe el árbol de código de ese SHA; no es una certificación runtime ni de paridad funcional.
+
+### 9.1 Criterio de clasificación
+
+- **CANDIDATO DIRECTO / PARCIAL:** existe una pantalla Svelte importada por una ruta concreta; solo acredita correspondencia estructural. Acciones, validaciones, permisos, filtros, resultados y estados deben verificarse en F2/F4.
+- **PARCIAL con ruta legacy placeholder:** la capacidad tiene un componente Svelte alcanzable por la ruta canónica dinámica o una nueva ruta, pero el path antiguo todavía muestra el placeholder común. No se considera alias ni redirect funcional.
+- **AUSENTE:** no se encontró pantalla Svelte dedicada o el dispatcher dirige a una pantalla de otro dominio sin evidencia de equivalencia.
+- **CAMBIO ESTRUCTURAL OBSERVADO:** la capacidad se reorganizó (por ejemplo, agrupación Data o rutas `/management`); se registra como divergencia a probar, no como cambio aprobado.
+- **BACKEND_LIMITATION:** no se asigna en F0.3 sin contrastar cada operación con contratos Flask y evidencia. Ninguna limitación backend ni cambio/retirada aprobados se presume por ausencia de ruta.
+
+### 9.2 Matriz de los 41 módulos React
+
+| React (41 módulos) | Candidato Svelte observado en HEAD | Clasificación F0.3 | Diferencia/riesgo que queda para F2/F4 |
+|---|---|---|---|
+| Adjustments | `InventoryAdjustmentsScreen` vía `/management/adjustments` | PARCIAL; `/adjustments` legacy es placeholder | Confirmar operaciones, filtros, validaciones y acciones; no hay deep link legacy funcional demostrado. |
+| AuditLog | `AuditLogScreen` vía `/management/audit-log` | PARCIAL; `/audit-log` legacy es placeholder | Verificar filtros, paginación, detalle y permisos. |
+| Backorders | `BackordersScreen` vía `/management/backorders`; detalle `/management/backorders/[id]` | PARCIAL; `/backorders` legacy es placeholder | Verificar tabs, filtros, navegación al detalle y contexto de Sales Order. |
+| Bins | `BinsScreen` vía `/data/bins` | PARCIAL; `/bins` legacy es placeholder | React agrupa bajo `/data` y también expone path directo; probar alias, grants y filtros por zona. |
+| ChangePassword | `ChangePasswordScreen` vía `/change-password` | CANDIDATO DIRECTO; paridad no certificada | Probar política de contraseña, errores, expiración y redirección obligatoria. |
+| Channels | `ChannelsScreen` vía `/management/channels` | PARCIAL; `/channels` legacy es placeholder | Verificar CRUD, validaciones, estado y permisos. |
+| ConsumerGroups | `ConsumerGroupsScreen` vía `/management/consumer-groups` | PARCIAL; legacy placeholder | Verificar operaciones, filtros, detalle y contratos. |
+| CycleCountApproval | No se encontró pantalla dedicada; `count-approvals` selecciona `InventoryAdjustmentsScreen` en el dispatcher dinámico, pero su ruta directa es placeholder | AUSENTE / MAPPING SOSPECHOSO | No aceptar equivalencia con Inventory Adjustments. Requiere identificar pantalla/operación de aprobación y sus permisos. |
+| CycleCounts | `CycleCountScreen` vía `/cycle-count`; `/cycle-counts` legacy es placeholder | PARCIAL; divergencia de path | Verificar paridad de conteos, estados, detalle y relación con approvals. |
+| Dashboard | `DashboardScreen` vía `/dashboard` | PARCIAL; candidato directo | Verificar widgets, datos, navegación contextual, warehouse y permisos. |
+| Data | `/data` resuelve landing según grants hacia `/data/warehouses`, `/data/bins`, `/data/zones` o `/data/preferred-bins` | CAMBIO ESTRUCTURAL OBSERVADO; validar | React `/data` consolida tabs/recursos; probar destino por rol/grants, deep links y ausencia de acceso. |
+| Fraud | `FraudReviewScreen` vía `/management/fraud` | PARCIAL; `/fraud` legacy es placeholder | Verificar revisión, filtros, acciones y alcance del usuario. |
+| Imports | `ImportsScreen` vía `/management/imports` | PARCIAL; `/imports` legacy es placeholder | Verificar importación real, validación de archivo, progreso, errores y resultado. |
+| InboundActivity | `InboundActivityScreen` vía `/management/inbound-activity` | PARCIAL; `/inbound` legacy es placeholder | Hay diferencia de slug (`inbound` vs `inbound-activity`); probar enlace, filtros y datos. |
+| Integrations | `IntegrationsScreen` vía `/management/integrations` | PARCIAL; `/integrations` legacy es placeholder | Verificar configuración, conexión, errores y acciones soportadas por Flask. |
+| InterWarehouseTransfers | `InterWarehouseTransfersScreen` vía `/management/inter-warehouse-transfers` | PARCIAL; legacy placeholder | Verificar origen/destino, permisos, cantidades, stock y resultado backend. |
+| Inventory | `InventoryScreen` vía `/inventory` | PARCIAL; candidato directo | Verificar filtros, disponibilidad, warehouse, paginación y consistencia de cantidades. |
+| Items | `ItemsScreen` vía `/items` | PARCIAL; candidato directo | Verificar catálogo, detalle, búsqueda, edición y validaciones. |
+| Login | `LoginScreen` vía `/(auth)/login` | PARCIAL; cambio de estructura de ruta | Verificar login real, errores, sesión, redirect y protección de rutas. |
+| Notifications | `NotificationsScreen` vía `/management/notifications` | PARCIAL; legacy placeholder | Verificar lectura/no lectura, filtros, acciones y persistencia. |
+| POSActivity | `PosActivityScreen` vía `/management/pos-activity` | PARCIAL; legacy placeholder | Verificar gating por `pos_activity_enabled`, warehouse, métricas y permisos. |
+| PickingBatches | `PickingBatchesScreen` y `PickingBatchDetailScreen` | PARCIAL; lista/detalle con rutas específicas | Verificar filtros, estados, detalle, navegación y operaciones permitidas. |
+| PickingTicketPrint | `PickingTicketPrintScreen` vía `/picking-tickets/[id]/print` | PARCIAL; ruta/parametro cambió a `[id]` | React usa parámetro `soId`; comprobar compatibilidad de deep links y vista print aislada. |
+| PickingTicketPrintAll | `PickingTicketPrintAllScreen` vía `/picking-tickets/print-all` | PARCIAL; candidato directo | Verificar query params `so_ids`, `status`, `warehouse_id`, `combine`, impresión y permisos. |
+| PickingTickets | `PickingTicketsScreen` vía `/picking-tickets` | PARCIAL; candidato directo | Verificar filtros, acciones, relación con pedidos y selección para impresión. |
+| PreferredBins | `PreferredBinsScreen` vía `/data/preferred-bins` | PARCIAL; `/preferred-bins` legacy es placeholder | Verificar path legacy, asignaciones, filtros y alcance de almacén. |
+| PurchaseOrders | `PurchaseOrdersScreen` vía `/management/purchase-orders` | PARCIAL; `/purchase-orders` legacy es placeholder | Verificar listado/detalle, estados, acciones, filtros y relación con Receiving. |
+| PutAway | `PutawayScreen` vía `/putaway` | PARCIAL; candidato directo | Verificar asignación de ubicación, cantidades, permisos y persistencia real. |
+| RMA | No se encontró `RmaScreen` dedicado; existe `ReturnsScreen` para `returns`, mientras `/returns/rma` y `/rma` son placeholders | AUSENTE / PARCIAL NO DEMOSTRADA | Debe verificarse si ReturnsScreen cubre todo RMA; no asumir equivalencia por compartir módulo Returns. |
+| Receiving | `ReceivingScreen` vía `/receiving` | PARCIAL; candidato directo | La navegación/E2E parcial no certifica recepción persistida, historial, reversión ni aislamiento de almacenes. |
+| Refunds | `RefundsScreen` vía `/management/refunds`; `/returns/refunds` legacy placeholder | PARCIAL; cambio de path | Verificar flujo completo, permisos, estado y contrato de devolución/reembolso. |
+| Returns | `ReturnsScreen` vía `/management/returns`; `/returns` legacy placeholder | PARCIAL; cambio de path | Verificar subrutas RMA/refunds, detalle, navegación y acciones. |
+| SalesOrders | `SalesOrdersScreen` vía `/management/sales-orders`; `SalesOrderDetailScreen` vía `/sales-orders/[id]` | PARCIAL; ruta de lista legacy no demostrada | Verificar listado, detalle, estado, query params y acciones. |
+| Settings | `SettingsScreen` vía `/management/settings` | PARCIAL; `/settings` legacy placeholder | Pantalla de alta densidad; verificar cada sección, guardado, validaciones y permisos. |
+| Tokens | `ApiTokensScreen` vía `/management/api-tokens` | PARCIAL; `/api-tokens` legacy placeholder | Verificar creación, revocación, visibilidad única de secretos y scopes. |
+| TransferOrders | `TransferOrdersScreen` vía `/management/transfer-orders` | PARCIAL; `/transfer-orders` legacy placeholder | Verificar estados, cantidades, almacenes, confirmación y efectos de stock. |
+| Users | `UsersScreen` vía `/management/users` | PARCIAL; `/users` legacy placeholder | Verificar usuarios, roles, grants, almacenes, búsqueda y permisos. |
+| Vendors | `VendorsScreen` vía `/management/vendors` | PARCIAL; `/vendors` legacy placeholder | Verificar CRUD, validaciones, búsqueda y contratos. |
+| Warehouses | `WarehousesScreen` vía `/data/warehouses`; `WarehouseDetailScreen` vía `/warehouses/[id]` | PARCIAL; cambio estructural | Verificar relación entre workspace de datos, ruta de lista y detalle, grants y selección activa. |
+| Webhooks | `WebhooksScreen` vía `/management/webhooks` | PARCIAL; `/webhooks` legacy placeholder | Pantalla de alta densidad; verificar eventos, endpoints, secretos, reintentos y operaciones soportadas. |
+| Zones | `ZonesScreen` vía `/data/zones` | PARCIAL; `/zones` legacy placeholder | Verificar jerarquía, filtros, edición y acceso desde Data. |
+
+### 9.3 Hallazgos transversales verificados
+
+1. **28 rutas legacy comparten el mismo blob placeholder** (`a7311a2f7c1bb82e73e787543877167154d3ddcf`) con el texto «Redirigiendo a la ruta actual…» y meta `noindex`; no ejecutan `goto`, `redirect` ni una navegación efectiva en el contenido inspeccionado. Lista: `adjustments`, `api-tokens`, `audit-log`, `backorders`, `bins`, `channels`, `consumer-groups`, `count-approvals`, `cycle-counts`, `fraud`, `imports`, `inbound`, `integrations`, `inter-warehouse-transfers`, `notifications`, `pos-activity`, `preferred-bins`, `purchase-orders`, `returns`, `returns/refunds`, `returns/rma`, `rma`, `settings`, `transfer-orders`, `users`, `vendors`, `webhooks`, `zones`.
+2. **La ruta dinámica `/management/[feature]` sí conecta componentes reales** para un conjunto de features, pero su existencia no repara automáticamente las 28 rutas legacy ni demuestra que el menú, los enlaces externos, bookmarks y refresh apunten a ella.
+3. **Riesgo de approvals:** `count-approvals` aparece en el dispatcher dinámico pero renderiza `InventoryAdjustmentsScreen`; no se encontró `CycleCountApprovalScreen`. Debe tratarse como posible mapping incorrecto hasta comparar el comportamiento React y las operaciones reales.
+4. **RMA no tiene pantalla dedicada identificada:** existe `ReturnsScreen` y `RefundsScreen`, pero las rutas `/returns/rma`, `/returns/refunds` y `/rma` están entre los placeholders. La cobertura RMA queda sin demostrar.
+5. **Slugs divergentes:** React `/inbound` frente a Svelte `/management/inbound-activity`; React `/cycle-counts` frente a Svelte `/cycle-count`; paths de datos agrupados bajo `/data/*`; varias pantallas administrativas movidas a `/management/*`.
+6. **Las pantallas directas existentes** (por ejemplo Dashboard, Inventory, Items, Receiving, Putaway, Picking, Login y Change Password) son candidatos estructurales, no equivalencias verificadas. Los tests de navegación o presencia de componentes no certifican todas las operaciones.
+7. **No se identificó en este inventario una base suficiente para declarar** `VERIFIED_PARITY`, `RESOLVED_WITH_BACKEND_LIMITATION`, `DEPRECATED_APPROVED` ni un cambio funcional formalmente aprobado. Esas decisiones requieren comparación de comportamiento, contrato y evidencia.
+
+### 9.4 Entregables y límites
+
+- [x] Los 41 módulos React tienen un destino Svelte candidato o una ausencia/mapping dudoso explícito.
+- [x] Las rutas Svelte directas, dinámicas, agrupadas y de detalle/impresión relevantes están relacionadas.
+- [x] Se clasificaron las divergencias estructurales, placeholders, slugs y mappings de riesgo.
+- [x] Se evitó declarar paridad por existencia de rutas/componentes.
+- [x] Se reservaron para F2/F4 las pruebas de comportamiento, contratos, permisos, datos y E2E.
+- [x] No se modificó código de producto ni se retiraron rutas; el cambio es documental.
+- [ ] No se certifica paridad funcional ni limitaciones backend en F0.3.
+
+**Criterio de cierre F0.3 satisfecho:** correspondencia estática 41/41 registrada, ausencias y riesgos visibles, clasificación prudente y trabajo residual asignado a fases funcionales. F0.3 cierra el inventario de correspondencia; no cierra las funcionalidades enumeradas.
+
+### 9.5 Estado y crédito F0 actualizado
+
+| Tarea | Estado | Evidencia | Crédito |
+|---|---|---|---:|
+| F0.1 | RESOLVED | Snapshot remoto de baseline y CI en SHA `228c7c7168c9ec08e114c159d270a7cd81e352d1`; working tree local declarado no verificable. | 0,5 / 0,5% |
+| F0.2 | RESOLVED | Inventario 41/41 módulos React, 46/46 paths declarados, interacciones estáticas y contexto transversal. | 1 / 1% |
+| F0.3 | RESOLVED | Matriz de correspondencia 41/41, clasificación estructural, 28 placeholders y mappings dudosos en SHA `01601718ce835cb4d0e6f252c6df4698b81e626d`. | 1 / 1% |
+| F0.4 | DISCOVERED | Catálogo estable de capacidades y dependencias todavía pendiente. | 0 / 1% |
+| F0.5 | DISCOVERED | Baseline reproducible check/build/Vitest/smoke/CI pendiente. | 0 / 1% |
+| F0.6 | DISCOVERED | Ownership formal pendiente. | 0 / 0,5% |
+
+**Progreso acreditado F0: 2,5% de 5%.** F0 global permanece abierto por F0.4–F0.6. El SHA de la matriz es un snapshot de análisis; al incorporar esta actualización documental la rama avanzará a un nuevo SHA.
