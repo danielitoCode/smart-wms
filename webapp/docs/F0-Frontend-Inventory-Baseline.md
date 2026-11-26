@@ -521,8 +521,42 @@ F0.1 se cierra como captura de baseline remoto. La corrección de los fallos, la
 | F0.1 | RESOLVED | Snapshot remoto de baseline y CI en SHA `228c7c7168c9ec08e114c159d270a7cd81e352d1`; working tree local declarado no verificable. | 0,5 / 0,5% |
 | F0.2 | RESOLVED | Inventario 41/41 módulos React, 46/46 paths declarados, interacciones estáticas y contexto transversal. | 1 / 1% |
 | F0.3 | RESOLVED | Matriz de correspondencia 41/41, clasificación estructural, 28 placeholders y mappings dudosos en SHA `01601718ce835cb4d0e6f252c6df4698b81e626d`. | 1 / 1% |
-| F0.4 | DISCOVERED | Catálogo estable de capacidades y dependencias todavía pendiente. | 0 / 1% |
+| F0.4 | RESOLVED | Catálogo estable con 10 capacidades transversales y 35 capacidades operativas R1–R9, IDs preservados de R10.1, propietarios y dependencias; ver [F0.4-Capability-Catalog.md](./F0.4-Capability-Catalog.md). | 1 / 1% |
 | F0.5 | DISCOVERED | Baseline reproducible check/build/Vitest/smoke/CI pendiente. | 0 / 1% |
 | F0.6 | DISCOVERED | Ownership formal pendiente. | 0 / 0,5% |
 
-**Progreso acreditado F0: 2,5% de 5%.** F0 global permanece abierto por F0.4–F0.6. El SHA de la matriz es un snapshot de análisis; al incorporar esta actualización documental la rama avanzará a un nuevo SHA.
+**Progreso acreditado F0: 3,5% de 5%.** F0 global permanece abierto por F0.5–F0.6. El SHA de la matriz es un snapshot de análisis; las actualizaciones F0.4 se documentan a continuación.
+
+
+## 10. F0.4 — Catálogo estable de capacidades y dependencias
+
+**Estado: F0.4 RESOLVED.** Catálogo versionado en [F0.4-Capability-Catalog.md](./F0.4-Capability-Catalog.md).
+
+### 10.1 Registro estable
+
+- **10 IDs transversales:** bootstrap/layout, sesión, grants, contexto de almacén, cliente HTTP, contratos/DTO, estado/cache, routing, estados UI y observabilidad/configuración.
+- **35 IDs de negocio:** R1.1–R1.6 (catálogos), R2.1–R2.4 (compras/recepción), R3.1–R3.5 (inventario), R4.1–R4.3 (ventas/backorders), R5.1–R5.2 (transferencias), R6.1–R6.3 (picking/packing/shipping), R7.1–R7.2 (returns/refunds), R8.1–R8.5 (administración) y R9.1–R9.5 (integraciones/supervisión).
+- Se conservaron exactamente los IDs R1.x–R9.x ya usados por R10.1; no se introdujeron IDs alternativos para las mismas operaciones.
+- Cada registro identifica capacidad, propietario lógico, referencia React/Svelte y dependencias principales.
+- Se definieron las reglas de identidad para cambios de ruta, división y consolidación, y un esquema obligatorio para completar archivos, consumidores, permisos, scope de almacén y pruebas.
+
+### 10.2 Dependencias y límites
+
+- Se hicieron explícitos los prerequisitos compartidos y las dependencias entre recorridos R1–R9.
+- Las referencias detalladas de archivos, handlers, endpoints, grants, scope y tests permanecen en R10.1/auditorías. Los campos no demostrados siguen marcados como pendientes; F0.4 no inventa archivos, consumidores ni pruebas.
+- El catálogo no certifica paridad, ejecución, persistencia ni autorización backend. Los estados funcionales siguen gobernados por R10.1 y las evidencias R10.3/R10.4.
+- No se modificó código de producto, Flask ni comportamiento de la aplicación.
+
+### 10.3 Criterio de cierre
+
+- [x] IDs estables para capacidades transversales y las 35 capacidades operativas existentes.
+- [x] Propietarios lógicos, destinos React/Svelte y dependencias principales documentados.
+- [x] Grafo de dependencias compartidas y de negocio registrado.
+- [x] Trazabilidad a R10.1 para archivos, consumidores, permisos, almacenes y pruebas; huecos explícitos.
+- [x] No se afirmó paridad ni se alteraron contratos o código de producto.
+
+**Criterio satisfecho:** F0.4 cierra el catálogo/identidad y las dependencias de alto nivel. El detalle de implementación y evidencia por operación sigue siendo obligatorio durante F2/F4.
+
+| Tarea | Estado | Evidencia | Crédito |
+|---|---|---|---:|
+| F0.4 | RESOLVED | [F0.4-Capability-Catalog.md](./F0.4-Capability-Catalog.md), 10 IDs transversales + 35 IDs R1–R9, dependencias y reglas de evolución. | 1 / 1% |
