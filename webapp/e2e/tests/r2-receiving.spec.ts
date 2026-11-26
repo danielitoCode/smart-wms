@@ -10,9 +10,22 @@ const r2E2EConfig = JSON.parse(
 ) as R2E2EConfig;
 
 const apiBase = process.env.R2_E2E_API_URL ?? r2E2EConfig.apiBaseUrl;
+const appReadyTimeout = 10_000;
+
+/**
+ * Wait for the document and the hydrated Svelte application, not window.load.
+ * The load event also waits for secondary assets (fonts/images) and can hang
+ * even when the application itself is already usable.
+ */
+async function openAppRoute(page: Page, path: string) {
+	await page.goto(path, { waitUntil: 'domcontentloaded' });
+	await expect(page.locator('html')).toHaveAttribute('data-app-state', 'ready', {
+		timeout: appReadyTimeout
+	});
+}
 
 async function login(page: Page, username: string) {
-	await page.goto('/login');
+	await openAppRoute(page, '/login');
 	await page.locator('#login-username').fill(username);
 	await page.locator('#login-password').fill('admin');
 	// El nombre visible del botón cambia según el idioma activo.
@@ -27,7 +40,7 @@ async function login(page: Page, username: string) {
 test.describe('R2.11 — recepción en navegador', () => {
 	test('ADMIN inicia sesión y abre Recepción', async ({ page }) => {
 		await login(page, 'admin');
-		await page.goto('/receiving');
+		await openAppRoute(page, '/receiving');
 		await expect(page).toHaveURL(/\/receiving(?:\?|$)/);
 		// La pantalla debe renderizar contenido semántico, sin fijar el idioma de la UI.
 		await expect(page.getByRole('main').getByRole('heading').first()).toBeVisible();
@@ -35,7 +48,7 @@ test.describe('R2.11 — recepción en navegador', () => {
 
 	test('USER con grant receiving abre la ruta de recepción', async ({ page }) => {
 		await login(page, 'r2_user');
-		await page.goto('/receiving');
+		await openAppRoute(page, '/receiving');
 		await expect(page).toHaveURL(/\/receiving(?:\?|$)/);
 		await expect(page.getByRole('main').getByRole('heading').first()).toBeVisible();
 	});
