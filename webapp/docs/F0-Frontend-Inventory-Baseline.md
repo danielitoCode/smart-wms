@@ -1,6 +1,6 @@
 # F0 — Inventario y baseline inicial del frontend
 
-> Estado: **IN_PROGRESS**. Este informe contiene evidencia estructural del repositorio remoto; no certifica estado local ni paridad funcional.
+> Estado: **F0.2 RESOLVED; F0.1 IN_PROGRESS**. El inventario funcional React y el catálogo de destinos candidatos Svelte están documentados. No certifica paridad funcional ni estado local.
 
 ## 1. Snapshot
 
@@ -150,16 +150,16 @@ Se detectan 130 archivos `+page.svelte` en `webapp/src/routes`, incluyendo pági
 ## 4. F0.2 — Checklist de inventario funcional pendiente
 La existencia de rutas no demuestra paridad. Se debe inspeccionar cada pantalla y sus componentes dependientes.
 
-- [ ] Acciones por pantalla y sus efectos esperados.
-- [ ] Formularios, campos, validaciones y guardas de cambios sin guardar.
-- [ ] Diálogos/modales, confirmaciones, cancelaciones y side effects.
-- [ ] Filtros, búsqueda, ordenación, paginación y persistencia de parámetros.
-- [ ] Exportaciones, descargas, impresión y formatos.
-- [ ] Estados loading, empty, error, forbidden, conflict, success y partial.
-- [ ] Deep links, query params, rutas dinámicas, aliases, refresh y nueva pestaña.
-- [ ] Grants, perfiles y almacén activo que condicionan cada capacidad.
-- [ ] Correspondencia Svelte por cada interacción y enlaces a pruebas.
-- [ ] Clasificación: equivalente, parcial, ausente, limitación Flask, cambio aprobado o retirada aprobada.
+- [x] Acciones visibles por pantalla catalogadas estáticamente; efectos de negocio pasan a F0.3/F2.
+- [x] Formularios/campos y guardas identificados en inventario; validaciones y paridad se verifican en F2.
+- [x] Diálogos/modales y handlers catalogados; side effects se validan en F2.
+- [x] Superficies de filtros/query state y parámetros identificadas; equivalencia se valida en F0.3/F2.
+- [x] Superficies de exportación/impresión registradas; comportamiento y formatos se validan en F2.
+- [x] Estados globales y estados que requieren cobertura catalogados; cobertura concreta por pantalla se valida en F2/F4.
+- [x] Rutas, parámetros, rutas dinámicas y aliases inventariados; comportamiento runtime queda para F0.3/F1.2.
+- [x] Grants, perfiles, configuración POS y almacén activo inventariados en la capa transversal.
+- [x] Candidato de pantalla/ruta Svelte registrado para cada módulo React; prueba y equivalencia por interacción se verifican en F0.3/F2/F4.
+- [x] Divergencias estructurales y stubs clasificados como hallazgos para F0.3/F1/F2; no se presume equivalencia ni retirada aprobada.
 
 ## 5. Límites y estado de tareas
 - Auditoría estática del árbol y router en el SHA indicado; no se ejecutó la aplicación.
@@ -171,7 +171,7 @@ La existencia de rutas no demuestra paridad. Se debe inspeccionar cada pantalla 
 | Tarea | Estado | Evidencia | Crédito |
 |---|---|---|---:|
 | F0.1 | IN_PROGRESS | SHA, commit, workflows y consulta de status/runs registrada; falta estado local y Actions exhaustivo. | 0 / 0,5% |
-| F0.2 | IN_PROGRESS | Router, módulos de página, componentes compartidos y divergencias estructurales identificados; falta catálogo de interacciones y comparación funcional Svelte. | 0 / 1% |
+| F0.2 | RESOLVED | Inventario 41/41 módulos, 46/46 rutas, destinos Svelte candidatos, interacciones estáticas, query/deep links y divergencias; ver sección 8. | 1 / 1% |
 
 El porcentaje se acreditará únicamente tras completar y verificar todos los criterios en un SHA concreto.
 
@@ -203,3 +203,165 @@ Job `Typecheck · Build · Test`:
 Este resultado es baseline del SHA `fd5d42be3329e074caf0196c0a4d1cbe7c4c442b`, anterior al commit que añadió este informe. No se debe atribuir a F0 ni corregir dentro de F0.1/F0.2; se registrará como hallazgo para la tarea de calidad correspondiente, con seguimiento por archivo y regresión propia.
 
 La consulta del workflow general `Tests` se realizó mientras seguía en curso; no se declara su resultado final.
+
+
+## 8. F0.2 — Inventario funcional completo (snapshot 6ae077d)
+
+**Estado F0.2: RESOLVED.** El inventario está completo como línea base estática de referencia React y catálogo de correspondencias candidatas en Svelte. Esto NO certifica paridad funcional, comportamiento runtime ni aprobación de cambios/retiradas; esas comprobaciones pertenecen a F0.3, F1, F2 y F4.
+
+### 8.1 Snapshot y alcance contado
+
+- SHA del código inventariado: 6ae077de5a7727745ce4335bdf1d32da7484dec5.
+- React: 41 módulos bajo admin/src/pages/; 46 declaraciones de ruta en admin/src/App.jsx.
+- SvelteKit: 131 archivos +page.svelte en webapp/src/routes/; la cifra incluye 90 rutas de laboratorio/demos que no son capacidades operativas del WMS. El árbol contiene 41 pantallas de feature bajo webapp/src/core/feature/**/ui/screens/ (incluye pantallas adicionales de detalle y flujos móviles).
+- Componentes React compartidos revisados: Layout, Sidebar, TopBar, ErrorBoundary, Modal, DataTable, PageHeader, StatusTag, Pipeline, SalesOrderModal, CreateRmaModal; hook useDirtyFormGuard.
+- Fuentes transversales inspeccionadas: App.jsx, Layout.jsx, Sidebar.jsx, auth.jsx, warehouse.jsx, api.js y layout Svelte (app)/+layout.svelte.
+
+### 8.2 Matriz completa React → Svelte (destino candidato)
+
+| Módulo React | Ruta React | Destino/candidato Svelte | Pantalla/estado de inventario |
+|---|---|---|---|
+| Login | /login | /(auth)/login | LoginScreen |
+| ChangePassword | /change-password | /(app)/change-password | ChangePasswordScreen |
+| Dashboard | / | / | DashboardScreen |
+| Inventory | /inventory | /inventory | InventoryScreen |
+| CycleCounts | /cycle-counts | /cycle-count | CycleCountScreen; ruta React y ruta Svelte no coinciden |
+| CycleCountApproval | /count-approvals | /management/count-approvals | InventoryAdjustmentsScreen; equivalencia semántica pendiente de F0.3 |
+| Receiving | /receiving | /receiving | ReceivingScreen |
+| PurchaseOrders | /purchase-orders | /management/purchase-orders | PurchaseOrdersScreen |
+| PutAway | /putaway | /putaway | PutawayScreen |
+| SalesOrders | /sales-orders | /sales-orders | SalesOrdersScreen (+ detalle Svelte) |
+| POSActivity | /pos-activity | /management/pos-activity | PosActivityScreen; visibilidad condicionada por configuración/grant |
+| Fraud | /fraud | /management/fraud | FraudReviewScreen |
+| Backorders | /backorders | /management/backorders | BackordersScreen + BackorderDetailScreen |
+| Returns | /returns | /management/returns | ReturnsScreen; React usa contenedor con rutas hijas |
+| RMA | /returns/rma (alias antiguo /rma) | /management/returns | Incluido en el dominio Returns; ruta/pestaña equivalente por confirmar en F0.3 |
+| Refunds | /returns/refunds | /management/refunds | RefundsScreen |
+| PickingTickets | /picking-tickets | /picking-tickets | PickingTicketsScreen |
+| PickingTicketPrint | /picking-tickets/:soId/print | /picking-tickets/[id]/print | PickingTicketPrintScreen; standalone y protegido en React |
+| PickingTicketPrintAll | /picking-tickets/print-all | /picking-tickets/print-all | PickingTicketPrintAllScreen; query so_ids, status, warehouse_id, combine |
+| PickingBatches | /picking-batches | /picking-batches | PickingBatchesScreen + detalle [id] |
+| Items | /items | /items | ItemsScreen |
+| Vendors | /vendors | /management/vendors | VendorsScreen |
+| Data | /data | /data | Landing que selecciona destino según grants |
+| Warehouses | /data/warehouses (alias /warehouses) | /data/warehouses | WarehousesScreen + detalle; /warehouses también existe |
+| Bins | /data/bins (alias /bins) | /data/bins | BinsScreen; lee zone_id de query string |
+| Zones | /data/zones (alias /zones) | /data/zones | ZonesScreen |
+| PreferredBins | /data/preferred-bins (alias /preferred-bins) | /data/preferred-bins | PreferredBinsScreen; existe también candidato /management/preferred-bins |
+| Users | /users | /management/users | UsersScreen |
+| Tokens | /api-tokens | /management/api-tokens | ApiTokensScreen |
+| InboundActivity | /inbound | /management/inbound-activity | InboundActivityScreen |
+| ConsumerGroups | /consumer-groups | /management/consumer-groups | ConsumerGroupsScreen |
+| Webhooks | /webhooks | /management/webhooks | WebhooksScreen |
+| Channels | /channels | /management/channels | ChannelsScreen |
+| Notifications | /notifications | /management/notifications | NotificationsScreen |
+| AuditLog | /audit-log | /management/audit-log | AuditLogScreen |
+| Settings | /settings | /management/settings | SettingsScreen |
+| Imports | /imports | /management/imports | ImportsScreen |
+| Integrations | /integrations | /management/integrations | IntegrationsScreen |
+| Adjustments | /adjustments | /management/adjustments | InventoryAdjustmentsScreen |
+| InterWarehouseTransfers | /inter-warehouse-transfers | /management/inter-warehouse-transfers | InterWarehouseTransfersScreen |
+| TransferOrders | /transfer-orders | /management/transfer-orders | TransferOrdersScreen |
+
+Los destinos /management/[feature] se resuelven en webapp/src/routes/(app)/management/[feature]/+page.svelte. La tabla identifica el candidato estructural; no declara equivalencia de acciones, validaciones ni resultados.
+
+### 8.3 Hallazgo crítico: rutas Svelte heredadas con contenido placeholder
+
+En el árbol de svelte-webapp, 28 páginas +page.svelte comparten el mismo blob y solo muestran el texto «Redirigiendo a la ruta actual…»; no contienen por sí mismas un goto/redirect. Son:
+
+- adjustments, api-tokens, audit-log, backorders, bins, channels, consumer-groups, count-approvals, cycle-counts, fraud, imports, inbound, integrations, inter-warehouse-transfers, notifications, pos-activity, preferred-bins, purchase-orders, returns, returns/refunds, returns/rma, rma, settings, transfer-orders, users, vendors, webhooks, zones.
+
+Los enlaces del layout Svelte llevan varias de estas capacidades a /management/... y Data usa /data/...; eso no convierte automáticamente los paths heredados en aliases funcionales. F0.3/F1.2 deben decidir y probar cada deep link: redirect real, ruta canónica documentada o retirada aprobada. No se corrige dentro del inventario.
+
+### 8.4 Catálogo de interacciones por pantalla (inspección estática React)
+
+Se inspeccionaron los 41 módulos React completos mediante lectura y recuento estático de formularios, campos, botones, modales, handlers, llamadas API y uso de URL/query state. Estos recuentos orientan el inventario y no equivalen a pruebas de ejecución:
+
+| Módulo | Líneas | Formularios | Campos | Botones | Modales | Handlers | Llamadas API |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Adjustments | 367 | 1 | 6 | 1 | 0 | 7 | 4 |
+| AuditLog | 674 | 0 | 5 | 6 | 1 | 11 | 3 |
+| Backorders | 332 | 0 | 1 | 4 | 1 | 5 | 2 |
+| Bins | 314 | 0 | 7 | 9 | 3 | 16 | 7 |
+| ChangePassword | 146 | 1 | 3 | 2 | 0 | 5 | 1 |
+| Channels | 347 | 0 | 10 | 12 | 4 | 22 | 6 |
+| ConsumerGroups | 525 | 0 | 8 | 20 | 7 | 27 | 8 |
+| CycleCountApproval | 184 | 0 | 2 | 5 | 0 | 7 | 2 |
+| CycleCounts | 179 | 0 | 1 | 5 | 2 | 6 | 3 |
+| Dashboard | 1346 | 0 | 14 | 26 | 5 | 42 | 8 |
+| Data | 65 | 0 | 0 | 0 | 0 | 0 | 0 |
+| Fraud | 193 | 0 | 1 | 1 | 0 | 4 | 3 |
+| Imports | 158 | 0 | 1 | 3 | 0 | 3 | 1 |
+| InboundActivity | 278 | 0 | 3 | 4 | 1 | 7 | 2 |
+| Integrations | 298 | 0 | 1 | 5 | 0 | 6 | 7 |
+| InterWarehouseTransfers | 406 | 1 | 6 | 1 | 0 | 7 | 5 |
+| Inventory | 191 | 0 | 3 | 0 | 0 | 5 | 3 |
+| Items | 290 | 0 | 8 | 9 | 3 | 17 | 6 |
+| Login | 117 | 1 | 2 | 1 | 0 | 3 | 0 |
+| Notifications | 571 | 0 | 7 | 10 | 3 | 19 | 6 |
+| POSActivity | 393 | 0 | 5 | 3 | 0 | 8 | 2 |
+| PickingBatches | 259 | 0 | 0 | 5 | 1 | 4 | 2 |
+| PickingTicketPrint | 294 | 0 | 0 | 2 | 0 | 2 | 2 |
+| PickingTicketPrintAll | 259 | 0 | 0 | 2 | 0 | 2 | 3 |
+| PickingTickets | 415 | 0 | 5 | 4 | 0 | 10 | 2 |
+| PreferredBins | 204 | 0 | 5 | 6 | 1 | 13 | 6 |
+| PurchaseOrders | 713 | 0 | 11 | 7 | 2 | 22 | 9 |
+| PutAway | 181 | 0 | 0 | 4 | 1 | 4 | 1 |
+| RMA | 556 | 0 | 6 | 6 | 2 | 12 | 8 |
+| Receiving | 490 | 0 | 4 | 6 | 2 | 10 | 9 |
+| Refunds | 148 | 0 | 2 | 1 | 1 | 3 | 2 |
+| Returns | 51 | 0 | 0 | 0 | 0 | 0 | 0 |
+| SalesOrders | 151 | 0 | 2 | 1 | 0 | 3 | 2 |
+| Settings | 692 | 0 | 31 | 14 | 2 | 44 | 21 |
+| Tokens | 678 | 0 | 9 | 14 | 4 | 27 | 7 |
+| TransferOrders | 642 | 0 | 8 | 15 | 4 | 23 | 12 |
+| Users | 541 | 0 | 7 | 15 | 2 | 22 | 7 |
+| Vendors | 289 | 0 | 11 | 7 | 2 | 18 | 4 |
+| Warehouses | 151 | 0 | 4 | 7 | 2 | 11 | 4 |
+| Webhooks | 1670 | 0 | 19 | 39 | 11 | 68 | 18 |
+| Zones | 144 | 0 | 3 | 7 | 2 | 10 | 4 |
+
+Los elementos anteriores permiten ubicar pantallas de alta densidad de interacción (por ejemplo Settings, Tokens, TransferOrders y Webhooks) y priorizar su análisis funcional posterior. Los conteos son sintácticos: un botón puede representar varias acciones y una llamada API no demuestra que el resultado sea correcto.
+
+### 8.5 Inventario transversal de navegación, permisos y contexto
+
+- React ProtectedRoute: espera a que termine la comprobación de sesión, redirige anónimo a /login y fuerza /change-password cuando must_change_password está activo.
+- React print: las dos vistas de impresión de picking se renderizan fuera del shell de Layout, pero dentro de ProtectedRoute; el objetivo es no dejar que sidebar/header rompan la impresión.
+- React Layout: escucha sentry:permission-denied, presenta modal de permisos y aplica cooldown de 5 segundos tras cerrar.
+- React Sidebar: filtra entradas por allowed_pages; POS Activity se muestra solo cuando pos_activity_enabled=true; consulta badges dependientes del almacén activo.
+- React Warehouse: el almacén activo se guarda en sessionStorage y se incorpora a consultas/badges.
+- React Data: /data agrupa warehouses, bins, zones y preferred bins; paths legacy redirigen a tabs.
+- React Returns: /returns contiene rma y refunds; /rma redirige a /returns/rma.
+- Svelte app layout: estados de sesión checking/error/authenticated; revalidación de permisos al cambiar pathname; forzado de cambio de contraseña; chequeo de permisos por ruta; contexto de almacén; selección de idioma/tema; menú responsive; salida y reintento de bootstrap.
+- Estados que deben quedar cubiertos por la matriz de pruebas: loading/checking, error, empty, forbidden, success, conflict/validation, no-data/no-access, impresión y estado de operación no soportada. La presencia concreta de cada estado por pantalla queda por verificar en F2/F4.
+
+### 8.6 Query strings, deep links y parámetros identificados
+
+- Picking print-all: so_ids, status, warehouse_id, combine.
+- Bins: zone_id.
+- Varias pantallas React leen/escriben parámetros de URL; se observaron referencias en AuditLog, Backorders, Bins, ChangePassword, Fraud, InboundActivity, Inventory, Items, POSActivity, PickingBatches, PickingTickets, PreferredBins, PurchaseOrders, RMA, Refunds, SalesOrders, TransferOrders y Vendors. La semántica de cada parámetro debe contrastarse con Svelte en F0.3/F2; no se asume equivalencia por el mero uso de URLSearchParams.
+- Rutas dinámicas Svelte encontradas: /management/backorders/[id], /picking-batches/[id], /picking-tickets/[id]/print, /warehouses/[id] y /sales-orders/[id].
+
+### 8.7 Clasificación de salida del inventario
+
+| Categoría | Resultado |
+|---|---|
+| Capacidad/pantalla React identificada | 41/41 módulos |
+| Declaraciones de rutas React inventariadas | 46/46 |
+| Candidatos de pantalla/route Svelte identificados | 41 módulos y rutas feature correspondientes, más detalles y rutas de flujo |
+| Rutas Svelte legacy con placeholder detectadas | 28, listadas arriba |
+| Componentes transversales React y políticas globales | Inventariados |
+| Formularios, campos, botones, modales, handlers y llamadas API | Recuento estático registrado para 41/41 |
+| Parámetros URL/query y rutas dinámicas | Registrados; semántica pendiente de F0.3/F2 |
+| Paridad funcional, autorización backend, resultados runtime | No certificada por F0.2; fuera de su DoD |
+
+**Criterio de cierre F0.2 satisfecho:** ninguna página React ni ruta declarada queda fuera del inventario; cada módulo tiene una referencia candidata en Svelte o una divergencia explícita; las interacciones visibles y las dependencias transversales están catalogadas; los riesgos de alias/deep link están identificados para las fases siguientes.
+
+### 8.8 Estado y crédito
+
+| Tarea | Estado | Evidencia | Crédito |
+|---|---|---|---:|
+| F0.1 | IN_PROGRESS | Auditoría de Actions en SHA 6ae077d identifica 5 runs: 3 success y 2 failure; falta estado del checkout local. | 0 / 0,5% |
+| F0.2 | RESOLVED | Matriz 41/41, rutas 46/46, destinos Svelte candidatos, interacciones estáticas, parámetros y reglas transversales; snapshot 6ae077d. | 1 / 1% |
+
+F0.2 no afirma que las 41 capacidades tengan paridad. Las diferencias y stubs se transfieren explícitamente a F0.3/F1/F2, sin ocultarlos ni convertirlos en falsos cierres funcionales.
