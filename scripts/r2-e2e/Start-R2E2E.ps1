@@ -29,7 +29,7 @@ function Test-TcpPort([int]$Port) {
 # Flask/Vite must be free before launching local processes. The two Docker
 # ports may already be occupied by this harness after a partial startup; Compose
 # reuses its own healthy containers and reports conflicts with unrelated owners.
-foreach ($port in @(55000, 5173)) {
+foreach ($port in @(56000, 5173)) {
     if (Test-TcpPort $port) {
         throw "El puerto $port ya está ocupado. No se detendrá ningún proceso existente. Libéralo o ajusta los puertos antes de continuar."
     }
@@ -50,7 +50,7 @@ if ($LASTEXITCODE -ne 0) { throw "No se pudieron preparar las cuentas sintética
 $environmentKeys = @(
     "DATABASE_URL", "REDIS_URL", "CELERY_BROKER_URL", "CELERY_RESULT_BACKEND",
     "DISPATCHER_ENABLED", "API_BIND_HOST", "JWT_SECRET", "SENTRY_ENCRYPTION_KEY",
-    "SENTRY_TOKEN_PEPPER", "SENTRY_PUBSUB_HMAC_KEY", "VITE_API_PROXY_TARGET"
+    "SENTRY_TOKEN_PEPPER", "SENTRY_PUBSUB_HMAC_KEY", "VITE_API_PROXY_TARGET", "VITE_API_BASE_URL"
 )
 $previousEnvironment = @{}
 foreach ($name in $environmentKeys) {
@@ -88,10 +88,12 @@ $webErr = Join-Path $RuntimeDir "vite.stderr.log"
 
 $api = Start-Process -FilePath $PythonExe -ArgumentList @(
     "-m", "flask", "--app", "app:create_app", "run",
-    "--host", "127.0.0.1", "--port", "55000"
+    "--host", "127.0.0.1", "--port", "56000"
 ) -WorkingDirectory (Join-Path $RepoRoot "api") -PassThru -RedirectStandardOutput $apiOut -RedirectStandardError $apiErr
 
-$env:VITE_API_PROXY_TARGET = "http://127.0.0.1:55000"
+# E2E uses same-origin /api; Vite proxies to the isolated Flask API.
+$env:VITE_API_BASE_URL = ""
+$env:VITE_API_PROXY_TARGET = "http://127.0.0.1:56000"
 $web = Start-Process -FilePath "cmd.exe" -ArgumentList @(
     "/c", "npm run dev -- --host 127.0.0.1 --port 5173"
 ) -WorkingDirectory (Join-Path $RepoRoot "webapp") -PassThru -RedirectStandardOutput $webOut -RedirectStandardError $webErr
@@ -100,10 +102,10 @@ $deadline = (Get-Date).AddSeconds(90)
 while ((Get-Date) -lt $deadline) {
     if ($api.HasExited) { throw "Flask terminó durante el arranque. Revisa $apiErr" }
     if ($web.HasExited) { throw "Vite terminó durante el arranque. Revisa $webErr" }
-    if ((Test-TcpPort 55000) -and (Test-TcpPort 5173)) { break }
+    if ((Test-TcpPort 56000) -and (Test-TcpPort 5173)) { break }
     Start-Sleep -Seconds 2
 }
-if (!(Test-TcpPort 55000) -or !(Test-TcpPort 5173)) {
+if (!(Test-TcpPort 56000) -or !(Test-TcpPort 5173)) {
     throw "Timeout esperando Flask/Vite. Revisa los logs en $RuntimeDir"
 }
 
@@ -122,7 +124,7 @@ if (!(Test-TcpPort 55000) -or !(Test-TcpPort 5173)) {
 Write-Host ""
 Write-Host "R2.11 E2E local listo:" -ForegroundColor Green
 Write-Host "  Webapp:   http://127.0.0.1:5173"
-Write-Host "  Flask:    http://127.0.0.1:55000"
+Write-Host "  Flask:    http://127.0.0.1:56000"
 Write-Host "  Postgres: 127.0.0.1:55432 / sentry_test (volumen aislado)"
 Write-Host "  Redis:    127.0.0.1:56379 (aislado)"
 Write-Host "  Usuarios: admin/admin, r2_user/admin, r2_limited/admin"
