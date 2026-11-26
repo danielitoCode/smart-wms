@@ -105,7 +105,7 @@ La ejecución local usa una infraestructura independiente del stack habitual:
 - Compose exclusivo: `docker-compose.r2-e2e.yml`, proyecto `smart-wms-r2-e2e`.
 - PostgreSQL 16: contenedor `smart-wms-r2-e2e-db`, puerto loopback `55432`, base `sentry_test`, volumen exclusivo `smart-wms-r2-e2e-pgdata`.
 - Redis exclusivo: contenedor `smart-wms-r2-e2e-redis`, puerto loopback `56379`.
-- Flask local: `127.0.0.1:55000`; su `DATABASE_URL` se sobrescribe en el proceso hijo para apuntar a `sentry_test`.
+- Flask local: `127.0.0.1:56000`; su `DATABASE_URL` se sobrescribe en el proceso hijo para apuntar a `sentry_test`.
 - SvelteKit/Vite: `127.0.0.1:5173`; proxy configurable con `VITE_API_PROXY_TARGET`, apuntando al Flask E2E.
 - Datos sintéticos: seed Apartment Lab y usuarios `admin`, `r2_user` (grant receiving) y `r2_limited` (sin grant). Contraseña de laboratorio: `admin`.
 
@@ -131,7 +131,7 @@ cd ../..
 .\scripts\r2-e2e\Start-R2E2E.ps1
 ```
 
-El script comprueba que los puertos 55432, 56379, 55000 y 5173 estén libres, levanta únicamente el Compose R2 E2E y arranca Flask/Vite. URLs y logs se muestran al finalizar. La primera inicialización crea el volumen y ejecuta schema + seed. Las siguientes ejecuciones conservan el volumen; no se vuelve a sembrar automáticamente.
+El script comprueba que los puertos 55432, 56379, 56000 y 5173 estén libres, levanta únicamente el Compose R2 E2E y arranca Flask/Vite. URLs y logs se muestran al finalizar. La primera inicialización crea el volumen y ejecuta schema + seed. Las siguientes ejecuciones conservan el volumen; no se vuelve a sembrar automáticamente.
 
 ### Ejecución browser E2E
 

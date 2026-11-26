@@ -1,8 +1,29 @@
 import { test, expect, type Page } from '@playwright/test';
 
-const apiBase = process.env.R2_E2E_API_URL ?? 'http://127.0.0.1:55000';
+const apiBase = process.env.R2_E2E_API_URL ?? 'http://127.0.0.1:56000';
 
 async function login(page: Page, username: string) {
+page.on('request', request => {
+  console.log('[E2E REQUEST]', request.method(), request.url());
+});
+
+page.on('requestfailed', request => {
+  console.log(
+    '[E2E FAILED]',
+    request.url(),
+    request.failure()?.errorText
+  );
+});
+
+page.on('response', response => {
+  if (response.url().includes('/api/')) {
+    console.log(
+      '[E2E API RESPONSE]',
+      response.status(),
+      response.url()
+    );
+  }
+});
   await page.goto('/login');
   await page.locator('#login-username').fill(username);
   await page.locator('#login-password').fill('admin');
