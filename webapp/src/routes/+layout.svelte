@@ -11,8 +11,20 @@
 	setContext('theme', theme);
 
 	onMount(() => {
-		theme.init();
-		i18n.init();
+		// This is an observability signal for browser smoke/E2E checks, not
+		// an authorization or security boundary. It is set only after the
+		// client has mounted and completed its synchronous app initialization.
+		document.documentElement.dataset.appReady = 'true';
+		document.documentElement.dataset.appState = 'initializing';
+
+		try {
+			theme.init();
+			i18n.init();
+			document.documentElement.dataset.appState = 'ready';
+		} catch (error) {
+			document.documentElement.dataset.appState = 'error';
+			throw error;
+		}
 	});
 
 	let { children } = $props();
