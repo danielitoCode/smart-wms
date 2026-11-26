@@ -655,12 +655,12 @@ El progreso es la suma de los pesos de las tareas cerradas en RESOLVED, RESOLVED
 
 - [x] F0.1 — Baseline remoto cerrado: HEAD, commit, workflows de push, estados y fallo de Webapp CI registrados; limitación del working tree local declarada. Evidencia en [F0-Frontend-Inventory-Baseline.md](./F0-Frontend-Inventory-Baseline.md), sección 8. (0,5%)
 - [x] F0.2 — Inventario React/Svelte completado: 41/41 módulos, 46/46 rutas React, catálogo estático de interacciones, contexto transversal, parámetros y divergencias; evidencia en [F0-Frontend-Inventory-Baseline.md](./F0-Frontend-Inventory-Baseline.md), sección 8. (1%)
-- [ ] F0.3 — Mapear la correspondencia Svelte y clasificar cada capacidad: equivalente, parcial, ausente, limitación Flask, cambio aprobado o retirada aprobada. (1%)
+- [x] F0.3 — Correspondencia estática React → Svelte cerrada para 41/41 módulos; clasifica candidatos parciales/directos, ausencias, cambios estructurales y mappings dudosos. No declara paridad runtime ni limitación Flask sin evidencia. Evidencia: [F0-Frontend-Inventory-Baseline.md](./F0-Frontend-Inventory-Baseline.md), sección 9; snapshot analizado `01601718ce835cb4d0e6f252c6df4698b81e626d`. (1%)
 - [ ] F0.4 — Crear catálogo de capacidades con IDs estables, dependencias, archivos, consumidores, permisos, almacenes y pruebas. (1%)
 - [ ] F0.5 — Ejecutar baseline reproducible de check, build, Vitest, smoke y CI; separar fallos previos de regresiones nuevas. (1%)
 - [ ] F0.6 — Crear mapa de ownership de módulos y contratos transversales. (0,5%)
 
-**Cierre F0:** no quedan rutas/capacidades sin inventariar; existe SHA de referencia, baseline y matriz enlazada a evidencias. F0.2 está RESOLVED y acredita 1%; F0.1 permanece IN_PROGRESS (0,5% aún no acreditado), por lo que F0 no está cerrado.
+**Estado actualizado tras F0.3:** F0.1, F0.2 y F0.3 están RESOLVED y acreditan 2,5% de 5%. F0.4 (catálogo estable), F0.5 (baseline reproducible) y F0.6 (ownership) siguen pendientes; por tanto, F0 global continúa abierto.
 
 ### 16.5 F1 — Plataforma frontend transversal (12%)
 
