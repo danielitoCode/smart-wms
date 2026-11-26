@@ -1,0 +1,602 @@
+# Plan definitivo de migración e integración del frontend — Smart WMS
+
+> **Documento rector de integración final del frontend React → SvelteKit.** Complementa y operacionaliza [MigrationPlan.md](./MigrationPlan.md): ese documento gobierna la migración de capacidades y recorridos de negocio; este documento gobierna cómo integrar, proteger, verificar y cerrar el frontend completo sin perder funcionalidades ya aceptadas.
+>
+> **Ámbito:** exclusivamente `webapp/` (SvelteKit/Svelte 5/TypeScript), sus pruebas, documentación y workflows frontend. React `admin/` se conserva como referencia funcional y fallback hasta la aprobación formal de retirada. Flask se inspecciona para verificar contratos, pero no se modifica como parte de este plan.
+
+- Rama de trabajo de referencia: `svelte-webapp`.
+- Snapshot consultado al redactar: HEAD `98f9bcb7fd61b3efe6774ccffd485ed8c7ba7369` (26-11-2026). Debe actualizarse antes de cada ejecución; no es una garantía de que siga siendo HEAD.
+- Archivo de plan funcional complementario: [MigrationPlan.md](./MigrationPlan.md).
+- Runbook E2E existente: [R10-E2E-Regression-Runbook.md](../.code-review/R10-E2E-Regression-Runbook.md).
+- Matriz operativa existente: [R10.1-Operation-Traceability-Matrix.md](../.code-review/R10.1-Operation-Traceability-Matrix.md).
+
+---
+
+## 1. Objetivo final y principio rector
+
+El objetivo no es únicamente completar R0–R10 ni conseguir que todas las pantallas existan en Svelte. El objetivo es entregar **un frontend único, coherente, íntegro, verificable y mantenible**, donde:
+
+1. Todas las capacidades que deban migrarse estén inventariadas y tengan un estado real, no supuesto.
+2. Cada recorrido funcional tenga paridad aprobada o una limitación de servidor explícita, visible y segura.
+3. Una integración nueva no pueda borrar, sustituir, degradar ni cambiar silenciosamente una capacidad integrada con anterioridad.
+4. Los contratos compartidos, permisos, sesión, almacén, navegación, diseño, i18n y estados UI sean consistentes en toda la aplicación.
+5. Los cambios transversales se validen contra todos sus consumidores, no solo contra el módulo que los introduce.
+6. La aplicación pueda construirse, probarse, desplegarse, observarse y revertirse con un procedimiento repetible.
+7. La retirada de React solo ocurra después de demostrar paridad, cobertura y aceptación explícita.
+
+### Regla de integridad no negociable
+
+**Una funcionalidad aceptada es una línea base protegida.** Ninguna rama, agente, feature o refactor puede reemplazar su implementación por otra versión, simplificar su comportamiento, eliminar sus pruebas o cambiar su contrato por conveniencia de una nueva integración.
+
+Si un cambio necesita modificar una capacidad protegida, debe declararlo como cambio intencional, justificarlo, identificar todos sus consumidores, añadir/actualizar pruebas de regresión, demostrar que no pierde comportamiento y recibir revisión explícita. Si no puede demostrarse, el cambio no se integra.
+
+La protección no significa congelar el código: significa que el comportamiento aprobado solo cambia mediante una evolución controlada y demostrable.
+
+---
+
+## 2. Relación con los planes y fuentes de verdad
+
+Los documentos no deben competir entre sí:
+
+| Documento | Responsabilidad |
+|---|---|
+| `docs/MigrationPlan.md` | Alcance, arquitectura, contratos, reglas de negocio, dependencias y DoD de cada recorrido funcional. |
+| `docs/FrondendMigrationPlan.md` | Integración definitiva, protección contra regresiones/sobrescrituras, gates globales, calidad transversal, despliegue y cierre. |
+| `.code-review/R10-E2E-Regression-Runbook.md` | Procedimiento ejecutable de comparación React/Svelte y recorridos E2E. |
+| `.code-review/R10.1-Operation-Traceability-Matrix.md` | Inventario detallado de operaciones, estado y evidencia de cada capacidad. |
+| Workflows CI | Evidencia automatizada reproducible para el SHA exacto evaluado. |
+
+Si hay contradicción, prevalecen las restricciones de seguridad, contratos y alcance de `MigrationPlan.md`; este documento añade las reglas de integración y no autoriza a ampliar el backend. Los snapshots antiguos de los runbooks son históricos: nunca deben usarse como prueba del estado actual sin repetir la ejecución sobre el HEAD actual.
+
+No usar porcentajes históricos como certificación. La finalización se determina por inventario atómico, estados, evidencias y gates; cualquier porcentaje debe calcularse con una matriz estable y reproducible.
+
+---
+
+## 3. Qué significa «frontend terminado»
+
+El cierre exige completar seis dimensiones, no solo las features:
+
+### 3.1 Integridad funcional
+- Inventario de rutas, pantallas, acciones, flujos, filtros, formularios, diálogos, estados, navegación, exportaciones, impresión y casos límite de React.
+- Correspondencia explícita con Svelte: equivalente, cambio aprobado, bloqueado por backend, retirado con aprobación o pendiente.
+- Ninguna operación simulada como exitosa si no existe soporte real del servidor.
+- Ninguna función de negocio cerrada solo porque compila o tiene una pantalla.
+
+### 3.2 Integridad arquitectónica
+- Mantener Feature-First + Clean Architecture.
+- Reglas de dominio fuera de componentes y view-models.
+- DTO Flask separados de entidades de dominio y modelos de presentación.
+- Un único propietario para cada regla/caso de uso transversal.
+- Dependencias en dirección UI → Application → Domain; Data implementa puertos y la composición conecta adaptadores.
+- No introducir servicios globales monolíticos, repositorios duplicados ni estados paralelos para la misma entidad.
+
+### 3.3 Integridad de datos y contexto
+- Sesión, usuario, roles/grants, almacenes autorizados y almacén activo consistentes.
+- Invalidación de caché, selecciones y formularios dependientes al cambiar sesión o almacén.
+- Paginación, filtros, orden, nullability, unidades, estados y errores fieles al contrato.
+- Mutaciones con feedback inequívoco: pendiente, confirmado, rechazado, conflicto o resultado desconocido.
+- Evitar doble envío y reintentos peligrosos; no reintentar automáticamente operaciones no idempotentes sin contrato que lo permita.
+
+### 3.4 Integridad visual y de interacción
+- Sistema visual compartido y coherente: tipografía, espaciado, colores, densidad, jerarquía, tablas, formularios, diálogos, navegación y feedback.
+- Responsive en tamaños de móvil, tablet y escritorio; no limitarse a que la pantalla «quepa».
+- Loading, skeleton, empty, error, forbidden, not-supported, conflict y success consistentes.
+- Accesibilidad por teclado, foco, labels, nombres accesibles, contraste, ARIA y movimiento reducido.
+- Idiomas soportados completos y sin textos de interfaz incrustados directamente en componentes.
+
+### 3.5 Integridad técnica y operativa
+- Typecheck, build de producción, suites unitarias, integración, UI/i18n, regresión y browser E2E.
+- Sin errores nuevos no explicados en consola, red, hydration, rutas o recursos estáticos.
+- Rendimiento, carga diferida, cancelación de solicitudes y limpieza de suscripciones/efectos.
+- Configuración por entorno sin secretos en el bundle.
+- Logs útiles sin credenciales, tokens ni datos personales innecesarios.
+- Despliegue reproducible, smoke post-deploy y procedimiento de rollback.
+
+### 3.6 Integridad de mantenimiento
+- Documentación y trazabilidad al día.
+- Pruebas asociadas a cada capacidad y a sus consumidores.
+- Dependencias fijadas y lockfiles consistentes.
+- Ningún archivo de prueba, fixture, workflow o documentación de una capacidad aceptada se elimina sin análisis y aprobación.
+- La rama principal de integración permanece construible y recuperable.
+
+---
+
+## 4. Sistema de protección contra sobrescrituras
+
+Este es el mecanismo principal para evitar que al integrar una funcionalidad se pierda otra previamente integrada.
+
+### 4.1 Inventario de capacidades protegidas
+
+Mantener una matriz de capacidades con, como mínimo:
+
+- ID estable (por ejemplo, `AUTH-LOGIN-001`, `R2-RECEIVING-004`, `R4-BACKORDER-002`).
+- Feature propietario y recorrido de negocio.
+- Rutas, componentes, casos de uso, puertos, adaptadores y contratos implicados.
+- Archivos de implementación y pruebas que la protegen.
+- Permisos, almacenes y perfiles cubiertos.
+- Estado: `DISCOVERED`, `IN_PROGRESS`, `INTEGRATED`, `VERIFIED`, `BLOCKED_BACKEND`, `DEPRECATED_APPROVED`.
+- SHA en el que se aceptó, evidencia y responsable/revisor.
+- Dependencias y consumidores conocidos.
+
+Una capacidad solo se considera **protegida** al alcanzar `VERIFIED` con pruebas y evidencia vinculadas al SHA. `INTEGRATED` significa incorporada, pero aún no certificada.
+
+### 4.2 Contrato de integración por cambio
+
+Todo PR/cambio debe incluir una ficha (en descripción o documento de trabajo) con:
+
+1. Objetivo y capacidades nuevas/modificadas.
+2. Capacidades protegidas potencialmente afectadas.
+3. Archivos que se crearán, modificarán y eliminarán.
+4. Contratos compartidos afectados (auth, grants, warehouse, HTTP, DTO, routing, UI shared, i18n, configuración).
+5. Pruebas nuevas y suites de regresión que se ejecutarán.
+6. Riesgos, migración/compatibilidad y plan de rollback.
+7. Evidencia del resultado sobre el SHA candidato.
+
+Un cambio que no pueda identificar sus efectos sobre el inventario no está listo para integrarse.
+
+### 4.3 Propiedad de archivos y módulos
+
+- Cada feature tiene un área de propiedad; los componentes transversales tienen propietario explícito.
+- Evitar que dos ramas modifiquen simultáneamente el mismo archivo compartido.
+- No copiar una implementación compartida para resolver una necesidad local: ampliar el contrato del propietario o crear una abstracción nueva justificada.
+- No reemplazar archivos completos cuando el cambio requiere una modificación localizada.
+- En conflictos Git, revisar semánticamente ambas versiones; no elegir automáticamente «ours» o «theirs».
+- Revisar especialmente archivos de alto impacto: layout, rutas, auth/session, grants, warehouse context, cliente HTTP, manejo de errores, navegación, componentes compartidos, i18n, configuración, package manifests y workflows.
+- Cambios de rutas o nombres de componentes requieren búsqueda de referencias y verificación de deep links/aliases.
+
+### 4.4 Regla de no eliminación
+
+No se elimina una ruta, pantalla, acción, campo, permiso, estado, traducción, test, fixture ni adaptador porque parezca obsoleto. Antes se debe demostrar:
+
+1. Qué lo reemplaza y qué comportamiento conserva.
+2. Que no existen consumidores, enlaces, permisos ni pruebas que dependan de ello.
+3. Que la matriz React/Svelte y la documentación se actualizaron.
+4. Que hay pruebas de la ruta nueva y de la retirada de la antigua.
+5. Que la retirada fue aprobada explícitamente.
+
+Si no se demuestra, se conserva.
+
+### 4.5 Revisión de impacto obligatoria
+
+Para cualquier cambio en un contrato transversal, ejecutar una búsqueda de consumidores y construir una lista explícita de afectados. Ejemplos:
+
+- Auth/session: todas las rutas protegidas y operaciones que dependen de usuario/grants.
+- Warehouse context: todos los listados, detalles, filtros, mutaciones, bins, stock, contadores y formularios.
+- DTO/mapper: todos los casos de uso, view-models y pantallas que consumen el tipo.
+- Routing/layout: login, deep links, guards, redirects, aliases y refresh.
+- UI shared: todas las pantallas que lo utilizan, incluidos estados de error y permisos.
+- i18n: todos los idiomas y claves que usan la pantalla/componente.
+- CSS/tokens: todas las áreas que heredan el estilo o layout.
+
+### 4.6 Política de integración
+
+- Trabajar en ramas cortas desde el último HEAD aprobado de `svelte-webapp`.
+- Actualizar/rebasar la rama de trabajo antes de pedir integración.
+- Integrar cambios mediante PR revisable; evitar commits directos de features a la rama común.
+- Serializar el merge de cambios que toquen contratos o archivos transversales.
+- No aceptar un merge si el HEAD base cambió después de ejecutar las pruebas: actualizar la rama y repetir los gates afectados.
+- La rama compartida debe quedar verde después de cada integración.
+- No usar force-push para resolver conflictos o «hacer coincidir» una rama protegida.
+- No fusionar un conjunto grande de features sin puntos de control intermedios.
+
+**Criterio:** cada merge debe ser una evolución monotónica del comportamiento aceptado: añade capacidad o modifica explícitamente una ya existente con evidencia; nunca reduce silenciosamente la cobertura o el comportamiento.
+
+---
+
+## 5. Secuencia definitiva de ejecución
+
+No son fases aisladas que se puedan sobrescribir entre sí. Son puertas consecutivas; una puerta no se considera cerrada por el mero hecho de que la siguiente haya empezado.
+
+### Puerta 0 — Congelar y medir la línea base
+
+1. Registrar HEAD, estado de Git y workflows del commit.
+2. Confirmar rama, dependencias y configuración real.
+3. Inventariar rutas/features React y Svelte, pruebas existentes y contratos.
+4. Ejecutar baseline de check, build y suites frontend disponibles.
+5. Guardar resultados y fallos preexistentes, sin mezclarlos con fallos nuevos.
+6. Crear la matriz de capacidades protegidas y mapa de archivos/propietarios.
+
+**Salida:** baseline reproducible con SHA, lista de pendientes y defectos preexistentes clasificados.
+
+### Puerta 1 — Cerrar la plataforma transversal
+
+Validar una sola implementación coherente para:
+
+- arranque, layout, routing, deep links y aliases;
+- autenticación, restauración/expiración de sesión y logout;
+- grants, roles y guards fail-closed;
+- selección y aislamiento de almacén;
+- cliente HTTP, errores, timeouts, cancelación y configuración;
+- cache, invalidación y sincronización de estado;
+- componentes compartidos y estados UI;
+- i18n, accesibilidad y tokens visuales;
+- logging/diagnóstico sin filtrar secretos.
+
+**Salida:** contratos transversales documentados y pruebas que los protegen. Ningún feature puede crear una variante local de estas reglas.
+
+### Puerta 2 — Cerrar recorridos de negocio R0–R9
+
+Usar el orden de dependencias y la trazabilidad de `MigrationPlan.md`; no asumir que el número de fase demuestra finalización.
+
+- R0 Auth/Grants y contexto transversal.
+- R1 Catálogos y maestros.
+- R2 Purchase Orders / Receiving / Put-away / historial.
+- R3 Inventario y disponibilidad.
+- R4 Sales Orders / Backorders.
+- R5 Transferencias.
+- R6 Picking / Packing / Shipping.
+- R7 Returns / RMA / Refunds.
+- R8 Administración.
+- R9 Integraciones.
+
+Para cada recorrido:
+
+1. Comparar el comportamiento React completo.
+2. Verificar contratos Flask reales, permisos y scope.
+3. Implementar dominio/aplicación/adaptadores/UI sin duplicar propietarios.
+4. Añadir pruebas unitarias, integración y UI.
+5. Ejecutar regresión de todos los recorridos protegidos que comparten contratos/archivos.
+6. Marcar la capacidad como `VERIFIED` o como bloqueo explícito.
+7. Registrar SHA y evidencia antes de pasar a la siguiente integración.
+
+R5/R3/R6 u otras acciones no soportadas por Flask no se consideran funcionales por tener UI. Se verifican como guardas seguras y quedan clasificadas como limitaciones del servidor cuando corresponda.
+
+### Puerta 3 — Paridad de navegación y experiencia completa
+
+Auditar la aplicación de extremo a extremo, no por capturas aisladas:
+
+- todas las rutas canónicas y legacy aliases;
+- login, logout, expiración y acceso directo;
+- listados, filtros, orden, paginación y búsqueda;
+- detalles, tabs, modales, drawers, breadcrumbs y retorno al contexto;
+- formularios, validaciones, confirmaciones y cancelaciones;
+- estados loading/empty/error/forbidden/not-supported/conflict/success;
+- navegación atrás/adelante, refresh y deep links;
+- responsive en móvil/tablet/escritorio;
+- teclado, lector de pantalla, foco y contraste;
+- idiomas soportados y movimiento reducido.
+
+Las diferencias de interacción con React (por ejemplo, modal contextual frente a navegación a otra ruta, detalle completo frente a formulario reducido, o árbol jerárquico frente a lista plana) deben registrarse y resolverse o aprobarse explícitamente; no asumir equivalencia visual.
+
+### Puerta 4 — Smoke tests y browser E2E integrados al CI
+
+Los smoke tests deben evolucionar con la aplicación. No basta con que sus selectores sigan existiendo: deben detectar fallos reales de arranque, autenticación, permisos, rutas y operaciones.
+
+**Suite smoke mínima objetivo:**
+
+| ID | Cobertura | Resultado exigido |
+|---|---|---|
+| S00 | App readiness/hydration | La app arranca, hidrata y no presenta errores críticos de consola o recursos. |
+| S01 | Login/logout/sesión | Login válido, credenciales inválidas, restauración y expiración. |
+| S02 | Routing y grants | ADMIN, USER autorizado y USER sin grant; denegación UI y HTTP coherentes. |
+| S03 | Warehouse context | Cambio de almacén invalida datos/selecciones; WH-A no filtra datos de WH-B. |
+| S04 | Receiving | Operación permitida, validación, resultado persistido y recarga. |
+| S05 | History/unreceive | Historial, reversión individual y permisos, cuando Flask lo soporte. |
+| S06 | Dashboard | Datos, navegación y acciones contextuales principales. |
+| S07 | Local Pickup | Detalle/acción contextual y retorno al flujo correcto. |
+| S08 | Backorders | Cola, filtros, detalle y contexto de Sales Order. |
+| S09 | Sales Orders | Listado, detalle, estados y operaciones permitidas. |
+| S10 | Rutas legacy/deep links | Alias, refresh y navegación directa sin pérdida de contexto. |
+
+Organización de ejecución:
+
+- **Smoke rápido:** S00–S03 en cada PR.
+- **Smoke operativo:** S04–S05 en PR que afecten Receiving/stock/warehouse y en merge a rama común.
+- **Regresión de flujos:** S06–S10 en merge a rama común y nightly.
+- **Full browser E2E:** recorridos R1–R9 según runbook, antes de release y después de cambios transversales.
+
+El test de readiness actual es solo un smoke de hidratación y formulario; debe ampliarse para capturar errores de consola/red y validar login real. El smoke de Receiving actual demuestra navegación y una respuesta 403 por API para el usuario limitado, pero no certifica recepción persistida, historial, unreceive ni aislamiento WH-A/WH-B. No presentar estos tests parciales como cobertura completa.
+
+**CI obligatorio:** añadir un job frontend E2E Playwright (o runner de navegador elegido y documentado) con entorno aislado, datos reiniciables y secretos fuera del repositorio. La suite no puede depender de producción. Si el entorno no está disponible, el job debe reportar explícitamente `BLOCKED_ENVIRONMENT`; no marcarlo como exitoso ni eliminarlo silenciosamente. Mantener lockfile reproducible para las dependencias del runner.
+
+### Puerta 5 — Regresión cruzada e integridad final
+
+1. Ejecutar todas las suites frontend y E2E requeridas sobre el mismo SHA candidato.
+2. Ejecutar recorridos de regresión para cada contrato/archivo compartido modificado.
+3. Comparar baseline contra candidato; separar fallos preexistentes de regresiones nuevas.
+4. Revisar los diffs de rutas, permisos, DTO, componentes compartidos, estilos, traducciones, pruebas y configuración.
+5. Revisar cambios de dependencias, lockfiles, bundle y warnings.
+6. Repetir escenarios ADMIN/USER, grants positivos/negativos y warehouses disjuntos.
+7. Verificar persistencia tras recarga y estados tras errores/conflictos.
+8. Registrar todos los resultados y cerrar diferencias.
+
+No se acepta «la suite global pasó» como sustituto de la revisión de cobertura: una suite puede pasar sin ejecutar una funcionalidad recién modificada.
+
+### Puerta 6 — Release, observabilidad y rollback
+
+- Build de producción reproducible para el SHA aprobado.
+- Variables de entorno documentadas; secretos solo en configuración segura del entorno.
+- Despliegue primero a staging con backend/contratos compatibles.
+- Ejecutar smoke post-deploy S00–S05 y recorridos críticos de lectura/escritura.
+- Verificar errores JS, errores de red, latencia, autenticación, grants y almacén.
+- Publicar progresivamente si la infraestructura lo permite.
+- Mantener versión anterior desplegable y procedimiento de rollback probado.
+- No eliminar React ni recursos de fallback hasta cumplir la Puerta 7.
+
+### Puerta 7 — Retirada formal de React y cierre
+
+Retirar React únicamente cuando:
+
+- [ ] Inventario React/Svelte completo y revisado.
+- [ ] Cada capacidad está `VERIFIED`, `BLOCKED_BACKEND` con guarda segura, o `DEPRECATED_APPROVED`.
+- [ ] No quedan capacidades críticas `DISCOVERED` o `IN_PROGRESS`.
+- [ ] Paridad funcional y de navegación aprobada para recorridos críticos.
+- [ ] CI frontend y browser E2E están integrados y verdes en el SHA candidato.
+- [ ] No hay regresiones nuevas abiertas.
+- [ ] Accesibilidad, responsive, i18n y rendimiento tienen evidencia.
+- [ ] Staging y producción han pasado smoke post-deploy.
+- [ ] Rollback está documentado y probado.
+- [ ] La retirada de React fue aprobada explícitamente.
+
+La existencia de una limitación backend no bloquea necesariamente el release si está identificada, protegida y aprobada; sí bloquea declarar implementada esa operación. No ocultar gaps detrás de una etiqueta genérica de paridad.
+
+---
+
+## 6. Estrategia de pruebas: pirámide y matriz de impacto
+
+### 6.1 Pirámide obligatoria
+
+1. **Domain:** invariantes, cálculos, transiciones y reglas puras.
+2. **Application:** orquestación, permisos de aplicación, errores y límites.
+3. **Data/Infrastructure:** DTO, mappers, serialización, errores HTTP, paginación y contratos simulados.
+4. **Integration:** conexión real entre capas frontend con API simulada/controlada.
+5. **UI/component:** render, interacción, estados, accesibilidad e i18n.
+6. **Browser E2E:** login, rutas, permisos, almacenes y recorridos con backend de pruebas.
+7. **Post-deploy smoke:** comportamiento del artefacto desplegado.
+
+Cada nivel detecta una clase diferente de fallo; no sustituir todas las pruebas por E2E ni E2E por Vitest.
+
+### 6.2 Matriz de impacto
+
+| Cambio | Regresión mínima |
+|---|---|
+| Auth/session/grants | S00–S02 + todas las rutas protegidas críticas |
+| Warehouse context | S03 + list/detail/mutation de R1–R9 con scopes separados |
+| HTTP/error/DTO compartido | Tests de adaptadores + todos los consumidores afectados + build |
+| Routing/layout | S00–S02 + deep links y aliases |
+| UI shared/design tokens | Tests de componentes + capturas/recorridos de pantallas consumidoras + responsive |
+| i18n | Suite i18n + pantallas/estados afectados en todos los idiomas |
+| Feature aislado | Tests de dominio/aplicación/data/UI del feature + smoke del recorrido |
+| Dependencias/config/build | Check + build + suite completa + E2E de arranque |
+| Workflow/test infrastructure | Validación del workflow en PR y evidencia de que el job ejecutó realmente |
+
+### 6.3 Reglas para pruebas confiables
+
+- Tests deterministas, datos sintéticos y fixtures reiniciables.
+- No compartir credenciales reales ni tokens en logs/artifacts.
+- Aislar warehouses y perfiles; un usuario limitado debe probar denegación.
+- No usar mocks para afirmar persistencia real.
+- No ocultar errores con retries ilimitados, timeouts inflados o assertions débiles.
+- No cambiar un test para aceptar una regresión sin justificar el cambio esperado.
+- Mantener IDs estables de test vinculados a la matriz de capacidades.
+- Las pruebas E2E deben verificar resultado tras recarga/consulta, no solo el toast de éxito.
+- Guardar reportes, trazas y capturas como evidencia de CI con retención razonable.
+
+---
+
+## 7. Contratos compartidos y control de compatibilidad
+
+Cada contrato transversal tendrá un propietario y un registro de cambios:
+
+- Auth/session/token lifecycle.
+- Roles, grants y feature/page permissions.
+- Warehouse context y warehouse scope.
+- API client, configuración, errores, cancelación y retry.
+- DTO, mappers y paginación.
+- Cache, invalidación y sincronización.
+- Routing, guards, redirects y aliases.
+- Design system, componentes y tokens.
+- i18n y convenciones de claves.
+- Telemetría, logging y feature capability registry.
+
+Reglas:
+
+1. Los contratos se cambian de forma compatible cuando sea posible.
+2. Una ruptura requiere migrar todos los consumidores en el mismo cambio lógico o usar una transición temporal explícita.
+3. No introducir defaults silenciosos que conviertan ausencia/null en datos válidos.
+4. No usar casts, `any` ni adaptadores genéricos para esconder incompatibilidades.
+5. No confiar en permisos visuales como frontera de seguridad.
+6. No permitir que el contexto de almacén quede fijado en un singleton obsoleto después de cambiar sesión/usuario.
+7. No mostrar datos del almacén anterior mientras se resuelve el nuevo contexto.
+8. No inventar rutas, endpoints, capacidades ni persistencia del servidor.
+
+---
+
+## 8. Calidad no funcional del frontend
+
+Antes del cierre, realizar una pasada transversal que cubra:
+
+### Seguridad frontend
+- No secretos ni credenciales en código, logs, source maps públicos o variables `VITE_*`.
+- Guards fail-closed y manejo consistente de 401/403/404.
+- No filtrar datos entre almacenes por cache, stores, URL o estado residual.
+- Validación de entrada para UX, sin confundirla con validación de servidor.
+- Dependencias auditadas y actualizadas con cambios controlados.
+
+### Rendimiento y estabilidad
+- Evitar renders/consultas repetidas y waterfalls innecesarios.
+- Lazy loading donde reduzca carga sin romper navegación.
+- Cancelar solicitudes obsoletas al cambiar ruta/almacén o desmontar componentes.
+- No dejar timers, listeners o subscriptions huérfanos.
+- Medir bundle y tiempos de rutas críticas; comparar con baseline.
+- Probar con datos de volumen representativo, no solo fixtures mínimos.
+
+### Accesibilidad
+- Navegación completa por teclado.
+- Orden de foco lógico, foco visible y retorno de foco en modales.
+- Labels, errores asociados y nombres accesibles.
+- Contraste suficiente, semántica HTML y ARIA correcta.
+- No depender exclusivamente de color, hover o iconos.
+- Respetar `prefers-reduced-motion`.
+
+### Responsive e i18n
+- Probar al menos 375 px, 768 px y 1280 px, además de un viewport amplio.
+- Revisar tablas densas, formularios, menús, modales y acciones principales.
+- Ningún idioma debe quedar parcialmente traducido ni romper layout por cadenas largas.
+- Formatos de fecha, número y moneda coherentes con configuración/locale.
+
+### Compatibilidad
+- Navegadores soportados definidos explícitamente.
+- Refresh/deep link, atrás/adelante y apertura de enlaces en nueva pestaña.
+- No depender de estado efímero para resolver una URL que debe ser autónoma.
+
+---
+
+## 9. Gates de CI y política de merge
+
+El workflow `Webapp CI` actual ejecuta Node 26, check, build y suites Vitest (domain, application, infrastructure, UI/i18n, integration y regresión). La cobertura aparece como `continue-on-error`; no es actualmente un gate obligatorio. El paquete `webapp/package.json` no declara Playwright ni scripts E2E; existe un paquete separado bajo `webapp/e2e` con specs de smoke/R2. Por tanto, **la presencia de esos specs no significa que browser E2E esté integrado al CI**.
+
+Objetivo de gates:
+
+### En cada PR
+- instalación reproducible desde lockfile;
+- `npm run check`;
+- `npm run build`;
+- suites Vitest afectadas;
+- suite frontend completa;
+- smoke S00–S03;
+- revisión de impacto y protección de capacidades.
+
+### En merge a `svelte-webapp`
+- todos los gates de PR;
+- suites de regresión cruzada;
+- smoke operativo S04–S05 cuando aplique;
+- análisis de cambios compartidos;
+- browser E2E de recorridos críticos.
+
+### Nightly / release candidate
+- full browser E2E R1–R9;
+- regresión de rutas legacy/deep links;
+- responsive, accesibilidad e i18n;
+- análisis de dependencias y bundle;
+- reporte de cobertura y deuda técnica.
+
+**Política:** los checks críticos deben ser required checks cuando la configuración de GitHub lo permita. La cobertura no puede permanecer como warning indefinidamente: definir umbrales basados en baseline por dominio/caso de uso y aumentarlos gradualmente, sin reducirlos para hacer pasar una integración. No bloquear el frontend por fallos de suites Python ajenas al alcance, pero documentar las limitaciones del servidor que afecten al comportamiento.
+
+---
+
+## 10. Clasificación de hallazgos y decisiones
+
+Usar exclusivamente categorías consistentes con el plan funcional:
+
+- `FRONTEND_DEFECT`: regresión, paridad incompleta, error UI/estado/navegación/contrato frontend o test frontend defectuoso.
+- `BACKEND_LIMITATION`: capacidad o enforcement que Flask no proporciona.
+- `FRONTEND_GUARD_REQUIRED`: protección de UX necesaria frente a una capacidad ausente o respuesta insegura del servidor.
+- `UNVERIFIED_CONTRACT`: no hay evidencia suficiente del contrato.
+- `VERIFIED_PARITY`: comportamiento equivalente comprobado.
+- `DEPRECATED_APPROVED`: capacidad retirada con aprobación y evidencia.
+
+Para cada hallazgo registrar: ID, severidad, pasos, SHA, usuario/grants/warehouse, resultado esperado/real, evidencia, impacto sobre capacidades protegidas, responsable y criterio de cierre.
+
+No cerrar un defecto como «no reproducible» sin registrar entorno, SHA, usuario, almacén y evidencia de la repetición.
+
+---
+
+## 11. Protocolo de integración de una funcionalidad nueva o modificada
+
+Este protocolo se aplica a cada cambio, incluso si parece pequeño:
+
+1. **Actualizar base:** comprobar HEAD de `svelte-webapp`; confirmar que la rama parte de ese commit.
+2. **Identificar alcance:** asignar IDs de capacidades y feature propietario.
+3. **Revisar dependencias:** localizar consumidores, contratos y archivos compartidos.
+4. **Definir aceptación:** describir comportamiento y pruebas antes de implementar.
+5. **Implementar sin duplicar:** respetar arquitectura y propietarios existentes.
+6. **Proteger comportamiento previo:** añadir tests de caracterización si una capacidad anterior carece de pruebas.
+7. **Ejecutar pruebas locales:** suites nuevas y regresión de impacto.
+8. **Inspeccionar diff:** detectar eliminaciones, cambios de permisos, rutas, contratos, traducciones, fixtures y tests no previstos.
+9. **Abrir PR:** incluir checklist de impacto, evidencia y rollback.
+10. **Integrar serialmente:** no fusionar contra un HEAD que no haya sido probado.
+11. **Repetir gates en el SHA candidato:** el resultado de una rama anterior no certifica el merge resultante.
+12. **Actualizar matriz:** estado, SHA, pruebas y evidencia.
+13. **Promover a protegida:** solo al alcanzar `VERIFIED`.
+14. **Vigilar CI posterior:** si aparece una regresión, detener nuevas integraciones dependientes y corregir o revertir el cambio causante.
+
+### Checklist obligatorio de PR
+
+- [ ] El cambio declara capacidades nuevas/modificadas.
+- [ ] Se identificaron consumidores y contratos compartidos.
+- [ ] No se eliminó funcionalidad, ruta, permiso, test o traducción sin aprobación.
+- [ ] No se duplicó una regla/caso de uso existente.
+- [ ] No se inventó un contrato Flask.
+- [ ] Hay pruebas nuevas o de caracterización para la conducta afectada.
+- [ ] Se ejecutaron pruebas de impacto y regresión.
+- [ ] Check y build pasan sobre el candidato.
+- [ ] Se revisaron errores de consola/red, estados y accesibilidad cuando aplica.
+- [ ] La matriz y documentación están actualizadas.
+- [ ] Existe plan de rollback para cambios de riesgo.
+- [ ] La revisión confirma que ninguna capacidad protegida se degradó.
+
+---
+
+## 12. Gestión de fallos, rollback y recuperación
+
+- **Regresión funcional:** bloquear merges dependientes; identificar primer SHA que la introduce; revertir o corregir con pruebas de reproducción.
+- **Fallo de contrato:** no adaptar silenciosamente el frontend a una respuesta inesperada; clasificar, documentar y proteger el comportamiento seguro.
+- **Fallo de CI:** distinguir fallo real, flaky test, infraestructura y entorno; no convertirlo en éxito con `continue-on-error` sin aprobación.
+- **Fallo post-deploy:** activar rollback al artefacto anterior; verificar smoke; conservar logs anonimizados.
+- **Migración de estado/configuración:** usar cambios compatibles y reversibles; nunca borrar datos de usuario para resolver una regresión de UI.
+- **Conflicto de ramas:** resolver semánticamente y ejecutar regresión de ambos lados; no aceptar resolución automática de archivos críticos.
+
+Cada release debe conservar: SHA desplegado, artefacto, configuración (sin secretos), resultados CI/E2E, changelog, incidencias conocidas y SHA/artefacto de rollback.
+
+---
+
+## 13. Entregables finales
+
+El frontend no se declara definitivo hasta producir estos artefactos:
+
+1. Inventario React/Svelte de rutas, capacidades y recorridos.
+2. Matriz de capacidades con estados, propietarios, dependencias y SHA de aceptación.
+3. Registro de contratos reales Flask y limitaciones del servidor.
+4. Mapa de ownership de módulos/archivos transversales.
+5. Suite Vitest completa y browser E2E integrada al CI.
+6. Matriz de smoke S00–S10 con evidencia por perfil y almacén.
+7. Informe de paridad funcional y de experiencia.
+8. Informe de accesibilidad, responsive, i18n y rendimiento.
+9. Informe de regresión comparado con baseline.
+10. Runbook de despliegue, smoke post-deploy y rollback.
+11. Decisión aprobada de retirada o conservación de React.
+12. Acta final con SHA, checks, limitaciones abiertas y responsables.
+
+---
+
+## 14. Criterio definitivo de aceptación
+
+El frontend queda **FINALIZADO** únicamente cuando todas las condiciones siguientes se cumplen:
+
+- [ ] Todos los recorridos y capacidades están inventariados; no quedan elementos desconocidos.
+- [ ] Todas las capacidades críticas están `VERIFIED` o tienen bloqueo de backend explícito, seguro y aprobado.
+- [ ] Todas las capacidades previamente aceptadas conservan su comportamiento o tienen una evolución aprobada y probada.
+- [ ] No existen duplicaciones de reglas compartidas ni contratos incompatibles sin transición.
+- [ ] Auth, grants, warehouse context, routing, HTTP y estados UI son coherentes en toda la aplicación.
+- [ ] Todas las rutas y deep links relevantes funcionan en acceso directo y refresh.
+- [ ] La paridad funcional y de interacción está demostrada contra React o aprobada como cambio deliberado.
+- [ ] Suites unitarias, integración, UI/i18n, regresión y browser E2E requeridas pasan en el mismo SHA.
+- [ ] S00–S10 tienen cobertura real; los casos no aplicables están justificados, no omitidos por conveniencia.
+- [ ] No hay regresiones nuevas abiertas de severidad crítica/alta.
+- [ ] Responsive, accesibilidad, seguridad frontend, rendimiento e i18n tienen evidencia.
+- [ ] CI protege la rama y bloquea integraciones que no cumplan los gates.
+- [ ] Staging/producción pasan smoke y rollback está probado.
+- [ ] Documentación, matriz y evidencias corresponden al SHA final.
+- [ ] La retirada de React cuenta con aprobación explícita.
+
+**Un build verde no equivale a migración terminada. Una pantalla existente no equivale a una funcionalidad integrada. Un test que no ejecuta un recorrido no lo protege. Y un merge que hace pasar el feature nuevo pero rompe uno anterior es una integración fallida.**
+
+---
+
+## 15. Primer orden de trabajo recomendado desde el estado actual
+
+Antes de añadir más funcionalidades:
+
+1. Confirmar HEAD y CI actual de `svelte-webapp`; actualizar el snapshot de este documento.
+2. Crear/actualizar la matriz de capacidades protegidas y el mapa de ownership de archivos.
+3. Auditar las diferencias entre los smoke existentes y las rutas/componentes actuales.
+4. Cerrar S00–S03 y añadir detección de errores de consola/red al readiness.
+5. Completar el entorno aislado E2E con perfiles ADMIN, USER autorizado, USER sin grant y dos almacenes disjuntos.
+6. Integrar Playwright al CI con lockfile y gates explícitos; mantener el job bloqueado como tal si falta entorno.
+7. Incorporar S04–S10 y los recorridos del runbook R1–R9.
+8. Ejecutar una regresión transversal completa, corregir diferencias de paridad y registrar limitaciones backend.
+9. Completar calidad no funcional y preparar release candidate.
+10. Retirar React solo tras cumplir Puerta 7 y recibir aprobación.
+
+Este orden prioriza primero la capacidad de detectar y prevenir pérdidas. A partir de ahí, cada feature que se integre quedará protegida por la misma cadena de contratos, pruebas, revisión y evidencia.
