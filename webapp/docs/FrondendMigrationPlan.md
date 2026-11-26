@@ -654,13 +654,13 @@ El progreso es la suma de los pesos de las tareas cerradas en RESOLVED, RESOLVED
 ### 16.4 F0 — Inventario, baseline y trazabilidad (5%)
 
 - [ ] F0.1 — Registrar HEAD real de svelte-webapp, estado del repositorio y workflows asociados. (0,5%)
-- [ ] F0.2 — Inventariar rutas, layouts, pantallas, diálogos, acciones, filtros, formularios, exports, estados y deep links de React. (1%)
+- [x] F0.2 — Inventario React/Svelte completado: 41/41 módulos, 46/46 rutas React, catálogo estático de interacciones, contexto transversal, parámetros y divergencias; evidencia en [F0-Frontend-Inventory-Baseline.md](./F0-Frontend-Inventory-Baseline.md), sección 8. (1%)
 - [ ] F0.3 — Mapear la correspondencia Svelte y clasificar cada capacidad: equivalente, parcial, ausente, limitación Flask, cambio aprobado o retirada aprobada. (1%)
 - [ ] F0.4 — Crear catálogo de capacidades con IDs estables, dependencias, archivos, consumidores, permisos, almacenes y pruebas. (1%)
 - [ ] F0.5 — Ejecutar baseline reproducible de check, build, Vitest, smoke y CI; separar fallos previos de regresiones nuevas. (1%)
 - [ ] F0.6 — Crear mapa de ownership de módulos y contratos transversales. (0,5%)
 
-**Cierre F0:** no quedan rutas/capacidades sin clasificar; existe SHA de referencia, baseline y matriz enlazada a evidencias.
+**Cierre F0:** no quedan rutas/capacidades sin inventariar; existe SHA de referencia, baseline y matriz enlazada a evidencias. F0.2 está RESOLVED y acredita 1%; F0.1 permanece IN_PROGRESS (0,5% aún no acreditado), por lo que F0 no está cerrado.
 
 ### 16.5 F1 — Plataforma frontend transversal (12%)
 
