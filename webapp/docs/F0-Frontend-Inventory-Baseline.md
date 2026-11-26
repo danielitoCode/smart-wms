@@ -389,3 +389,44 @@ Los elementos anteriores permiten ubicar pantallas de alta densidad de interacci
 | F0.2 | RESOLVED | Matriz 41/41, rutas 46/46, destinos Svelte candidatos, interacciones estáticas, parámetros y reglas transversales; snapshot 6ae077d. | 1 / 1% |
 
 F0.2 no afirma que las 41 capacidades tengan paridad. Las diferencias y stubs se transfieren explícitamente a F0.3/F1/F2, sin ocultarlos ni convertirlos en falsos cierres funcionales.
+
+## 8. Cierre F0.1 — Snapshot remoto y CI asociado
+
+**Estado: F0.1 RESOLVED (baseline remoto capturado).** Snapshot de la rama `svelte-webapp` tomado después del commit de cierre F0.2:
+
+- HEAD remoto: `228c7c7168c9ec08e114c159d270a7cd81e352d1`.
+- Commit: `docs: close F0.2 React frontend inventory`.
+- Referencia: https://github.com/danielitoCode/smart-wms/commit/228c7c7168c9ec08e114c159d270a7cd81e352d1
+- La rama remota apunta a ese SHA en la consulta realizada.
+- El estado del working tree local del usuario no es observable desde la API remota; no se declara limpio ni sucio. Esto no impide cerrar el snapshot remoto, pero debe verificarse localmente antes de operaciones que dependan de cambios no publicados.
+
+### 8.1 Workflows asociados al HEAD
+
+| Workflow | Resultado observado | Ejecución |
+|---|---|---|
+| Tests | IN_PROGRESS al consultar; no se atribuye resultado final | https://github.com/danielitoCode/smart-wms/actions/runs/45883604170 |
+| Webapp CI | FAILURE | https://github.com/danielitoCode/smart-wms/actions/runs/45883604171 |
+| gitleaks | SUCCESS | https://github.com/danielitoCode/smart-wms/actions/runs/45883604228 |
+| Lockfile Version Check | SUCCESS | https://github.com/danielitoCode/smart-wms/actions/runs/45883604150 |
+| Dependency Audit | SUCCESS | https://github.com/danielitoCode/smart-wms/actions/runs/45883604210 |
+
+### 8.2 Diagnóstico del fallo Webapp CI
+
+Job `Typecheck · Build · Test` (`140128811786`): checkout, detección de webapp, Node, instalación y SvelteKit sync completaron correctamente. `svelte-check` falló y por ello build y suites posteriores quedaron omitidas. Resultado: **6 errores y 152 advertencias en 63 archivos**. Errores:
+
+- `lab/dynamic-drop-zone/+page.svelte`: prop `demoFile` no pertenece a `DynamicDropZoneProps`; callback `files` y parámetro `f` tienen `any` implícito.
+- `lab/pixel-feature-card/+page.svelte`: `string` no es asignable a la unión `'circle' | 'square' | 'diamond'`.
+- `lab/presence-cards/+page.svelte`: prop `autoplay` no pertenece a `PresenceCardsProps`.
+
+Estos fallos se registran como baseline existente en el SHA auditado. No se corrigen dentro de F0.1; se asignan al trabajo de calidad frontend y a F0.5 para distinguir baseline de regresiones. Las advertencias no se confunden con errores de compilación.
+
+### 8.3 Alcance del cierre
+
+- [x] HEAD remoto de `svelte-webapp` registrado.
+- [x] Commit y referencia exacta registrados.
+- [x] Todos los workflows de push asociados a ese SHA enumerados con su estado observado.
+- [x] Fallo del gate Webapp CI diagnosticado a nivel de job/paso y errores concretos.
+- [x] Workflow Tests identificado como aún en curso en el instante del snapshot; su resultado final no se presume.
+- [x] Limitación explícita: no se puede consultar el working tree local desde GitHub remoto.
+
+F0.1 se cierra como captura de baseline remoto. La corrección de los fallos, la ejecución reproducible local y la certificación de gates pertenecen a F0.5/F4, no a F0.1.
