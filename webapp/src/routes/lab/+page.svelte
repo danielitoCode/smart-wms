@@ -71,7 +71,8 @@
 		{ id: 'scroll-snap-list', name: 'ScrollSnapList', status: 'ready', href: '/lab/scroll-snap-list', description: 'Lista snap vertical + timeline + card 9:16; demo series TV o flujo ops WMS.' },
 		{ id: 'duo-flip', name: 'DuoFlip', status: 'ready', href: '/lab/duo-flip', description: 'Galería WebGL: pliegue líquido entre fotos, drag, teclado y autoplay (sin motion/react).' },
 		{ id: 'pixel-feature-card', name: 'PixelFeatureCard', status: 'ready', href: '/lab/pixel-feature-card', description: 'Nubes dithered (Bayer) + teléfono 3D; hover glow, press ripple, pantalla health demo.' },
-		{ id: 'privacy-banner', name: 'PrivacyBanner', status: 'ready', href: '/lab/privacy-banner', description: 'Consent cookies: Customize switches, Reject/Accept, check confirm, cookie bite hover.' }
+		{ id: 'privacy-banner', name: 'PrivacyBanner', status: 'ready', href: '/lab/privacy-banner', description: 'Consent cookies: Customize switches, Reject/Accept, check confirm, cookie bite hover.' },
+		{ id: 'contact-card', name: 'ContactCard', status: 'ready', href: '/lab/contact-card', description: 'Enlace Contact inline: popover con avatar, copy email, LinkedIn y Book a call.' }
 	] as const;
 </script>
 
