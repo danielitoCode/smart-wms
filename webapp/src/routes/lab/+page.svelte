@@ -67,7 +67,8 @@
 		{ id: 'halo-sign-in', name: 'Halo Sign In', status: 'ready', href: '/lab/halo-sign-in', description: 'Card de login en bandeja: halo de puntos, show password, social y estados Sign In → Welcome back.' },
 		{ id: 'synais-footer', name: 'Synais Footer', status: 'ready', href: '/lab/synais-footer', description: 'Footer finance dark: newsletter, 4 columnas, wordmark cream letter-by-letter.' },
 		{ id: 'sling-slider', name: 'Sling Slider', status: 'ready', href: '/lab/sling-slider', description: 'Slider de barras con wake spring; bola roja tipo honda con arco de puntería y rebote.' },
-		{ id: 'desk-computer', name: 'Desk Computer', status: 'ready', href: '/lab/desk-computer', description: 'PC isométrico: teclado, ratón, CRT y CD-ROM interactivos (SVG + engine rAF, Web Audio).' }
+		{ id: 'desk-computer', name: 'Desk Computer', status: 'ready', href: '/lab/desk-computer', description: 'PC isométrico: teclado, ratón, CRT y CD-ROM interactivos (SVG + engine rAF, Web Audio).' },
+		{ id: 'scroll-snap-list', name: 'ScrollSnapList', status: 'ready', href: '/lab/scroll-snap-list', description: 'Lista snap vertical + timeline + card 9:16; demo series TV o flujo ops WMS.' }
 	] as const;
 </script>
 
