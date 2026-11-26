@@ -58,7 +58,7 @@ El cierre exige completar seis dimensiones, no solo las features:
 
 ### 3.1 Integridad funcional
 - Inventario de rutas, pantallas, acciones, flujos, filtros, formularios, diálogos, estados, navegación, exportaciones, impresión y casos límite de React.
-- Correspondencia explícita con Svelte: equivalente, cambio aprobado, bloqueado por backend, retirado con aprobación o pendiente.
+- Correspondencia explícita con Svelte: equivalente, cambio aprobado, implementado con limitación de backend documentada, retirado con aprobación o pendiente por trabajo frontend real.
 - Ninguna operación simulada como exitosa si no existe soporte real del servidor.
 - Ninguna función de negocio cerrada solo porque compila o tiene una pantalla.
 
@@ -114,11 +114,11 @@ Mantener una matriz de capacidades con, como mínimo:
 - Rutas, componentes, casos de uso, puertos, adaptadores y contratos implicados.
 - Archivos de implementación y pruebas que la protegen.
 - Permisos, almacenes y perfiles cubiertos.
-- Estado: `DISCOVERED`, `IN_PROGRESS`, `INTEGRATED`, `VERIFIED`, `BLOCKED_BACKEND`, `DEPRECATED_APPROVED`.
+- Estado: `DISCOVERED`, `IN_PROGRESS`, `INTEGRATED`, `RESOLVED`, `RESOLVED_WITH_BACKEND_LIMITATION`, `DEPRECATED_APPROVED`. No existe un estado terminal `BLOCKED_BACKEND` para dejar una tarea frontend abierta.
 - SHA en el que se aceptó, evidencia y responsable/revisor.
 - Dependencias y consumidores conocidos.
 
-Una capacidad solo se considera **protegida** al alcanzar `VERIFIED` con pruebas y evidencia vinculadas al SHA. `INTEGRATED` significa incorporada, pero aún no certificada.
+Una capacidad solo se considera **protegida** al alcanzar `RESOLVED` o `RESOLVED_WITH_BACKEND_LIMITATION`, con pruebas y evidencia vinculadas al SHA. `INTEGRATED` significa incorporada, pero aún no certificada. La resolución con limitación backend significa que Svelte ya ofrece el flujo frontend completo y seguro, comunica con precisión la operación no disponible y documenta el contrato/endpoint ausente; no afirma que el servidor haya realizado una mutación que no soporta.
 
 ### 4.2 Contrato de integración por cambio
 
@@ -236,10 +236,11 @@ Para cada recorrido:
 3. Implementar dominio/aplicación/adaptadores/UI sin duplicar propietarios.
 4. Añadir pruebas unitarias, integración y UI.
 5. Ejecutar regresión de todos los recorridos protegidos que comparten contratos/archivos.
-6. Marcar la capacidad como `VERIFIED` o como bloqueo explícito.
-7. Registrar SHA y evidencia antes de pasar a la siguiente integración.
+6. Completar en Svelte el comportamiento frontend previsto. Si Flask no soporta una operación, implementar su estado no disponible, validaciones, permisos, feedback y alternativa segura; documentar la limitación en la matriz y no simular éxito.
+7. Marcar la tarea `RESOLVED` o `RESOLVED_WITH_BACKEND_LIMITATION` según corresponda. No dejarla pendiente por una limitación exclusivamente backend.
+8. Registrar SHA y evidencia antes de pasar a la siguiente integración.
 
-R5/R3/R6 u otras acciones no soportadas por Flask no se consideran funcionales por tener UI. Se verifican como guardas seguras y quedan clasificadas como limitaciones del servidor cuando corresponda.
+R5/R3/R6 u otras acciones no soportadas por Flask deben quedar completas en Svelte desde el punto de vista frontend: pantallas, navegación, estados, validación, permisos, mensajes de indisponibilidad y comportamiento seguro. Se documenta qué endpoint/regla/persistencia falta en Flask y qué resultado no puede garantizarse. No se inventa persistencia ni se presenta una acción como exitosa. La tarea frontend se resuelve con estado `RESOLVED_WITH_BACKEND_LIMITATION`; el trabajo backend, si se decide realizarlo, se registra aparte y no retiene el 100% de migración del frontend.
 
 ### Puerta 3 — Paridad de navegación y experiencia completa
 
@@ -318,7 +319,7 @@ No se acepta «la suite global pasó» como sustituto de la revisión de cobertu
 Retirar React únicamente cuando:
 
 - [ ] Inventario React/Svelte completo y revisado.
-- [ ] Cada capacidad está `VERIFIED`, `BLOCKED_BACKEND` con guarda segura, o `DEPRECATED_APPROVED`.
+- [ ] Cada capacidad está `RESOLVED`, `RESOLVED_WITH_BACKEND_LIMITATION` con experiencia frontend completa y limitación documentada, o `DEPRECATED_APPROVED`.
 - [ ] No quedan capacidades críticas `DISCOVERED` o `IN_PROGRESS`.
 - [ ] Paridad funcional y de navegación aprobada para recorridos críticos.
 - [ ] CI frontend y browser E2E están integrados y verdes en el SHA candidato.
@@ -328,7 +329,7 @@ Retirar React únicamente cuando:
 - [ ] Rollback está documentado y probado.
 - [ ] La retirada de React fue aprobada explícitamente.
 
-La existencia de una limitación backend no bloquea necesariamente el release si está identificada, protegida y aprobada; sí bloquea declarar implementada esa operación. No ocultar gaps detrás de una etiqueta genérica de paridad.
+La existencia de una limitación backend no deja pendiente la tarea de migración frontend: la funcionalidad Svelte debe quedar terminada con una respuesta segura y la limitación documentada. La operación end-to-end solo puede declararse disponible cuando el backend realmente la soporte. No ocultar gaps detrás de una etiqueta genérica de paridad.
 
 ---
 
@@ -565,7 +566,7 @@ El frontend no se declara definitivo hasta producir estos artefactos:
 El frontend queda **FINALIZADO** únicamente cuando todas las condiciones siguientes se cumplen:
 
 - [ ] Todos los recorridos y capacidades están inventariados; no quedan elementos desconocidos.
-- [ ] Todas las capacidades críticas están `VERIFIED` o tienen bloqueo de backend explícito, seguro y aprobado.
+- [ ] Todas las capacidades frontend están `RESOLVED` o `RESOLVED_WITH_BACKEND_LIMITATION`; no quedan pendientes por limitaciones exclusivamente backend.
 - [ ] Todas las capacidades previamente aceptadas conservan su comportamiento o tienen una evolución aprobada y probada.
 - [ ] No existen duplicaciones de reglas compartidas ni contratos incompatibles sin transición.
 - [ ] Auth, grants, warehouse context, routing, HTTP y estados UI son coherentes en toda la aplicación.
@@ -600,3 +601,267 @@ Antes de añadir más funcionalidades:
 10. Retirar React solo tras cumplir Puerta 7 y recibir aprobación.
 
 Este orden prioriza primero la capacidad de detectar y prevenir pérdidas. A partir de ahí, cada feature que se integre quedará protegida por la misma cadena de contratos, pruebas, revisión y evidencia.
+
+
+---
+
+## 16. Backlog definitivo segmentado hasta el 100% del frontend
+
+Esta sección transforma el plan en una secuencia ejecutable. Los pesos son fijos y suman exactamente **100%**. El porcentaje mide la contribución de cada tarea al frontend completo, no líneas de código, pantallas creadas ni esfuerzo estimado.
+
+### 16.1 Estados de tarea y regla de resolución
+
+| Estado | Significado | Aporte al progreso |
+|---|---|---:|
+| DISCOVERED | Identificada, no iniciada. | 0% |
+| IN_PROGRESS | Trabajo frontend en curso. | 0% |
+| INTEGRATED | Código incorporado, sin verificación final. | 0% |
+| RESOLVED | Implementada, revisada, probada y documentada. | 100% de su peso |
+| RESOLVED_WITH_BACKEND_LIMITATION | Frontend completo y seguro; limitación real de Flask documentada y probada. | 100% de su peso |
+| DEPRECATED_APPROVED | Retirada aprobada, sin consumidores y con evidencia. | 100% de su peso, si el inventario confirma que no debe migrarse |
+
+**No se permite dejar una tarea frontend pendiente por una limitación exclusiva de Flask.** En ese caso Svelte debe completar la experiencia frontend: pantallas, navegación, validaciones, permisos, estados, feedback, mensaje de indisponibilidad y alternativa segura cuando exista. Se documenta el endpoint, contrato, persistencia o enforcement que falta, la evidencia observada y la consecuencia. Nunca se simula una mutación ni se muestra éxito falso. La tarea se cierra como RESOLVED_WITH_BACKEND_LIMITATION.
+
+Una tarea permanece pendiente únicamente si falta trabajo frontend, si el contrato no ha sido investigado o si no existe evidencia suficiente para resolverla.
+
+### 16.2 Cálculo del progreso
+
+El progreso es la suma de los pesos de las tareas cerradas en RESOLVED, RESOLVED_WITH_BACKEND_LIMITATION o DEPRECATED_APPROVED válido.
+
+1. Tarea en curso: aporta cero; no hay prorrateo subjetivo.
+2. Código integrado pero no verificado: aporta cero.
+3. Limitación Flask documentada y protegida: aporta el 100% del peso frontend de esa tarea.
+4. Si una regresión reabre una tarea, sus puntos se descuentan hasta que vuelva a pasar la verificación.
+5. El denominador permanece en 100%; no se alteran pesos para inflar el avance.
+6. Nuevas capacidades descubiertas se incorporan al segmento correspondiente y se redistribuyen sus pesos antes de continuar.
+7. El informe de cada cierre muestra porcentaje anterior, puntos ganados/perdidos, porcentaje nuevo, SHA, pruebas y tareas pendientes.
+8. El porcentaje solo se actualiza después de implementar y verificar la tarea completa.
+
+### 16.3 Segmentos y pesos
+
+| Segmento | Objetivo | Peso |
+|---|---|---:|
+| F0. Inventario, baseline y trazabilidad | Conocer todo el alcance y establecer la línea base. | 5% |
+| F1. Plataforma frontend transversal | Sesión, permisos, almacén, routing, HTTP, estado y componentes comunes. | 12% |
+| F2. Migración funcional R0–R9 | Todas las capacidades de negocio implementadas en Svelte. | 43% |
+| F3. Coherencia estructural y experiencia | Navegación, paridad contextual, diseño, responsive, accesibilidad e i18n. | 8% |
+| F4. Pruebas, smoke, E2E y CI | Protección automatizada de capacidades e integraciones. | 12% |
+| F5. Calidad no funcional | Seguridad, rendimiento, estabilidad y compatibilidad. | 8% |
+| F6. Regresión final, release y retirada controlada de React | Certificación y cierre. | 7% |
+| F7. Gobierno de integración y documentación viva | Ownership, política anti-sobrescritura y trazabilidad continua. | 5% |
+| **TOTAL** | | **100%** |
+
+### 16.4 F0 — Inventario, baseline y trazabilidad (5%)
+
+- [ ] F0.1 — Registrar HEAD real de svelte-webapp, estado del repositorio y workflows asociados. (0,5%)
+- [ ] F0.2 — Inventariar rutas, layouts, pantallas, diálogos, acciones, filtros, formularios, exports, estados y deep links de React. (1%)
+- [ ] F0.3 — Mapear la correspondencia Svelte y clasificar cada capacidad: equivalente, parcial, ausente, limitación Flask, cambio aprobado o retirada aprobada. (1%)
+- [ ] F0.4 — Crear catálogo de capacidades con IDs estables, dependencias, archivos, consumidores, permisos, almacenes y pruebas. (1%)
+- [ ] F0.5 — Ejecutar baseline reproducible de check, build, Vitest, smoke y CI; separar fallos previos de regresiones nuevas. (1%)
+- [ ] F0.6 — Crear mapa de ownership de módulos y contratos transversales. (0,5%)
+
+**Cierre F0:** no quedan rutas/capacidades sin clasificar; existe SHA de referencia, baseline y matriz enlazada a evidencias.
+
+### 16.5 F1 — Plataforma frontend transversal (12%)
+
+- [ ] F1.1 — Bootstrap, layout raíz, carga inicial, hydration y recuperación ante error. (1%)
+- [ ] F1.2 — Routing canónico, guards, redirects, aliases, refresh y deep links. (1,5%)
+- [ ] F1.3 — Login, logout, restauración de sesión, expiración y errores de autenticación. (1,5%)
+- [ ] F1.4 — Roles, grants y permisos por página/acción; denegación segura y coherente en UI. (1,5%)
+- [ ] F1.5 — Contexto de almacén: selección, autorización, cambio, limpieza e invalidación de datos. (1,5%)
+- [ ] F1.6 — Cliente HTTP único: base URL, headers, timeout, cancelación, errores y tratamiento 401/403. (1,5%)
+- [ ] F1.7 — DTO, mappers, paginación, filtros y normalización de respuestas compartidas. (1%)
+- [ ] F1.8 — Cache, stores, sincronización y prevención de datos obsoletos/duplicados. (1%)
+- [ ] F1.9 — Sistema común de estados, notificaciones, diálogos, formularios y componentes base. (1%)
+- [ ] F1.10 — Configuración por entorno, logging y diagnóstico sin secretos. (0,5%)
+
+**Cierre F1:** una sola fuente de verdad para sesión, permisos, almacén, API y estados compartidos; pruebas de consumidores críticos.
+
+### 16.6 F2 — Migración funcional R0–R9 (43%)
+
+Los pesos por recorrido suman 43%. Cada recorrido se desglosa en la matriz de operaciones del runbook; se cierra por operación verificable, no por existencia de pantallas.
+
+**F2.0 — R0 Auth, grants y contexto de usuario (3%)**
+- [ ] Login/logout/sesión y recuperación de estados.
+- [ ] Roles, grants, permisos por ruta y acción.
+- [ ] Perfil, contexto de usuario y restricciones por almacén.
+- [ ] Paridad de denegaciones y redirecciones frente a React.
+
+**F2.1 — R1 Catálogos y datos maestros (4%)**
+- [ ] Inventario de entidades, listados, detalle y búsqueda.
+- [ ] Crear/editar/activar/desactivar según contratos reales.
+- [ ] Validaciones, filtros, paginación, estados vacíos y errores.
+- [ ] Permisos, alcance de almacén y acciones contextuales.
+
+**F2.2 — R2 Purchase Orders, Receiving, Put-away e historial (6%)**
+- [ ] Purchase Orders: consulta, detalle, estados y acciones permitidas.
+- [ ] Receiving: cabecera, líneas, validaciones y cantidades.
+- [ ] Confirmación y tratamiento de errores/conflictos.
+- [ ] Put-away y asignación de ubicación según capacidades reales.
+- [ ] Historial, reversión/unreceive y permisos; guardas seguras si Flask no lo soporta.
+- [ ] No presentar stock/costo como actualizado antes de la confirmación exigida por el flujo de almacén.
+- [ ] Persistencia tras recarga para operaciones realmente soportadas.
+
+**F2.3 — R3 Inventario y disponibilidad (5%)**
+- [ ] Consultas de stock, disponibilidad y detalle por almacén/ubicación.
+- [ ] Filtros, búsqueda, paginación y estados de inventario.
+- [ ] Ajustes/movimientos solo cuando exista contrato real.
+- [ ] Estados no disponibles seguros para operaciones no soportadas.
+- [ ] Aislamiento entre almacenes y refresco tras cambio de contexto.
+
+**F2.4 — R4 Sales Orders y Backorders (6%)**
+- [ ] Listados, búsqueda, filtros y estados.
+- [ ] Detalle completo de Sales Order y navegación contextual.
+- [ ] Cola Backorders, filtros y acciones permitidas.
+- [ ] Related Sales Orders: jerarquía/relaciones y contexto equivalente.
+- [ ] Local Pickup y retorno al contexto de origen.
+- [ ] Permisos, errores y consistencia de estado.
+- [ ] Resolver diferencias conocidas: modal contextual React frente a navegación/formulario Svelte.
+
+**F2.5 — R5 Transferencias (4%)**
+- [ ] Listado y detalle de transferencias.
+- [ ] Selección origen/destino y validaciones de almacén.
+- [ ] Preparación, envío, recepción y estados definidos por contratos existentes.
+- [ ] Si Flask no implementa una operación, UI completa con acción no disponible/explicada; nunca simular movimiento de stock.
+- [ ] Documentar endpoint/operación ausente y probar la guarda frontend.
+
+**F2.6 — R6 Picking, Packing y Shipping (5%)**
+- [ ] Colas de trabajo, filtros y selección.
+- [ ] Picking y validación de cantidades/ubicaciones.
+- [ ] Packing, paquetes y resumen.
+- [ ] Shipping, etiquetas/documentos y confirmaciones según contrato.
+- [ ] Guardas seguras para capacidades no soportadas.
+- [ ] Mantener contexto de Sales Order y warehouse durante el recorrido.
+
+**F2.7 — R7 Returns, RMA y Refunds (4%)**
+- [ ] Consulta y detalle de devoluciones/RMA.
+- [ ] Autorización, recepción y validaciones.
+- [ ] Reembolsos/estados según contrato.
+- [ ] Permisos, scope de almacén y controles de datos relacionados.
+- [ ] Guardas y documentación de limitaciones backend.
+- [ ] Paridad de contexto, errores y navegación.
+
+**F2.8 — R8 Administración (4%)**
+- [ ] Usuarios, roles, grants y asignaciones.
+- [ ] Configuración y catálogos administrativos.
+- [ ] Gestión de empleados/ámbitos cuando forme parte del alcance React.
+- [ ] Formularios, validaciones, permisos y auditoría visual.
+- [ ] No asumir que ocultar controles sustituye el enforcement del servidor.
+
+**F2.9 — R9 Integraciones (2%)**
+- [ ] Inventario de integraciones y configuración visible.
+- [ ] Estados, conexión, errores y diagnóstico.
+- [ ] Operaciones con contrato verificable.
+- [ ] Estados no soportados y limitaciones claramente presentados.
+- [ ] Protección de secretos y datos sensibles.
+
+**Cierre F2:** cada operación del inventario queda RESOLVED, RESOLVED_WITH_BACKEND_LIMITATION o DEPRECATED_APPROVED con aprobación. No queda una tarea pendiente solo porque Flask no implemente un endpoint.
+
+### 16.7 F3 — Coherencia estructural y experiencia integrada (8%)
+
+- [ ] F3.1 — Unificar navegación, menús, breadcrumbs, tabs y retorno al contexto de origen. (1%)
+- [ ] F3.2 — Resolver paridad contextual: modal/ruta, detalle/formulario, árbol/lista y acciones en contexto. (1,5%)
+- [ ] F3.3 — Unificar listados, tablas, filtros, paginación y búsqueda. (1%)
+- [ ] F3.4 — Unificar formularios, validaciones, confirmaciones y prevención de doble envío. (1%)
+- [ ] F3.5 — Unificar loading, skeleton, empty, error, forbidden, not-supported, conflict y success. (1%)
+- [ ] F3.6 — Responsive de flujos completos en móvil, tablet y escritorio. (1%)
+- [ ] F3.7 — Accesibilidad: teclado, foco, labels, contraste y movimiento reducido. (0,75%)
+- [ ] F3.8 — i18n completo, formatos regionales y ausencia de textos incrustados. (0,75%)
+
+**Cierre F3:** experiencia coherente; diferencias intencionales frente a React documentadas y aprobadas.
+
+### 16.8 F4 — Pruebas, smoke, E2E y CI (12%)
+
+- [ ] F4.1 — Tests de dominio: invariantes y transiciones. (1%)
+- [ ] F4.2 — Tests de aplicación: orquestación, permisos y errores. (1%)
+- [ ] F4.3 — Tests de infraestructura: DTO, mappers, HTTP y paginación. (1%)
+- [ ] F4.4 — Tests de integración entre capas y contratos controlados. (1%)
+- [ ] F4.5 — Tests UI/componentes, estados e i18n. (1%)
+- [ ] F4.6 — Smoke S00 readiness: consola, red, hydration y recursos. (0,75%)
+- [ ] F4.7 — Smoke S01 login/logout/sesión y credenciales inválidas. (0,75%)
+- [ ] F4.8 — Smoke S02 roles/grants positivos y negativos. (0,75%)
+- [ ] F4.9 — Smoke S03 aislamiento WH-A/WH-B y cambio de almacén. (1%)
+- [ ] F4.10 — Smoke S04/S05 Receiving, persistencia, historial y reversión según soporte real. (1%)
+- [ ] F4.11 — Smoke S06–S10 Dashboard, Local Pickup, Backorders, Sales Orders y rutas legacy. (1,25%)
+- [ ] F4.12 — Integrar Playwright al CI con lockfile y entorno reproducible. (1%)
+- [ ] F4.13 — Required checks, artefactos, reportes y política de flaky tests. (1%)
+- [ ] F4.14 — Regresión de impacto obligatoria para contratos/archivos transversales. (0,5%)
+
+**Cierre F4:** los tests ejecutan los recorridos reales. Un job omitido o bloqueado por infraestructura no se presenta como verde. Las operaciones backend no soportadas se prueban como guardas, no como persistencia.
+
+### 16.9 F5 — Calidad no funcional y endurecimiento (8%)
+
+- [ ] F5.1 — Seguridad frontend: secretos, permisos, errores y exposición de datos. (1,5%)
+- [ ] F5.2 — Aislamiento de sesión/almacén, cache y datos residuales. (1,5%)
+- [ ] F5.3 — Rendimiento: bundle, carga, consultas, render y lazy loading. (1%)
+- [ ] F5.4 — Estabilidad: cancelación, cleanup, memory leaks y errores no controlados. (1%)
+- [ ] F5.5 — Responsive y compatibilidad de navegadores soportados. (1%)
+- [ ] F5.6 — Accesibilidad auditada en recorridos críticos. (1%)
+- [ ] F5.7 — Dependencias, lockfiles, configuración y supply-chain básica. (1%)
+
+**Cierre F5:** resultados medidos contra baseline; defectos críticos/altos corregidos o formalmente aceptados.
+
+### 16.10 F6 — Regresión final, release y retirada controlada de React (7%)
+
+- [ ] F6.1 — Regresión completa R0–R9 en un único SHA candidato. (1,5%)
+- [ ] F6.2 — S00–S10 y full browser E2E con perfiles y almacenes disjuntos. (1%)
+- [ ] F6.3 — Comparar React/Svelte y cerrar diferencias funcionales/contextuales. (1%)
+- [ ] F6.4 — Build release, configuración, staging y smoke post-deploy. (1%)
+- [ ] F6.5 — Ensayar rollback y verificar artefacto anterior. (0,5%)
+- [ ] F6.6 — Confirmar inventario sin pendientes frontend y limitaciones Flask documentadas. (0,75%)
+- [ ] F6.7 — Aprobar retirada de React, fallback y rutas/recursos legacy. (0,75%)
+- [ ] F6.8 — Publicar acta final con SHA, porcentaje 100%, pruebas, limitaciones y aprobación. (0,5%)
+
+**Cierre F6:** frontend desplegable, regresión completa, rollback probado y decisión formal sobre React.
+
+### 16.11 F7 — Gobierno de integración y documentación viva (5%)
+
+- [ ] F7.1 — Ownership por feature, módulo, contrato y archivos críticos. (1%)
+- [ ] F7.2 — Matriz de capacidades, dependencias, consumidores y pruebas actualizada. (1%)
+- [ ] F7.3 — Checklist anti-sobrescritura y revisión semántica de diffs en cada PR. (1%)
+- [ ] F7.4 — Runbook, smoke matrix, contratos y limitaciones Flask actualizados. (1%)
+- [ ] F7.5 — Cada cierre registra SHA, evidencia, estado y porcentaje recalculado. (1%)
+
+**Cierre F7:** ninguna integración se acepta sin análisis de impacto, pruebas y actualización de trazabilidad.
+
+### 16.12 Ficha obligatoria de cierre por tarea
+
+| Campo | Información requerida |
+|---|---|
+| ID / tarea | ID estable del backlog |
+| Alcance | Capacidades y operaciones incluidas |
+| Estado | IN_PROGRESS → RESOLVED o RESOLVED_WITH_BACKEND_LIMITATION |
+| Implementación Svelte | Archivos, rutas, componentes, casos de uso y contratos |
+| Limitación Flask | Ninguna o descripción exacta, endpoint/enforcement ausente |
+| Integridad | Consumidores revisados y regresiones ejecutadas |
+| Evidencia | Tests, E2E, capturas/logs sanitizados y resultados |
+| SHA verificado | Commit exacto donde pasó la validación |
+| Peso ganado | Puntos porcentuales de la tarea |
+| Progreso global | Porcentaje anterior → porcentaje nuevo |
+
+### 16.13 Informe obligatorio al terminar cada tarea
+
+1. **Tarea resuelta:** ID, nombre y alcance.
+2. **Resultado:** qué quedó implementado en Svelte.
+3. **Limitaciones Flask:** qué no puede ejecutarse en backend y cómo queda protegido/documentado en frontend; indicar «ninguna» si no aplica.
+4. **Integridad:** funcionalidades existentes revisadas y regresiones ejecutadas.
+5. **Evidencias:** comandos, tests, E2E y workflows; indicar qué se ejecutó realmente.
+6. **SHA:** commit exacto validado.
+7. **Aporte:** peso de la tarea completada.
+8. **Progreso global:** porcentaje anterior, puntos añadidos y porcentaje nuevo.
+9. **Siguiente tarea:** siguiente elemento no resuelto según dependencias.
+
+No anunciar avance por código parcialmente escrito, test pendiente, PR abierto o integración sin verificar.
+
+### 16.14 Condición de 100% de migración frontend
+
+El 100% se alcanza cuando:
+- todas las tareas F0–F7 están cerradas y sus pesos suman 100%;
+- todas las capacidades React inventariadas tienen destino explícito en Svelte o retirada aprobada;
+- toda funcionalidad que Flask no soporte está implementada en Svelte hasta donde corresponde al frontend, con estado seguro y limitación documentada;
+- no quedan tareas frontend pendientes ni capacidades sin clasificar;
+- no hay regresiones abiertas que degraden tareas ya cerradas;
+- pruebas y gates requeridos pasan sobre el SHA final;
+- documentación, matriz y acta final corresponden al mismo SHA.
+
+**100% de migración frontend no significa que Flask tenga el 100% de las operaciones implementadas.** Significa que Svelte está completo, coherente, protegido, probado y transparente respecto a las capacidades que el backend no ofrece. Si posteriormente se amplía Flask, se actualiza la funcionalidad Svelte como evolución controlada, sin reabrir el alcance histórico de migración salvo que cambie el comportamiento frontend.
