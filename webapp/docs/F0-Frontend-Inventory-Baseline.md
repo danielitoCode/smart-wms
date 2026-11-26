@@ -385,7 +385,7 @@ Los elementos anteriores permiten ubicar pantallas de alta densidad de interacci
 
 | Tarea | Estado | Evidencia | Crédito |
 |---|---|---|---:|
-| F0.1 | IN_PROGRESS | Auditoría de Actions en SHA 6ae077d identifica 5 runs: 3 success y 2 failure; falta estado del checkout local. | 0 / 0,5% |
+| F0.1 | RESOLVED | Snapshot remoto de baseline/CI en SHA `228c7c7168c9ec08e114c159d270a7cd81e352d1`; el working tree local quedó explícitamente fuera de alcance de la captura remota. | 0,5 / 0,5% |
 | F0.2 | RESOLVED | Matriz 41/41, rutas 46/46, destinos Svelte candidatos, interacciones estáticas, parámetros y reglas transversales; snapshot 6ae077d. | 1 / 1% |
 
 F0.2 no afirma que las 41 capacidades tengan paridad. Las diferencias y stubs se transfieren explícitamente a F0.3/F1/F2, sin ocultarlos ni convertirlos en falsos cierres funcionales.
@@ -508,7 +508,7 @@ F0.1 se cierra como captura de baseline remoto. La corrección de los fallos, la
 - [x] Se evitó declarar paridad por existencia de rutas/componentes.
 - [x] Se reservaron para F2/F4 las pruebas de comportamiento, contratos, permisos, datos y E2E.
 - [x] No se modificó código de producto ni se retiraron rutas; el cambio es documental.
-- [ ] No se certifica paridad funcional ni limitaciones backend en F0.3.
+**Límite deliberado:** F0.3 no certifica paridad funcional ni limitaciones backend; estas requieren pruebas y contratos en F2/F4.
 
 **Criterio de cierre F0.3 satisfecho:** correspondencia estática 41/41 registrada, ausencias y riesgos visibles, clasificación prudente y trabajo residual asignado a fases funcionales. F0.3 cierra el inventario de correspondencia; no cierra las funcionalidades enumeradas.
 
