@@ -2,7 +2,9 @@
 
 > Estado: **F0.1 RESOLVED; F0.2 RESOLVED; F0.3 RESOLVED**. La matriz de correspondencia estática React/Svelte se encuentra en la sección 9; no certifica paridad runtime.
 
-## 1. Snapshot
+## 1. Snapshot histórico inicial (F0.2)
+
+Este snapshot corresponde a la primera captura del inventario; fue supersedido como baseline de cierre por la captura F0.1 documentada en la sección 8 y por el análisis de correspondencia F0.3 de la sección 9.
 
 - Repositorio: `danielitoCode/smart-wms`
 - Rama: `svelte-webapp`
@@ -23,7 +25,7 @@
 - `.github/workflows/test.yml`
 - `.github/workflows/webapp-ci.yml`
 
-**F0.1 sigue IN_PROGRESS:** falta confirmar el estado local y revisar exhaustivamente las ejecuciones/checks del SHA. Por tanto, todavía no suma el 0,5%.
+**Nota histórica:** en esta captura inicial F0.1 aún estaba abierto. Su cierre posterior como snapshot remoto (sin afirmar estado del checkout local) está documentado en la sección 8.
 
 ## 2. Estructura React
 
@@ -195,7 +197,7 @@ Además de las 46 declaraciones React, se registran las relaciones que afectan a
 
 | Tarea | Estado | Evidencia | Crédito |
 |---|---|---|---:|
-| F0.1 | IN_PROGRESS | Snapshot remoto, workflows y ejecuciones del SHA actual registrados; falta confirmación del checkout local y cierre de CI baseline. | 0 / 0,5% |
+| F0.1 | RESOLVED | Snapshot remoto de baseline/CI cerrado en la sección 8; el working tree local no se puede verificar desde GitHub remoto. | 0,5 / 0,5% |
 | F0.2 | RESOLVED | 46 paths, 41 módulos, componentes comunes, reglas de routing/contexto y familias de interacción catalogadas en este documento. | 1 / 1% |
 
 F0.2 queda cerrado como inventario de referencia. No habilita a declarar migrada ninguna capacidad ni sustituye F0.3.
