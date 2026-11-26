@@ -105,8 +105,8 @@ La ejecución local usa una infraestructura independiente del stack habitual:
 - Compose exclusivo: `docker-compose.r2-e2e.yml`, proyecto `smart-wms-r2-e2e`.
 - PostgreSQL 16: contenedor `smart-wms-r2-e2e-db`, puerto loopback `55432`, base `sentry_test`, volumen exclusivo `smart-wms-r2-e2e-pgdata`.
 - Redis exclusivo: contenedor `smart-wms-r2-e2e-redis`, puerto loopback `56379`.
-- Flask local: `127.0.0.1:56000`; su `DATABASE_URL` se sobrescribe en el proceso hijo para apuntar a `sentry_test`.
-- SvelteKit/Vite: `127.0.0.1:5173`; proxy configurable con `VITE_API_PROXY_TARGET`, apuntando al Flask E2E.
+- Fuente única de endpoints de navegador/API: `scripts/r2-e2e/config.json` (`apiBaseUrl` y `webBaseUrl`). Flask local y el proxy Vite usan el mismo `apiBaseUrl`; Playwright y sus llamadas directas usan esos mismos valores. `VITE_API_PROXY_TARGET`, `R2_E2E_API_URL` y `R2_E2E_BASE_URL` solo sirven como overrides explícitos.
+- SvelteKit/Vite: dirección definida por `webBaseUrl`; el modo `r2-e2e` toma el destino del proxy desde el mismo archivo. El modo de desarrollo normal conserva el proxy Flask `127.0.0.1:5000`.
 - Datos sintéticos: seed Apartment Lab y usuarios `admin`, `r2_user` (grant receiving) y `r2_limited` (sin grant). Contraseña de laboratorio: `admin`.
 
 **Protecciones:** no se reutiliza el contenedor, puerto, volumen ni base de datos del Compose habitual. Los puertos se comprueban antes de iniciar; si están ocupados, el script aborta sin detener procesos existentes. El script de parada usa `docker compose stop` y conserva el volumen. No ejecutar `down -v` sobre el stack normal. Los datos de E2E son descartables y no contienen datos reales.
@@ -131,7 +131,7 @@ cd ../..
 .\scripts\r2-e2e\Start-R2E2E.ps1
 ```
 
-El script comprueba que los puertos 55432, 56379, 56000 y 5173 estén libres, levanta únicamente el Compose R2 E2E y arranca Flask/Vite. URLs y logs se muestran al finalizar. La primera inicialización crea el volumen y ejecuta schema + seed. Las siguientes ejecuciones conservan el volumen; no se vuelve a sembrar automáticamente.
+El script lee `scripts/r2-e2e/config.json`, comprueba que los puertos configurados de API y Web estén libres, levanta únicamente el Compose R2 E2E y arranca Flask/Vite usando esas direcciones. Antes de arrancar limpia los cuatro logs para que no se confundan salidas antiguas (por ejemplo, un Flask legado en `:55000`) con la ejecución actual. No adopta ni termina procesos ajenos. El arranque espera y valida HTTP directo de Flask, `/login` de Vite y `/api/auth/me` a través del proxy; solo registra los PID si los tres checks concuerdan. Docker Compose valida los puertos propios de PostgreSQL/Redis. La primera inicialización crea el volumen y ejecuta schema + seed. Las siguientes ejecuciones conservan el volumen.
 
 ### Ejecución browser E2E
 
