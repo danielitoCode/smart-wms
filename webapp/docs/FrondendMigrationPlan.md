@@ -114,7 +114,7 @@ Mantener una matriz de capacidades con, como mínimo:
 - Rutas, componentes, casos de uso, puertos, adaptadores y contratos implicados.
 - Archivos de implementación y pruebas que la protegen.
 - Permisos, almacenes y perfiles cubiertos.
-- Estado: `DISCOVERED`, `IN_PROGRESS`, `INTEGRATED`, `RESOLVED`, `RESOLVED_WITH_BACKEND_LIMITATION`, `DEPRECATED_APPROVED`. No existe un estado terminal `BLOCKED_BACKEND` para dejar una tarea frontend abierta.
+- Estado: `DISCOVERED`, `IN_PROGRESS`, `INTEGRATED`, `RESOLVED`, `RESOLVED_WITH_BACKEND_LIMITATION`, `DEPRECATED_APPROVED`. No existe un estado terminal `RESOLVED_WITH_BACKEND_LIMITATION` para dejar una tarea frontend abierta.
 - SHA en el que se aceptó, evidencia y responsable/revisor.
 - Dependencias y consumidores conocidos.
 
@@ -772,20 +772,20 @@ Los pesos por recorrido suman 43%. Cada recorrido se desglosa en la matriz de op
 
 ### 16.8 F4 — Pruebas, smoke, E2E y CI (12%)
 
-- [ ] F4.1 — Tests de dominio: invariantes y transiciones. (1%)
-- [ ] F4.2 — Tests de aplicación: orquestación, permisos y errores. (1%)
-- [ ] F4.3 — Tests de infraestructura: DTO, mappers, HTTP y paginación. (1%)
-- [ ] F4.4 — Tests de integración entre capas y contratos controlados. (1%)
-- [ ] F4.5 — Tests UI/componentes, estados e i18n. (1%)
-- [ ] F4.6 — Smoke S00 readiness: consola, red, hydration y recursos. (0,75%)
-- [ ] F4.7 — Smoke S01 login/logout/sesión y credenciales inválidas. (0,75%)
-- [ ] F4.8 — Smoke S02 roles/grants positivos y negativos. (0,75%)
-- [ ] F4.9 — Smoke S03 aislamiento WH-A/WH-B y cambio de almacén. (1%)
-- [ ] F4.10 — Smoke S04/S05 Receiving, persistencia, historial y reversión según soporte real. (1%)
+- [ ] F4.1 — Tests de dominio: invariantes y transiciones. (0,9%)
+- [ ] F4.2 — Tests de aplicación: orquestación, permisos y errores. (0,9%)
+- [ ] F4.3 — Tests de infraestructura: DTO, mappers, HTTP y paginación. (0,9%)
+- [ ] F4.4 — Tests de integración entre capas y contratos controlados. (0,9%)
+- [ ] F4.5 — Tests UI/componentes, estados e i18n. (0,9%)
+- [ ] F4.6 — Smoke S00 readiness: consola, red, hydration y recursos. (0,5%)
+- [ ] F4.7 — Smoke S01 login/logout/sesión y credenciales inválidas. (0,5%)
+- [ ] F4.8 — Smoke S02 roles/grants positivos y negativos. (0,5%)
+- [ ] F4.9 — Smoke S03 aislamiento WH-A/WH-B y cambio de almacén. (0,75%)
+- [ ] F4.10 — Smoke S04/S05 Receiving, persistencia, historial y reversión según soporte real. (0,75%)
 - [ ] F4.11 — Smoke S06–S10 Dashboard, Local Pickup, Backorders, Sales Orders y rutas legacy. (1,25%)
 - [ ] F4.12 — Integrar Playwright al CI con lockfile y entorno reproducible. (1%)
-- [ ] F4.13 — Required checks, artefactos, reportes y política de flaky tests. (1%)
-- [ ] F4.14 — Regresión de impacto obligatoria para contratos/archivos transversales. (0,5%)
+- [ ] F4.13 — Required checks, artefactos, reportes y política de flaky tests. (1,25%)
+- [ ] F4.14 — Regresión de impacto obligatoria para contratos/archivos transversales. (1%)
 
 **Cierre F4:** los tests ejecutan los recorridos reales. Un job omitido o bloqueado por infraestructura no se presenta como verde. Las operaciones backend no soportadas se prueban como guardas, no como persistencia.
 
