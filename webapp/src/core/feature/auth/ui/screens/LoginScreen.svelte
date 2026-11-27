@@ -17,6 +17,23 @@
 	const state = createLoginState();
 	const auth = createAuthDependencies();
 	const passwordChanged = page.url.searchParams.get('passwordChanged') === '1';
+	const authNotice = page.url.searchParams.get('notice');
+	const logoutUnconfirmed = authNotice === 'logout-unconfirmed';
+
+	const authNoticeMessage = (() => {
+		switch (authNotice) {
+			case 'session-expired':
+				return i18n.t('Tu sesión expiró o dejó de ser válida. Inicia sesión nuevamente.');
+			case 'account-inactive':
+				return i18n.t('La cuenta está inactiva. Contacta al administrador.');
+			case 'service-unavailable':
+				return i18n.t('No se pudo comprobar tu sesión porque el servidor no está disponible. Inténtalo nuevamente.');
+			case 'logout-unconfirmed':
+				return i18n.t('El cierre local se completó, pero el servidor no confirmó la revocación de la sesión. La sesión remota podría seguir activa.');
+			default:
+				return null;
+		}
+	})();
 
 	const COMPANY = 'Tecno Táctil';
 	const PHONE = '+599932242';
@@ -24,7 +41,9 @@
 	const YEAR = new Date().getFullYear();
 
 	onMount(() => {
-		void redirectIfAlreadyAuthenticated();
+		// A failed remote logout must remain visible on this screen. Do not silently
+		// redirect back into the app merely because the HttpOnly cookie may still work.
+		if (!logoutUnconfirmed) void redirectIfAlreadyAuthenticated();
 	});
 
 	async function redirectIfAlreadyAuthenticated() {
@@ -93,6 +112,10 @@
 				tone="success"
 				message={i18n.t('Contraseña actualizada. Inicia sesión con tu nueva contraseña.')}
 			/>
+		{/if}
+
+		{#if authNoticeMessage}
+			<UiBanner tone="error" message={authNoticeMessage} />
 		{/if}
 
 		{#if state.error}
