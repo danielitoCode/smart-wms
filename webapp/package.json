@@ -35,13 +35,15 @@
   "dependencies": {
     "@lottiefiles/dotlottie-svelte": "0.10.15",
     "cobe": "^2.0.1",
-    "svg-dotted-map": "^2.1.0"
+    "svg-dotted-map": "^2.1.0",
+    "three": "^0.170.0"
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^7.0.0",
     "@sveltejs/kit": "^2.48.5",
     "@sveltejs/vite-plugin-svelte": "^6.2.1",
     "@types/node": "^24.10.0",
+    "@types/three": "^0.170.0",
     "svelte": "^5.43.8",
     "svelte-check": "^4.3.4",
     "typescript": "^5.9.3",
