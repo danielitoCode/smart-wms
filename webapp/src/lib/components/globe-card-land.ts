@@ -12,5 +12,5 @@ export function isLand(lat: number, lon: number): boolean {
 	const r = Math.min(179, Math.max(0, Math.floor(90 - lat)));
 	const c = Math.min(359, Math.max(0, Math.floor(lon + 180)));
 	const i = r * 360 + c;
-	return (landBits[i >> 3]! >> (7 - (i & 7))) & 1;
+	return ((landBits[i >> 3]! >> (7 - (i & 7))) & 1) !== 0;
 }
