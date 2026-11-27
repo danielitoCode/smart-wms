@@ -5,7 +5,7 @@
 > **Ámbito:** exclusivamente `webapp/` (SvelteKit/Svelte 5/TypeScript), sus pruebas, documentación y workflows frontend. React `admin/` se conserva como referencia funcional y fallback hasta la aprobación formal de retirada. Flask se inspecciona para verificar contratos, pero no se modifica como parte de este plan.
 
 - Rama de trabajo de referencia: `svelte-webapp`.
-- Snapshot consultado al redactar: HEAD `98f9bcb7fd61b3efe6774ccffd485ed8c7ba7369` (26-11-2026). Debe actualizarse antes de cada ejecución; no es una garantía de que siga siendo HEAD.
+- Snapshot consultado para esta actualización: HEAD `18e4a793932e9072679fba39505b384157697e6a` (27-11-2026), antes de los dos commits documentales de esta actualización. El HEAD cambia con cada commit; no es una garantía de que siga siendo HEAD.
 - Archivo de plan funcional complementario: [MigrationPlan.md](./MigrationPlan.md).
 - Runbook E2E existente: [R10-E2E-Regression-Runbook.md](../.code-review/R10-E2E-Regression-Runbook.md).
 - Matriz operativa existente: [R10.1-Operation-Traceability-Matrix.md](../.code-review/R10.1-Operation-Traceability-Matrix.md).
@@ -661,6 +661,8 @@ El progreso es la suma de los pesos de las tareas cerradas en RESOLVED, RESOLVED
 - [x] F0.6 — RESOLVED: mapa de ownership lógico creado a partir del árbol real de `webapp/src`: 37 módulos feature, 10 contratos transversales, propietarios, anclajes, consumidores, límites, reglas de cambio y regresión. Se documentan expresamente los módulos sin ID R1–R9 individual, fronteras compartidas y gaps de ownership por completar en F1–F4; no se inventan responsables humanos ni CODEOWNERS. Evidencia: [F0.6-Module-and-Contract-Ownership.md](./F0.6-Module-and-Contract-Ownership.md). (0,5%)
 
 **Estado actualizado tras F0.6:** F0.1–F0.6 están RESOLVED y acreditan 5% de 5%. F0 queda completada como fase de inventario, baseline, trazabilidad y ownership documental. Se mantienen como seguimientos de calidad/integración (no bloqueantes para el cierre documental F0) la instalación limpia local bloqueada por EPERM y la verificación de Webapp CI sobre el HEAD posterior a los fixes; no se afirma CI remoto verde. El mapa F0.6 es ownership lógico y no configura CODEOWNERS ni asigna responsables humanos.
+
+**Aclaración de alcance y atribución de commits (27-11-2026):** los commits posteriores a la implementación F1.1 no deben atribuirse a F1.1 ni utilizarse como evidencia de su progreso. La comparación GitHub entre `d05fcdfaf2455917244ef14ab8b008ec003a98e5` (último commit documental/ajuste de F1.1 previo al trabajo visual) y `18e4a793932e9072679fba39505b384157697e6a` muestra un único commit adicional, limitado a `webapp/src/lib/components/LineChart.svelte` (41 adiciones y 20 eliminaciones): es un componente visual preparado para integración futura, no un cambio del bootstrap, layout raíz, hydration, readiness ni recuperación. Se excluye por tanto de la implementación y validación de F1.1. Los commits `5e66d74` y `c8a8cda` son únicamente actualizaciones documentales de F1.1/este plan; tampoco representan cambios funcionales de la aplicación. El avance de F1.1 se determina exclusivamente por sus archivos/cambios propios y sus gates de validación sobre un SHA identificado.
 
 ### 16.5 F1 — Plataforma frontend transversal (12%)
 
