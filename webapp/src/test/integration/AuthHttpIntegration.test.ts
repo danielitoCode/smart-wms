@@ -91,14 +91,32 @@ describe('Auth HTTP integration', () => {
 		expect(JSON.parse(init.body)).toEqual({ current_password: 'old-pass-1', new_password: 'new-pass-99' });
 	});
 
-	it('clears local session on logout even when the remote endpoint fails', async () => {
+	it('confirms remote logout and clears the local session', async () => {
+		authSession.setUser({
+			userId: 1, username: 'x', fullName: 'X', role: 'USER', warehouseIds: [],
+			allowedPages: [], allowedFunctions: [], allowedOverrides: [], mustChangePassword: false
+		});
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ message: 'logged out' }));
+		const { repo } = createStack(fetchMock);
+		await expect(new LogoutUseCase(repo).execute()).resolves.toEqual({ confirmed: true });
+		expect(fetchMock).toHaveBeenCalledWith(
+			'https://wms.test/api/auth/logout',
+			expect.objectContaining({ method: 'POST', credentials: 'include' })
+		);
+		expect(authSession.getUser()).toBeNull();
+	});
+
+	it('clears local session but reports an unconfirmed remote logout on failure', async () => {
 		authSession.setUser({
 			userId: 1, username: 'x', fullName: 'X', role: 'USER', warehouseIds: [],
 			allowedPages: [], allowedFunctions: [], allowedOverrides: [], mustChangePassword: false
 		});
 		const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ error: 'down' }, 500));
 		const { repo } = createStack(fetchMock);
-		await expect(new LogoutUseCase(repo).execute()).rejects.toMatchObject({ status: 500 });
+		await expect(new LogoutUseCase(repo).execute()).resolves.toEqual({
+			confirmed: false,
+			reason: 'remote-unavailable'
+		});
 		expect(authSession.getUser()).toBeNull();
 	});
 
