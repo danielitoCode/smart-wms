@@ -1,10 +1,16 @@
 import { createAuthDependencies } from '../../di/auth.dependencies';
 import type { User, EnsureAuthenticatedResult } from '../../domain/entity/User';
+import type { LogoutResult } from '../../domain/repository/AuthRepository';
 import { authBootHint } from '#core/infrastructure/auth/AuthBootHint.ts';
 
 const deps = createAuthDependencies();
 
-export type AuthGuardStatus = 'checking' | 'authenticated' | 'anonymous' | 'error';
+export type AuthGuardStatus =
+	| 'checking'
+	| 'authenticated'
+	| 'anonymous'
+	| 'unavailable'
+	| 'logout-unconfirmed';
 
 export function createAuthGuardState() {
 	let status = $state<AuthGuardStatus>('checking');
@@ -28,11 +34,11 @@ export function createAuthGuardState() {
 				}
 				user = null;
 				message = result.message;
-				status = result.reason === 'unavailable' ? 'error' : 'anonymous';
+				status = result.reason === 'unavailable' ? 'unavailable' : 'anonymous';
 			} catch (err) {
 				user = null;
 				message = err instanceof Error ? err.message : 'Error inesperado al validar sesión';
-				status = 'error';
+				status = 'unavailable';
 			}
 		})();
 		try {
@@ -77,18 +83,24 @@ export function createAuthGuardState() {
 		}
 	}
 
-	async function logout() {
+	async function logout(): Promise<LogoutResult> {
+		let result: LogoutResult;
 		try {
-			await deps.logout.execute();
+			result = await deps.logout.execute();
 		} catch {
-			// Local state is cleared by the repository even if the server is unavailable.
+			// Defensive fallback: repository normally converts remote failures to a result.
+			result = { confirmed: false, reason: 'remote-unavailable' };
 		} finally {
 			user = null;
-			status = 'anonymous';
+			// Keep the state explicit until the shell has routed to the login screen.
 			message = null;
-			// Explicit logout → next cold start at `/` is treated as anonymous → landing
 			authBootHint.clear();
 		}
+		status = result.confirmed ? 'anonymous' : 'logout-unconfirmed';
+		if (!result.confirmed) {
+			message = 'No se pudo confirmar el cierre de sesión en el servidor. La sesión remota podría seguir activa.';
+		}
+		return result;
 	}
 
 	return {
