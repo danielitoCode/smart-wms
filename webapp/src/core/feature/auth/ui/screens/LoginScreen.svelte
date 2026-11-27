@@ -41,9 +41,9 @@
 	const YEAR = new Date().getFullYear();
 
 	onMount(() => {
-		// A failed remote logout must remain visible on this screen. Do not silently
-		// redirect back into the app merely because the HttpOnly cookie may still work.
-		if (!logoutUnconfirmed) void redirectIfAlreadyAuthenticated();
+		// Keep any session notice visible. In particular, a failed remote logout
+		// must not silently redirect back into the app while its HttpOnly cookie may work.
+		if (!authNotice) void redirectIfAlreadyAuthenticated();
 	});
 
 	async function redirectIfAlreadyAuthenticated() {
