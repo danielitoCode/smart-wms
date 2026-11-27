@@ -72,7 +72,7 @@
 		}
 
 		if (result.kind === 'login') {
-			await goto('/login', { replaceState: true });
+			await goto('/login?notice=' + encodeURIComponent(result.notice), { replaceState: true });
 			return;
 		}
 	}
