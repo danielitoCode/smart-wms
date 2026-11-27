@@ -37,6 +37,11 @@
 		setDocumentState('error');
 	}
 
+	function recoverRender(reset: () => void) {
+		reset();
+		setDocumentState('ready');
+	}
+
 	onMount(() => {
 		bootstrap();
 	});
@@ -56,7 +61,7 @@
 					<p class="eyebrow">ABELLIS · Smart WMS</p>
 					<h1>Ocurrió un error al mostrar esta pantalla</h1>
 					<p>La aplicación encontró un problema inesperado. Puedes volver a intentar cargar la vista.</p>
-					<button type="button" onclick={reset}>Reintentar vista</button>
+					<button type="button" onclick={() => recoverRender(reset)}>Reintentar vista</button>
 					<button type="button" class="secondary" onclick={() => window.location.reload()}>Recargar aplicación</button>
 				</section>
 			</main>
