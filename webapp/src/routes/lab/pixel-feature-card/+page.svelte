@@ -14,8 +14,8 @@
 	<header class="lab-head">
 		<a class="back" href="/lab">← Lab</a>
 		<div class="toggles">
-			{#each ['square', 'circle', 'diamond'] as s}
-				<button type="button" class="chip" class:on={shape === s} onclick={() => (shape = /** @type {'square'|'circle'|'diamond'} */ (s))}>
+			{#each ['square', 'circle', 'diamond'] as s (s)}
+				<button type="button" class="chip" class:on={shape === s} onclick={() => (shape = s)}>
 					{s}
 				</button>
 			{/each}
