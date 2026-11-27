@@ -66,11 +66,9 @@
 	);
 
 	const v = $derived(Math.min(100, Math.max(0, shadow)) / 100);
-	const styleVars = $derived({
-		'--corner': `${Math.min(40, Math.max(0, corner))}px`,
-		'--shade': (v * 2).toFixed(3),
-		'--cast': (0.04 + v * 0.58).toFixed(3)
-	});
+	const styleVars = $derived(
+		`--corner: ${Math.min(40, Math.max(0, corner))}px; --shade: ${(v * 2).toFixed(3)}; --cast: ${(0.04 + v * 0.58).toFixed(3)};`
+	);
 
 	let audio: { ctx: AudioContext; master: GainNode; noise: AudioBuffer } | null = null;
 	let soundOn = true;
