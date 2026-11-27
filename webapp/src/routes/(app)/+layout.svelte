@@ -69,7 +69,7 @@
 			{ href: '/management/adjustments', label: i18n.t('Ajustes'), icon: 'database', pageKey: 'adjustments' },
 			{ href: '/management/inter-warehouse-transfers', label: i18n.t('Movimientos'), icon: 'truck', pageKey: 'transfer-orders' },
 			{ href: '/management/transfer-orders', label: i18n.t('Órdenes de traslado'), icon: 'truck', pageKey: 'transfer-orders' },
-			{ href: '/management/preferred-bins', label: i18n.t('Ubicaciones preferidas'), icon: 'map-pin', pageKey: 'preferred-bins' },
+			{ href: '/data/preferred-bins', label: i18n.t('Ubicaciones preferidas'), icon: 'map-pin', pageKey: 'preferred-bins' },
 			{ href: '/management/fraud', label: i18n.t('Revisión de pedidos'), icon: 'user', pageKey: 'fraud' },
 			{ href: '/management/pos-activity', label: i18n.t('Actividad POS'), icon: 'database', pageKey: 'pos-activity' },
 			{ href: '/management/refunds', label: i18n.t('Reembolsos'), icon: 'package', pageKey: 'sales-orders' },
@@ -91,7 +91,7 @@
 		{ label: i18n.t('Datos'), items: [
 			{ href: '/items', label: i18n.t('Items'), icon: 'package', pageKey: 'items' },
 			{ href: '/data', label: i18n.t('Maestros'), icon: 'database' },
-			{ href: '/warehouses', label: i18n.t('Almacenes'), icon: 'warehouse', pageKey: 'warehouses' }
+			{ href: '/data/warehouses', label: i18n.t('Almacenes'), icon: 'warehouse', pageKey: 'warehouses' }
 		]}
 	]);
 
@@ -114,7 +114,7 @@
 	});
 
 	function canSeeNavItem(item: NavItem) {
-		if (item.href === '/management/audit-log' || item.href === '/warehouses') {
+		if (item.href === '/management/audit-log' || item.href === '/data/warehouses') {
 			return canAccessAdminRoute(guard.user?.role ?? 'USER');
 		}
 		if (item.functionKey) return canAccessOperationalFunction(guard.user?.role ?? 'USER', guard.user?.allowedFunctions ?? [], item.functionKey);
