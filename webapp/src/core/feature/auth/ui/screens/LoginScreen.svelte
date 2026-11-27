@@ -18,7 +18,6 @@
 	const auth = createAuthDependencies();
 	const passwordChanged = page.url.searchParams.get('passwordChanged') === '1';
 	const authNotice = page.url.searchParams.get('notice');
-	const logoutUnconfirmed = authNotice === 'logout-unconfirmed';
 
 	const authNoticeMessage = (() => {
 		switch (authNotice) {
