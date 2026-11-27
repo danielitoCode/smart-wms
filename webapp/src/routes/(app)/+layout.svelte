@@ -221,8 +221,12 @@
 
 	async function logout() {
 		sidebarOpen = false;
-		await guard.logout();
+		const result = await guard.logout();
 		await warehouseSelection.syncFromUser(null);
+		if (!result.confirmed) {
+			await goto('/login?notice=logout-unconfirmed', { replaceState: true });
+			return;
+		}
 		await goto('/login');
 	}
 
@@ -240,7 +244,7 @@
 
 {#if guard.status === 'checking'}
 	<SessionBootView status="checking" />
-{:else if guard.status === 'error'}
+{:else if guard.status === 'unavailable' || guard.status === 'logout-unconfirmed'}
 	<SessionBootView status="error" message={guard.message} onRetry={retry} />
 {:else if guard.status === 'authenticated'}
 	<div class="shell" class:sidebar-open={sidebarOpen} class:nav-collapsed={navCollapsed}>
