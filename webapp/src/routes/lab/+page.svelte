@@ -75,7 +75,8 @@
 		{ id: 'contact-card', name: 'ContactCard', status: 'ready', href: '/lab/contact-card', description: 'Enlace Contact inline: popover con avatar, copy email, LinkedIn y Book a call.' },
 		{ id: 'globe-card', name: 'GlobeCard', status: 'ready', href: '/lab/globe-card', description: 'Card equipo global: globo Three.js punteado, arcos, avatares, drag e inercia.' },
 		{ id: 'receipt-button', name: 'ReceiptButton', status: 'ready', href: '/lab/receipt-button', description: 'Pay → relleno agua, check, ticket térmico con desgarro y reset (WAAPI, sin GSAP).' },
-		{ id: 'blur-text', name: 'BlurText', status: 'ready', href: '/lab/blur-text', description: 'Texto que sale del blur palabra a palabra o letra a letra (inView/mount, CSS).' }
+		{ id: 'blur-text', name: 'BlurText', status: 'ready', href: '/lab/blur-text', description: 'Texto que sale del blur palabra a palabra o letra a letra (inView/mount, CSS).' },
+		{ id: 'line-chart', name: 'LineChart', status: 'ready', href: '/lab/line-chart', description: 'Multi-serie line/area SVG: crosshair, tooltip, leyenda toggle, loading (throughput WMS).' }
 	] as const;
 </script>
 
