@@ -6,9 +6,11 @@ import { authBootHint } from '#core/infrastructure/auth/AuthBootHint.ts';
 
 const deps = createAuthDependencies();
 
+export type AuthLoginNotice = 'session-expired' | 'account-inactive' | 'service-unavailable';
+
 export type SplashOutcome =
 	| { kind: 'home'; path: string; user: User }
-	| { kind: 'login'; message?: string }
+	| { kind: 'login'; notice: AuthLoginNotice }
 	| { kind: 'landing' }
 	| { kind: 'error'; message: string };
 
@@ -17,7 +19,7 @@ export type SplashStatus = 'idle' | 'checking' | 'done' | 'error';
 /**
  * Arranque en `/`:
  * - Sesión válida → vistas internas (home)
- * - Sesión inactiva o expirada (tras login previo) → login
+ * - Sesión inactiva o expirada (tras login previo) → login con aviso seguro
  * - Sin sesión y sin historial de login en este navegador → landing
  * - Backend inalcanzable en frío anónimo → landing; si hubo sesión conocida → login con aviso
  */
@@ -51,10 +53,7 @@ export function createSplashState() {
 
 				if (result.reason === 'inactive') {
 					authSession.clear();
-					outcome = {
-						kind: 'login',
-						message: result.message || 'Usuario inactivo. Contacta al administrador.'
-					};
+					outcome = { kind: 'login', notice: 'account-inactive' };
 					status = 'done';
 					return;
 				}
@@ -62,13 +61,8 @@ export function createSplashState() {
 				if (result.reason === 'unauthorized') {
 					authSession.clear();
 					if (known) {
-						// Cookie ausente o expirada tras haber iniciado sesión antes → login
-						outcome = {
-							kind: 'login',
-							message: result.message || 'Sesión expirada o no válida'
-						};
+						outcome = { kind: 'login', notice: 'session-expired' };
 					} else {
-						// Frío anónimo: sin sesión y sin historial → landing
 						outcome = { kind: 'landing' };
 					}
 					status = 'done';
@@ -77,22 +71,16 @@ export function createSplashState() {
 
 				// unavailable (red / 5xx): no borrar hint; decidir con contexto
 				if (known) {
-					outcome = {
-						kind: 'login',
-						message: result.message || 'No se pudo validar la sesión'
-					};
+					outcome = { kind: 'login', notice: 'service-unavailable' };
 				} else {
 					outcome = { kind: 'landing' };
 				}
 				status = 'done';
-			} catch (err) {
+			} catch {
 				authSession.clear();
 				const known = authBootHint.hasKnownSession();
 				if (known) {
-					outcome = {
-						kind: 'login',
-						message: err instanceof Error ? err.message : 'No se pudo validar la sesión'
-					};
+					outcome = { kind: 'login', notice: 'service-unavailable' };
 				} else {
 					outcome = { kind: 'landing' };
 				}
