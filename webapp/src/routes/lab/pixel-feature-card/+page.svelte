@@ -4,6 +4,7 @@
 	let shape = $state<'square' | 'circle' | 'diamond'>('square');
 	let floor = $state(false);
 	let color = $state('#252528');
+	const shapes = ['square', 'circle', 'diamond'] as const;
 </script>
 
 <svelte:head>
@@ -14,7 +15,7 @@
 	<header class="lab-head">
 		<a class="back" href="/lab">← Lab</a>
 		<div class="toggles">
-			{#each ['square', 'circle', 'diamond'] as s (s)}
+			{#each shapes as s (s)}
 				<button type="button" class="chip" class:on={shape === s} onclick={() => (shape = s)}>
 					{s}
 				</button>
