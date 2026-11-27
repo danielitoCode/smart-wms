@@ -1,6 +1,14 @@
 name: Tests
 
-on: [push, pull_request]
+on:
+  # This workflow validates the Flask/backend project. The Svelte frontend
+  # migration has its own Webapp CI and must not inherit backend test failures.
+  push:
+    branches-ignore:
+      - svelte-webapp
+  pull_request:
+    branches-ignore:
+      - svelte-webapp
 
 jobs:
   test:
