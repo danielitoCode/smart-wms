@@ -664,7 +664,7 @@ El progreso es la suma de los pesos de las tareas cerradas en RESOLVED, RESOLVED
 
 ### 16.5 F1 — Plataforma frontend transversal (12%)
 
-- [ ] F1.1 — Bootstrap, layout raíz, carga inicial, hydration y recuperación ante error. (1%)
+- [ ] F1.1 — IN_PROGRESS: coordinador de bootstrap raíz, readiness SSR/hydration, recuperación de inicialización, `svelte:boundary` y `+error.svelte` implementados; pruebas unitarias añadidas. Pendientes check/tests/build, Playwright y CI sobre el mismo SHA antes de acreditar el 1%. Evidencia: [F1.1-Bootstrap-Hydration-Recovery.md](./F1.1-Bootstrap-Hydration-Recovery.md). (1%)
 - [ ] F1.2 — Routing canónico, guards, redirects, aliases, refresh y deep links. (1,5%)
 - [ ] F1.3 — Login, logout, restauración de sesión, expiración y errores de autenticación. (1,5%)
 - [ ] F1.4 — Roles, grants y permisos por página/acción; denegación segura y coherente en UI. (1,5%)
