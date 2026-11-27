@@ -53,7 +53,7 @@ export function resolveSafeInternalRedirect(candidate: string | null | undefined
 	try {
 		const base = new URL('https://smart-wms.invalid');
 		const target = new URL(candidate, base);
-		if (target.origin !== base.origin || target.pathname.replace(/\\/$/, '') === '/login') {
+		if (target.origin !== base.origin || target.pathname === '/login' || target.pathname === '/login/') {
 			return null;
 		}
 		return `${target.pathname}${target.search}${target.hash}`;
