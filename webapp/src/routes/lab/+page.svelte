@@ -73,7 +73,8 @@
 		{ id: 'pixel-feature-card', name: 'PixelFeatureCard', status: 'ready', href: '/lab/pixel-feature-card', description: 'Nubes dithered (Bayer) + teléfono 3D; hover glow, press ripple, pantalla health demo.' },
 		{ id: 'privacy-banner', name: 'PrivacyBanner', status: 'ready', href: '/lab/privacy-banner', description: 'Consent cookies: Customize switches, Reject/Accept, check confirm, cookie bite hover.' },
 		{ id: 'contact-card', name: 'ContactCard', status: 'ready', href: '/lab/contact-card', description: 'Enlace Contact inline: popover con avatar, copy email, LinkedIn y Book a call.' },
-		{ id: 'globe-card', name: 'GlobeCard', status: 'ready', href: '/lab/globe-card', description: 'Card equipo global: globo Three.js punteado, arcos, avatares, drag e inercia.' }
+		{ id: 'globe-card', name: 'GlobeCard', status: 'ready', href: '/lab/globe-card', description: 'Card equipo global: globo Three.js punteado, arcos, avatares, drag e inercia.' },
+		{ id: 'receipt-button', name: 'ReceiptButton', status: 'ready', href: '/lab/receipt-button', description: 'Pay → relleno agua, check, ticket térmico con desgarro y reset (WAAPI, sin GSAP).' }
 	] as const;
 </script>
 
