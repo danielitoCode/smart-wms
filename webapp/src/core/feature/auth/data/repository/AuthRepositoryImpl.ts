@@ -1,4 +1,4 @@
-import type { AuthRepository } from '../../domain/repository/AuthRepository';
+import type { AuthRepository, LogoutResult } from '../../domain/repository/AuthRepository';
 import type { ChangePasswordInput, Credentials, LoginResult, User } from '../../domain/entity/User';
 import type { AuthRemoteDataSource } from '../datasource/AuthRemoteDataSource';
 import { AuthMapper } from '../mapper/AuthMapper';
@@ -53,11 +53,17 @@ export class AuthRepositoryImpl implements AuthRepository {
 		await this.datasource.refresh();
 	}
 
-	async logout(): Promise<void> {
+	async logout(): Promise<LogoutResult> {
+		// Invalidate pending login /me operations before contacting the server.
+		// The local identity is removed immediately and remains removed on failure.
 		this.sessionEpoch += 1;
 		authSession.clear();
 		try {
 			await this.datasource.logout();
+			return { confirmed: true };
+		} catch {
+			// Do not claim the HttpOnly cookie was revoked when Flask did not confirm it.
+			return { confirmed: false, reason: 'remote-unavailable' };
 		} finally {
 			authSession.clear();
 		}
