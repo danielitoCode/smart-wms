@@ -77,7 +77,8 @@
 		{ id: 'receipt-button', name: 'ReceiptButton', status: 'ready', href: '/lab/receipt-button', description: 'Pay → relleno agua, check, ticket térmico con desgarro y reset (WAAPI, sin GSAP).' },
 		{ id: 'blur-text', name: 'BlurText', status: 'ready', href: '/lab/blur-text', description: 'Texto que sale del blur palabra a palabra o letra a letra (inView/mount, CSS).' },
 		{ id: 'line-chart', name: 'LineChart', status: 'ready', href: '/lab/line-chart', description: 'Multi-serie line/area SVG: crosshair, tooltip, leyenda toggle, loading (throughput WMS).' },
-		{ id: 'donut-chart', name: 'DonutChart', status: 'ready', href: '/lab/donut-chart', description: 'Anillo de segmentos redondeados, centro vinculado y leyenda con teclado (mix WMS).' }
+		{ id: 'donut-chart', name: 'DonutChart', status: 'ready', href: '/lab/donut-chart', description: 'Anillo de segmentos redondeados, centro vinculado y leyenda con teclado (mix WMS).' },
+		{ id: 'heat-calendar', name: 'HeatCalendar', status: 'ready', href: '/lab/heat-calendar', description: 'Calendario de ocupación: intensidad = saturación (bins llenos vs vacíos).' }
 	] as const;
 </script>
 
