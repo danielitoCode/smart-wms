@@ -9,6 +9,7 @@
 	import { createLoginState } from '../state/loginState.svelte';
 	import { createAuthDependencies } from '../../di/auth.dependencies';
 	import { resolveHomePath } from '../../domain/policy/AccessPolicy';
+	import { resolveSafeInternalRedirect } from '../../../../../lib/navigation/routeAliases';
 	import { pushToast } from '../../../../../lib/ui/toast.svelte';
 	import Starfield from '../../../../../lib/components/Starfield.svelte';
 
@@ -29,12 +30,13 @@
 	async function redirectIfAlreadyAuthenticated() {
 		const result = await auth.ensureAuthenticated.execute();
 		if (result.ok) {
-			const path = resolveHomePath({
+			const home = resolveHomePath({
 				role: result.user.role,
 				allowedPages: result.user.allowedPages,
 				mustChangePassword: result.user.mustChangePassword
 			});
-			await goto(path, { replaceState: true });
+			const requested = resolveSafeInternalRedirect(page.url.searchParams.get('redirect'));
+			await goto(result.user.mustChangePassword ? home : requested ?? home, { replaceState: true });
 		}
 	}
 
@@ -53,9 +55,7 @@
 			return;
 		}
 
-		const redirect = page.url.searchParams.get('redirect');
-		const safeRedirect =
-			redirect && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : null;
+		const safeRedirect = resolveSafeInternalRedirect(page.url.searchParams.get('redirect'));
 
 		const home = resolveHomePath({
 			role: state.user?.role ?? 'USER',
