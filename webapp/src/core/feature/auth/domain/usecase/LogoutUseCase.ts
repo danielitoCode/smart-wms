@@ -1,9 +1,9 @@
-import type { AuthRepository } from '../repository/AuthRepository';
+import type { AuthRepository, LogoutResult } from '../repository/AuthRepository';
 
 export class LogoutUseCase {
 	constructor(private readonly repository: AuthRepository) {}
 
-	execute(): Promise<void> {
+	execute(): Promise<LogoutResult> {
 		return this.repository.logout();
 	}
 }
