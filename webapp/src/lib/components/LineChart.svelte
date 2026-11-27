@@ -148,7 +148,7 @@
 		status = 'ready',
 		loadingLabel = 'Loading data',
 		height = 288,
-		strokeWidth = 2,
+		strokeWidth = 2.5,
 		showGrid = true,
 		class: className = ''
 	}: LineChartProps = $props();
@@ -254,24 +254,40 @@
 		const el = wrapEl;
 		if (!el) return;
 		const ro = new ResizeObserver(() => {
-			width = el.clientWidth || 480;
+			width = Math.max(el.clientWidth || 0, 1);
 		});
 		ro.observe(el);
-		width = el.clientWidth || 480;
-		const io = new IntersectionObserver(
-			([en]) => {
-				if (en?.isIntersecting) {
-					drawn = true;
-					io.disconnect();
-				}
-			},
-			{ threshold: 0.2 }
-		);
-		io.observe(el);
-		if (still) drawn = true;
+		width = Math.max(el.clientWidth || 0, 1);
+		// Reveal series on first paint; IO only for optional entrance when not still
+		if (still) {
+			drawn = true;
+		} else {
+			const io = new IntersectionObserver(
+				([en]) => {
+					if (en?.isIntersecting) {
+						drawn = true;
+						io.disconnect();
+					}
+				},
+				{ threshold: 0.05, rootMargin: '40px' }
+			);
+			io.observe(el);
+			// Fallback: if already on screen, IO can race — force reveal next frame
+			requestAnimationFrame(() => {
+				const r = el.getBoundingClientRect();
+				if (r.bottom > 0 && r.top < window.innerHeight) drawn = true;
+			});
+			const t = window.setTimeout(() => {
+				drawn = true;
+			}, 600);
+			return () => {
+				ro.disconnect();
+				io.disconnect();
+				clearTimeout(t);
+			};
+		}
 		return () => {
 			ro.disconnect();
-			io.disconnect();
 		};
 	});
 </script>
@@ -309,11 +325,12 @@
 							<stop offset="100%" stop-color={g.color} stop-opacity="0.02" />
 						</linearGradient>
 					{/each}
+					<!-- luminance mask: white = visible, black = hidden -->
 					<linearGradient id="lc-edge" x1="0" y1="0" x2="1" y2="0">
-						<stop offset="0%" stop-color="#000" stop-opacity="0" />
-						<stop offset="6%" stop-color="#000" stop-opacity="1" />
-						<stop offset="94%" stop-color="#000" stop-opacity="1" />
-						<stop offset="100%" stop-color="#000" stop-opacity="0" />
+						<stop offset="0%" stop-color="#fff" stop-opacity="0" />
+						<stop offset="6%" stop-color="#fff" stop-opacity="1" />
+						<stop offset="94%" stop-color="#fff" stop-opacity="1" />
+						<stop offset="100%" stop-color="#fff" stop-opacity="0" />
 					</linearGradient>
 					<mask id="lc-edge-mask">
 						<rect x={AXIS} y={PAD.top} width={plotW} height={plotH} fill="url(#lc-edge)" />
@@ -486,10 +503,14 @@
 	}
 	.lc__series {
 		opacity: 0;
-		transition: opacity 0.4s ease;
+		transition: opacity 0.45s ease;
 	}
 	.lc__series.is-drawn {
 		opacity: 1;
+	}
+	/* Ensure strokes paint above fills */
+	.lc__line {
+		vector-effect: non-scaling-stroke;
 	}
 	.lc__line,
 	.lc__area {
