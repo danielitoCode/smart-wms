@@ -33,7 +33,7 @@ export default defineConfig(({ mode }) => {
 			port: 5173,
 			proxy: {
 				// Same-origin /api avoids CORS; target depends on the selected runtime mode.
-				'/api': {
+				'^/api(?:/|$)': {
 					target: apiProxyTarget,
 					changeOrigin: true
 				}
@@ -42,7 +42,7 @@ export default defineConfig(({ mode }) => {
 		preview: {
 			port: 4173,
 			proxy: {
-				'/api': {
+				'^/api(?:/|$)': {
 					target: apiProxyTarget,
 					changeOrigin: true
 				}
