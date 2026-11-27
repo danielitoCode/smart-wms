@@ -31,8 +31,7 @@
 		<div class="lab-demo">
 			<DynamicDropZone
 				{theme}
-				demoFile
-				onDrop={(files) => {
+				onFiles={(files: File[]) => {
 					lastDrop = files.map((f) => f.name).join(', ') || '(empty)';
 				}}
 			/>
