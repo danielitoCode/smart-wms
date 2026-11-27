@@ -2,7 +2,6 @@
 	import PresenceCards from '../../../lib/components/PresenceCards.svelte';
 
 	let theme = $state<'light' | 'dark'>('light');
-	let autoplay = $state(true);
 	let fill = $state(false);
 </script>
 
@@ -19,10 +18,6 @@
 	<header class="lab-head">
 		<a class="back" href="/lab">← Lab</a>
 		<div class="lab-tools">
-			<label class="tog">
-				<input type="checkbox" bind:checked={autoplay} />
-				Autoplay
-			</label>
 			<button type="button" class="theme" onclick={() => (theme = theme === 'dark' ? 'light' : 'dark')}>
 				{theme === 'dark' ? 'Light' : 'Dark'}
 			</button>
@@ -38,7 +33,7 @@
 		</p>
 
 		<div class="lab-demo" class:fill>
-			<PresenceCards {theme} {autoplay} {fill} />
+			<PresenceCards {theme} />
 		</div>
 	</main>
 </div>
