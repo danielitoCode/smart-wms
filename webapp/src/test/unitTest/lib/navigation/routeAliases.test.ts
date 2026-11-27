@@ -36,7 +36,7 @@ describe('canonical route redirects', () => {
 		['/webhooks', '/management/webhooks'],
 		['/zones', '/data/zones'],
 		['/management/preferred-bins', '/data/preferred-bins']
-	])('maps %s to %s', (pathname, expected) => {
+	] as const)('maps %s to %s', (pathname, expected) => {
 		expect(getCanonicalRouteRedirect(new URL(`https://smart-wms.invalid${pathname}`))).toBe(expected);
 	});
 
