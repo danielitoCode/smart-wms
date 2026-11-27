@@ -664,7 +664,7 @@ El progreso es la suma de los pesos de las tareas cerradas en RESOLVED, RESOLVED
 
 ### 16.5 F1 — Plataforma frontend transversal (12%)
 
-- [ ] F1.1 — IN_PROGRESS: coordinador de bootstrap raíz, readiness SSR/hydration, recuperación de inicialización, `svelte:boundary` y `+error.svelte` implementados; pruebas unitarias añadidas. Pendientes check/tests/build, Playwright y CI sobre el mismo SHA antes de acreditar el 1%. Evidencia: [F1.1-Bootstrap-Hydration-Recovery.md](./F1.1-Bootstrap-Hydration-Recovery.md). (1%)
+- [ ] F1.1 — IN_PROGRESS: implementación de bootstrap raíz, readiness SSR/hydration, recuperación de inicialización, `svelte:boundary` y `+error.svelte` publicada. Validación local reportada: check 0 errores/157 warnings en 64 archivos; Vitest 217/217 archivos y 979/979 tests; build exit 0 (adapter-auto no detectó target de producción); Playwright 4/4 (22,8 s; warning Node DEP0205). Aún falta correlacionar el SHA local probado con el HEAD remoto, comprobar que E2E cubre readiness/hydration/recuperación y revisar CI del mismo SHA; GitHub no devolvió runs/statuses para el HEAD consultado. Sin crédito hasta cerrar esos gates. Evidencia: [F1.1-Bootstrap-Hydration-Recovery.md](./F1.1-Bootstrap-Hydration-Recovery.md). (1%)
 - [ ] F1.2 — Routing canónico, guards, redirects, aliases, refresh y deep links. (1,5%)
 - [ ] F1.3 — Login, logout, restauración de sesión, expiración y errores de autenticación. (1,5%)
 - [ ] F1.4 — Roles, grants y permisos por página/acción; denegación segura y coherente en UI. (1,5%)
